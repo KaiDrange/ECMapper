@@ -3,7 +3,7 @@
 #include "Enums.h"
 
 struct MappedKey {
-    KeyColour colour;
+    KeyColour colour = KeyColour::Off;
     KeyMappingType mappingType;
     juce::String mapping;
 };
@@ -20,12 +20,10 @@ public:
     int keyRowCount;
     int keyRowLengths[5];
     InstrumentType instrumentType;
-
-private:
-    
     MappedKey *mappedKeys;
     MappedKey *mappedPercKeys;
     MappedKey *mappedButtons;
 
+private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (EigenharpMapping)
 };

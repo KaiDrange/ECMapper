@@ -3,51 +3,49 @@
 
 KeymapPanelComponent::KeymapPanelComponent(EigenharpMapping *eigenharpMapping, float widthFactor, float heightFactor) : PanelComponent(widthFactor, heightFactor)
 {
-    juce::Path p;
-    p.addRoundedRectangle(0, 0, 64, 64, 10);
-    keyImgNormal = new juce::DrawablePath();
-    keyImgNormal->setPath(p);
-    keyImgNormal->setFill(juce::Colour::fromFloatRGBA(1.0f, 1.0f, 1.0f, 0.0f));
-    keyImgNormal->setStrokeFill (juce::Colours::transparentBlack);
-    keyImgNormal->setStrokeThickness(2.0f);
-
-    keyImgOver = new juce::DrawablePath();
-    keyImgOver->setPath(p);
-    keyImgOver->setFill(juce::Colour::fromFloatRGBA(1.0f, 1.0f, 1.0f, 0.8f));
-    keyImgOver->setStrokeFill(juce::Colours::transparentBlack);
-    keyImgOver->setStrokeThickness(2.0f);
-    
-    keyImgDown = new juce::DrawablePath();
-    keyImgDown->setPath(p);
-    keyImgDown->setFill(juce::Colour::fromFloatRGBA(1.0f, 1.0f, 1.0f, 1.0f));
-    keyImgDown->setStrokeFill(juce::Colours::transparentBlack);
-    keyImgDown->setStrokeThickness(2.0f);
-
-    keyImgOn = new juce::DrawablePath();
-    keyImgOn->setPath(p);
-    keyImgOn->setFill(juce::Colour::fromFloatRGBA(1.0f, 1.0f, 1.0f, 0.4f));
-    keyImgOn->setStrokeFill(juce::Colours::transparentBlack);
-    keyImgOn->setStrokeThickness(2.0f);
-
+    keyImgNormal = createBtnImage(juce::Colour::fromFloatRGBA(1.0f, 1.0f, 1.0f, 0.0f));
+    keyImgOver = createBtnImage(juce::Colour::fromFloatRGBA(1.0f, 1.0f, 1.0f, 0.8f));
+    keyImgDown = createBtnImage(juce::Colour::fromFloatRGBA(1.0f, 1.0f, 1.0f, 1.0f));
+    keyImgOn = createBtnImage(juce::Colour::fromFloatRGBA(1.0f, 1.0f, 1.0f, 0.4f));
     
     this->eigenharpMapping = eigenharpMapping;
     for (int i = 0; i < eigenharpMapping->keyCount; i++) {
-        keys[i] = new EigenharpKeyComponent(EigenharpKeyType::Normal);
+        keys[i] = new EigenharpKeyComponent(EigenharpKeyType::Normal, &eigenharpMapping->mappedKeys[i]);
         addAndMakeVisible(keys[i]);
         keys[i]->setImages(keyImgNormal, keyImgOver, keyImgDown, NULL, keyImgOn);
+        keys[i]->id = i;
+        keys[i]->onClick = [this, i] {
+            auto selected = keys[i]->getToggleState();
+            deselectAllOtherKeys(keys[i]);
+            selectedKey = selected ? &this->eigenharpMapping->mappedKeys[i] : NULL;
+            enableDisableMenuButtons(selected);
+        };
     }
 
     for (int i = 0; i < eigenharpMapping->percKeyCount; i++) {
-        percKeys[i] = new EigenharpKeyComponent(EigenharpKeyType::Perc);
+        percKeys[i] = new EigenharpKeyComponent(EigenharpKeyType::Perc, &eigenharpMapping->mappedPercKeys[i]);
         addAndMakeVisible(percKeys[i]);
         percKeys[i]->setImages(keyImgNormal, keyImgOver, keyImgOn);
     }
 
     for (int i = 0; i < eigenharpMapping->buttonCount; i++) {
-        buttons[i] = new EigenharpKeyComponent(EigenharpKeyType::Button);
+        buttons[i] = new EigenharpKeyComponent(EigenharpKeyType::Button, &eigenharpMapping->mappedButtons[i]);
         addAndMakeVisible(buttons[i]);
         buttons[i]->setImages(keyImgNormal, keyImgOver, keyImgOn);
     }
+    
+    addAndMakeVisible (colourMenuButton);
+    colourMenuButton.setButtonText("Colour");
+    colourMenuButton.onClick = [&] {
+        juce::PopupMenu menu;
+        menu.addItem ("None", [&] { selectedKey->colour = KeyColour::Off; repaint();});
+        menu.addItem ("Green", [&] { selectedKey->colour = KeyColour::Green; repaint();});
+        menu.addItem ("Yellow", [&] { selectedKey->colour = KeyColour::Yellow; repaint();});
+        menu.addItem ("Red", [&] { selectedKey->colour = KeyColour::Red; repaint();});
+        menu.showMenuAsync (juce::PopupMenu::Options{}.withTargetComponent(colourMenuButton));
+    };
+
+    enableDisableMenuButtons(false);
 }
 
 KeymapPanelComponent::~KeymapPanelComponent()
@@ -74,13 +72,15 @@ void KeymapPanelComponent::resized()
     auto margin = area.getWidth()*0.02;
     area.reduce(margin, margin);
     
+    auto menuArea = area.removeFromRight(area.getWidth()*0.2);
+    colourMenuButton.setBounds(menuArea.removeFromTop(area.getHeight()*0.04));
+    
+    
     auto keyWidth = area.getWidth()/8.0;
     auto keyHeight = area.getHeight()/24.0;
     auto percKeyWidth = area.getWidth()/4.0;
     auto percKeyHeight = area.getHeight()/16.0;
     auto buttonDiameter = area.getHeight()/32.0;
-    
-//    keyImgNormal->setSize(keyWidth, keyHeight);
     
     auto currentKeyIndex = 0;
     for (int j = 0; j < eigenharpMapping->keyRowCount; j++) {
@@ -120,3 +120,29 @@ void KeymapPanelComponent::resized()
         }
     }
 }
+
+juce::DrawablePath* KeymapPanelComponent::createBtnImage(juce::Colour colour) {
+    juce::Path p;
+    p.addRoundedRectangle(0, 0, 64, 64, 10);
+    juce::DrawablePath *img = new juce::DrawablePath();
+    img->setPath(p);
+    img->setFill(colour);
+    img->setStrokeFill (juce::Colours::transparentBlack);
+    img->setStrokeThickness(2.0f);
+    return img;
+}
+
+void KeymapPanelComponent::enableDisableMenuButtons(bool enable) {
+    colourMenuButton.setEnabled(enable);
+}
+
+void KeymapPanelComponent::deselectAllOtherKeys(const EigenharpKeyComponent *key) {
+    for (int i = 0; i < eigenharpMapping->keyCount; i++) {
+        if (keys[i]->id != key->id) {
+            keys[i]->setToggleState(false, juce::NotificationType::dontSendNotification);
+        }
+    }
+    
+    repaint();
+}
+

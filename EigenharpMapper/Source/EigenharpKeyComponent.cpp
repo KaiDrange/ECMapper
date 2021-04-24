@@ -2,10 +2,12 @@
 #include "EigenharpKeyComponent.h"
 
 //==============================================================================
-EigenharpKeyComponent::EigenharpKeyComponent(EigenharpKeyType keyType)
+EigenharpKeyComponent::EigenharpKeyComponent(const EigenharpKeyType keyType, const MappedKey *mappedKey)
     : juce::DrawableButton("btn", juce::DrawableButton::ImageStretched)
 {
     this->keyType = keyType;
+    this->mappedKey = mappedKey;
+//    setRadioGroupId(123);
     setClickingTogglesState(true);
 }
 
@@ -23,8 +25,26 @@ void EigenharpKeyComponent::paint (juce::Graphics& g)
     g.drawFittedText ("C#2", getLocalBounds(),
                 juce::Justification::centred, true);
 
-    g.setColour (juce::Colours::green);
+    juce::Colour lightColour;
+    switch(mappedKey->colour) {
+        case KeyColour::Off:
+            lightColour = juce::Colours::transparentBlack;
+            break;
+        case KeyColour::Green:
+            lightColour = juce::Colours::green;
+            break;
+        case KeyColour::Yellow:
+            lightColour = juce::Colours::yellow;
+            break;
+        case KeyColour::Red:
+            lightColour = juce::Colours::red;
+            break;
+        default:
+            lightColour = juce::Colours::transparentBlack;
+            break;
+    }
     
+    g.setColour (lightColour);
     auto lightPosition = area.getX() + area.getWidth()/2.0f;
     g.drawEllipse(lightPosition-2, 3, 3, 3, 3);
 
