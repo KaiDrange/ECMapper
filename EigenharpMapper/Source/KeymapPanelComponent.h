@@ -17,6 +17,7 @@ private:
     EigenharpKeyComponent *keys[120];
     EigenharpKeyComponent *percKeys[12];
     EigenharpKeyComponent *buttons[8];
+    juce::DrawablePath *keyImgNormal, *keyImgOver, *keyImgDown, *keyImgOn;
 
     EigenharpMapping *eigenharpMapping;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (KeymapPanelComponent)

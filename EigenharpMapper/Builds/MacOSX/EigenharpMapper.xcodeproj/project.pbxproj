@@ -7,72 +7,73 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		049DDF13B48C435B499CB978 /* PanelComponent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C65E47B9AE239733BF238B43 /* PanelComponent.cpp */; };
-		0A085DF1A55FF6EC82271109 /* KeymapPanelComponent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7CC4206549FF17C794A521AC /* KeymapPanelComponent.cpp */; };
-		0BB374F49FB227FB1637392A /* RecentFilesMenuTemplate.nib in Resources */ = {isa = PBXBuildFile; fileRef = BE21DC6F73526B6BA369EA72 /* RecentFilesMenuTemplate.nib */; };
-		1DA348DC6F964D78C333733A /* include_juce_events.mm in Sources */ = {isa = PBXBuildFile; fileRef = A1D836CBF0E9613B127C3C12 /* include_juce_events.mm */; };
-		2082DCE0E31B6B1E5EE31F3C /* include_juce_graphics.mm in Sources */ = {isa = PBXBuildFile; fileRef = C92F016C4F59C41A3F1396AB /* include_juce_graphics.mm */; };
-		28A28F61EEF54FF50E4316CB /* EigenharpMapping.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 04EE23864B96D402A3EA58F4 /* EigenharpMapping.cpp */; };
-		2DEBD344BEF7F78B6AE7ECD3 /* MainComponent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7ED9B3E8FC20E29FAA8BFD6A /* MainComponent.cpp */; };
-		42BB9F04B4666FDD397AF7F1 /* EigenharpKeyComponent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2B9F568D62A87115FFEE1EED /* EigenharpKeyComponent.cpp */; };
-		463A9855B746713E4E22D994 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 183C593CFB8552B8497220E3 /* Cocoa.framework */; };
-		7451AF7702FE97DCD2C76AF7 /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 62E37519FD05D6BFD9A1E4C5 /* Carbon.framework */; };
-		758DB86C44B1410F8B86922A /* include_juce_gui_basics.mm in Sources */ = {isa = PBXBuildFile; fileRef = B98E3D2DC42F7895E36A4963 /* include_juce_gui_basics.mm */; };
-		917AAF046F96A1C9547A728C /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F16949F6162C39FA01C6C238 /* QuartzCore.framework */; };
-		C4212B67ABFDA93A403EB472 /* include_juce_data_structures.mm in Sources */ = {isa = PBXBuildFile; fileRef = 1402625F8FD125C9E2EBB0FA /* include_juce_data_structures.mm */; };
-		C51B4C11D48DD71477EA7535 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 52D05D1244B70C5D8DDE24F6 /* Foundation.framework */; };
-		CD7CB5B7B04CFC9CC4C403A4 /* include_juce_core.mm in Sources */ = {isa = PBXBuildFile; fileRef = 19F145EFA62B019AB3E9D530 /* include_juce_core.mm */; };
-		DFBDE6E138D7BF1D6F68FDBF /* TabPage.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 942B923020C784ACD1D9A30F /* TabPage.cpp */; };
-		E5EDD86FEE13B771A3D4F0EA /* Main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ABFFFB82FE1DCCF75C2E7E64 /* Main.cpp */; };
-		F6375093E6E8973B31A203F9 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B8E7EDBF2C07FE67371D558A /* IOKit.framework */; };
+		049DDF13B48C435B499CB978 /* PanelComponent.cpp */ = {isa = PBXBuildFile; fileRef = C65E47B9AE239733BF238B43; };
+		0A085DF1A55FF6EC82271109 /* KeymapPanelComponent.cpp */ = {isa = PBXBuildFile; fileRef = 7CC4206549FF17C794A521AC; };
+		0BB374F49FB227FB1637392A /* RecentFilesMenuTemplate.nib */ = {isa = PBXBuildFile; fileRef = BE21DC6F73526B6BA369EA72; };
+		1DA348DC6F964D78C333733A /* include_juce_events.mm */ = {isa = PBXBuildFile; fileRef = A1D836CBF0E9613B127C3C12; };
+		2082DCE0E31B6B1E5EE31F3C /* include_juce_graphics.mm */ = {isa = PBXBuildFile; fileRef = C92F016C4F59C41A3F1396AB; };
+		28A28F61EEF54FF50E4316CB /* EigenharpMapping.cpp */ = {isa = PBXBuildFile; fileRef = 04EE23864B96D402A3EA58F4; };
+		2DEBD344BEF7F78B6AE7ECD3 /* MainComponent.cpp */ = {isa = PBXBuildFile; fileRef = 7ED9B3E8FC20E29FAA8BFD6A; };
+		42BB9F04B4666FDD397AF7F1 /* EigenharpKeyComponent.cpp */ = {isa = PBXBuildFile; fileRef = 2B9F568D62A87115FFEE1EED; };
+		463A9855B746713E4E22D994 /* Cocoa.framework */ = {isa = PBXBuildFile; fileRef = 183C593CFB8552B8497220E3; };
+		6D0482B862D5F95BC2BDE9A6 /* App */ = {isa = PBXBuildFile; fileRef = B63C1F05D43BD54AAC510F64; };
+		7451AF7702FE97DCD2C76AF7 /* Carbon.framework */ = {isa = PBXBuildFile; fileRef = 62E37519FD05D6BFD9A1E4C5; };
+		758DB86C44B1410F8B86922A /* include_juce_gui_basics.mm */ = {isa = PBXBuildFile; fileRef = B98E3D2DC42F7895E36A4963; };
+		917AAF046F96A1C9547A728C /* QuartzCore.framework */ = {isa = PBXBuildFile; fileRef = F16949F6162C39FA01C6C238; };
+		C4212B67ABFDA93A403EB472 /* include_juce_data_structures.mm */ = {isa = PBXBuildFile; fileRef = 1402625F8FD125C9E2EBB0FA; };
+		C51B4C11D48DD71477EA7535 /* Foundation.framework */ = {isa = PBXBuildFile; fileRef = 52D05D1244B70C5D8DDE24F6; };
+		CD7CB5B7B04CFC9CC4C403A4 /* include_juce_core.mm */ = {isa = PBXBuildFile; fileRef = 19F145EFA62B019AB3E9D530; };
+		DFBDE6E138D7BF1D6F68FDBF /* TabPage.cpp */ = {isa = PBXBuildFile; fileRef = 942B923020C784ACD1D9A30F; };
+		E5EDD86FEE13B771A3D4F0EA /* Main.cpp */ = {isa = PBXBuildFile; fileRef = ABFFFB82FE1DCCF75C2E7E64; };
+		F6375093E6E8973B31A203F9 /* IOKit.framework */ = {isa = PBXBuildFile; fileRef = B8E7EDBF2C07FE67371D558A; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		00E4714F77602595C27FAE53 /* juce_events */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_events; path = "~/JUCE/modules/juce_events"; sourceTree = "<absolute>"; };
-		04EE23864B96D402A3EA58F4 /* EigenharpMapping.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = EigenharpMapping.cpp; path = ../../Source/EigenharpMapping.cpp; sourceTree = SOURCE_ROOT; };
-		1402625F8FD125C9E2EBB0FA /* include_juce_data_structures.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_data_structures.mm; path = ../../JuceLibraryCode/include_juce_data_structures.mm; sourceTree = SOURCE_ROOT; };
-		183C593CFB8552B8497220E3 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
-		19F145EFA62B019AB3E9D530 /* include_juce_core.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_core.mm; path = ../../JuceLibraryCode/include_juce_core.mm; sourceTree = SOURCE_ROOT; };
-		2B9F568D62A87115FFEE1EED /* EigenharpKeyComponent.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = EigenharpKeyComponent.cpp; path = ../../Source/EigenharpKeyComponent.cpp; sourceTree = SOURCE_ROOT; };
-		3A2B1D85AA27BB429F4DE479 /* PanelComponent.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = PanelComponent.h; path = ../../Source/PanelComponent.h; sourceTree = SOURCE_ROOT; };
-		3F80F8329888A91263556E54 /* Info-App.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info-App.plist"; sourceTree = SOURCE_ROOT; };
-		47BDBC4F03AC0EA3FFBFB26D /* JuceHeader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = JuceHeader.h; path = ../../JuceLibraryCode/JuceHeader.h; sourceTree = SOURCE_ROOT; };
-		507F65AAB419580AC47BCD27 /* MainComponent.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = MainComponent.h; path = ../../Source/MainComponent.h; sourceTree = SOURCE_ROOT; };
-		52D05D1244B70C5D8DDE24F6 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
-		62E37519FD05D6BFD9A1E4C5 /* Carbon.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Carbon.framework; path = System/Library/Frameworks/Carbon.framework; sourceTree = SDKROOT; };
-		63242040CB2565EBF9E2CC3F /* TabPage.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = TabPage.h; path = ../../Source/TabPage.h; sourceTree = SOURCE_ROOT; };
-		69094432971F3555DB570101 /* KeymapPanelComponent.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = KeymapPanelComponent.h; path = ../../Source/KeymapPanelComponent.h; sourceTree = SOURCE_ROOT; };
-		71CB4E34ECDD6D23F3A7598F /* juce_core */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_core; path = "~/JUCE/modules/juce_core"; sourceTree = "<absolute>"; };
-		74D1FFDB3B4368B53B241A18 /* EigenharpKeyComponent.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = EigenharpKeyComponent.h; path = ../../Source/EigenharpKeyComponent.h; sourceTree = SOURCE_ROOT; };
-		79AF41210E9585E8A993D8ED /* juce_data_structures */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_data_structures; path = "~/JUCE/modules/juce_data_structures"; sourceTree = "<absolute>"; };
-		7CC4206549FF17C794A521AC /* KeymapPanelComponent.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = KeymapPanelComponent.cpp; path = ../../Source/KeymapPanelComponent.cpp; sourceTree = SOURCE_ROOT; };
-		7ED9B3E8FC20E29FAA8BFD6A /* MainComponent.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = MainComponent.cpp; path = ../../Source/MainComponent.cpp; sourceTree = SOURCE_ROOT; };
-		942B923020C784ACD1D9A30F /* TabPage.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = TabPage.cpp; path = ../../Source/TabPage.cpp; sourceTree = SOURCE_ROOT; };
-		A18CB1571EFD8A2F749CD6AC /* EigenharpMapping.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = EigenharpMapping.h; path = ../../Source/EigenharpMapping.h; sourceTree = SOURCE_ROOT; };
-		A1D836CBF0E9613B127C3C12 /* include_juce_events.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_events.mm; path = ../../JuceLibraryCode/include_juce_events.mm; sourceTree = SOURCE_ROOT; };
-		A7BABEDE8CBFBC013E3A144A /* juce_gui_basics */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_gui_basics; path = "~/JUCE/modules/juce_gui_basics"; sourceTree = "<absolute>"; };
-		ABFFFB82FE1DCCF75C2E7E64 /* Main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = Main.cpp; path = ../../Source/Main.cpp; sourceTree = SOURCE_ROOT; };
-		B63C1F05D43BD54AAC510F64 /* EigenhgarpMapper.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EigenhgarpMapper.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		B8E7EDBF2C07FE67371D558A /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
-		B98E3D2DC42F7895E36A4963 /* include_juce_gui_basics.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_gui_basics.mm; path = ../../JuceLibraryCode/include_juce_gui_basics.mm; sourceTree = SOURCE_ROOT; };
-		BE21DC6F73526B6BA369EA72 /* RecentFilesMenuTemplate.nib */ = {isa = PBXFileReference; lastKnownFileType = file.nib; path = RecentFilesMenuTemplate.nib; sourceTree = SOURCE_ROOT; };
-		C602831E7AD2D1ABCEA34308 /* Enums.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = Enums.h; path = ../../Source/Enums.h; sourceTree = SOURCE_ROOT; };
-		C65E47B9AE239733BF238B43 /* PanelComponent.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = PanelComponent.cpp; path = ../../Source/PanelComponent.cpp; sourceTree = SOURCE_ROOT; };
-		C92F016C4F59C41A3F1396AB /* include_juce_graphics.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_graphics.mm; path = ../../JuceLibraryCode/include_juce_graphics.mm; sourceTree = SOURCE_ROOT; };
-		D376147C501B50D1B28414C7 /* juce_graphics */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_graphics; path = "~/JUCE/modules/juce_graphics"; sourceTree = "<absolute>"; };
-		F16949F6162C39FA01C6C238 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
+		00E4714F77602595C27FAE53 /* juce_events */ /* juce_events */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_events; path = "~/JUCE/modules/juce_events"; sourceTree = "<absolute>"; };
+		04EE23864B96D402A3EA58F4 /* EigenharpMapping.cpp */ /* EigenharpMapping.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = EigenharpMapping.cpp; path = ../../Source/EigenharpMapping.cpp; sourceTree = SOURCE_ROOT; };
+		1402625F8FD125C9E2EBB0FA /* include_juce_data_structures.mm */ /* include_juce_data_structures.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_data_structures.mm; path = ../../JuceLibraryCode/include_juce_data_structures.mm; sourceTree = SOURCE_ROOT; };
+		183C593CFB8552B8497220E3 /* Cocoa.framework */ /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
+		19F145EFA62B019AB3E9D530 /* include_juce_core.mm */ /* include_juce_core.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_core.mm; path = ../../JuceLibraryCode/include_juce_core.mm; sourceTree = SOURCE_ROOT; };
+		2B9F568D62A87115FFEE1EED /* EigenharpKeyComponent.cpp */ /* EigenharpKeyComponent.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = EigenharpKeyComponent.cpp; path = ../../Source/EigenharpKeyComponent.cpp; sourceTree = SOURCE_ROOT; };
+		3A2B1D85AA27BB429F4DE479 /* PanelComponent.h */ /* PanelComponent.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = PanelComponent.h; path = ../../Source/PanelComponent.h; sourceTree = SOURCE_ROOT; };
+		3F80F8329888A91263556E54 /* Info-App.plist */ /* Info-App.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "Info-App.plist"; path = "Info-App.plist"; sourceTree = SOURCE_ROOT; };
+		47BDBC4F03AC0EA3FFBFB26D /* JuceHeader.h */ /* JuceHeader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = JuceHeader.h; path = ../../JuceLibraryCode/JuceHeader.h; sourceTree = SOURCE_ROOT; };
+		507F65AAB419580AC47BCD27 /* MainComponent.h */ /* MainComponent.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = MainComponent.h; path = ../../Source/MainComponent.h; sourceTree = SOURCE_ROOT; };
+		52D05D1244B70C5D8DDE24F6 /* Foundation.framework */ /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
+		62E37519FD05D6BFD9A1E4C5 /* Carbon.framework */ /* Carbon.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Carbon.framework; path = System/Library/Frameworks/Carbon.framework; sourceTree = SDKROOT; };
+		63242040CB2565EBF9E2CC3F /* TabPage.h */ /* TabPage.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = TabPage.h; path = ../../Source/TabPage.h; sourceTree = SOURCE_ROOT; };
+		69094432971F3555DB570101 /* KeymapPanelComponent.h */ /* KeymapPanelComponent.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = KeymapPanelComponent.h; path = ../../Source/KeymapPanelComponent.h; sourceTree = SOURCE_ROOT; };
+		71CB4E34ECDD6D23F3A7598F /* juce_core */ /* juce_core */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_core; path = "~/JUCE/modules/juce_core"; sourceTree = "<absolute>"; };
+		74D1FFDB3B4368B53B241A18 /* EigenharpKeyComponent.h */ /* EigenharpKeyComponent.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = EigenharpKeyComponent.h; path = ../../Source/EigenharpKeyComponent.h; sourceTree = SOURCE_ROOT; };
+		79AF41210E9585E8A993D8ED /* juce_data_structures */ /* juce_data_structures */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_data_structures; path = "~/JUCE/modules/juce_data_structures"; sourceTree = "<absolute>"; };
+		7CC4206549FF17C794A521AC /* KeymapPanelComponent.cpp */ /* KeymapPanelComponent.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = KeymapPanelComponent.cpp; path = ../../Source/KeymapPanelComponent.cpp; sourceTree = SOURCE_ROOT; };
+		7ED9B3E8FC20E29FAA8BFD6A /* MainComponent.cpp */ /* MainComponent.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = MainComponent.cpp; path = ../../Source/MainComponent.cpp; sourceTree = SOURCE_ROOT; };
+		942B923020C784ACD1D9A30F /* TabPage.cpp */ /* TabPage.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = TabPage.cpp; path = ../../Source/TabPage.cpp; sourceTree = SOURCE_ROOT; };
+		A18CB1571EFD8A2F749CD6AC /* EigenharpMapping.h */ /* EigenharpMapping.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = EigenharpMapping.h; path = ../../Source/EigenharpMapping.h; sourceTree = SOURCE_ROOT; };
+		A1D836CBF0E9613B127C3C12 /* include_juce_events.mm */ /* include_juce_events.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_events.mm; path = ../../JuceLibraryCode/include_juce_events.mm; sourceTree = SOURCE_ROOT; };
+		A7BABEDE8CBFBC013E3A144A /* juce_gui_basics */ /* juce_gui_basics */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_gui_basics; path = "~/JUCE/modules/juce_gui_basics"; sourceTree = "<absolute>"; };
+		ABFFFB82FE1DCCF75C2E7E64 /* Main.cpp */ /* Main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = Main.cpp; path = ../../Source/Main.cpp; sourceTree = SOURCE_ROOT; };
+		B63C1F05D43BD54AAC510F64 /* App */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EigenhgarpMapper.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B8E7EDBF2C07FE67371D558A /* IOKit.framework */ /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
+		B98E3D2DC42F7895E36A4963 /* include_juce_gui_basics.mm */ /* include_juce_gui_basics.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_gui_basics.mm; path = ../../JuceLibraryCode/include_juce_gui_basics.mm; sourceTree = SOURCE_ROOT; };
+		BE21DC6F73526B6BA369EA72 /* RecentFilesMenuTemplate.nib */ /* RecentFilesMenuTemplate.nib */ = {isa = PBXFileReference; lastKnownFileType = file.nib; name = RecentFilesMenuTemplate.nib; path = RecentFilesMenuTemplate.nib; sourceTree = SOURCE_ROOT; };
+		C602831E7AD2D1ABCEA34308 /* Enums.h */ /* Enums.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = Enums.h; path = ../../Source/Enums.h; sourceTree = SOURCE_ROOT; };
+		C65E47B9AE239733BF238B43 /* PanelComponent.cpp */ /* PanelComponent.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = PanelComponent.cpp; path = ../../Source/PanelComponent.cpp; sourceTree = SOURCE_ROOT; };
+		C92F016C4F59C41A3F1396AB /* include_juce_graphics.mm */ /* include_juce_graphics.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_graphics.mm; path = ../../JuceLibraryCode/include_juce_graphics.mm; sourceTree = SOURCE_ROOT; };
+		D376147C501B50D1B28414C7 /* juce_graphics */ /* juce_graphics */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_graphics; path = "~/JUCE/modules/juce_graphics"; sourceTree = "<absolute>"; };
+		F16949F6162C39FA01C6C238 /* QuartzCore.framework */ /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		86BC6EAF5592144886D84D76 /* Frameworks */ = {
+		86BC6EAF5592144886D84D76 = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				7451AF7702FE97DCD2C76AF7 /* Carbon.framework in Frameworks */,
-				463A9855B746713E4E22D994 /* Cocoa.framework in Frameworks */,
-				C51B4C11D48DD71477EA7535 /* Foundation.framework in Frameworks */,
-				F6375093E6E8973B31A203F9 /* IOKit.framework in Frameworks */,
-				917AAF046F96A1C9547A728C /* QuartzCore.framework in Frameworks */,
+				7451AF7702FE97DCD2C76AF7,
+				463A9855B746713E4E22D994,
+				C51B4C11D48DD71477EA7535,
+				F6375093E6E8973B31A203F9,
+				917AAF046F96A1C9547A728C,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -82,8 +83,8 @@
 		1251EC27E0A6B3BB3B94B457 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
-				3F80F8329888A91263556E54 /* Info-App.plist */,
-				BE21DC6F73526B6BA369EA72 /* RecentFilesMenuTemplate.nib */,
+				3F80F8329888A91263556E54,
+				BE21DC6F73526B6BA369EA72,
 			);
 			name = Resources;
 			sourceTree = "<group>";
@@ -91,12 +92,12 @@
 		3C150CE09F24F109BCF8E38C /* Source */ = {
 			isa = PBXGroup;
 			children = (
-				D0C21F1E1F02FD2E0CA4E8E7 /* EigenharpMapper */,
-				521881C5A0DA141C0E884C9E /* JUCE Modules */,
-				9B8972565B6B55CEFD359656 /* JUCE Library Code */,
-				1251EC27E0A6B3BB3B94B457 /* Resources */,
-				43B7D1F79E61906B4A074C2E /* Frameworks */,
-				5CD1BD435BB0463289714609 /* Products */,
+				D0C21F1E1F02FD2E0CA4E8E7,
+				521881C5A0DA141C0E884C9E,
+				9B8972565B6B55CEFD359656,
+				1251EC27E0A6B3BB3B94B457,
+				43B7D1F79E61906B4A074C2E,
+				5CD1BD435BB0463289714609,
 			);
 			name = Source;
 			sourceTree = "<group>";
@@ -104,11 +105,11 @@
 		43B7D1F79E61906B4A074C2E /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				62E37519FD05D6BFD9A1E4C5 /* Carbon.framework */,
-				183C593CFB8552B8497220E3 /* Cocoa.framework */,
-				52D05D1244B70C5D8DDE24F6 /* Foundation.framework */,
-				B8E7EDBF2C07FE67371D558A /* IOKit.framework */,
-				F16949F6162C39FA01C6C238 /* QuartzCore.framework */,
+				62E37519FD05D6BFD9A1E4C5,
+				183C593CFB8552B8497220E3,
+				52D05D1244B70C5D8DDE24F6,
+				B8E7EDBF2C07FE67371D558A,
+				F16949F6162C39FA01C6C238,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -116,11 +117,11 @@
 		521881C5A0DA141C0E884C9E /* JUCE Modules */ = {
 			isa = PBXGroup;
 			children = (
-				71CB4E34ECDD6D23F3A7598F /* juce_core */,
-				79AF41210E9585E8A993D8ED /* juce_data_structures */,
-				00E4714F77602595C27FAE53 /* juce_events */,
-				D376147C501B50D1B28414C7 /* juce_graphics */,
-				A7BABEDE8CBFBC013E3A144A /* juce_gui_basics */,
+				71CB4E34ECDD6D23F3A7598F,
+				79AF41210E9585E8A993D8ED,
+				00E4714F77602595C27FAE53,
+				D376147C501B50D1B28414C7,
+				A7BABEDE8CBFBC013E3A144A,
 			);
 			name = "JUCE Modules";
 			sourceTree = "<group>";
@@ -128,7 +129,7 @@
 		5CD1BD435BB0463289714609 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				B63C1F05D43BD54AAC510F64 /* EigenhgarpMapper.app */,
+				B63C1F05D43BD54AAC510F64,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -136,12 +137,12 @@
 		9B8972565B6B55CEFD359656 /* JUCE Library Code */ = {
 			isa = PBXGroup;
 			children = (
-				19F145EFA62B019AB3E9D530 /* include_juce_core.mm */,
-				1402625F8FD125C9E2EBB0FA /* include_juce_data_structures.mm */,
-				A1D836CBF0E9613B127C3C12 /* include_juce_events.mm */,
-				C92F016C4F59C41A3F1396AB /* include_juce_graphics.mm */,
-				B98E3D2DC42F7895E36A4963 /* include_juce_gui_basics.mm */,
-				47BDBC4F03AC0EA3FFBFB26D /* JuceHeader.h */,
+				19F145EFA62B019AB3E9D530,
+				1402625F8FD125C9E2EBB0FA,
+				A1D836CBF0E9613B127C3C12,
+				C92F016C4F59C41A3F1396AB,
+				B98E3D2DC42F7895E36A4963,
+				47BDBC4F03AC0EA3FFBFB26D,
 			);
 			name = "JUCE Library Code";
 			sourceTree = "<group>";
@@ -149,7 +150,7 @@
 		D0C21F1E1F02FD2E0CA4E8E7 /* EigenharpMapper */ = {
 			isa = PBXGroup;
 			children = (
-				D4B8B3BA10232AB1D7FC8D41 /* Source */,
+				D4B8B3BA10232AB1D7FC8D41,
 			);
 			name = EigenharpMapper;
 			sourceTree = "<group>";
@@ -157,14 +158,14 @@
 		D2C3EAB0694D51C3201BA8C4 /* UIComponents */ = {
 			isa = PBXGroup;
 			children = (
-				2B9F568D62A87115FFEE1EED /* EigenharpKeyComponent.cpp */,
-				74D1FFDB3B4368B53B241A18 /* EigenharpKeyComponent.h */,
-				7CC4206549FF17C794A521AC /* KeymapPanelComponent.cpp */,
-				69094432971F3555DB570101 /* KeymapPanelComponent.h */,
-				C65E47B9AE239733BF238B43 /* PanelComponent.cpp */,
-				3A2B1D85AA27BB429F4DE479 /* PanelComponent.h */,
-				942B923020C784ACD1D9A30F /* TabPage.cpp */,
-				63242040CB2565EBF9E2CC3F /* TabPage.h */,
+				2B9F568D62A87115FFEE1EED,
+				74D1FFDB3B4368B53B241A18,
+				7CC4206549FF17C794A521AC,
+				69094432971F3555DB570101,
+				C65E47B9AE239733BF238B43,
+				3A2B1D85AA27BB429F4DE479,
+				942B923020C784ACD1D9A30F,
+				63242040CB2565EBF9E2CC3F,
 			);
 			name = UIComponents;
 			sourceTree = "<group>";
@@ -172,12 +173,12 @@
 		D4B8B3BA10232AB1D7FC8D41 /* Source */ = {
 			isa = PBXGroup;
 			children = (
-				F153D71F9B3C66021493ECB6 /* Models */,
-				D2C3EAB0694D51C3201BA8C4 /* UIComponents */,
-				ABFFFB82FE1DCCF75C2E7E64 /* Main.cpp */,
-				507F65AAB419580AC47BCD27 /* MainComponent.h */,
-				7ED9B3E8FC20E29FAA8BFD6A /* MainComponent.cpp */,
-				C602831E7AD2D1ABCEA34308 /* Enums.h */,
+				C602831E7AD2D1ABCEA34308,
+				F153D71F9B3C66021493ECB6,
+				D2C3EAB0694D51C3201BA8C4,
+				ABFFFB82FE1DCCF75C2E7E64,
+				507F65AAB419580AC47BCD27,
+				7ED9B3E8FC20E29FAA8BFD6A,
 			);
 			name = Source;
 			sourceTree = "<group>";
@@ -185,8 +186,8 @@
 		F153D71F9B3C66021493ECB6 /* Models */ = {
 			isa = PBXGroup;
 			children = (
-				04EE23864B96D402A3EA58F4 /* EigenharpMapping.cpp */,
-				A18CB1571EFD8A2F749CD6AC /* EigenharpMapping.h */,
+				04EE23864B96D402A3EA58F4,
+				A18CB1571EFD8A2F749CD6AC,
 			);
 			name = Models;
 			sourceTree = "<group>";
@@ -196,11 +197,11 @@
 /* Begin PBXNativeTarget section */
 		6D2C23CF9AAEE863FC62B73E /* EigenharpMapper - App */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 2C49FFACA52E6D57E7060C23 /* Build configuration list for PBXNativeTarget "EigenharpMapper - App" */;
+			buildConfigurationList = 2C49FFACA52E6D57E7060C23;
 			buildPhases = (
-				448CF572800FBFC42FDB62E7 /* Resources */,
-				7F331D00A44D1F8374FDD378 /* Sources */,
-				86BC6EAF5592144886D84D76 /* Frameworks */,
+				448CF572800FBFC42FDB62E7,
+				7F331D00A44D1F8374FDD378,
+				86BC6EAF5592144886D84D76,
 			);
 			buildRules = (
 			);
@@ -208,13 +209,13 @@
 			);
 			name = "EigenharpMapper - App";
 			productName = EigenharpMapper;
-			productReference = B63C1F05D43BD54AAC510F64 /* EigenhgarpMapper.app */;
+			productReference = B63C1F05D43BD54AAC510F64;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		75C47C17D9E4BA4FCB398300 /* Project object */ = {
+		75C47C17D9E4BA4FCB398300 = {
 			isa = PBXProject;
 			attributes = {
 				LastUpgradeCheck = 1240;
@@ -244,51 +245,50 @@
 					};
 				};
 			};
-			buildConfigurationList = 8CCF059923F4FE0BB496F965 /* Build configuration list for PBXProject "EigenharpMapper" */;
+			buildConfigurationList = 8CCF059923F4FE0BB496F965;
 			compatibilityVersion = "Xcode 3.2";
-			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
 				Base,
 			);
-			mainGroup = 3C150CE09F24F109BCF8E38C /* Source */;
+			mainGroup = 3C150CE09F24F109BCF8E38C;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				6D2C23CF9AAEE863FC62B73E /* EigenharpMapper - App */,
+				6D2C23CF9AAEE863FC62B73E,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		448CF572800FBFC42FDB62E7 /* Resources */ = {
+		448CF572800FBFC42FDB62E7 = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				0BB374F49FB227FB1637392A /* RecentFilesMenuTemplate.nib in Resources */,
+				0BB374F49FB227FB1637392A,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		7F331D00A44D1F8374FDD378 /* Sources */ = {
+		7F331D00A44D1F8374FDD378 = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				28A28F61EEF54FF50E4316CB /* EigenharpMapping.cpp in Sources */,
-				42BB9F04B4666FDD397AF7F1 /* EigenharpKeyComponent.cpp in Sources */,
-				0A085DF1A55FF6EC82271109 /* KeymapPanelComponent.cpp in Sources */,
-				049DDF13B48C435B499CB978 /* PanelComponent.cpp in Sources */,
-				DFBDE6E138D7BF1D6F68FDBF /* TabPage.cpp in Sources */,
-				E5EDD86FEE13B771A3D4F0EA /* Main.cpp in Sources */,
-				2DEBD344BEF7F78B6AE7ECD3 /* MainComponent.cpp in Sources */,
-				CD7CB5B7B04CFC9CC4C403A4 /* include_juce_core.mm in Sources */,
-				C4212B67ABFDA93A403EB472 /* include_juce_data_structures.mm in Sources */,
-				1DA348DC6F964D78C333733A /* include_juce_events.mm in Sources */,
-				2082DCE0E31B6B1E5EE31F3C /* include_juce_graphics.mm in Sources */,
-				758DB86C44B1410F8B86922A /* include_juce_gui_basics.mm in Sources */,
+				28A28F61EEF54FF50E4316CB,
+				42BB9F04B4666FDD397AF7F1,
+				0A085DF1A55FF6EC82271109,
+				049DDF13B48C435B499CB978,
+				DFBDE6E138D7BF1D6F68FDBF,
+				E5EDD86FEE13B771A3D4F0EA,
+				2DEBD344BEF7F78B6AE7ECD3,
+				CD7CB5B7B04CFC9CC4C403A4,
+				C4212B67ABFDA93A403EB472,
+				1DA348DC6F964D78C333733A,
+				2082DCE0E31B6B1E5EE31F3C,
+				758DB86C44B1410F8B86922A,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -339,14 +339,14 @@
 					"$(HOME)/JUCE/modules",
 					"$(inherited)",
 				);
-				INFOPLIST_FILE = "Info-App.plist";
+				INFOPLIST_FILE = Info-App.plist;
 				INFOPLIST_PREPROCESS = NO;
 				INSTALL_PATH = "$(HOME)/Applications";
 				LLVM_LTO = YES;
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				MTL_HEADER_SEARCH_PATHS = "$(SRCROOT)/../../JuceLibraryCode $(HOME)/JUCE/modules";
 				PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.EigenharpMapper;
-				PRODUCT_NAME = EigenhgarpMapper;
+				PRODUCT_NAME = "EigenhgarpMapper";
 				USE_HEADERMAP = NO;
 				VALID_ARCHS = "i386 x86_64 arm64 arm64e";
 			};
@@ -396,13 +396,13 @@
 					"$(HOME)/JUCE/modules",
 					"$(inherited)",
 				);
-				INFOPLIST_FILE = "Info-App.plist";
+				INFOPLIST_FILE = Info-App.plist;
 				INFOPLIST_PREPROCESS = NO;
 				INSTALL_PATH = "$(HOME)/Applications";
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				MTL_HEADER_SEARCH_PATHS = "$(SRCROOT)/../../JuceLibraryCode $(HOME)/JUCE/modules";
 				PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.EigenharpMapper;
-				PRODUCT_NAME = EigenhgarpMapper;
+				PRODUCT_NAME = "EigenhgarpMapper";
 				USE_HEADERMAP = NO;
 				VALID_ARCHS = "i386 x86_64 arm64 arm64e";
 			};
@@ -450,7 +450,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				PRODUCT_NAME = EigenhgarpMapper;
+				PRODUCT_NAME = "EigenhgarpMapper";
 				SDKROOT = macosx;
 				WARNING_CFLAGS = "-Wreorder";
 				ZERO_LINK = NO;
@@ -498,7 +498,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				PRODUCT_NAME = EigenhgarpMapper;
+				PRODUCT_NAME = "EigenhgarpMapper";
 				SDKROOT = macosx;
 				WARNING_CFLAGS = "-Wreorder";
 				ZERO_LINK = NO;
@@ -508,20 +508,20 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		2C49FFACA52E6D57E7060C23 /* Build configuration list for PBXNativeTarget "EigenharpMapper - App" */ = {
+		2C49FFACA52E6D57E7060C23 = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				30A115399457A543C6BDCE5D /* Debug */,
-				17DB315ABA4EB8DBF4BAE3A7 /* Release */,
+				30A115399457A543C6BDCE5D,
+				17DB315ABA4EB8DBF4BAE3A7,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
-		8CCF059923F4FE0BB496F965 /* Build configuration list for PBXProject "EigenharpMapper" */ = {
+		8CCF059923F4FE0BB496F965 = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				B7B38ED2BF2C611D0DA168A1 /* Debug */,
-				C53E395B1834A9656DE25F5B /* Release */,
+				B7B38ED2BF2C611D0DA168A1,
+				C53E395B1834A9656DE25F5B,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

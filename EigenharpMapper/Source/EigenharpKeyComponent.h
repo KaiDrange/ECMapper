@@ -3,14 +3,13 @@
 #include <JuceHeader.h>
 #include "Enums.h"
 
-class EigenharpKeyComponent  : public juce::TextButton
+class EigenharpKeyComponent  : public juce::DrawableButton
 {
 public:
     EigenharpKeyComponent(EigenharpKeyType keyType);
     ~EigenharpKeyComponent() override;
 
     void paint (juce::Graphics&) override;
-    void resized() override;
 
 private:
     EigenharpKeyType keyType;

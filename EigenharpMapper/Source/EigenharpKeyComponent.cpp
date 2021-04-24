@@ -3,8 +3,10 @@
 
 //==============================================================================
 EigenharpKeyComponent::EigenharpKeyComponent(EigenharpKeyType keyType)
+    : juce::DrawableButton("btn", juce::DrawableButton::ImageStretched)
 {
     this->keyType = keyType;
+    setClickingTogglesState(true);
 }
 
 EigenharpKeyComponent::~EigenharpKeyComponent()
@@ -13,24 +15,30 @@ EigenharpKeyComponent::~EigenharpKeyComponent()
 
 void EigenharpKeyComponent::paint (juce::Graphics& g)
 {
-    g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));   // clear the background
+    auto area = getLocalBounds();
+    g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
+
+    g.setColour (juce::Colours::white);
+    g.setFont (10.0f);
+    g.drawFittedText ("C#2", getLocalBounds(),
+                juce::Justification::centred, true);
+
+    g.setColour (juce::Colours::green);
+    
+    auto lightPosition = area.getX() + area.getWidth()/2.0f;
+    g.drawEllipse(lightPosition-2, 3, 3, 3, 3);
 
     if (keyType == EigenharpKeyType::Normal) {
-        g.setColour (juce::Colours::grey);
-        g.drawRect (getLocalBounds(), 1);   // draw an outline around the component
+        g.setColour (juce::Colours::black);
+        g.drawRoundedRectangle(area.getX()+1, area.getY()+1, area.getWidth()-2, area.getHeight()-2, 5, 2);
     }
     else if (keyType == EigenharpKeyType::Perc) {
-        g.setColour (juce::Colours::grey);
-        g.drawRect (getLocalBounds(), 1);   // draw an outline around the component
+        g.setColour (juce::Colours::black);
+        g.drawRoundedRectangle(area.getX()+1, area.getY()+1, area.getWidth()-2, area.getHeight()-2, 10, 2);
     }
     else if (keyType == EigenharpKeyType::Button) {
-        g.setColour (juce::Colours::grey);
-        auto area = getLocalBounds();
+        g.setColour (juce::Colours::black);
         g.drawEllipse(area.getX(), area.getY(), area.getWidth(), area.getHeight(), 1);
     }
 
-}
-
-void EigenharpKeyComponent::resized()
-{
 }
