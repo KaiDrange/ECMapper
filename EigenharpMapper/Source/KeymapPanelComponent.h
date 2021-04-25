@@ -21,6 +21,7 @@ private:
     juce::DrawablePath *keyImgNormal, *keyImgOver, *keyImgDown, *keyImgOn;
     juce::TextButton colourMenuButton;
     juce::TextButton zoneMenuButton;
+    juce::TextButton mapTypeMenuButton;
     EigenharpMapping *eigenharpMapping;
 
     juce::DrawablePath* createBtnImage(juce::Colour colour);

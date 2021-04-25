@@ -9,7 +9,7 @@ enum InstrumentType {
 enum KeyMappingType {
     None = 0,
     Note = 10,
-    MidiCC = 20,
+    MidiCtrl = 20,
     Internal = 30
 };
 

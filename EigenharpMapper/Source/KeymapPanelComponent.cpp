@@ -11,6 +11,17 @@ KeymapPanelComponent::KeymapPanelComponent(EigenharpMapping *eigenharpMapping, f
     this->eigenharpMapping = eigenharpMapping;
     createKeys();
     
+    addAndMakeVisible(mapTypeMenuButton);
+    mapTypeMenuButton.setButtonText("Type");
+    mapTypeMenuButton.onClick = [&] {
+        juce::PopupMenu menu;
+        menu.addItem ("None", [&] { selectedKey->mappingType = KeyMappingType::None; repaint();});
+        menu.addItem ("Note", [&] { selectedKey->mappingType = KeyMappingType::Note; repaint();});
+        menu.addItem ("Midi ctrl", [&] { selectedKey->mappingType = KeyMappingType::MidiCtrl; repaint();});
+        menu.addItem ("Internal ctrl", [&] { selectedKey->mappingType = KeyMappingType::Internal; repaint();});
+        menu.showMenuAsync (juce::PopupMenu::Options{}.withTargetComponent(mapTypeMenuButton));
+    };
+
     addAndMakeVisible(colourMenuButton);
     colourMenuButton.setButtonText("Colour");
     colourMenuButton.onClick = [&] {
@@ -65,6 +76,7 @@ void KeymapPanelComponent::resized()
     area.reduce(margin, margin);
     
     auto menuArea = area.removeFromRight(area.getWidth()*0.2);
+    mapTypeMenuButton.setBounds(menuArea.removeFromTop(area.getHeight()*0.04));
     colourMenuButton.setBounds(menuArea.removeFromTop(area.getHeight()*0.04));
     zoneMenuButton.setBounds(menuArea.removeFromTop(area.getHeight()*0.04));
 
@@ -128,6 +140,7 @@ juce::DrawablePath* KeymapPanelComponent::createBtnImage(juce::Colour colour) {
 void KeymapPanelComponent::enableDisableMenuButtons(bool enable) {
     colourMenuButton.setEnabled(enable);
     zoneMenuButton.setEnabled(enable);
+    mapTypeMenuButton.setEnabled(enable);
 }
 
 void KeymapPanelComponent::deselectAllOtherKeys(const EigenharpKeyComponent *key) {
