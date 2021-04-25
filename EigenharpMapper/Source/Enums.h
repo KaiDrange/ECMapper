@@ -25,3 +25,10 @@ enum KeyColour {
     Yellow,
     Red
 };
+
+enum Zone {
+    NoZone = 0,
+    Zone1,
+    Zone2,
+    Zone3
+};

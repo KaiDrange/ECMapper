@@ -7,7 +7,6 @@ EigenharpKeyComponent::EigenharpKeyComponent(const EigenharpKeyType keyType, con
 {
     this->keyType = keyType;
     this->mappedKey = mappedKey;
-//    setRadioGroupId(123);
     setClickingTogglesState(true);
 }
 
@@ -48,17 +47,14 @@ void EigenharpKeyComponent::paint (juce::Graphics& g)
     auto lightPosition = area.getX() + area.getWidth()/2.0f;
     g.drawEllipse(lightPosition-2, 3, 3, 3, 3);
 
+    g.setColour(zoneColours[mappedKey->zone]);
     if (keyType == EigenharpKeyType::Normal) {
-        g.setColour (juce::Colours::black);
         g.drawRoundedRectangle(area.getX()+1, area.getY()+1, area.getWidth()-2, area.getHeight()-2, 5, 2);
     }
     else if (keyType == EigenharpKeyType::Perc) {
-        g.setColour (juce::Colours::black);
         g.drawRoundedRectangle(area.getX()+1, area.getY()+1, area.getWidth()-2, area.getHeight()-2, 10, 2);
     }
     else if (keyType == EigenharpKeyType::Button) {
-        g.setColour (juce::Colours::black);
         g.drawEllipse(area.getX(), area.getY(), area.getWidth(), area.getHeight(), 1);
     }
-
 }

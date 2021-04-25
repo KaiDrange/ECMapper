@@ -6,6 +6,8 @@ struct MappedKey {
     KeyColour colour = KeyColour::Off;
     KeyMappingType mappingType;
     juce::String mapping;
+    Zone zone = Zone::NoZone;
+    EigenharpKeyType keyType;
 };
 
 class EigenharpMapping {
@@ -13,7 +15,7 @@ public:
     EigenharpMapping(InstrumentType instrumentType);
     ~EigenharpMapping();
 
-    int keyCount;
+    int normalKeyCount;
     int percKeyCount;
     int buttonCount;
     int stripCount;
@@ -21,8 +23,11 @@ public:
     int keyRowLengths[5];
     InstrumentType instrumentType;
     MappedKey *mappedKeys;
-    MappedKey *mappedPercKeys;
-    MappedKey *mappedButtons;
+    int getTotalKeyCount();
+    int getPercKeyStartIndex();
+    int getButtonStartIndex();
+//    MappedKey *mappedPercKeys;
+//    MappedKey *mappedButtons;
 
 private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (EigenharpMapping)

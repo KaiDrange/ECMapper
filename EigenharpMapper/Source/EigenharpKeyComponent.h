@@ -4,6 +4,13 @@
 #include "Enums.h"
 #include "EigenharpMapping.h"
 
+const static juce::Colour zoneColours[4] = {
+    juce::Colours::black,
+    juce::Colours::maroon,
+    juce::Colours::darkcyan,
+    juce::Colours::darkorange
+};
+
 class EigenharpKeyComponent  : public juce::DrawableButton
 {
 public:
@@ -11,7 +18,6 @@ public:
     ~EigenharpKeyComponent() override;
 
     void paint (juce::Graphics&) override;
-    
     int id;
 
 private:

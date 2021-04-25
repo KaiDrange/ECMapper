@@ -5,7 +5,7 @@ EigenharpMapping::EigenharpMapping(InstrumentType instrumentType) {
     
     switch(instrumentType) {
         case InstrumentType::Alpha:
-            keyCount = 120;
+            normalKeyCount = 120;
             percKeyCount = 12;
             keyRowCount = 5;
             keyRowLengths[0] = 24;
@@ -17,7 +17,7 @@ EigenharpMapping::EigenharpMapping(InstrumentType instrumentType) {
             stripCount = 2;
             break;
         case InstrumentType::Tau:
-            keyCount = 72;
+            normalKeyCount = 72;
             percKeyCount = 12;
             keyRowCount = 4;
             keyRowLengths[0] = 16;
@@ -28,7 +28,7 @@ EigenharpMapping::EigenharpMapping(InstrumentType instrumentType) {
             stripCount = 1;
             break;
         case InstrumentType::Pico:
-            keyCount = 18;
+            normalKeyCount = 18;
             percKeyCount = 0;
             keyRowCount = 2;
             keyRowLengths[0] = 9;
@@ -40,13 +40,27 @@ EigenharpMapping::EigenharpMapping(InstrumentType instrumentType) {
             break;
     }
     
-    mappedKeys = new MappedKey[keyCount];
-    mappedPercKeys = new MappedKey[percKeyCount];
-    mappedButtons = new MappedKey[buttonCount];
+    mappedKeys = new MappedKey[normalKeyCount + percKeyCount + buttonCount];
+    for (int i = 0; i < normalKeyCount; i++)
+        mappedKeys[i].keyType = EigenharpKeyType::Normal;
+    for (int i = getPercKeyStartIndex(); i < getButtonStartIndex(); i++)
+        mappedKeys[i].keyType = EigenharpKeyType::Perc;
+    for (int i = getButtonStartIndex(); i < getTotalKeyCount(); i++)
+        mappedKeys[i].keyType = EigenharpKeyType::Perc;
 }
 
 EigenharpMapping::~EigenharpMapping() {
     delete[] mappedKeys;
-    delete[] mappedPercKeys;
-    delete[] mappedButtons;
+}
+
+int EigenharpMapping::getTotalKeyCount() {
+    return normalKeyCount + percKeyCount + buttonCount;
+}
+
+int EigenharpMapping::getPercKeyStartIndex() {
+    return normalKeyCount;
+}
+
+int EigenharpMapping::getButtonStartIndex() {
+    return normalKeyCount + percKeyCount;
 }

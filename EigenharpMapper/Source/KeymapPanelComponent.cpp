@@ -9,32 +9,9 @@ KeymapPanelComponent::KeymapPanelComponent(EigenharpMapping *eigenharpMapping, f
     keyImgOn = createBtnImage(juce::Colour::fromFloatRGBA(1.0f, 1.0f, 1.0f, 0.4f));
     
     this->eigenharpMapping = eigenharpMapping;
-    for (int i = 0; i < eigenharpMapping->keyCount; i++) {
-        keys[i] = new EigenharpKeyComponent(EigenharpKeyType::Normal, &eigenharpMapping->mappedKeys[i]);
-        addAndMakeVisible(keys[i]);
-        keys[i]->setImages(keyImgNormal, keyImgOver, keyImgDown, NULL, keyImgOn);
-        keys[i]->id = i;
-        keys[i]->onClick = [this, i] {
-            auto selected = keys[i]->getToggleState();
-            deselectAllOtherKeys(keys[i]);
-            selectedKey = selected ? &this->eigenharpMapping->mappedKeys[i] : NULL;
-            enableDisableMenuButtons(selected);
-        };
-    }
-
-    for (int i = 0; i < eigenharpMapping->percKeyCount; i++) {
-        percKeys[i] = new EigenharpKeyComponent(EigenharpKeyType::Perc, &eigenharpMapping->mappedPercKeys[i]);
-        addAndMakeVisible(percKeys[i]);
-        percKeys[i]->setImages(keyImgNormal, keyImgOver, keyImgOn);
-    }
-
-    for (int i = 0; i < eigenharpMapping->buttonCount; i++) {
-        buttons[i] = new EigenharpKeyComponent(EigenharpKeyType::Button, &eigenharpMapping->mappedButtons[i]);
-        addAndMakeVisible(buttons[i]);
-        buttons[i]->setImages(keyImgNormal, keyImgOver, keyImgOn);
-    }
+    createKeys();
     
-    addAndMakeVisible (colourMenuButton);
+    addAndMakeVisible(colourMenuButton);
     colourMenuButton.setButtonText("Colour");
     colourMenuButton.onClick = [&] {
         juce::PopupMenu menu;
@@ -45,21 +22,35 @@ KeymapPanelComponent::KeymapPanelComponent(EigenharpMapping *eigenharpMapping, f
         menu.showMenuAsync (juce::PopupMenu::Options{}.withTargetComponent(colourMenuButton));
     };
 
+    addAndMakeVisible(zoneMenuButton);
+    zoneMenuButton.setButtonText("Zone");
+    zoneMenuButton.onClick = [&] {
+        juce::PopupMenu menu;
+        auto zone1Item = juce::PopupMenu::Item("Zone1");
+        zone1Item.setColour(zoneColours[1]);
+        zone1Item.setAction([&] { selectedKey->zone = Zone::Zone1; repaint();});
+        auto zone2Item = juce::PopupMenu::Item("Zone2");
+        zone2Item.setColour(zoneColours[2]);
+        zone2Item.setAction([&] { selectedKey->zone = Zone::Zone2; repaint();});
+        auto zone3Item = juce::PopupMenu::Item("Zone3");
+        zone3Item.setColour(zoneColours[3]);
+        zone3Item.setAction([&] { selectedKey->zone = Zone::Zone3; repaint();});
+        menu.addItem("None", [&] { selectedKey->zone = Zone::NoZone; repaint();});
+        menu.addItem(zone1Item);
+        menu.addItem(zone2Item);
+        menu.addItem(zone3Item);
+        menu.showMenuAsync(juce::PopupMenu::Options{}.withTargetComponent(zoneMenuButton));
+    };
+
+    
     enableDisableMenuButtons(false);
 }
 
 KeymapPanelComponent::~KeymapPanelComponent()
 {
-    for (int i = 0; i < eigenharpMapping->keyCount; i++) {
+    for (int i = 0; i < eigenharpMapping->getTotalKeyCount(); i++) {
         delete keys[i];
     }
-    for (int i = 0; i < eigenharpMapping->percKeyCount; i++) {
-        delete percKeys[i];
-    }
-    for (int i = 0; i < eigenharpMapping->buttonCount; i++) {
-        delete buttons[i];
-    }
-    
     delete keyImgNormal;
     delete keyImgOver;
     delete keyImgDown;
@@ -74,7 +65,8 @@ void KeymapPanelComponent::resized()
     
     auto menuArea = area.removeFromRight(area.getWidth()*0.2);
     colourMenuButton.setBounds(menuArea.removeFromTop(area.getHeight()*0.04));
-    
+    zoneMenuButton.setBounds(menuArea.removeFromTop(area.getHeight()*0.04));
+
     
     auto keyWidth = area.getWidth()/8.0;
     auto keyHeight = area.getHeight()/24.0;
@@ -94,29 +86,29 @@ void KeymapPanelComponent::resized()
     area.removeFromLeft(margin);
     auto percRowArea = area.removeFromLeft(percKeyWidth);
 
-    for (int i = 0; i < eigenharpMapping->percKeyCount; i++) {
-        percKeys[i]->setBounds(percRowArea.removeFromTop(percKeyHeight));
+    for (int i = eigenharpMapping->getPercKeyStartIndex(); i < eigenharpMapping->getButtonStartIndex(); i++) {
+        keys[i]->setBounds(percRowArea.removeFromTop(percKeyHeight));
     }
 
     percRowArea.removeFromTop(margin*2);
     auto horizontalButtonArea = percRowArea.removeFromTop(buttonDiameter);
 
-    for (int i = 0; i < eigenharpMapping->buttonCount/2; i++) {
-        buttons[i]->setBounds(horizontalButtonArea.removeFromLeft(buttonDiameter));
+    for (int i = eigenharpMapping->getButtonStartIndex(); i < eigenharpMapping->getButtonStartIndex() + eigenharpMapping->buttonCount/2; i++) {
+        keys[i]->setBounds(horizontalButtonArea.removeFromLeft(buttonDiameter));
     }
     
     percRowArea.removeFromTop(margin*2);
     
     if (eigenharpMapping->instrumentType == InstrumentType::Tau) {
-        for (int i = eigenharpMapping->buttonCount/2; i < eigenharpMapping->buttonCount; i++) {
-            buttons[i]->setBounds(percRowArea.removeFromTop(buttonDiameter).removeFromLeft(buttonDiameter));
-        
+        for (int i = eigenharpMapping->getButtonStartIndex() + eigenharpMapping->buttonCount/2; i < eigenharpMapping->getTotalKeyCount(); i++) {
+            keys[i]->setBounds(percRowArea.removeFromTop(buttonDiameter).removeFromLeft(buttonDiameter));
+
         }
     }
     else {
         horizontalButtonArea = percRowArea.removeFromTop(buttonDiameter);
-        for (int i = eigenharpMapping->buttonCount/2; i < eigenharpMapping->buttonCount; i++) {
-            buttons[i]->setBounds(horizontalButtonArea.removeFromLeft(buttonDiameter));
+        for (int i = eigenharpMapping->getButtonStartIndex() + eigenharpMapping->buttonCount/2; i < eigenharpMapping->getTotalKeyCount(); i++) {
+            keys[i]->setBounds(horizontalButtonArea.removeFromLeft(buttonDiameter));
         }
     }
 }
@@ -134,15 +126,28 @@ juce::DrawablePath* KeymapPanelComponent::createBtnImage(juce::Colour colour) {
 
 void KeymapPanelComponent::enableDisableMenuButtons(bool enable) {
     colourMenuButton.setEnabled(enable);
+    zoneMenuButton.setEnabled(enable);
 }
 
 void KeymapPanelComponent::deselectAllOtherKeys(const EigenharpKeyComponent *key) {
-    for (int i = 0; i < eigenharpMapping->keyCount; i++) {
+    for (int i = 0; i < eigenharpMapping->getTotalKeyCount(); i++) {
         if (keys[i]->id != key->id) {
             keys[i]->setToggleState(false, juce::NotificationType::dontSendNotification);
         }
     }
-    
-    repaint();
 }
 
+void KeymapPanelComponent::createKeys() {
+    for (int i = 0; i < eigenharpMapping->getTotalKeyCount(); i++) {
+        keys[i] = new EigenharpKeyComponent(eigenharpMapping->mappedKeys[i].keyType, &eigenharpMapping->mappedKeys[i]);
+        addAndMakeVisible(keys[i]);
+        keys[i]->setImages(keyImgNormal, keyImgOver, keyImgDown, NULL, keyImgOn);
+        keys[i]->id = i;
+        keys[i]->onClick = [this, i] {
+            auto selected = keys[i]->getToggleState();
+            deselectAllOtherKeys(keys[i]);
+            selectedKey = selected ? &this->eigenharpMapping->mappedKeys[i] : NULL;
+            enableDisableMenuButtons(selected);
+        };
+    }
+}
