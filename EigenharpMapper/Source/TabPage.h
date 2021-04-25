@@ -19,6 +19,7 @@ private:
     InstrumentType model;
     KeymapPanelComponent *keymapPanel;
     EigenharpMapping *keymap;
-
+    juce::MidiKeyboardState keyboardState;
+    juce::MidiKeyboardComponent keyboard;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TabPage)
 };

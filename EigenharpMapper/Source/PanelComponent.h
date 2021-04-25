@@ -2,8 +2,7 @@
 
 #include <JuceHeader.h>
 
-class PanelComponent  : public juce::Component
-{
+class PanelComponent  : public juce::Component {
 public:
     PanelComponent(float widthFactor, float heightFactor);
     ~PanelComponent() override;

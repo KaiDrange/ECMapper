@@ -1,27 +1,28 @@
 #include <JuceHeader.h>
 #include "EigenharpKeyComponent.h"
 
-//==============================================================================
 EigenharpKeyComponent::EigenharpKeyComponent(const EigenharpKeyType keyType, const MappedKey *mappedKey)
-    : juce::DrawableButton("btn", juce::DrawableButton::ImageStretched)
-{
+    : juce::DrawableButton("btn", juce::DrawableButton::ImageStretched) {
     this->keyType = keyType;
     this->mappedKey = mappedKey;
     setClickingTogglesState(true);
 }
 
-EigenharpKeyComponent::~EigenharpKeyComponent()
-{
+EigenharpKeyComponent::~EigenharpKeyComponent() {
 }
 
-void EigenharpKeyComponent::paint (juce::Graphics& g)
-{
+void EigenharpKeyComponent::paint(juce::Graphics& g) {
     auto area = getLocalBounds();
     g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
 
     g.setColour (juce::Colours::white);
     g.setFont (10.0f);
-    g.drawFittedText ("C#2", getLocalBounds(),
+    juce::String keyText = mappedKey->mapping;
+    if (mappedKey->mappingType == KeyMappingType::Note) {
+        keyText = juce::MidiMessage::getMidiNoteName(keyText.getIntValue(), true, true, 3);
+    }
+        
+    g.drawFittedText(keyText, getLocalBounds(),
                 juce::Justification::centred, true);
 
     juce::Colour lightColour;
@@ -43,7 +44,7 @@ void EigenharpKeyComponent::paint (juce::Graphics& g)
             break;
     }
     
-    g.setColour (lightColour);
+    g.setColour(lightColour);
     auto lightPosition = area.getX() + area.getWidth()/2.0f;
     g.drawEllipse(lightPosition-2, 3, 3, 3, 3);
 

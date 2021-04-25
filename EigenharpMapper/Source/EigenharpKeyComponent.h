@@ -4,15 +4,15 @@
 #include "Enums.h"
 #include "EigenharpMapping.h"
 
-const static juce::Colour zoneColours[4] = {
+const static juce::Colour zoneColours[5] = {
     juce::Colours::black,
     juce::Colours::maroon,
     juce::Colours::darkcyan,
-    juce::Colours::darkorange
+    juce::Colours::darkorange,
+    juce::Colours::white
 };
 
-class EigenharpKeyComponent  : public juce::DrawableButton
-{
+class EigenharpKeyComponent  : public juce::DrawableButton {
 public:
     EigenharpKeyComponent(const EigenharpKeyType keyType, const MappedKey *mappedKey);
     ~EigenharpKeyComponent() override;

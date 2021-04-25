@@ -5,19 +5,19 @@
 #include "EigenharpMapping.h"
 #include "EigenharpKeyComponent.h"
 
-class KeymapPanelComponent  : public PanelComponent
+class KeymapPanelComponent  : public PanelComponent, public juce::MidiKeyboardStateListener
 {
 public:
     KeymapPanelComponent(EigenharpMapping *eigenharpMapping, float widthFactor, float heightFactor);
     ~KeymapPanelComponent() override;
+    void handleNoteOn (juce::MidiKeyboardState*, int midiChannel, int midiNoteNumber, float velocity) override;
+    void handleNoteOff (juce::MidiKeyboardState*, int midiChannel, int midiNoteNumber, float velocity) override;
 
     void resized() override;
 
 private:
     MappedKey *selectedKey = NULL;
     EigenharpKeyComponent *keys[120+12+8];
-//    EigenharpKeyComponent *percKeys[12];
-//    EigenharpKeyComponent *buttons[8];
     juce::DrawablePath *keyImgNormal, *keyImgOver, *keyImgDown, *keyImgOn;
     juce::TextButton colourMenuButton;
     juce::TextButton zoneMenuButton;

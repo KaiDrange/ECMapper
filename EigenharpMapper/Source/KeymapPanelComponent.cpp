@@ -39,6 +39,7 @@ KeymapPanelComponent::KeymapPanelComponent(EigenharpMapping *eigenharpMapping, f
         menu.addItem(zone1Item);
         menu.addItem(zone2Item);
         menu.addItem(zone3Item);
+        menu.addItem("All", [&] { selectedKey->zone = Zone::AllZones; repaint();});
         menu.showMenuAsync(juce::PopupMenu::Options{}.withTargetComponent(zoneMenuButton));
     };
 
@@ -151,3 +152,14 @@ void KeymapPanelComponent::createKeys() {
         };
     }
 }
+
+void KeymapPanelComponent::handleNoteOn(juce::MidiKeyboardState*, int midiChannel, int midiNoteNumber, float velocity) {
+    if (selectedKey != NULL && selectedKey->mappingType == KeyMappingType::Note) {
+        selectedKey->mapping = juce::String(midiNoteNumber);
+    }
+}
+
+void KeymapPanelComponent::handleNoteOff(juce::MidiKeyboardState*, int midiChannel, int midiNoteNumber, float velocity) {
+    
+}
+
