@@ -4,6 +4,8 @@
               addUsingNamespaceToJuceHeader="0" displaySplashScreen="1" jucerFormatVersion="1">
   <MAINGROUP id="hfvh5u" name="EigenharpMapper">
     <GROUP id="{97C9D4DB-3165-D864-F334-9C98B1E89679}" name="Source">
+      <FILE id="lOkiMm" name="FileUtil.cpp" compile="1" resource="0" file="Source/FileUtil.cpp"/>
+      <FILE id="N9qM9V" name="FileUtil.h" compile="0" resource="0" file="Source/FileUtil.h"/>
       <FILE id="aDEf84" name="Enums.h" compile="0" resource="0" file="Source/Enums.h"/>
       <GROUP id="{B18CE82F-7DFF-7B75-E68D-E233E2DAFC22}" name="Models">
         <FILE id="lYu22D" name="EigenharpMapping.cpp" compile="1" resource="0"
@@ -37,8 +39,8 @@
   <EXPORTFORMATS>
     <XCODE_MAC targetFolder="Builds/MacOSX">
       <CONFIGURATIONS>
-        <CONFIGURATION isDebug="1" name="Debug" targetName="EigenhgarpMapper"/>
-        <CONFIGURATION isDebug="0" name="Release" targetName="EigenhgarpMapper"/>
+        <CONFIGURATION isDebug="1" name="Debug" targetName="EigenharpMapper"/>
+        <CONFIGURATION isDebug="0" name="Release" targetName="EigenharpMapper"/>
       </CONFIGURATIONS>
       <MODULEPATHS>
         <MODULEPATH id="juce_core" path="../../../../JUCE/modules"/>

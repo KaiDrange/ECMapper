@@ -22,6 +22,8 @@ private:
     juce::TextButton colourMenuButton;
     juce::TextButton zoneMenuButton;
     juce::TextButton mapTypeMenuButton;
+    juce::TextButton saveMappingButton;
+    juce::TextButton loadMappingButton;
     EigenharpMapping *eigenharpMapping;
 
     juce::DrawablePath* createBtnImage(juce::Colour colour);

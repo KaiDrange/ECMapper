@@ -18,7 +18,7 @@ public:
     ~EigenharpKeyComponent() override;
 
     void paint (juce::Graphics&) override;
-    int id;
+    juce::String getKeyId() const;
 
 private:
     EigenharpKeyType keyType;
