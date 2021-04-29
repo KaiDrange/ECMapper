@@ -171,6 +171,77 @@ void KeymapPanelComponent::handleNoteOn(juce::MidiKeyboardState*, int midiChanne
 }
 
 void KeymapPanelComponent::handleNoteOff(juce::MidiKeyboardState*, int midiChannel, int midiNoteNumber, float velocity) {
-    
 }
+
+bool KeymapPanelComponent::keyPressed(const juce::KeyPress &key, juce::Component *originatingComponent) {
+    if (selectedKey == nullptr || selectedKey->getKeyType() == EigenharpKeyType::Button || (
+               key != juce::KeyPress::leftKey &&
+               key != juce::KeyPress::rightKey &&
+               key != juce::KeyPress::upKey &&
+               key != juce::KeyPress::downKey))
+        return true;
+    
+
+    const int *rowLengths = eigenharpMapping->getKeyRowLengths();
+    auto selectedKeyIndex = -1;
+    for (int i = 0; i < eigenharpMapping->getTotalKeyCount(); i++) {
+        if (selectedKey->getKeyId() == keys[i]->getKeyId()) {
+            selectedKeyIndex = i;
+            break;
+        }
+    }
+
+    int rowStartIndexes[5] = {
+        0,
+        rowLengths[0],
+        rowLengths[0] + rowLengths[1],
+        rowLengths[0] + rowLengths[1] + rowLengths[2],
+        rowLengths[0] + rowLengths[1] + rowLengths[2] + rowLengths[3]
+    };
+
+    keys[selectedKeyIndex]->setState(juce::Button::buttonNormal);
+
+    int rowNumber = getRowNumber(selectedKeyIndex);
+
+    if (selectedKey->getKeyType() == EigenharpKeyType::Normal) {
+        if (key == juce::KeyPress::upKey) {
+            selectedKeyIndex--;
+            if (selectedKeyIndex == rowStartIndexes[rowNumber] - 1)
+                selectedKeyIndex += rowLengths[rowNumber];
+        }
+        else if (key == juce::KeyPress::downKey) {
+            selectedKeyIndex++;
+            if (selectedKeyIndex >= eigenharpMapping->getPercKeyStartIndex() ||
+                    selectedKeyIndex == rowStartIndexes[rowNumber+1])
+                selectedKeyIndex -= rowLengths[rowNumber];
+        }
+        else if (key == juce::KeyPress::leftKey) {
+            if (rowNumber == 0)
+                selectedKeyIndex += rowStartIndexes[eigenharpMapping->getKeyRowCount()-1];
+            else
+                selectedKeyIndex -= rowLengths[rowNumber-1];
+        }
+        else if (key == juce::KeyPress::rightKey) {
+            if (rowNumber == eigenharpMapping->getKeyRowCount()-1)
+                selectedKeyIndex -= rowStartIndexes[rowNumber];
+            else
+                selectedKeyIndex += rowLengths[rowNumber];
+        }
+    }
+    
+    keys[selectedKeyIndex]->triggerClick();
+    return true;
+}
+
+int KeymapPanelComponent::getRowNumber(int keyIndex) {
+    const int *rowLengths = eigenharpMapping->getKeyRowLengths();
+    int row = 0;
+    int counter = rowLengths[row];
+    while (keyIndex >= counter) {
+        row++;
+        counter += rowLengths[row];
+    }
+    return row;
+}
+
 

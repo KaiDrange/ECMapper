@@ -22,6 +22,7 @@ EigenharpMapping::EigenharpMapping(InstrumentType instrumentType): valueTree("la
             keyRowLengths[1] = 16;
             keyRowLengths[2] = 20;
             keyRowLengths[3] = 20;
+            keyRowLengths[4] = 0;
             buttonCount = 8;
             stripCount = 1;
             break;
@@ -31,6 +32,9 @@ EigenharpMapping::EigenharpMapping(InstrumentType instrumentType): valueTree("la
             keyRowCount = 2;
             keyRowLengths[0] = 9;
             keyRowLengths[1] = 9;
+            keyRowLengths[2] = 0;
+            keyRowLengths[3] = 0;
+            keyRowLengths[4] = 0;
             buttonCount = 4;
             stripCount = 1;
             break;

@@ -5,13 +5,16 @@
 #include "EigenharpMapping.h"
 #include "EigenharpKeyComponent.h"
 
-class KeymapPanelComponent  : public PanelComponent, public juce::MidiKeyboardStateListener {
+class KeymapPanelComponent  : public PanelComponent,
+                              public juce::MidiKeyboardStateListener,
+                              public juce::KeyListener {
 public:
     KeymapPanelComponent(EigenharpMapping *eigenharpMapping, float widthFactor, float heightFactor);
     ~KeymapPanelComponent() override;
-    void handleNoteOn (juce::MidiKeyboardState*, int midiChannel, int midiNoteNumber, float velocity) override;
-    void handleNoteOff (juce::MidiKeyboardState*, int midiChannel, int midiNoteNumber, float velocity) override;
-
+    void handleNoteOn(juce::MidiKeyboardState*, int midiChannel, int midiNoteNumber, float velocity) override;
+    void handleNoteOff(juce::MidiKeyboardState*, int midiChannel, int midiNoteNumber, float velocity) override;
+    bool keyPressed(const juce::KeyPress &key, juce::Component *originatingComponent) override;
+                                  
     void resized() override;
 
 private:
@@ -27,6 +30,7 @@ private:
     void enableDisableMenuButtons(bool enable);
     void deselectAllOtherKeys(const EigenharpKeyComponent *key);
     void createKeys();
+    int getRowNumber(int keyIndex);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (KeymapPanelComponent)
 };
