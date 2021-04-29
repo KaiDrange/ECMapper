@@ -12,6 +12,8 @@
               file="Source/EigenharpMapping.cpp"/>
         <FILE id="FYZFdV" name="EigenharpMapping.h" compile="0" resource="0"
               file="Source/EigenharpMapping.h"/>
+        <FILE id="UOVNxX" name="MappedKey.cpp" compile="1" resource="0" file="Source/MappedKey.cpp"/>
+        <FILE id="UELQpm" name="MappedKey.h" compile="0" resource="0" file="Source/MappedKey.h"/>
       </GROUP>
       <GROUP id="{CA36C588-58EF-15F5-43C7-5A85EDBB7E58}" name="UIComponents">
         <FILE id="rkKsA6" name="EigenharpKeyComponent.cpp" compile="1" resource="0"

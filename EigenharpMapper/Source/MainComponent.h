@@ -5,8 +5,7 @@
 #include "KeymapPanelComponent.h"
 #include "TabPage.h"
 
-class MainComponent : public juce::Component
-{
+class MainComponent : public juce::Component {
 public:
     MainComponent();
     ~MainComponent() override;

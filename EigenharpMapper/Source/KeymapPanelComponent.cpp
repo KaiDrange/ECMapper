@@ -164,18 +164,18 @@ void KeymapPanelComponent::createKeys() {
     for (int i = 0; i < eigenharpMapping->getTotalKeyCount(); i++) {
         keys[i] = new EigenharpKeyComponent(eigenharpMapping->getMappedKeys()[i].getKeyType(), &eigenharpMapping->getMappedKeys()[i]);
         addAndMakeVisible(keys[i]);
-        keys[i]->setImages(keyImgNormal, keyImgOver, keyImgDown, NULL, keyImgOn);
+        keys[i]->setImages(keyImgNormal, keyImgOver, keyImgDown, nullptr, keyImgOn);
         keys[i]->onClick = [this, i] {
             auto selected = keys[i]->getToggleState();
             deselectAllOtherKeys(keys[i]);
-            selectedKey = selected ? &this->eigenharpMapping->getMappedKeys()[i] : NULL;
+            selectedKey = selected ? &this->eigenharpMapping->getMappedKeys()[i] : nullptr;
             enableDisableMenuButtons(selected);
         };
     }
 }
 
 void KeymapPanelComponent::handleNoteOn(juce::MidiKeyboardState*, int midiChannel, int midiNoteNumber, float velocity) {
-    if (selectedKey != NULL && selectedKey->getMappingType() == KeyMappingType::Note) {
+    if (selectedKey != nullptr && selectedKey->getMappingType() == KeyMappingType::Note) {
         selectedKey->setMappingValue(juce::String(midiNoteNumber));
         repaint();
     }

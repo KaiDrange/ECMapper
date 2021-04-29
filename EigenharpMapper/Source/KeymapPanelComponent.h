@@ -5,8 +5,7 @@
 #include "EigenharpMapping.h"
 #include "EigenharpKeyComponent.h"
 
-class KeymapPanelComponent  : public PanelComponent, public juce::MidiKeyboardStateListener
-{
+class KeymapPanelComponent  : public PanelComponent, public juce::MidiKeyboardStateListener {
 public:
     KeymapPanelComponent(EigenharpMapping *eigenharpMapping, float widthFactor, float heightFactor);
     ~KeymapPanelComponent() override;
@@ -16,7 +15,7 @@ public:
     void resized() override;
 
 private:
-    MappedKey *selectedKey = NULL;
+    MappedKey *selectedKey = nullptr;
     EigenharpKeyComponent *keys[120+12+8];
     juce::DrawablePath *keyImgNormal, *keyImgOver, *keyImgDown, *keyImgOn;
     juce::TextButton colourMenuButton;

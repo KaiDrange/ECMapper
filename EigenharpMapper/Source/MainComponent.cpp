@@ -1,8 +1,6 @@
 #include "MainComponent.h"
 
-//==============================================================================
-MainComponent::MainComponent() : tabs(juce::TabbedButtonBar::TabsAtTop)
-{
+MainComponent::MainComponent() : tabs(juce::TabbedButtonBar::TabsAtTop) {
     setSize (800, 600);
 
     tabPages[0] = new TabPage(InstrumentType::Alpha);
@@ -17,19 +15,16 @@ MainComponent::MainComponent() : tabs(juce::TabbedButtonBar::TabsAtTop)
     resized();
 }
 
-MainComponent::~MainComponent()
-{
+MainComponent::~MainComponent() {
     delete tabPages[0];
     delete tabPages[1];
     delete tabPages[2];
 }
 
-void MainComponent::paint (juce::Graphics& g)
-{
+void MainComponent::paint (juce::Graphics& g) {
 }
 
-void MainComponent::resized()
-{
+void MainComponent::resized() {
     auto area = getLocalBounds();
     tabs.setBounds(area);
 }
