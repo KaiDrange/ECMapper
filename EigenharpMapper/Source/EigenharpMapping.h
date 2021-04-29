@@ -3,6 +3,7 @@
 #include "Enums.h"
 #include "MappedKey.h"
 
+
 #define MAX_ROWS 5
 
 class EigenharpMapping {
