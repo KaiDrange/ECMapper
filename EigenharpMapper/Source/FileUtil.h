@@ -6,5 +6,8 @@
 
 class FileUtil {
 public:
+    static juce::String openMapping();
+    static bool saveMapping(juce::ValueTree valueTree);
+
 private:
 };

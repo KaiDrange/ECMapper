@@ -1,6 +1,4 @@
-#include <JuceHeader.h>
 #include "KeymapPanelComponent.h"
-#include "FileUtil.h"
 
 KeymapPanelComponent::KeymapPanelComponent(EigenharpMapping *eigenharpMapping, float widthFactor, float heightFactor) : PanelComponent(widthFactor, heightFactor)
 {
@@ -12,13 +10,6 @@ KeymapPanelComponent::KeymapPanelComponent(EigenharpMapping *eigenharpMapping, f
     this->eigenharpMapping = eigenharpMapping;
     createKeys();
     
-    addAndMakeVisible(saveMappingButton);
-    saveMappingButton.setButtonText("Save");
-    saveMappingButton.onClick = [&] {
-        this->eigenharpMapping->logXML();
-    };
-    addAndMakeVisible(loadMappingButton);
-    loadMappingButton.setButtonText("load");
     addAndMakeVisible(mapTypeMenuButton);
     mapTypeMenuButton.setButtonText("Type");
     mapTypeMenuButton.onClick = [&] {
@@ -83,8 +74,6 @@ void KeymapPanelComponent::resized()
     area.reduce(margin, margin);
     
     auto menuArea = area.removeFromRight(area.getWidth()*0.2);
-    saveMappingButton.setBounds(menuArea.removeFromTop(area.getHeight()*0.04));
-    loadMappingButton.setBounds(menuArea.removeFromTop(area.getHeight()*0.04));
     mapTypeMenuButton.setBounds(menuArea.removeFromTop(area.getHeight()*0.04));
     colourMenuButton.setBounds(menuArea.removeFromTop(area.getHeight()*0.04));
     zoneMenuButton.setBounds(menuArea.removeFromTop(area.getHeight()*0.04));

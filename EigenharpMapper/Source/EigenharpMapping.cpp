@@ -47,7 +47,6 @@ EigenharpMapping::EigenharpMapping(InstrumentType instrumentType): valueTree("la
     for (int i = getButtonStartIndex(); i < getTotalKeyCount(); i++)
         addMappedKey(EigenharpKeyType::Button);
 
-//    logXML();
 }
 
 EigenharpMapping::~EigenharpMapping() {
@@ -59,8 +58,15 @@ void EigenharpMapping::addMappedKey(EigenharpKeyType keyType) {
     key.setKeyId(juce::String(mappedKeys.size()));
 }
 
-void EigenharpMapping::logXML() {
-    std::cout << valueTree.toXmlString();
+juce::ValueTree EigenharpMapping::getValueTree() const {
+    return valueTree;
+}
+
+void EigenharpMapping::setValueTree(juce::ValueTree valueTree) {
+    this->valueTree = valueTree;
+    for (int i = 0; i < valueTree.getNumChildren(); i++) {
+        mappedKeys[i].setValueTree(valueTree.getChild(i));
+    }
 }
 
 int EigenharpMapping::getNormalkeyCount() const {

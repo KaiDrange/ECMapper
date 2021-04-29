@@ -11,6 +11,14 @@ MappedKey::MappedKey(EigenharpKeyType keyType, juce::ValueTree &rootValueTree): 
     rootValueTree.addChild(valueTree, -1, nullptr);
 }
 
+juce::ValueTree MappedKey::getValueTree() const {
+    return valueTree;
+}
+
+void MappedKey::setValueTree(juce::ValueTree valueTree) {
+    this->valueTree = valueTree;
+}
+
 EigenharpKeyType MappedKey::getKeyType() const {
     return (EigenharpKeyType)valueTree[id_keyType].toString().getIntValue();
 }

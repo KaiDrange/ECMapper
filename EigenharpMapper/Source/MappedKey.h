@@ -18,6 +18,8 @@ public:
     void setMappingType(KeyMappingType mappingType);
     juce::String getMappingValue() const;
     void setMappingValue(juce::String mappingValue);
+    juce::ValueTree getValueTree() const;
+    void setValueTree(juce::ValueTree valueTree);
 
 private:
     juce::Identifier id_keyId = "keyId";
@@ -26,6 +28,5 @@ private:
     juce::Identifier id_keyMappingType = "keyMappingType";
     juce::Identifier id_mappingValue = "mappingValue";
     juce::Identifier id_zone = "zone";
-    
     juce::ValueTree valueTree;
 };

@@ -1,4 +1,3 @@
-#include <JuceHeader.h>
 #include "PanelComponent.h"
 
 PanelComponent::PanelComponent(float widthFactor, float heightFactor) {

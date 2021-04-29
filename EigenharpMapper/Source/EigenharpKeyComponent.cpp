@@ -1,4 +1,3 @@
-#include <JuceHeader.h>
 #include "EigenharpKeyComponent.h"
 
 EigenharpKeyComponent::EigenharpKeyComponent(const EigenharpKeyType keyType, const MappedKey *mappedKey)

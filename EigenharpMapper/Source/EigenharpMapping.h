@@ -12,7 +12,8 @@ public:
     ~EigenharpMapping();
 
     void addMappedKey(EigenharpKeyType keyType);
-    void logXML();
+    juce::ValueTree getValueTree() const;
+    void setValueTree(juce::ValueTree valueTree);
     int getNormalkeyCount() const;
     int getPercKeyCount() const;
     int getButtonCount() const;
@@ -36,7 +37,6 @@ private:
     int stripCount;
     int keyRowCount;
     int keyRowLengths[MAX_ROWS];
-    //InstrumentType instrumentType;
     std::vector<MappedKey> mappedKeys;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (EigenharpMapping)
 };

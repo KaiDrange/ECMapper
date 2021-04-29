@@ -4,6 +4,7 @@
 #include "KeymapPanelComponent.h"
 #include "EigenharpMapping.h"
 #include "Enums.h"
+#include "FileUtil.h"
 
 class TabPage : public juce::Component
 {
@@ -21,5 +22,7 @@ private:
     EigenharpMapping *keymap;
     juce::MidiKeyboardState keyboardState;
     juce::MidiKeyboardComponent keyboard;
+    juce::TextButton saveMappingButton;
+    juce::TextButton loadMappingButton;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TabPage)
 };
