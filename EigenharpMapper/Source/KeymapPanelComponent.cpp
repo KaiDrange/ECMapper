@@ -95,10 +95,10 @@ void KeymapPanelComponent::resized()
     }
     
     area.removeFromLeft(margin);
-    auto percRowArea = area.removeFromLeft(percKeyWidth);
+    auto percRowArea = area.removeFromLeft(percKeyWidth*2);
 
     for (int i = eigenharpMapping->getPercKeyStartIndex(); i < eigenharpMapping->getButtonStartIndex(); i++) {
-        keys[i]->setBounds(percRowArea.removeFromTop(percKeyHeight));
+        keys[i]->setBounds(percRowArea.removeFromTop(percKeyHeight).removeFromLeft(percRowArea.getWidth()/2));
     }
 
     percRowArea.removeFromTop(margin*2);
@@ -145,6 +145,7 @@ void KeymapPanelComponent::deselectAllOtherKeys(const EigenharpKeyComponent *key
     for (int i = 0; i < eigenharpMapping->getTotalKeyCount(); i++) {
         if (keys[i]->getKeyId() != key->getKeyId()) {
             keys[i]->setToggleState(false, juce::NotificationType::dontSendNotification);
+            keys[i]->setState(juce::Button::buttonNormal);
         }
     }
 }
@@ -174,22 +175,38 @@ void KeymapPanelComponent::handleNoteOff(juce::MidiKeyboardState*, int midiChann
 }
 
 bool KeymapPanelComponent::keyPressed(const juce::KeyPress &key, juce::Component *originatingComponent) {
-    if (selectedKey == nullptr || selectedKey->getKeyType() == EigenharpKeyType::Button || (
+    if (selectedKey == nullptr || (
                key != juce::KeyPress::leftKey &&
                key != juce::KeyPress::rightKey &&
                key != juce::KeyPress::upKey &&
                key != juce::KeyPress::downKey))
-        return true;
+    return true;
     
-
-    const int *rowLengths = eigenharpMapping->getKeyRowLengths();
-    auto selectedKeyIndex = -1;
+    auto oldKeyIndex = -1;
     for (int i = 0; i < eigenharpMapping->getTotalKeyCount(); i++) {
         if (selectedKey->getKeyId() == keys[i]->getKeyId()) {
-            selectedKeyIndex = i;
+            oldKeyIndex = i;
             break;
         }
     }
+    
+    keys[oldKeyIndex]->setState(juce::Button::buttonNormal);
+    int newKeyIndex = 0;
+
+    if (selectedKey->getKeyType() == EigenharpKeyType::Normal)
+        newKeyIndex = navigateNormalKeys(key, oldKeyIndex);
+    else if (selectedKey->getKeyType() == EigenharpKeyType::Perc)
+        newKeyIndex = navigatePercKeys(key, oldKeyIndex);
+    else if (selectedKey->getKeyType() == EigenharpKeyType::Button)
+        newKeyIndex = navigateButtons(key, oldKeyIndex);
+
+    if (newKeyIndex != oldKeyIndex)
+        keys[newKeyIndex]->triggerClick();
+    return true;
+}
+
+int KeymapPanelComponent::navigateNormalKeys(const juce::KeyPress &key, int selectedKeyIndex) {
+    const int *rowLengths = eigenharpMapping->getKeyRowLengths();
 
     int rowStartIndexes[5] = {
         0,
@@ -198,8 +215,6 @@ bool KeymapPanelComponent::keyPressed(const juce::KeyPress &key, juce::Component
         rowLengths[0] + rowLengths[1] + rowLengths[2],
         rowLengths[0] + rowLengths[1] + rowLengths[2] + rowLengths[3]
     };
-
-    keys[selectedKeyIndex]->setState(juce::Button::buttonNormal);
 
     int rowNumber = getRowNumber(selectedKeyIndex);
 
@@ -218,20 +233,47 @@ bool KeymapPanelComponent::keyPressed(const juce::KeyPress &key, juce::Component
         else if (key == juce::KeyPress::leftKey) {
             if (rowNumber == 0)
                 selectedKeyIndex += rowStartIndexes[eigenharpMapping->getKeyRowCount()-1];
+            else if (eigenharpMapping->getInstrumentType() == InstrumentType::Tau &&
+                     selectedKeyIndex >= rowStartIndexes[3]-4 && selectedKeyIndex < rowStartIndexes[3]) {
+                selectedKeyIndex += rowLengths[3];
+            }
             else
                 selectedKeyIndex -= rowLengths[rowNumber-1];
         }
         else if (key == juce::KeyPress::rightKey) {
-            if (rowNumber == eigenharpMapping->getKeyRowCount()-1)
+            if (eigenharpMapping->getInstrumentType() == InstrumentType::Tau &&
+                     selectedKeyIndex >= rowStartIndexes[4]-4 && selectedKeyIndex < rowStartIndexes[4]) {
+                selectedKeyIndex -= rowLengths[3];
+            }
+            else if (rowNumber == eigenharpMapping->getKeyRowCount()-1)
                 selectedKeyIndex -= rowStartIndexes[rowNumber];
             else
                 selectedKeyIndex += rowLengths[rowNumber];
         }
     }
-    
-    keys[selectedKeyIndex]->triggerClick();
-    return true;
+    return selectedKeyIndex;
 }
+
+int KeymapPanelComponent::navigatePercKeys(const juce::KeyPress &key, int selectedKeyIndex) {
+    if (key == juce::KeyPress::upKey) {
+        selectedKeyIndex--;
+        if (selectedKeyIndex == eigenharpMapping->getPercKeyStartIndex()-1)
+            selectedKeyIndex += eigenharpMapping->getPercKeyCount();
+    }
+    else if (key == juce::KeyPress::downKey) {
+        selectedKeyIndex++;
+        if (selectedKeyIndex >= eigenharpMapping->getButtonStartIndex())
+            selectedKeyIndex -= eigenharpMapping->getPercKeyCount();
+    }
+    
+    return selectedKeyIndex;
+}
+
+int KeymapPanelComponent::navigateButtons(const juce::KeyPress &key, int selectedKeyIndex) {
+    
+    return selectedKeyIndex;
+}
+
 
 int KeymapPanelComponent::getRowNumber(int keyIndex) {
     const int *rowLengths = eigenharpMapping->getKeyRowLengths();

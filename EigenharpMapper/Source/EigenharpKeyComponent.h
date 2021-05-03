@@ -6,8 +6,8 @@
 
 const static juce::Colour zoneColours[5] = {
     juce::Colours::black,
+    juce::Colours::darkblue,
     juce::Colours::maroon,
-    juce::Colours::darkcyan,
     juce::Colours::darkorange,
     juce::Colours::white
 };

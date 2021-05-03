@@ -31,5 +31,5 @@ enum Zone {
     Zone1 = 1,
     Zone2 = 2,
     Zone3 = 3,
-    AllZones = 10
+    AllZones = 4
 };

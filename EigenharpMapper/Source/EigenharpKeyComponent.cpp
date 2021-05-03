@@ -36,7 +36,7 @@ void EigenharpKeyComponent::paint(juce::Graphics& g) {
         g.drawRoundedRectangle(area.getX()+1, area.getY()+1, area.getWidth()-2, area.getHeight()-2, 10, 2);
     }
     else if (keyType == EigenharpKeyType::Button) {
-        g.drawEllipse(area.getX(), area.getY(), area.getWidth(), area.getHeight(), 1);
+        g.drawEllipse(area.getX()+1, area.getY()+1, area.getWidth()-2, area.getHeight()-2, 2);
     }
 }
 

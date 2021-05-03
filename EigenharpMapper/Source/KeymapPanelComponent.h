@@ -31,6 +31,9 @@ private:
     void deselectAllOtherKeys(const EigenharpKeyComponent *key);
     void createKeys();
     int getRowNumber(int keyIndex);
+    int navigateNormalKeys(const juce::KeyPress &key, int selectedKeyIndex);
+    int navigatePercKeys(const juce::KeyPress &key, int selectedKeyIndex);
+    int navigateButtons(const juce::KeyPress &key, int selectedKeyIndex);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (KeymapPanelComponent)
 };

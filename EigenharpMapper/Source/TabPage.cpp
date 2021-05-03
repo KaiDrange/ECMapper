@@ -2,7 +2,7 @@
 
 TabPage::TabPage(InstrumentType model) : keyboard(keyboardState, juce::MidiKeyboardComponent::Orientation::verticalKeyboardFacingRight) {
     keymap = new EigenharpMapping(model);
-    keymapPanel = new KeymapPanelComponent(keymap, 0.35, 1);
+    keymapPanel = new KeymapPanelComponent(keymap, 0.4, 1);
     addAndMakeVisible(keymapPanel);
     
     addAndMakeVisible(keyboard);
@@ -11,12 +11,12 @@ TabPage::TabPage(InstrumentType model) : keyboard(keyboardState, juce::MidiKeybo
     addAndMakeVisible(saveMappingButton);
     saveMappingButton.setButtonText("Save");
     saveMappingButton.onClick = [&] {
-        FileUtil::saveMapping(keymap->getValueTree());
+        FileUtil::saveMapping(keymap->getValueTree(), model);
     };
     addAndMakeVisible(loadMappingButton);
     loadMappingButton.setButtonText("load");
     loadMappingButton.onClick = [&] {
-        auto xml = FileUtil::openMapping();
+        auto xml = FileUtil::openMapping(model);
         auto loadedMap = juce::ValueTree::fromXml(xml);
         keymap->setValueTree(loadedMap);
         repaint();
