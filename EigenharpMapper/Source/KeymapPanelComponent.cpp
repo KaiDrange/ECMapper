@@ -12,12 +12,13 @@ KeymapPanelComponent::KeymapPanelComponent(EigenharpMapping *eigenharpMapping, f
     
     addAndMakeVisible(mapTypeMenuButton);
     mapTypeMenuButton.setButtonText("Type");
+    
     mapTypeMenuButton.onClick = [&] {
         juce::PopupMenu menu;
-        menu.addItem ("None", [&] { selectedKey->setMappingType(KeyMappingType::None); repaint();});
-        menu.addItem ("Note", [&] { selectedKey->setMappingType(KeyMappingType::Note); repaint();});
-        menu.addItem ("Midi msg", [&] { selectedKey->setMappingType(KeyMappingType::MidiMsg); repaint();});
-        menu.addItem ("Internal ctrl", [&] { selectedKey->setMappingType(KeyMappingType::Internal); repaint();});
+        menu.addItem("None", [&] { selectedKey->setMappingType(KeyMappingType::None); showHidePanels(); repaint();});
+        menu.addItem("Note", [&] { selectedKey->setMappingType(KeyMappingType::Note); showHidePanels(); repaint();});
+        menu.addItem("Midi msg", [&] { selectedKey->setMappingType(KeyMappingType::MidiMsg); showHidePanels(); repaint();});
+        menu.addItem("Internal ctrl", [&] { selectedKey->setMappingType(KeyMappingType::Internal); showHidePanels(); repaint();});
         menu.showMenuAsync (juce::PopupMenu::Options{}.withTargetComponent(mapTypeMenuButton));
     };
 
@@ -25,10 +26,10 @@ KeymapPanelComponent::KeymapPanelComponent(EigenharpMapping *eigenharpMapping, f
     colourMenuButton.setButtonText("Colour");
     colourMenuButton.onClick = [&] {
         juce::PopupMenu menu;
-        menu.addItem ("None", [&] { selectedKey->setKeyColour(KeyColour::Off); repaint();});
-        menu.addItem ("Green", [&] { selectedKey->setKeyColour(KeyColour::Green); repaint();});
-        menu.addItem ("Yellow", [&] { selectedKey->setKeyColour(KeyColour::Yellow); repaint();});
-        menu.addItem ("Red", [&] { selectedKey->setKeyColour(KeyColour::Red); repaint();});
+        menu.addItem("None", [&] { selectedKey->setKeyColour(KeyColour::Off); repaint();});
+        menu.addItem("Green", [&] { selectedKey->setKeyColour(KeyColour::Green); repaint();});
+        menu.addItem("Yellow", [&] { selectedKey->setKeyColour(KeyColour::Yellow); repaint();});
+        menu.addItem("Red", [&] { selectedKey->setKeyColour(KeyColour::Red); repaint();});
         menu.showMenuAsync (juce::PopupMenu::Options{}.withTargetComponent(colourMenuButton));
     };
 
@@ -52,7 +53,9 @@ KeymapPanelComponent::KeymapPanelComponent(EigenharpMapping *eigenharpMapping, f
         menu.addItem("All", [&] { selectedKey->setZone(Zone::AllZones); repaint();});
         menu.showMenuAsync(juce::PopupMenu::Options{}.withTargetComponent(zoneMenuButton));
     };
-
+    
+    addAndMakeVisible(midiMessageSectionComponent);
+    showHidePanels();
     enableDisableMenuButtons(false);
 }
 
@@ -73,11 +76,13 @@ void KeymapPanelComponent::resized()
     auto margin = area.getWidth()*0.02;
     area.reduce(margin, margin);
     
-    auto menuArea = area.removeFromRight(area.getWidth()*0.2);
+    auto menuArea = area.removeFromRight(area.getWidth()*0.4);
     mapTypeMenuButton.setBounds(menuArea.removeFromTop(area.getHeight()*0.04));
     colourMenuButton.setBounds(menuArea.removeFromTop(area.getHeight()*0.04));
     zoneMenuButton.setBounds(menuArea.removeFromTop(area.getHeight()*0.04));
-
+    
+    menuArea.removeFromTop(15);
+    midiMessageSectionComponent.setBounds(menuArea.removeFromTop(area.getHeight()*0.5));
     
     auto keyWidth = area.getWidth()/8.0;
     auto keyHeight = area.getHeight()/24.0;
@@ -141,6 +146,10 @@ void KeymapPanelComponent::enableDisableMenuButtons(bool enable) {
     mapTypeMenuButton.setEnabled(enable);
 }
 
+void KeymapPanelComponent::showHidePanels() {
+    midiMessageSectionComponent.setVisible(selectedKey != nullptr && selectedKey->getMappingType() == KeyMappingType::MidiMsg);
+}
+
 void KeymapPanelComponent::deselectAllOtherKeys(const EigenharpKeyComponent *key) {
     for (int i = 0; i < eigenharpMapping->getTotalKeyCount(); i++) {
         if (keys[i]->getKeyId() != key->getKeyId()) {
@@ -160,6 +169,7 @@ void KeymapPanelComponent::createKeys() {
             deselectAllOtherKeys(keys[i]);
             selectedKey = selected ? &this->eigenharpMapping->getMappedKeys()[i] : nullptr;
             enableDisableMenuButtons(selected);
+            showHidePanels();
         };
     }
 }

@@ -4,6 +4,7 @@
 #include "PanelComponent.h"
 #include "EigenharpMapping.h"
 #include "EigenharpKeyComponent.h"
+#include "MidiMessageSectionComponent.h"
 
 class KeymapPanelComponent  : public PanelComponent,
                               public juce::MidiKeyboardStateListener,
@@ -24,10 +25,13 @@ private:
     juce::TextButton colourMenuButton;
     juce::TextButton zoneMenuButton;
     juce::TextButton mapTypeMenuButton;
+    MidiMessageSectionComponent midiMessageSectionComponent;
+
     EigenharpMapping *eigenharpMapping;
 
     juce::DrawablePath* createBtnImage(juce::Colour colour);
     void enableDisableMenuButtons(bool enable);
+    void showHidePanels();
     void deselectAllOtherKeys(const EigenharpKeyComponent *key);
     void createKeys();
     int getRowNumber(int keyIndex);
