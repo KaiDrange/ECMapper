@@ -28,6 +28,10 @@
               resource="0" file="Source/MidiMessageSectionComponent.cpp"/>
         <FILE id="PJF2ml" name="MidiMessageSectionComponent.h" compile="0"
               resource="0" file="Source/MidiMessageSectionComponent.h"/>
+        <FILE id="PJycxM" name="NumberInputComponent.cpp" compile="1" resource="0"
+              file="Source/NumberInputComponent.cpp"/>
+        <FILE id="lnXUZW" name="NumberInputComponent.h" compile="0" resource="0"
+              file="Source/NumberInputComponent.h"/>
         <FILE id="HZGW7Y" name="PanelComponent.cpp" compile="1" resource="0"
               file="Source/PanelComponent.cpp"/>
         <FILE id="Y5dJ5d" name="PanelComponent.h" compile="0" resource="0"

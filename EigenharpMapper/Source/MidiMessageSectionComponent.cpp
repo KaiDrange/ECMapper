@@ -1,7 +1,12 @@
 #include <JuceHeader.h>
 #include "MidiMessageSectionComponent.h"
 
-MidiMessageSectionComponent::MidiMessageSectionComponent() : cmdKeyTypeRadioGroup("keyCmdType", "Key cmd type"), midiMsgTypeRadioGroup("midiMsgType", "Message type") {
+MidiMessageSectionComponent::MidiMessageSectionComponent() :
+        cmdKeyTypeRadioGroup("keyCmdType", "Key cmd type"),
+        midiMsgTypeRadioGroup("midiMsgType", "Message type"),
+        midiCmdValue("CC #", 3, 0, 127, 0),
+        offValue("Off val:", 3, 0, 127, 0),
+        onValue("On val:", 3, 0, 127, 127) {
     addAndMakeVisible(cmdKeyTypeRadioGroup);
     
     cmdKeyTypeLatch.setButtonText("Latch");
@@ -40,6 +45,10 @@ MidiMessageSectionComponent::MidiMessageSectionComponent() : cmdKeyTypeRadioGrou
     midiMsgTypeAllNotesOff.setRadioGroupId(2);
     midiMsgTypeAllNotesOff.setToggleState(false, juce::dontSendNotification);
     addAndMakeVisible(midiMsgTypeAllNotesOff);
+    
+    addAndMakeVisible(midiCmdValue);
+    addAndMakeVisible(offValue);
+    addAndMakeVisible(onValue);
 }
 
 MidiMessageSectionComponent::~MidiMessageSectionComponent() {
@@ -65,5 +74,9 @@ void MidiMessageSectionComponent::resized() {
     midiMsgTypeProgChange.setBounds(groupArea.removeFromTop(lineHeight));
     midiMsgTypeTransport.setBounds(groupArea.removeFromTop(lineHeight));
     midiMsgTypeAllNotesOff.setBounds(groupArea.removeFromTop(lineHeight));
+    
+    midiCmdValue.setBounds(area.removeFromTop(lineHeight));
+    offValue.setBounds(area.removeFromTop(lineHeight));
+    onValue.setBounds(area.removeFromTop(lineHeight));
 }
 
