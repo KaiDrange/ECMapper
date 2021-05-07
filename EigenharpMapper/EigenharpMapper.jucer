@@ -1,69 +1,103 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<JUCERPROJECT id="lmpZgP" name="EigenharpMapper" projectType="guiapp" useAppConfig="0"
-              addUsingNamespaceToJuceHeader="0" displaySplashScreen="1" jucerFormatVersion="1">
-  <MAINGROUP id="hfvh5u" name="EigenharpMapper">
-    <GROUP id="{97C9D4DB-3165-D864-F334-9C98B1E89679}" name="Source">
-      <FILE id="lOkiMm" name="FileUtil.cpp" compile="1" resource="0" file="Source/FileUtil.cpp"/>
-      <FILE id="N9qM9V" name="FileUtil.h" compile="0" resource="0" file="Source/FileUtil.h"/>
-      <FILE id="aDEf84" name="Enums.h" compile="0" resource="0" file="Source/Enums.h"/>
-      <GROUP id="{B18CE82F-7DFF-7B75-E68D-E233E2DAFC22}" name="Models">
-        <FILE id="lYu22D" name="EigenharpMapping.cpp" compile="1" resource="0"
-              file="Source/EigenharpMapping.cpp"/>
-        <FILE id="FYZFdV" name="EigenharpMapping.h" compile="0" resource="0"
-              file="Source/EigenharpMapping.h"/>
-        <FILE id="UOVNxX" name="MappedKey.cpp" compile="1" resource="0" file="Source/MappedKey.cpp"/>
-        <FILE id="UELQpm" name="MappedKey.h" compile="0" resource="0" file="Source/MappedKey.h"/>
+<JUCERPROJECT id="USfU6k" name="EigenharpMapper" projectType="audioplug" useAppConfig="0"
+              addUsingNamespaceToJuceHeader="0" displaySplashScreen="1" jucerFormatVersion="1"
+              pluginCharacteristicsValue="pluginIsMidiEffectPlugin,pluginProducesMidiOut"
+              pluginManufacturer="KaiDrange" pluginManufacturerCode="KD" pluginCode="5632"
+              aaxIdentifier="EigenharpMapper">
+  <MAINGROUP id="vhB8QE" name="EigenharpMapper">
+    <GROUP id="{5DC590AE-B94A-F53F-3A94-BEFDDBFEA6DC}" name="Source">
+      <GROUP id="{0966D1C5-EBFE-2204-5620-C352A5F938AA}" name="UI">
+        <FILE id="JQKobt" name="EigenharpKeyComponent.cpp" compile="1" resource="0"
+              file="Source/UI/EigenharpKeyComponent.cpp"/>
+        <FILE id="KIKt9U" name="EigenharpKeyComponent.h" compile="0" resource="0"
+              file="Source/UI/EigenharpKeyComponent.h"/>
+        <FILE id="WLAg59" name="KeymapPanelComponent.cpp" compile="1" resource="0"
+              file="Source/UI/KeymapPanelComponent.cpp"/>
+        <FILE id="FKKTKW" name="KeymapPanelComponent.h" compile="0" resource="0"
+              file="Source/UI/KeymapPanelComponent.h"/>
+        <FILE id="K2916l" name="MainComponent.cpp" compile="1" resource="0"
+              file="Source/UI/MainComponent.cpp"/>
+        <FILE id="ZKUs69" name="MainComponent.h" compile="0" resource="0" file="Source/UI/MainComponent.h"/>
+        <FILE id="zJvNQT" name="MidiMessageSectionComponent.cpp" compile="1"
+              resource="0" file="Source/UI/MidiMessageSectionComponent.cpp"/>
+        <FILE id="xwq2Ij" name="MidiMessageSectionComponent.h" compile="0"
+              resource="0" file="Source/UI/MidiMessageSectionComponent.h"/>
+        <FILE id="tvcwIL" name="NumberInputComponent.cpp" compile="1" resource="0"
+              file="Source/UI/NumberInputComponent.cpp"/>
+        <FILE id="scLzNR" name="NumberInputComponent.h" compile="0" resource="0"
+              file="Source/UI/NumberInputComponent.h"/>
+        <FILE id="sPMn30" name="PanelComponent.cpp" compile="1" resource="0"
+              file="Source/UI/PanelComponent.cpp"/>
+        <FILE id="G7cSIz" name="PanelComponent.h" compile="0" resource="0"
+              file="Source/UI/PanelComponent.h"/>
+        <FILE id="VwWU95" name="TabPage.cpp" compile="1" resource="0" file="Source/UI/TabPage.cpp"/>
+        <FILE id="UmRC50" name="TabPage.h" compile="0" resource="0" file="Source/UI/TabPage.h"/>
       </GROUP>
-      <GROUP id="{CA36C588-58EF-15F5-43C7-5A85EDBB7E58}" name="UIComponents">
-        <FILE id="rkKsA6" name="EigenharpKeyComponent.cpp" compile="1" resource="0"
-              file="Source/EigenharpKeyComponent.cpp"/>
-        <FILE id="dnaDAK" name="EigenharpKeyComponent.h" compile="0" resource="0"
-              file="Source/EigenharpKeyComponent.h"/>
-        <FILE id="Bh0SRL" name="KeymapPanelComponent.cpp" compile="1" resource="0"
-              file="Source/KeymapPanelComponent.cpp"/>
-        <FILE id="AyjrEn" name="KeymapPanelComponent.h" compile="0" resource="0"
-              file="Source/KeymapPanelComponent.h"/>
-        <FILE id="khptPz" name="MidiMessageSectionComponent.cpp" compile="1"
-              resource="0" file="Source/MidiMessageSectionComponent.cpp"/>
-        <FILE id="PJF2ml" name="MidiMessageSectionComponent.h" compile="0"
-              resource="0" file="Source/MidiMessageSectionComponent.h"/>
-        <FILE id="PJycxM" name="NumberInputComponent.cpp" compile="1" resource="0"
-              file="Source/NumberInputComponent.cpp"/>
-        <FILE id="lnXUZW" name="NumberInputComponent.h" compile="0" resource="0"
-              file="Source/NumberInputComponent.h"/>
-        <FILE id="HZGW7Y" name="PanelComponent.cpp" compile="1" resource="0"
-              file="Source/PanelComponent.cpp"/>
-        <FILE id="Y5dJ5d" name="PanelComponent.h" compile="0" resource="0"
-              file="Source/PanelComponent.h"/>
-        <FILE id="emoMKD" name="TabPage.cpp" compile="1" resource="0" file="Source/TabPage.cpp"/>
-        <FILE id="ozfC0l" name="TabPage.h" compile="0" resource="0" file="Source/TabPage.h"/>
+      <GROUP id="{F44D70E0-70D2-134A-9C7E-2A351C2CC9E3}" name="Data">
+        <FILE id="r4bh2b" name="FileUtil.cpp" compile="1" resource="0" file="Source/Data/FileUtil.cpp"/>
+        <FILE id="xuCVfs" name="FileUtil.h" compile="0" resource="0" file="Source/Data/FileUtil.h"/>
       </GROUP>
-      <FILE id="SVjqiV" name="Main.cpp" compile="1" resource="0" file="Source/Main.cpp"/>
-      <FILE id="ZgGiZW" name="MainComponent.h" compile="0" resource="0" file="Source/MainComponent.h"/>
-      <FILE id="gjgu6L" name="MainComponent.cpp" compile="1" resource="0"
-            file="Source/MainComponent.cpp"/>
+      <GROUP id="{1F899284-5C01-F5F1-6C8F-EEA46D8DDFB9}" name="Models">
+        <FILE id="f1zAxw" name="EigenharpMapping.cpp" compile="1" resource="0"
+              file="Source/Models/EigenharpMapping.cpp"/>
+        <FILE id="GO64U8" name="EigenharpMapping.h" compile="0" resource="0"
+              file="Source/Models/EigenharpMapping.h"/>
+        <FILE id="Rw9BUS" name="Enums.h" compile="0" resource="0" file="Source/Models/Enums.h"/>
+        <FILE id="BUvX2Q" name="MappedKey.cpp" compile="1" resource="0" file="Source/Models/MappedKey.cpp"/>
+        <FILE id="ECTwYB" name="MappedKey.h" compile="0" resource="0" file="Source/Models/MappedKey.h"/>
+      </GROUP>
+      <FILE id="asCXop" name="PluginProcessor.cpp" compile="1" resource="0"
+            file="Source/PluginProcessor.cpp"/>
+      <FILE id="ZzYCa7" name="PluginProcessor.h" compile="0" resource="0"
+            file="Source/PluginProcessor.h"/>
+      <FILE id="yL6wl8" name="PluginEditor.cpp" compile="1" resource="0"
+            file="Source/PluginEditor.cpp"/>
+      <FILE id="tbNpom" name="PluginEditor.h" compile="0" resource="0" file="Source/PluginEditor.h"/>
     </GROUP>
   </MAINGROUP>
-  <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1"/>
+  <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1" JUCE_VST3_CAN_REPLACE_VST2="0"/>
   <EXPORTFORMATS>
+    <VS2019 targetFolder="Builds/VisualStudio2019">
+      <CONFIGURATIONS>
+        <CONFIGURATION isDebug="1" name="Debug" targetName="EigenharpMapper"/>
+        <CONFIGURATION isDebug="0" name="Release" targetName="EigenharpMapper"/>
+      </CONFIGURATIONS>
+      <MODULEPATHS>
+        <MODULEPATH id="juce_audio_basics" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_devices" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_formats" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_plugin_client" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_processors" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_utils" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_core" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_data_structures" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_events" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_graphics" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_gui_basics" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_gui_extra" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_osc" path="../../../../JUCE/modules"/>
+      </MODULEPATHS>
+    </VS2019>
     <XCODE_MAC targetFolder="Builds/MacOSX">
       <CONFIGURATIONS>
         <CONFIGURATION isDebug="1" name="Debug" targetName="EigenharpMapper"/>
         <CONFIGURATION isDebug="0" name="Release" targetName="EigenharpMapper"/>
       </CONFIGURATIONS>
       <MODULEPATHS>
+        <MODULEPATH id="juce_audio_basics" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_devices" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_formats" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_plugin_client" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_processors" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_utils" path="../../../../JUCE/modules"/>
         <MODULEPATH id="juce_core" path="../../../../JUCE/modules"/>
         <MODULEPATH id="juce_data_structures" path="../../../../JUCE/modules"/>
         <MODULEPATH id="juce_events" path="../../../../JUCE/modules"/>
         <MODULEPATH id="juce_graphics" path="../../../../JUCE/modules"/>
         <MODULEPATH id="juce_gui_basics" path="../../../../JUCE/modules"/>
-        <MODULEPATH id="juce_audio_utils" path="../../../../JUCE/modules"/>
-        <MODULEPATH id="juce_audio_processors" path="../../../../JUCE/modules"/>
         <MODULEPATH id="juce_gui_extra" path="../../../../JUCE/modules"/>
-        <MODULEPATH id="juce_audio_basics" path="../../../../JUCE/modules"/>
-        <MODULEPATH id="juce_audio_formats" path="../../../../JUCE/modules"/>
-        <MODULEPATH id="juce_audio_devices" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_osc" path="../../../../JUCE/modules"/>
       </MODULEPATHS>
     </XCODE_MAC>
   </EXPORTFORMATS>
@@ -71,6 +105,8 @@
     <MODULE id="juce_audio_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
     <MODULE id="juce_audio_devices" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
     <MODULE id="juce_audio_formats" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_audio_plugin_client" showAllCode="1" useLocalCopy="0"
+            useGlobalPath="1"/>
     <MODULE id="juce_audio_processors" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
     <MODULE id="juce_audio_utils" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
     <MODULE id="juce_core" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
@@ -79,6 +115,7 @@
     <MODULE id="juce_graphics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
     <MODULE id="juce_gui_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
     <MODULE id="juce_gui_extra" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_osc" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
   </MODULES>
   <LIVE_SETTINGS>
     <OSX/>
