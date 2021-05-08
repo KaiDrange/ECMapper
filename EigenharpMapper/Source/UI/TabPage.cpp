@@ -4,6 +4,10 @@ TabPage::TabPage(InstrumentType model) : keyboard(keyboardState, juce::MidiKeybo
     keymap = new EigenharpMapping(model);
     keymapPanel = new KeymapPanelComponent(keymap, 0.4, 1);
     addAndMakeVisible(keymapPanel);
+    for (int i = 0; i < 3; i++) {
+        zonePanels[i] = new ZonePanelComponent(i+1, 1, 1.0/3.0);
+        addAndMakeVisible(zonePanels[i]);
+    }
     
     addAndMakeVisible(keyboard);
     keyboardState.addListener(keymapPanel);
@@ -28,10 +32,13 @@ TabPage::TabPage(InstrumentType model) : keyboard(keyboardState, juce::MidiKeybo
 
 TabPage::~TabPage() {
     delete keymapPanel;
+    for (int i = 0; i < 3; i++) {
+        delete zonePanels[i];
+    }
     delete keymap;
 }
 
-void TabPage::paint (juce::Graphics& g) {
+void TabPage::paint(juce::Graphics& g) {
 }
 
 void TabPage::resized() {
@@ -43,5 +50,10 @@ void TabPage::resized() {
     loadMappingButton.setBounds(btnarea.removeFromLeft(area.getWidth()*0.1));
     saveMappingButton.setBounds(btnarea.removeFromLeft(area.getWidth()*0.1));
     keymapPanel->setBounds(area.removeFromLeft(area.getWidth()*keymapPanel->widthFactor));
+    
+    auto zoneArea = area.removeFromRight(area.getWidth()*0.98);
+    for (int i = 0; i < 3; i++) {
+        zonePanels[i]->setBounds(zoneArea.removeFromTop(area.getHeight()*zonePanels[i]->heightFactor));
+    }
 }
 

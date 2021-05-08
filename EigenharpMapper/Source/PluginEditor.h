@@ -1,11 +1,3 @@
-/*
-  ==============================================================================
-
-    This file contains the basic framework code for a JUCE plugin editor.
-
-  ==============================================================================
-*/
-
 #pragma once
 
 #include <JuceHeader.h>
@@ -22,7 +14,7 @@ public:
     ~EigenharpMapperAudioProcessorEditor() override;
 
     //==============================================================================
-    void paint (juce::Graphics&) override;
+//    void paint (juce::Graphics&) override;
     void resized() override;
 
 private:

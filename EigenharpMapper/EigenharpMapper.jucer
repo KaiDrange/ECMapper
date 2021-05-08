@@ -33,6 +33,10 @@
               file="Source/UI/PanelComponent.h"/>
         <FILE id="VwWU95" name="TabPage.cpp" compile="1" resource="0" file="Source/UI/TabPage.cpp"/>
         <FILE id="UmRC50" name="TabPage.h" compile="0" resource="0" file="Source/UI/TabPage.h"/>
+        <FILE id="vVj47m" name="ZonePanelComponent.cpp" compile="1" resource="0"
+              file="Source/UI/ZonePanelComponent.cpp"/>
+        <FILE id="EE6VcX" name="ZonePanelComponent.h" compile="0" resource="0"
+              file="Source/UI/ZonePanelComponent.h"/>
       </GROUP>
       <GROUP id="{F44D70E0-70D2-134A-9C7E-2A351C2CC9E3}" name="Data">
         <FILE id="r4bh2b" name="FileUtil.cpp" compile="1" resource="0" file="Source/Data/FileUtil.cpp"/>

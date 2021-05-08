@@ -2,12 +2,12 @@
 
 #include <JuceHeader.h>
 #include "KeymapPanelComponent.h"
+#include "ZonePanelComponent.h"
 #include "../Models/EigenharpMapping.h"
 #include "../Models/Enums.h"
 #include "../Data/FileUtil.h"
 
-class TabPage : public juce::Component
-{
+class TabPage : public juce::Component {
 public:
     TabPage(InstrumentType model);
     ~TabPage() override;
@@ -19,6 +19,7 @@ public:
 private:
     InstrumentType model;
     KeymapPanelComponent *keymapPanel;
+    ZonePanelComponent *zonePanels[3];
     EigenharpMapping *keymap;
     juce::MidiKeyboardState keyboardState;
     juce::MidiKeyboardComponent keyboard;
