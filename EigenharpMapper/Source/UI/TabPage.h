@@ -20,6 +20,8 @@ private:
     InstrumentType model;
     KeymapPanelComponent *keymapPanel;
     ZonePanelComponent *zonePanels[3];
+    juce::TextEditor oscIPInput;
+
     EigenharpMapping *keymap;
     juce::MidiKeyboardState keyboardState;
     juce::MidiKeyboardComponent keyboard;

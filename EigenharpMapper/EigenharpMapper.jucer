@@ -8,6 +8,10 @@
   <MAINGROUP id="vhB8QE" name="EigenharpMapper">
     <GROUP id="{5DC590AE-B94A-F53F-3A94-BEFDDBFEA6DC}" name="Source">
       <GROUP id="{0966D1C5-EBFE-2204-5620-C352A5F938AA}" name="UI">
+        <FILE id="U4cBIU" name="DropdownComponent.cpp" compile="1" resource="0"
+              file="Source/UI/DropdownComponent.cpp"/>
+        <FILE id="ADVnJq" name="DropdownComponent.h" compile="0" resource="0"
+              file="Source/UI/DropdownComponent.h"/>
         <FILE id="JQKobt" name="EigenharpKeyComponent.cpp" compile="1" resource="0"
               file="Source/UI/EigenharpKeyComponent.cpp"/>
         <FILE id="KIKt9U" name="EigenharpKeyComponent.h" compile="0" resource="0"

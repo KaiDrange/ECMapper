@@ -26,6 +26,9 @@ TabPage::TabPage(InstrumentType model) : keyboard(keyboardState, juce::MidiKeybo
         repaint();
     };
     
+    addAndMakeVisible(oscIPInput);
+    oscIPInput.setText("localhost:7001");
+    
     addKeyListener(keymapPanel);
 }
 
@@ -48,6 +51,8 @@ void TabPage::resized() {
     auto btnarea = area.removeFromTop(area.getHeight()*0.03);
     loadMappingButton.setBounds(btnarea.removeFromLeft(area.getWidth()*0.1));
     saveMappingButton.setBounds(btnarea.removeFromLeft(area.getWidth()*0.1));
+    oscIPInput.setBounds(btnarea.removeFromRight(area.getWidth()*0.2));
+
     keymapPanel->setBounds(area.removeFromLeft(area.getWidth()*keymapPanel->widthFactor));
     
     auto zoneArea = area.removeFromRight(area.getWidth()*0.98);
