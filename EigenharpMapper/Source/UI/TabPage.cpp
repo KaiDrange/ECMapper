@@ -25,7 +25,6 @@ TabPage::TabPage(InstrumentType model) : keyboard(keyboardState, juce::MidiKeybo
         keymap->setValueTree(loadedMap);
         repaint();
     };
-
     
     addKeyListener(keymapPanel);
 }

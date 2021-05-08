@@ -5,6 +5,7 @@
 #include "../Models/EigenharpMapping.h"
 #include "EigenharpKeyComponent.h"
 #include "MidiMessageSectionComponent.h"
+#include "Utility.h"
 
 class KeymapPanelComponent  : public PanelComponent,
                               public juce::MidiKeyboardStateListener,

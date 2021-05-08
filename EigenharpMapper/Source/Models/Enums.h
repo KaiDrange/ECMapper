@@ -20,10 +20,10 @@ enum EigenharpKeyType {
 };
 
 enum KeyColour {
-    Off = 0x00000000,
-    Green = 0xFF00FF00,
-    Yellow = 0xFFFFFF00,
-    Red = 0xFFFF0000
+    Off = 0,
+    Green = 1,
+    Yellow = 2,
+    Red = 3
 };
 
 enum Zone {

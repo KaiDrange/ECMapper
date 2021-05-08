@@ -24,11 +24,11 @@ void EigenharpKeyComponent::paint(juce::Graphics& g) {
     g.drawFittedText(keyText, getLocalBounds(),
                 juce::Justification::centred, true);
 
-    g.setColour(juce::Colour(mappedKey->getKeyColour()));
+    g.setColour(juce::Colour(Utility::keyColourEnumToColour(mappedKey->getKeyColour())));
     auto lightPosition = area.getX() + area.getWidth()/2.0f;
     g.drawEllipse(lightPosition-2, 3, 3, 3, 3);
 
-    g.setColour(zoneColours[mappedKey->getZone()]);
+    g.setColour(Utility::zoneEnumToColour(mappedKey->getZone()));
     if (keyType == EigenharpKeyType::Normal) {
         g.drawRoundedRectangle(area.getX()+1, area.getY()+1, area.getWidth()-2, area.getHeight()-2, 5, 2);
     }

@@ -3,14 +3,7 @@
 #include <JuceHeader.h>
 #include "../Models/Enums.h"
 #include "../Models/EigenharpMapping.h"
-
-const static juce::Colour zoneColours[5] = {
-    juce::Colours::black,
-    juce::Colours::darkblue,
-    juce::Colours::maroon,
-    juce::Colours::darkorange,
-    juce::Colours::white
-};
+#include "Utility.h"
 
 class EigenharpKeyComponent  : public juce::DrawableButton {
 public:

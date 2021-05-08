@@ -33,6 +33,8 @@
               file="Source/UI/PanelComponent.h"/>
         <FILE id="VwWU95" name="TabPage.cpp" compile="1" resource="0" file="Source/UI/TabPage.cpp"/>
         <FILE id="UmRC50" name="TabPage.h" compile="0" resource="0" file="Source/UI/TabPage.h"/>
+        <FILE id="s5Jt40" name="Utility.cpp" compile="1" resource="0" file="Source/UI/Utility.cpp"/>
+        <FILE id="IOELac" name="Utility.h" compile="0" resource="0" file="Source/UI/Utility.h"/>
         <FILE id="vVj47m" name="ZonePanelComponent.cpp" compile="1" resource="0"
               file="Source/UI/ZonePanelComponent.cpp"/>
         <FILE id="EE6VcX" name="ZonePanelComponent.h" compile="0" resource="0"
