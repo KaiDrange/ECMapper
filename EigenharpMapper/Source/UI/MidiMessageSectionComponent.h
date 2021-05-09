@@ -2,7 +2,7 @@
 #include <JuceHeader.h>
 #include "NumberInputComponent.h"
 
-class MidiMessageSectionComponent  : public juce::Component
+class MidiMessageSectionComponent  : public juce::Component, NumberInputComponent::Listener
 {
 public:
     MidiMessageSectionComponent();
@@ -10,6 +10,7 @@ public:
 
     void resized() override;
     juce::String getMessageString();
+    void updatePanelFromMessageString(juce::String msgString);
 
     class Listener {
     public:
@@ -21,7 +22,7 @@ public:
 
 private:
     void sendChangeMessage();
-    
+    void numberInputChanged(NumberInputComponent*) override;
     juce::GroupComponent cmdKeyTypeRadioGroup;
     juce::ToggleButton cmdKeyTypeLatch;
     juce::ToggleButton cmdKeyTypeMomentary;

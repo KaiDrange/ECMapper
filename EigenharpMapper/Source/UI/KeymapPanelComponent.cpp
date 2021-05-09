@@ -148,7 +148,12 @@ void KeymapPanelComponent::enableDisableMenuButtons(bool enable) {
 }
 
 void KeymapPanelComponent::showHidePanels() {
-    midiMessageSectionComponent.setVisible(selectedKey != nullptr && selectedKey->getMappingType() == KeyMappingType::MidiMsg);
+    if (selectedKey != nullptr && selectedKey->getMappingType() == KeyMappingType::MidiMsg) {
+        midiMessageSectionComponent.updatePanelFromMessageString(selectedKey->getMappingValue());
+        midiMessageSectionComponent.setVisible(true);
+    }
+    else
+        midiMessageSectionComponent.setVisible(false);
 }
 
 void KeymapPanelComponent::deselectAllOtherKeys(const EigenharpKeyComponent *key) {

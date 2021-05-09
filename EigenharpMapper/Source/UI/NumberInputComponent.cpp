@@ -8,9 +8,10 @@ NumberInputComponent::NumberInputComponent(const juce::String labelText,
                                            const int defaultValue) {
     label.setText(labelText, juce::dontSendNotification);
     input.setText(juce::String(defaultValue), juce::dontSendNotification);
-    input.setInputFilter(new juce::TextEditor::LengthAndCharacterRestriction(maxDigits, "0123456789"), true);
+    input.setInputFilter(new juce::TextEditor::LengthAndCharacterRestriction(maxDigits, "-0123456789"), true);
     addAndMakeVisible(label);
     addAndMakeVisible(input);
+
     this->minValue = minValue;
     this->maxValue = maxValue;
     
@@ -38,7 +39,28 @@ int NumberInputComponent::getValue() {
     return input.getText().getIntValue();
 }
 
+void NumberInputComponent::setValue(int number) {
+    if (number > maxValue)
+        number = maxValue;
+    if (number < minValue)
+        number = minValue;
+    
+    input.setText(juce::String(number));
+}
+
 void NumberInputComponent::setLabelText(juce::String text) {
     label.setText(text, juce::dontSendNotification);
 }
 
+void NumberInputComponent::addListener(Listener* listenerToAdd) {
+    listeners.add(listenerToAdd);
+}
+
+void NumberInputComponent::removeListener(Listener* listenerToRemove) {
+    jassert(listeners.contains(listenerToRemove));
+    listeners.remove(listenerToRemove);
+}
+
+void NumberInputComponent::sendChangeMessage() {
+    listeners.call([this](Listener& l) { l.numberInputChanged(this); });
+}

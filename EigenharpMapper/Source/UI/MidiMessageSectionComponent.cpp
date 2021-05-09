@@ -68,8 +68,11 @@ MidiMessageSectionComponent::MidiMessageSectionComponent() :
     };
 
     addAndMakeVisible(midiCmdValue);
+    midiCmdValue.addListener(this);
     addAndMakeVisible(offValue);
+    offValue.addListener(this);
     addAndMakeVisible(onValue);
+    onValue.addListener(this);
 }
 
 MidiMessageSectionComponent::~MidiMessageSectionComponent() {
@@ -129,13 +132,31 @@ juce::String MidiMessageSectionComponent::getMessageString() {
         juce::String(onValue.getValue());
 }
 
-void MidiMessageSectionComponent::addListener(Listener* listenerToAdd)
-{
+void MidiMessageSectionComponent::updatePanelFromMessageString(juce::String msgString) {
+    juce::StringArray tokens;
+    tokens.addTokens(msgString, ";", "\"");
+    if (tokens.size() != 5)
+        return;
+    
+    cmdKeyTypeLatch.setToggleState(tokens[0] == "Latch", juce::dontSendNotification);
+    cmdKeyTypeMomentary.setToggleState(tokens[0] == "Momentary", juce::dontSendNotification);
+    cmdKeyTypeTrigger.setToggleState(tokens[0] == "Trigger", juce::dontSendNotification);
+    
+    midiMsgTypeCC.setToggleState(tokens[1] == "CC", juce::dontSendNotification);
+    midiMsgTypeProgChange.setToggleState(tokens[1] == "PC", juce::dontSendNotification);
+    midiMsgTypeTransport.setToggleState(tokens[1] == "Transport", juce::dontSendNotification);
+    midiMsgTypeAllNotesOff.setToggleState(tokens[1] == "midiMsgTypeAllNotesOff", juce::dontSendNotification);
+    
+    midiCmdValue.setValue(tokens[2].getIntValue());
+    offValue.setValue(tokens[3].getIntValue());
+    onValue.setValue(tokens[4].getIntValue());
+}
+
+void MidiMessageSectionComponent::addListener(Listener* listenerToAdd) {
     listeners.add(listenerToAdd);
 }
 
-void MidiMessageSectionComponent::removeListener(Listener* listenerToRemove)
-{
+void MidiMessageSectionComponent::removeListener(Listener* listenerToRemove) {
     jassert(listeners.contains(listenerToRemove));
     listeners.remove(listenerToRemove);
 }
@@ -144,5 +165,7 @@ void MidiMessageSectionComponent::sendChangeMessage() {
     listeners.call([this](Listener& l) { l.valuesChanged(this); });
 }
 
-
+void MidiMessageSectionComponent::numberInputChanged(NumberInputComponent*) {
+    sendChangeMessage();
+}
 
