@@ -9,7 +9,7 @@ public:
     int getValue();
     void setLabelText(juce::String text);
     void resized() override;
-
+    
 private:
     juce::Label label;
     juce::TextEditor input;

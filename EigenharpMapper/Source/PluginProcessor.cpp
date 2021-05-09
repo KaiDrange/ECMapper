@@ -156,6 +156,10 @@ void EigenharpMapperAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
 
         // ..do something to the data...
     }
+    
+//    auto midiMsg = juce::MidiMessage::controllerEvent(1, 3, 99);
+//    midiMessages.addEvent(midiMsg, 0);
+    
 }
 
 //==============================================================================

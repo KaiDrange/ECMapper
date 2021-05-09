@@ -13,16 +13,25 @@ MidiMessageSectionComponent::MidiMessageSectionComponent() :
     cmdKeyTypeLatch.setRadioGroupId(1);
     cmdKeyTypeLatch.setToggleState(true, juce::dontSendNotification);
     addAndMakeVisible(cmdKeyTypeLatch);
+    cmdKeyTypeLatch.onStateChange = [this] {
+        sendChangeMessage();
+    };
 
     cmdKeyTypeMomentary.setButtonText("Momentary");
     cmdKeyTypeMomentary.setRadioGroupId(1);
     cmdKeyTypeMomentary.setToggleState(false, juce::dontSendNotification);
     addAndMakeVisible(cmdKeyTypeMomentary);
+    cmdKeyTypeMomentary.onStateChange = [this] {
+        sendChangeMessage();
+    };
 
     cmdKeyTypeTrigger.setButtonText("Trigger");
     cmdKeyTypeTrigger.setRadioGroupId(1);
     cmdKeyTypeTrigger.setToggleState(false, juce::dontSendNotification);
     addAndMakeVisible(cmdKeyTypeTrigger);
+    cmdKeyTypeTrigger.onStateChange = [this] {
+        sendChangeMessage();
+    };
 
     addAndMakeVisible(midiMsgTypeRadioGroup);
     
@@ -30,22 +39,34 @@ MidiMessageSectionComponent::MidiMessageSectionComponent() :
     midiMsgTypeCC.setRadioGroupId(2);
     midiMsgTypeCC.setToggleState(true, juce::dontSendNotification);
     addAndMakeVisible(midiMsgTypeCC);
+    midiMsgTypeCC.onStateChange = [this] {
+        sendChangeMessage();
+    };
 
     midiMsgTypeProgChange.setButtonText("Program change");
     midiMsgTypeProgChange.setRadioGroupId(2);
     midiMsgTypeProgChange.setToggleState(false, juce::dontSendNotification);
     addAndMakeVisible(midiMsgTypeProgChange);
+    midiMsgTypeProgChange.onStateChange = [this] {
+        sendChangeMessage();
+    };
 
     midiMsgTypeTransport.setButtonText("Transport");
     midiMsgTypeTransport.setRadioGroupId(2);
     midiMsgTypeTransport.setToggleState(false, juce::dontSendNotification);
     addAndMakeVisible(midiMsgTypeTransport);
+    midiMsgTypeTransport.onStateChange = [this] {
+        sendChangeMessage();
+    };
 
     midiMsgTypeAllNotesOff.setButtonText("All notes off");
     midiMsgTypeAllNotesOff.setRadioGroupId(2);
     midiMsgTypeAllNotesOff.setToggleState(false, juce::dontSendNotification);
     addAndMakeVisible(midiMsgTypeAllNotesOff);
-    
+    midiMsgTypeAllNotesOff.onStateChange = [this] {
+        sendChangeMessage();
+    };
+
     addAndMakeVisible(midiCmdValue);
     addAndMakeVisible(offValue);
     addAndMakeVisible(onValue);
@@ -79,4 +100,49 @@ void MidiMessageSectionComponent::resized() {
     offValue.setBounds(area.removeFromTop(lineHeight));
     onValue.setBounds(area.removeFromTop(lineHeight));
 }
+
+juce::String MidiMessageSectionComponent::getMessageString() {
+    juce::String cmdType;
+    juce::String msgType;
+
+    if (cmdKeyTypeLatch.getToggleState())
+        cmdType = "Latch";
+    else if (cmdKeyTypeMomentary.getToggleState())
+        cmdType = "Momentary";
+    else if (cmdKeyTypeTrigger.getToggleState())
+        cmdType = "Trigger";
+    
+    if (midiMsgTypeCC.getToggleState())
+        msgType = "CC";
+    else if (midiMsgTypeProgChange.getToggleState())
+        msgType = "PC";
+    else if (midiMsgTypeTransport.getToggleState())
+        msgType = "Transport";
+    else if (midiMsgTypeAllNotesOff.getToggleState())
+        msgType = "AllNotesOff";
+    
+    
+    return cmdType + ";" +
+        msgType + ";" +
+        juce::String(midiCmdValue.getValue()) + ";" +
+        juce::String(offValue.getValue())  + ";" +
+        juce::String(onValue.getValue());
+}
+
+void MidiMessageSectionComponent::addListener(Listener* listenerToAdd)
+{
+    listeners.add(listenerToAdd);
+}
+
+void MidiMessageSectionComponent::removeListener(Listener* listenerToRemove)
+{
+    jassert(listeners.contains(listenerToRemove));
+    listeners.remove(listenerToRemove);
+}
+
+void MidiMessageSectionComponent::sendChangeMessage() {
+    listeners.call([this](Listener& l) { l.valuesChanged(this); });
+}
+
+
 

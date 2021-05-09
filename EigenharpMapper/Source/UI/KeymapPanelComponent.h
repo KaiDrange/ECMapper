@@ -9,14 +9,15 @@
 
 class KeymapPanelComponent  : public PanelComponent,
                               public juce::MidiKeyboardStateListener,
-                              public juce::KeyListener {
+                              public juce::KeyListener,
+                              public MidiMessageSectionComponent::Listener {
 public:
     KeymapPanelComponent(EigenharpMapping *eigenharpMapping, float widthFactor, float heightFactor);
     ~KeymapPanelComponent() override;
     void handleNoteOn(juce::MidiKeyboardState*, int midiChannel, int midiNoteNumber, float velocity) override;
     void handleNoteOff(juce::MidiKeyboardState*, int midiChannel, int midiNoteNumber, float velocity) override;
     bool keyPressed(const juce::KeyPress &key, juce::Component *originatingComponent) override;
-                                  
+
     void resized() override;
 
 private:
@@ -27,6 +28,7 @@ private:
     juce::TextButton zoneMenuButton;
     juce::TextButton mapTypeMenuButton;
     MidiMessageSectionComponent midiMessageSectionComponent;
+    void valuesChanged(MidiMessageSectionComponent*) override;
 
     EigenharpMapping *eigenharpMapping;
 

@@ -55,6 +55,7 @@ KeymapPanelComponent::KeymapPanelComponent(EigenharpMapping *eigenharpMapping, f
     };
     
     addAndMakeVisible(midiMessageSectionComponent);
+    midiMessageSectionComponent.addListener(this);
     showHidePanels();
     enableDisableMenuButtons(false);
 }
@@ -296,4 +297,6 @@ int KeymapPanelComponent::getRowNumber(int keyIndex) {
     return row;
 }
 
-
+void KeymapPanelComponent::valuesChanged(MidiMessageSectionComponent*) {
+    selectedKey->setMappingValue(midiMessageSectionComponent.getMessageString());
+}
