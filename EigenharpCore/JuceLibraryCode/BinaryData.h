@@ -9,10 +9,10 @@
 namespace BinaryData
 {
     extern const char*   libeigenapi_dylib;
-    const int            libeigenapi_dylibSize = 433416;
+    const int            libeigenapi_dylibSize = 331344;
 
     extern const char*   libpicodecoder_dylib;
-    const int            libpicodecoder_dylibSize = 49632;
+    const int            libpicodecoder_dylibSize = 68320;
 
     // Number of elements in the namedResourceList and originalFileNames arrays.
     const int namedResourceListSize = 2;

@@ -14,7 +14,13 @@
     <GROUP id="{623A5C0B-6BB3-A687-77EA-9782D6F18EA2}" name="Source">
       <FILE id="AxQKSM" name="APICallback.cpp" compile="1" resource="0" file="Source/APICallback.cpp"/>
       <FILE id="bveRIy" name="APICallback.h" compile="0" resource="0" file="Source/APICallback.h"/>
-      <FILE id="hajtpD" name="Main.cpp" compile="1" resource="0" file="Source/Main.cpp"/>
+      <FILE id="SdQa3B" name="EigenharpCore.cpp" compile="1" resource="0"
+            file="Source/EigenharpCore.cpp"/>
+      <FILE id="lYxAzA" name="EigenharpCore.h" compile="0" resource="0" file="Source/EigenharpCore.h"/>
+      <FILE id="anXIFD" name="OSCCommunication.cpp" compile="1" resource="0"
+            file="Source/OSCCommunication.cpp"/>
+      <FILE id="eMY1gO" name="OSCCommunication.h" compile="0" resource="0"
+            file="Source/OSCCommunication.h"/>
     </GROUP>
   </MAINGROUP>
   <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1"/>
@@ -29,6 +35,8 @@
         <MODULEPATH id="juce_data_structures" path="../../../../JUCE/modules"/>
         <MODULEPATH id="juce_events" path="../../../../JUCE/modules"/>
         <MODULEPATH id="juce_osc" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_gui_basics" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_graphics" path="../../../../JUCE/modules"/>
       </MODULEPATHS>
     </XCODE_MAC>
   </EXPORTFORMATS>
@@ -36,6 +44,8 @@
     <MODULE id="juce_core" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
     <MODULE id="juce_data_structures" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
     <MODULE id="juce_events" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_graphics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_gui_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
     <MODULE id="juce_osc" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
   </MODULES>
   <LIVE_SETTINGS>

@@ -1,14 +1,16 @@
 #pragma once
 
+#include <JuceHeader.h>
 #include <unistd.h>
 #include <signal.h>
 #include <eigenapi.h>
 #include <iostream>
 #include <thread>
+#include "OSCCommunication.h"
 
 class APICallback: public EigenApi::Callback {
 public:
-    APICallback(EigenApi::Eigenharp& eh);
+    APICallback(EigenApi::Eigenharp& eh, OSCCommunication *osc);
     virtual void device(const char* dev, DeviceType dt, int rows, int cols, int ribbons, int pedals);
     virtual void key(const char* dev, unsigned long long t, unsigned course, unsigned key, bool a, unsigned p, int r, int y);
     virtual void breath(const char* dev, unsigned long long t, unsigned val);
@@ -18,4 +20,6 @@ public:
     EigenApi::Eigenharp& eh_;
     bool led_;
     int max_[3], min_[3];
+private:
+    OSCCommunication *osc;
 };
