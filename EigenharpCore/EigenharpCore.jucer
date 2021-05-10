@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<JUCERPROJECT id="XnDJr5" name="EigenharpCore" projectType="consoleapp" useAppConfig="0"
+              addUsingNamespaceToJuceHeader="0" displaySplashScreen="1" jucerFormatVersion="1"
+              headerPath="../../EigenLite">
+  <MAINGROUP id="dvyoE3" name="EigenharpCore">
+    <GROUP id="{1C19C29A-4545-EE67-D771-08FEDC080667}" name="EigenLite">
+      <FILE id="Yf4A7d" name="eigenapi.h" compile="0" resource="0" file="EigenLite/eigenapi.h"/>
+      <FILE id="TOyIVD" name="libeigenapi.dylib" compile="0" resource="1"
+            file="EigenLite/libeigenapi.dylib" xcodeResource="1"/>
+      <FILE id="XJiRtD" name="libpicodecoder.dylib" compile="0" resource="1"
+            file="EigenLite/libpicodecoder.dylib" xcodeResource="1"/>
+    </GROUP>
+    <GROUP id="{623A5C0B-6BB3-A687-77EA-9782D6F18EA2}" name="Source">
+      <FILE id="AxQKSM" name="APICallback.cpp" compile="1" resource="0" file="Source/APICallback.cpp"/>
+      <FILE id="bveRIy" name="APICallback.h" compile="0" resource="0" file="Source/APICallback.h"/>
+      <FILE id="hajtpD" name="Main.cpp" compile="1" resource="0" file="Source/Main.cpp"/>
+    </GROUP>
+  </MAINGROUP>
+  <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1"/>
+  <EXPORTFORMATS>
+    <XCODE_MAC targetFolder="Builds/MacOSX">
+      <CONFIGURATIONS>
+        <CONFIGURATION isDebug="1" name="Debug" targetName="EigenharpCore"/>
+        <CONFIGURATION isDebug="0" name="Release" targetName="EigenharpCore"/>
+      </CONFIGURATIONS>
+      <MODULEPATHS>
+        <MODULEPATH id="juce_core" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_data_structures" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_events" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_osc" path="../../../../JUCE/modules"/>
+      </MODULEPATHS>
+    </XCODE_MAC>
+  </EXPORTFORMATS>
+  <MODULES>
+    <MODULE id="juce_core" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_data_structures" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_events" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_osc" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+  </MODULES>
+  <LIVE_SETTINGS>
+    <OSX/>
+  </LIVE_SETTINGS>
+</JUCERPROJECT>
