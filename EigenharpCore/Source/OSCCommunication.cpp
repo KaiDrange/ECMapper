@@ -38,33 +38,49 @@ void OSCCommunication::disconnectReceiver() {
 
 void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
     if (message.getAddressPattern() == "/EigenharpMapper/led" && message.size() == 3) {
-        std::cout << "message received: " << message[0].getInt32() << " " << message[1].getInt32() << " " << message[2].getInt32();
         sendkeyLEDEventMessage(message[0].getInt32(), message[1].getInt32(), message[2].getInt32());
+    }
+    else if (message.getAddressPattern() == "/EigenharpMapper/ping") {
+        if (pingCounter == -1)
+            std::cout << "Mapper connected" << std::endl;
+        pingCounter = 0;
     }
 }
 
 void OSCCommunication::sendDeviceName(const juce::String &name) {
-    sender.send("/EigenharpCore/device", name);
+    if (pingCounter > -1)
+        sender.send("/EigenharpCore/device", name);
 }
 
 void OSCCommunication::sendKey(unsigned course, unsigned key, bool a, unsigned p, int r, int y) {
-         sender.send("/EigenharpCore/key", (int)course, (int)key, (int)a, (int)p, (int)r, (int)y);
+    if (pingCounter > -1)
+     sender.send("/EigenharpCore/key", (int)course, (int)key, (int)a, (int)p, (int)r, (int)y);
 }
 
 void OSCCommunication::sendBreath(unsigned val) {
-    sender.send("/EigenharpCore/breath", (int)val);
+    if (pingCounter > -1)
+        sender.send("/EigenharpCore/breath", (int)val);
 }
 
 void OSCCommunication::sendStrip(unsigned strip, unsigned val) {
-    sender.send("/EigenharpCore/strip", (int)strip, (int)val);
+    if (pingCounter > -1)
+        sender.send("/EigenharpCore/strip", (int)strip, (int)val);
 }
 
 void OSCCommunication::sendPedal(unsigned pedal, unsigned val) {
-    sender.send("/EigenharpCore/pedal", (int)pedal, (int)val);
+    if (pingCounter > -1)
+        sender.send("/EigenharpCore/pedal", (int)pedal, (int)val);
 }
 
 void OSCCommunication::timerCallback() {
     sender.send("/EigenharpCore/ping");
+    if (pingCounter > -1)
+        pingCounter++;
+    
+    if (pingCounter > 10) {
+        std::cout << "Connection to Mapper timed out" << std::endl;
+        pingCounter = -1;
+    }
 }
 
 void OSCCommunication::addListener(Listener* listenerToAdd) {

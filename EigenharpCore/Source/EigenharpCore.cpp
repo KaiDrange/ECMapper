@@ -12,16 +12,17 @@ void EigenharpCore::initialise(const juce::String &) {
     osc.connectReceiver(receiverPort);
 
     eigenApi.setPollTime(100);
-    eigenApi.addCallback(new APICallback(eigenApi, &osc));
+    apiCallback = new APICallback(eigenApi, &osc);
+    eigenApi.addCallback(apiCallback);
     if(!eigenApi.start()) {
-        std::cout  << "unable to start EigenLite";
+        std::cout  << "unable to start EigenLite" << std::endl;
     }
 
     eigenApiProcessThread = std::thread(coreInstance->process, &eigenApi);
 }
 
 void EigenharpCore::shutdown() {
-    std::cout << "Trying to quit gracefully";
+    std::cout << "Trying to quit gracefully..." << std::endl;
     if(keepRunning==0) {
         sleep(1);
         exit(-1);
@@ -31,10 +32,12 @@ void EigenharpCore::shutdown() {
     eigenApi.stop();
     osc.disconnectReceiver();
     osc.disconnectSender();
+    
+    delete apiCallback;
 }
 
 void EigenharpCore::intHandler(int dummy) {
-    std::cerr  << "int handler called";
+    std::cerr  << "int handler called" << std::endl;
     coreInstance->systemRequestedQuit();
 }
 
@@ -58,7 +61,8 @@ void EigenharpCore::makeThreadRealtime(std::thread& thread) {
 }
 
 void EigenharpCore::keyLEDChanged(OSCCommunication*, int course, int key, int colour) {
-    eigenApi.setLED("14400000", course, key, colour);
+    if (apiCallback->modelName.isNotEmpty())
+        eigenApi.setLED(apiCallback->dev, course, key, colour);
 }
 
 

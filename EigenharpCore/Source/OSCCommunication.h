@@ -41,4 +41,5 @@ private:
     
     juce::ListenerList<Listener> listeners;
     void sendkeyLEDEventMessage(int course, int key, int colour);
+    int pingCounter = -1;
 };

@@ -18,8 +18,8 @@ public:
     virtual void pedal(const char* dev, unsigned long long t, unsigned pedal, unsigned val);
     
     EigenApi::Eigenharp& eh_;
-    bool led_;
-    int max_[3], min_[3];
+    juce::String modelName = "";
+    const char *dev;
 private:
     OSCCommunication *osc;
 };

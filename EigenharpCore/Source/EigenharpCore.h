@@ -26,6 +26,7 @@ private:
     const int receiverPort = 7000;
     
     void keyLEDChanged(OSCCommunication*, int course, int key, int colour) override;
+    APICallback *apiCallback;
 };
 
 static EigenharpCore *coreInstance = nullptr;

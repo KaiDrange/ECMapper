@@ -37,15 +37,27 @@ void OSCCommunication::disconnectReceiver() {
 }
 
 void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
-    std::cout << "Message received";
+    if (message.getAddressPattern() == "/EigenharpCore/ping") {
+        if (pingCounter == -1)
+            std::cout << "Core connected" << std::endl;
+        pingCounter = 0;
+    }
 }
 
 void OSCCommunication::sendLED(int course, int key, int led) {
-    sender.send("/EigenharpMapper/led", course, key, led);
+    if (pingCounter > -1)
+        sender.send("/EigenharpMapper/led", course, key, led);
 }
-
 
 void OSCCommunication::timerCallback() {
     sender.send("/EigenharpMapper/ping");
-    sendLED(0, 4, 2);
+    if (pingCounter > -1)
+        pingCounter++;
+    
+    if (pingCounter > 10) {
+        std::cout << "Connection to Core timed out" << std::endl;
+        pingCounter = -1;
+    }
+    testBlink = !testBlink;
+    sendLED(0, 4, testBlink);
 }

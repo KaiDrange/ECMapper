@@ -1,27 +1,27 @@
 #include "APICallback.h"
 
-APICallback::APICallback(EigenApi::Eigenharp& eh, OSCCommunication *osc) : eh_(eh), led_(false) {
-    for(int i = 0;i<3;i++) { max_[i]=0; min_[i]=4096;}
+APICallback::APICallback(EigenApi::Eigenharp& eh, OSCCommunication *osc) : eh_(eh) {
     this->osc = osc;
 }
 
 void APICallback::device(const char* dev, DeviceType dt, int rows, int cols, int ribbons, int pedals) {
+    this->dev = dev;
     switch(cols) {
         case 2:
-            osc->sendDeviceName("Pico");
+            modelName = "Pico";
             break;
         case 4:
-            osc->sendDeviceName("Tau");
+            modelName = "Tau";
             break;
         case 5:
-            osc->sendDeviceName("Alpha");
+            modelName = "Alpha";
             break;
         default:
-            osc->sendDeviceName("Unknown");
+            modelName = "";
             break;
     }
-    
-    std::cout << "device " << dev << " (" << dt << ") " << rows << " x " << cols << " strips " << ribbons << " pedals " << pedals << std::endl;
+//    
+//    std::cout << "device " << dev << " (" << dt << ") " << rows << " x " << cols << " strips " << ribbons << " pedals " << pedals << std::endl;
 }
 
 void APICallback::key(const char* dev, unsigned long long t, unsigned course, unsigned key, bool a, unsigned p, int r, int y) {

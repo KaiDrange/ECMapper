@@ -25,4 +25,6 @@ private:
     
     void oscMessageReceived(const juce::OSCMessage& message) override;
     void timerCallback() override;
+    int pingCounter = -1;
 };
+static bool testBlink = false;
