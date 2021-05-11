@@ -7,6 +7,11 @@ OSCCommunication::OSCCommunication() {
     });
 }
 
+OSCCommunication::~OSCCommunication() {
+    sender.disconnect();
+    receiver.disconnect();
+}
+
 bool OSCCommunication::connectSender(juce::String ip, int port)  {
     this->senderIP = ip;
     this->senderPort = port;
@@ -35,6 +40,3 @@ void OSCCommunication::sendKeyMessage(const char* dev, unsigned long long t, uns
 void OSCCommunication::oscMessageReceived (const juce::OSCMessage& message) {
     std::cout << "message received";
 }
-
-
-

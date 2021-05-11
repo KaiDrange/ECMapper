@@ -7,6 +7,7 @@
 class OSCCommunication : private juce::OSCReceiver::Listener<juce::OSCReceiver::MessageLoopCallback> {
 public:
     OSCCommunication();
+    ~OSCCommunication();
     bool connectSender(juce::String ip, int port);
     void disconnectSender();
     bool connectReceiver(int port);

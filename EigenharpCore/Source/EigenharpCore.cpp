@@ -43,7 +43,7 @@ const juce::String EigenharpCore::getApplicationVersion() { return "0.0.1"; }
 
 
 void EigenharpCore::initialise(const juce::String &) {
-//    signal(SIGINT, intHandler);
+    signal(SIGINT, intHandler);
     osc.connectSender("127.0.0.1", senderPort);
     osc.connectReceiver(receiverPort);
 
@@ -56,6 +56,9 @@ void EigenharpCore::initialise(const juce::String &) {
     eigenApiProcessThread = std::thread(process, &eigenApi);
 }
 void EigenharpCore::shutdown() {
+    std::cout << "Trying to quit gracefully";
+    keepRunning = 0;
+    sleep(1);
     eigenApiProcessThread.join();
     eigenApi.stop();
     osc.disconnectReceiver();

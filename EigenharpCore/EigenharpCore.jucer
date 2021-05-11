@@ -25,9 +25,10 @@
   </MAINGROUP>
   <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1"/>
   <EXPORTFORMATS>
-    <XCODE_MAC targetFolder="Builds/MacOSX">
+    <XCODE_MAC targetFolder="Builds/MacOSX" externalLibraries="eigenapi&#10;picodecoder">
       <CONFIGURATIONS>
-        <CONFIGURATION isDebug="1" name="Debug" targetName="EigenharpCore"/>
+        <CONFIGURATION isDebug="1" name="Debug" targetName="EigenharpCore" libraryPath="${PROJECT_DIR}/../../EigenLite"
+                       osxCompatibility="11.1 SDK" userNotes="Temp fix before starting executable:&#10;&#10;install_name_tool -add_rpath @executable_path ./EigenharpCore"/>
         <CONFIGURATION isDebug="0" name="Release" targetName="EigenharpCore"/>
       </CONFIGURATIONS>
       <MODULEPATHS>
