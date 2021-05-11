@@ -5,9 +5,12 @@ OSCCommunication::OSCCommunication() {
     receiver.registerFormatErrorHandler([this](const char *data, int dataSize) {
         std::cout << "invalid OSC data";
     });
+    
+    startTimer(1000);
 }
 
 OSCCommunication::~OSCCommunication() {
+    stopTimer();
     sender.disconnect();
     receiver.disconnect();
 }
@@ -33,10 +36,32 @@ void OSCCommunication::disconnectReceiver() {
     receiverPort = -1;
 }
 
-void OSCCommunication::sendKeyMessage(const char* dev, unsigned long long t, unsigned course, unsigned key, bool a, unsigned p, int r, int y) {
-         sender.send("/EigenharpCore/keytest", (int)key);
+void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
+    if (message.getAddressPattern() == "/EigenharpMapper/LED" && message.size() == 3) {
+        std::cout << "message received: " << message[0].getString() << " " << message[1].getString() << " " << message[2].getString();
+    }
 }
 
-void OSCCommunication::oscMessageReceived (const juce::OSCMessage& message) {
-    std::cout << "message received";
+void OSCCommunication::sendDeviceName(const juce::String &name) {
+    sender.send("/EigenharpCore/device", name);
+}
+
+void OSCCommunication::sendKey(unsigned course, unsigned key, bool a, unsigned p, int r, int y) {
+         sender.send("/EigenharpCore/key", (int)course, (int)key, (int)a, (int)p, (int)r, (int)y);
+}
+
+void OSCCommunication::sendBreath(unsigned val) {
+    sender.send("/EigenharpCore/breath", (int)val);
+}
+
+void OSCCommunication::sendStrip(unsigned strip, unsigned val) {
+    sender.send("/EigenharpCore/strip", (int)strip, (int)val);
+}
+
+void OSCCommunication::sendPedal(unsigned pedal, unsigned val) {
+    sender.send("/EigenharpCore/pedal", (int)pedal, (int)val);
+}
+
+void OSCCommunication::timerCallback() {
+    sender.send("/EigenharpCore/ping");
 }

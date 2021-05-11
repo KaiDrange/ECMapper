@@ -27,7 +27,7 @@ private:
 
 };
 
-static EigenharpCore *coreInstance;
+static EigenharpCore *coreInstance = nullptr;
 static volatile int keepRunning = 1;
 
 START_JUCE_APPLICATION (EigenharpCore)

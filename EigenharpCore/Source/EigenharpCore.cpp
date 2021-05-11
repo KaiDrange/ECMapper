@@ -1,6 +1,7 @@
 #include "EigenharpCore.h"
 
 EigenharpCore::EigenharpCore() : eigenApi("./") {
+    jassert(coreInstance == nullptr);
     coreInstance = this;
 }
 

@@ -4,7 +4,7 @@
 #include <iostream>
 
 
-class OSCCommunication : private juce::OSCReceiver::Listener<juce::OSCReceiver::MessageLoopCallback> {
+class OSCCommunication : private juce::OSCReceiver::Listener<juce::OSCReceiver::MessageLoopCallback>, juce::Timer {
 public:
     OSCCommunication();
     ~OSCCommunication();
@@ -13,8 +13,11 @@ public:
     bool connectReceiver(int port);
     void disconnectReceiver();
     
-    void sendKeyMessage(const char* dev, unsigned long long t, unsigned course, unsigned key, bool a, unsigned p, int r, int y);
-
+    void sendKey(unsigned course, unsigned key, bool a, unsigned p, int r, int y);
+    void sendDeviceName(const juce::String &name);
+    void sendBreath(unsigned val);
+    void sendStrip(unsigned strip, unsigned val);
+    void sendPedal(unsigned pedal, unsigned val);
 private:
     juce::OSCSender sender;
     juce::String senderIP;
@@ -24,5 +27,6 @@ private:
     juce::String receiverIP;
     int receiverPort = -1;
     
-    void oscMessageReceived(const juce::OSCMessage& message);
+    void oscMessageReceived(const juce::OSCMessage& message) override;
+    void timerCallback() override;
 };
