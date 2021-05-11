@@ -37,8 +37,9 @@ void OSCCommunication::disconnectReceiver() {
 }
 
 void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
-    if (message.getAddressPattern() == "/EigenharpMapper/LED" && message.size() == 3) {
-        std::cout << "message received: " << message[0].getString() << " " << message[1].getString() << " " << message[2].getString();
+    if (message.getAddressPattern() == "/EigenharpMapper/led" && message.size() == 3) {
+        std::cout << "message received: " << message[0].getInt32() << " " << message[1].getInt32() << " " << message[2].getInt32();
+        sendkeyLEDEventMessage(message[0].getInt32(), message[1].getInt32(), message[2].getInt32());
     }
 }
 
@@ -64,4 +65,17 @@ void OSCCommunication::sendPedal(unsigned pedal, unsigned val) {
 
 void OSCCommunication::timerCallback() {
     sender.send("/EigenharpCore/ping");
+}
+
+void OSCCommunication::addListener(Listener* listenerToAdd) {
+    listeners.add(listenerToAdd);
+}
+
+void OSCCommunication::removeListener(Listener* listenerToRemove) {
+    jassert(listeners.contains(listenerToRemove));
+    listeners.remove(listenerToRemove);
+}
+
+void OSCCommunication::sendkeyLEDEventMessage(int course, int key, int colour) {
+    listeners.call([this, course, key, colour](Listener& l) { l.keyLEDChanged(this, course, key, colour); });
 }

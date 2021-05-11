@@ -10,6 +10,7 @@
 
 #include <JuceHeader.h>
 #include "UI/MainComponent.h"
+#include "Data/OSCCommunication.h"
 
 //==============================================================================
 /**
@@ -55,6 +56,9 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
 
 private:
-    //==============================================================================
+    OSCCommunication osc;
+    const int senderPort = 7000;
+    const int receiverPort = 7001;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (EigenharpMapperAudioProcessor)
 };

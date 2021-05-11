@@ -47,6 +47,10 @@
       <GROUP id="{F44D70E0-70D2-134A-9C7E-2A351C2CC9E3}" name="Data">
         <FILE id="r4bh2b" name="FileUtil.cpp" compile="1" resource="0" file="Source/Data/FileUtil.cpp"/>
         <FILE id="xuCVfs" name="FileUtil.h" compile="0" resource="0" file="Source/Data/FileUtil.h"/>
+        <FILE id="oxg6Rl" name="OSCCommunication.cpp" compile="1" resource="0"
+              file="Source/Data/OSCCommunication.cpp"/>
+        <FILE id="PQbhVl" name="OSCCommunication.h" compile="0" resource="0"
+              file="Source/Data/OSCCommunication.h"/>
       </GROUP>
       <GROUP id="{1F899284-5C01-F5F1-6C8F-EEA46D8DDFB9}" name="Models">
         <FILE id="f1zAxw" name="EigenharpMapping.cpp" compile="1" resource="0"

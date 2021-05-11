@@ -5,6 +5,14 @@ OSCCommunication::OSCCommunication() {
     receiver.registerFormatErrorHandler([this](const char *data, int dataSize) {
         std::cout << "invalid OSC data";
     });
+    
+    startTimer(1000);
+}
+
+OSCCommunication::~OSCCommunication() {
+    stopTimer();
+    sender.disconnect();
+    receiver.disconnect();
 }
 
 bool OSCCommunication::connectSender(juce::String ip, int port)  {
@@ -28,13 +36,16 @@ void OSCCommunication::disconnectReceiver() {
     receiverPort = -1;
 }
 
-void OSCCommunication::sendKeyMessage(const char* dev, unsigned long long t, unsigned course, unsigned key, bool a, unsigned p, int r, int y) {
-         sender.send("/EigenharpCore/keytest", (int)key);
+void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
+    std::cout << "Message received";
 }
 
-void OSCCommunication::oscMessageReceived (const juce::OSCMessage& message) {
-    std::cout << "message received";
+void OSCCommunication::sendLED(int course, int key, int led) {
+    sender.send("/EigenharpMapper/led", course, key, led);
 }
 
 
-
+void OSCCommunication::timerCallback() {
+    sender.send("/EigenharpMapper/ping");
+    sendLED(0, 4, 2);
+}

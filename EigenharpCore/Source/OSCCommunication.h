@@ -18,6 +18,15 @@ public:
     void sendBreath(unsigned val);
     void sendStrip(unsigned strip, unsigned val);
     void sendPedal(unsigned pedal, unsigned val);
+    
+    class Listener {
+    public:
+        virtual ~Listener() = default;
+        virtual void keyLEDChanged(OSCCommunication*, int course, int key, int colour) = 0;
+    };
+    void addListener(Listener *listenerToAdd);
+    void removeListener(Listener *listenerToRemove);
+    
 private:
     juce::OSCSender sender;
     juce::String senderIP;
@@ -29,4 +38,7 @@ private:
     
     void oscMessageReceived(const juce::OSCMessage& message) override;
     void timerCallback() override;
+    
+    juce::ListenerList<Listener> listeners;
+    void sendkeyLEDEventMessage(int course, int key, int colour);
 };

@@ -7,6 +7,7 @@ EigenharpCore::EigenharpCore() : eigenApi("./") {
 
 void EigenharpCore::initialise(const juce::String &) {
     signal(SIGINT, EigenharpCore::intHandler);
+    osc.addListener(this);
     osc.connectSender("127.0.0.1", senderPort);
     osc.connectReceiver(receiverPort);
 
@@ -55,4 +56,9 @@ void EigenharpCore::makeThreadRealtime(std::thread& thread) {
     pthread_setschedparam(thread.native_handle(), SCHED_FIFO, &param);
 
 }
+
+void EigenharpCore::keyLEDChanged(OSCCommunication*, int course, int key, int colour) {
+    eigenApi.setLED("14400000", course, key, colour);
+}
+
 
