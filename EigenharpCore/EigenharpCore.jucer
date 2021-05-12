@@ -21,6 +21,10 @@
             file="Source/OSCCommunication.cpp"/>
       <FILE id="eMY1gO" name="OSCCommunication.h" compile="0" resource="0"
             file="Source/OSCCommunication.h"/>
+      <FILE id="EhIeOq" name="OSCMessageQueue.cpp" compile="1" resource="0"
+            file="Source/OSCMessageQueue.cpp"/>
+      <FILE id="zkXL9Y" name="OSCMessageQueue.h" compile="0" resource="0"
+            file="Source/OSCMessageQueue.h"/>
     </GROUP>
   </MAINGROUP>
   <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1"/>

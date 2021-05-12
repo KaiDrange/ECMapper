@@ -5,8 +5,9 @@
 #include <thread>
 #include "APICallback.h"
 #include "OSCCommunication.h"
+#include "OSCMessageQueue.h"
 
-class EigenharpCore : public juce::JUCEApplication, private OSCCommunication::Listener {
+class EigenharpCore : public juce::JUCEApplication {
 public:
     EigenharpCore();
     const juce::String getApplicationName() override { return "EigenharpCore"; }
@@ -19,17 +20,20 @@ private:
     OSCCommunication osc;
     std::thread eigenApiProcessThread;
     static void intHandler(int dummy);
-    static void* process(void* arg);
+    static void* eigenharpProcess(OSC::OSCMessageFifo *msgQeue, void* arg);
     void makeThreadRealtime(std::thread& thread);
     
     const int senderPort = 7001;
     const int receiverPort = 7000;
     
-    void keyLEDChanged(OSCCommunication*, int course, int key, int colour) override;
     APICallback *apiCallback;
+    OSC::OSCMessageFifo oscSendQueue;
+    OSC::OSCMessageFifo oscReceiveQueue;
+    OSC::Message msg;
 };
 
 static EigenharpCore *coreInstance = nullptr;
 static volatile int keepRunning = 1;
+
 
 START_JUCE_APPLICATION (EigenharpCore)

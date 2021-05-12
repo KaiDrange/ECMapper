@@ -1,11 +1,11 @@
 #include "APICallback.h"
 
-APICallback::APICallback(EigenApi::Eigenharp& eh, OSCCommunication *osc) : eh_(eh) {
-    this->osc = osc;
+APICallback::APICallback(EigenApi::Eigenharp& eh, OSC::OSCMessageFifo *sendQueue) : eh_(eh) {
+    this->sendQueue = sendQueue;
 }
 
 void APICallback::device(const char* dev, DeviceType dt, int rows, int cols, int ribbons, int pedals) {
-    this->dev = dev;
+    deviceId = dev;
     switch(cols) {
         case 2:
             modelName = "Pico";
@@ -25,9 +25,18 @@ void APICallback::device(const char* dev, DeviceType dt, int rows, int cols, int
 }
 
 void APICallback::key(const char* dev, unsigned long long t, unsigned course, unsigned key, bool a, unsigned p, int r, int y) {
-    std::cout  << "key " << dev << " @ " << t << " - " << course << ":" << key << ' ' << a << ' ' << p << ' ' << r << ' ' << y << std::endl;
+//    std::cout  << "key " << dev << " @ " << t << " - " << course << ":" << key << ' ' << a << ' ' << p << ' ' << r << ' ' << y << std::endl;
     
-    osc->sendKey(course, key, a, p, r, y);
+    OSC::Message msg {
+        .type = OSC::MessageType::Key,
+        .key = key,
+        .course = course,
+        .active = a,
+        .pressure = p,
+        .roll = r,
+        .yaw = y
+    };
+    sendQueue->add(&msg);
 //    bool led = course > 0;
 //    if (led_ != led) {
 //        led_ = led;

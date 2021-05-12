@@ -6,7 +6,7 @@ OSCCommunication::OSCCommunication() {
         std::cout << "invalid OSC data";
     });
     
-    startTimer(1000);
+    startTimer(pingInterval);
 }
 
 OSCCommunication::~OSCCommunication() {

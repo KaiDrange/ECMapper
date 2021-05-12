@@ -8,9 +8,12 @@
 #include <thread>
 #include "OSCCommunication.h"
 
+static const char *deviceId = nullptr;
+
+
 class APICallback: public EigenApi::Callback {
 public:
-    APICallback(EigenApi::Eigenharp& eh, OSCCommunication *osc);
+    APICallback(EigenApi::Eigenharp& eh, OSC::OSCMessageFifo *sendQueue);
     virtual void device(const char* dev, DeviceType dt, int rows, int cols, int ribbons, int pedals);
     virtual void key(const char* dev, unsigned long long t, unsigned course, unsigned key, bool a, unsigned p, int r, int y);
     virtual void breath(const char* dev, unsigned long long t, unsigned val);
@@ -19,7 +22,6 @@ public:
     
     EigenApi::Eigenharp& eh_;
     juce::String modelName = "";
-    const char *dev;
 private:
-    OSCCommunication *osc;
+    OSC::OSCMessageFifo *sendQueue;
 };

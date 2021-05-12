@@ -2,11 +2,12 @@
 
 #include <JuceHeader.h>
 #include <iostream>
+#include "OSCMessageQueue.h"
 
 
 class OSCCommunication : private juce::OSCReceiver::Listener<juce::OSCReceiver::MessageLoopCallback>, juce::Timer {
 public:
-    OSCCommunication();
+    OSCCommunication(OSC::OSCMessageFifo *sendQueue, OSC::OSCMessageFifo *receiveQueue);
     ~OSCCommunication();
     bool connectSender(juce::String ip, int port);
     void disconnectSender();
@@ -18,14 +19,6 @@ public:
     void sendBreath(unsigned val);
     void sendStrip(unsigned strip, unsigned val);
     void sendPedal(unsigned pedal, unsigned val);
-    
-    class Listener {
-    public:
-        virtual ~Listener() = default;
-        virtual void keyLEDChanged(OSCCommunication*, int course, int key, int colour) = 0;
-    };
-    void addListener(Listener *listenerToAdd);
-    void removeListener(Listener *listenerToRemove);
     
 private:
     juce::OSCSender sender;
@@ -39,7 +32,10 @@ private:
     void oscMessageReceived(const juce::OSCMessage& message) override;
     void timerCallback() override;
     
-    juce::ListenerList<Listener> listeners;
-    void sendkeyLEDEventMessage(int course, int key, int colour);
     int pingCounter = -1;
+    int pingInterval = 100;
+    
+    OSC::OSCMessageFifo *sendQueue;
+    OSC::OSCMessageFifo *receiveQueue;
+    OSC::Message msg;
 };

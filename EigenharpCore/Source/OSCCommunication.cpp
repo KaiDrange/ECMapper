@@ -1,12 +1,14 @@
 #include "OSCCommunication.h"
 
-OSCCommunication::OSCCommunication() {
+OSCCommunication::OSCCommunication(OSC::OSCMessageFifo *sendQueue, OSC::OSCMessageFifo *receiveQueue) {
+    this->sendQueue = sendQueue;
+    this->receiveQueue = receiveQueue;
     receiver.addListener(this);
     receiver.registerFormatErrorHandler([this](const char *data, int dataSize) {
         std::cout << "invalid OSC data";
     });
     
-    startTimer(1000);
+    startTimer(pingInterval);
 }
 
 OSCCommunication::~OSCCommunication() {
@@ -38,7 +40,20 @@ void OSCCommunication::disconnectReceiver() {
 
 void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
     if (message.getAddressPattern() == "/EigenharpMapper/led" && message.size() == 3) {
-        sendkeyLEDEventMessage(message[0].getInt32(), message[1].getInt32(), message[2].getInt32());
+        msg = {
+            .type = OSC::MessageType::LED,
+            .course = (unsigned int)message[0].getInt32(),
+            .key = (unsigned int)message[1].getInt32(),
+            .colour = message[2].getInt32(),
+            .active = 0,
+            .pressure = 0,
+            .roll = 0,
+            .yaw = 0,
+            .strip = 0,
+            .pedal = 0
+        };
+
+        receiveQueue->add(&msg);
     }
     else if (message.getAddressPattern() == "/EigenharpMapper/ping") {
         if (pingCounter == -1)
@@ -54,7 +69,7 @@ void OSCCommunication::sendDeviceName(const juce::String &name) {
 
 void OSCCommunication::sendKey(unsigned course, unsigned key, bool a, unsigned p, int r, int y) {
     if (pingCounter > -1)
-     sender.send("/EigenharpCore/key", (int)course, (int)key, (int)a, (int)p, (int)r, (int)y);
+        sender.send("/EigenharpCore/key", (int)course, (int)key, (int)a, (int)p, (int)r, (int)y);
 }
 
 void OSCCommunication::sendBreath(unsigned val) {
@@ -81,17 +96,16 @@ void OSCCommunication::timerCallback() {
         std::cout << "Connection to Mapper timed out" << std::endl;
         pingCounter = -1;
     }
-}
+    
+    while (sendQueue->getMessageCount() > 0) {
+        sendQueue->read(&msg);
+        switch (msg.type) {
+            case OSC::MessageType::Key:
+                sendKey(msg.course, msg.key, msg.active, msg.pressure, msg.roll, msg.yaw);
+                break;
+            default:
+                break;
+        }
+    }
 
-void OSCCommunication::addListener(Listener* listenerToAdd) {
-    listeners.add(listenerToAdd);
-}
-
-void OSCCommunication::removeListener(Listener* listenerToRemove) {
-    jassert(listeners.contains(listenerToRemove));
-    listeners.remove(listenerToRemove);
-}
-
-void OSCCommunication::sendkeyLEDEventMessage(int course, int key, int colour) {
-    listeners.call([this, course, key, colour](Listener& l) { l.keyLEDChanged(this, course, key, colour); });
 }
