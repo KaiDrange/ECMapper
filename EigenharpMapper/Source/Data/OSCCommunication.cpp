@@ -1,9 +1,11 @@
 #include "OSCCommunication.h"
 
-OSCCommunication::OSCCommunication() {
+OSCCommunication::OSCCommunication(OSC::OSCMessageFifo *sendQueue, OSC::OSCMessageFifo *receiveQueue) {
     receiver.addListener(this);
+    this->sendQueue = sendQueue;
+    this->receiveQueue = receiveQueue;
     receiver.registerFormatErrorHandler([this](const char *data, int dataSize) {
-        std::cout << "invalid OSC data";
+        std::cout << "invalid OSC data" << std::endl;
     });
     
     startTimer(pingInterval);
@@ -41,6 +43,9 @@ void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
         if (pingCounter == -1)
             std::cout << "Core connected" << std::endl;
         pingCounter = 0;
+    }
+    else if (message.getAddressPattern() == "/EigenharpCore/key") {
+        
     }
 }
 

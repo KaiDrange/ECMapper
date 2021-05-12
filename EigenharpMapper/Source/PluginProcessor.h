@@ -59,6 +59,8 @@ private:
     OSCCommunication osc;
     const int senderPort = 7000;
     const int receiverPort = 7001;
+    OSC::OSCMessageFifo oscSendQueue;
+    OSC::OSCMessageFifo oscReceiveQueue;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (EigenharpMapperAudioProcessor)
 };

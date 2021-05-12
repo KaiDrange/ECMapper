@@ -7,6 +7,8 @@
 #include "OSCCommunication.h"
 #include "OSCMessageQueue.h"
 
+#define PROCESS_MICROSEC_SLEEP 10
+
 class EigenharpCore : public juce::JUCEApplication {
 public:
     EigenharpCore();
@@ -20,8 +22,8 @@ private:
     OSCCommunication osc;
     std::thread eigenApiProcessThread;
     static void intHandler(int dummy);
-    static void* eigenharpProcess(OSC::OSCMessageFifo *msgQeue, void* arg);
-    void makeThreadRealtime(std::thread& thread);
+    static void* eigenharpProcess(OSC::OSCMessageFifo *msgQueue, void* arg);
+//    void makeThreadRealtime(std::thread& thread);
     
     const int senderPort = 7001;
     const int receiverPort = 7000;
@@ -29,7 +31,6 @@ private:
     APICallback *apiCallback;
     OSC::OSCMessageFifo oscSendQueue;
     OSC::OSCMessageFifo oscReceiveQueue;
-    OSC::Message msg;
 };
 
 static EigenharpCore *coreInstance = nullptr;

@@ -2,11 +2,11 @@
 
 #include <JuceHeader.h>
 #include <iostream>
-
+#include "OSCMessageQueue.h"
 
 class OSCCommunication : private juce::OSCReceiver::Listener<juce::OSCReceiver::MessageLoopCallback>, juce::Timer {
 public:
-    OSCCommunication();
+    OSCCommunication(OSC::OSCMessageFifo *sendQueue, OSC::OSCMessageFifo *receiveQueue);
     ~OSCCommunication();
     bool connectSender(juce::String ip, int port);
     void disconnectSender();
@@ -27,5 +27,9 @@ private:
     void timerCallback() override;
     int pingCounter = -1;
     const int pingInterval = 100;
+
+    OSC::OSCMessageFifo *sendQueue;
+    OSC::OSCMessageFifo *receiveQueue;
+    OSC::Message msg;
 };
 static bool testBlink = false;

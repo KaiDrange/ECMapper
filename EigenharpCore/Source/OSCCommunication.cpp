@@ -1,6 +1,7 @@
 #include "OSCCommunication.h"
 
 OSCCommunication::OSCCommunication(OSC::OSCMessageFifo *sendQueue, OSC::OSCMessageFifo *receiveQueue) {
+
     this->sendQueue = sendQueue;
     this->receiveQueue = receiveQueue;
     receiver.addListener(this);
@@ -9,9 +10,13 @@ OSCCommunication::OSCCommunication(OSC::OSCMessageFifo *sendQueue, OSC::OSCMessa
     });
     
     startTimer(pingInterval);
+    
+    sendProcessThread = std::thread(&OSCCommunication::sendProcess, this);
 }
 
 OSCCommunication::~OSCCommunication() {
+    sendProcessThread.join();
+    
     stopTimer();
     sender.disconnect();
     receiver.disconnect();
@@ -96,16 +101,22 @@ void OSCCommunication::timerCallback() {
         std::cout << "Connection to Mapper timed out" << std::endl;
         pingCounter = -1;
     }
-    
-    while (sendQueue->getMessageCount() > 0) {
-        sendQueue->read(&msg);
-        switch (msg.type) {
-            case OSC::MessageType::Key:
-                sendKey(msg.course, msg.key, msg.active, msg.pressure, msg.roll, msg.yaw);
-                break;
-            default:
-                break;
-        }
-    }
+}
 
+void* OSCCommunication::sendProcess() {
+    while (1) {
+        static OSC::Message msg;
+        while (sendQueue->getMessageCount() > 0) {
+            sendQueue->read(&msg);
+            switch (msg.type) {
+                case OSC::MessageType::Key:
+                    sendKey(msg.course, msg.key, msg.active, msg.pressure, msg.roll, msg.yaw);
+                    break;
+                default:
+                    break;
+            }
+        }
+        std::this_thread::sleep_for(std::chrono::microseconds(MSGPROCESS_MICROSEC_SLEEP));
+    }
+    return nullptr;
 }

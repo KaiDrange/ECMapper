@@ -2,7 +2,7 @@
 
 <JUCERPROJECT id="XnDJr5" name="EigenharpCore" projectType="consoleapp" useAppConfig="0"
               addUsingNamespaceToJuceHeader="0" displaySplashScreen="1" jucerFormatVersion="1"
-              headerPath="../../EigenLite">
+              headerPath="../../EigenLite" companyName="Tic Tic" companyWebsite="ticticelectro.com">
   <MAINGROUP id="dvyoE3" name="EigenharpCore">
     <GROUP id="{1C19C29A-4545-EE67-D771-08FEDC080667}" name="EigenLite">
       <FILE id="Yf4A7d" name="eigenapi.h" compile="0" resource="0" file="EigenLite/eigenapi.h"/>

@@ -51,6 +51,10 @@
               file="Source/Data/OSCCommunication.cpp"/>
         <FILE id="PQbhVl" name="OSCCommunication.h" compile="0" resource="0"
               file="Source/Data/OSCCommunication.h"/>
+        <FILE id="BgZaBB" name="OSCMessageQueue.cpp" compile="1" resource="0"
+              file="Source/Data/OSCMessageQueue.cpp"/>
+        <FILE id="aFXFP9" name="OSCMessageQueue.h" compile="0" resource="0"
+              file="Source/Data/OSCMessageQueue.h"/>
       </GROUP>
       <GROUP id="{1F899284-5C01-F5F1-6C8F-EEA46D8DDFB9}" name="Models">
         <FILE id="f1zAxw" name="EigenharpMapping.cpp" compile="1" resource="0"

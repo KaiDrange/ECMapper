@@ -40,28 +40,28 @@ void EigenharpCore::intHandler(int dummy) {
     coreInstance->systemRequestedQuit();
 }
 
-void* EigenharpCore::eigenharpProcess(OSC::OSCMessageFifo *msgQeue, void* arg) {
+void* EigenharpCore::eigenharpProcess(OSC::OSCMessageFifo *msgQueue, void* arg) {
     EigenApi::Eigenharp *pE = static_cast<EigenApi::Eigenharp*>(arg);
     while(keepRunning) {
         pE->process();
-        OSC::Message msg;
-        while (msgQeue->getMessageCount() > 0) {
-            msgQeue->read(&msg);
+        static OSC::Message msg;
+        while (msgQueue->getMessageCount() > 0) {
+            msgQueue->read(&msg);
             if (msg.type == OSC::MessageType::LED)
                 pE->setLED(deviceId, msg.course, msg.key, msg.colour);
         }
-        std::this_thread::sleep_for(std::chrono::microseconds(1));
+        std::this_thread::sleep_for(std::chrono::microseconds(PROCESS_MICROSEC_SLEEP));
     }
     return nullptr;
 }
 
-void EigenharpCore::makeThreadRealtime(std::thread& thread) {
-
-    int policy;
-    struct sched_param param;
-
-    pthread_getschedparam(thread.native_handle(), &policy, &param);
-    param.sched_priority = 95;
-    pthread_setschedparam(thread.native_handle(), SCHED_FIFO, &param);
-
-}
+//void EigenharpCore::makeThreadRealtime(std::thread& thread) {
+//
+//    int policy;
+//    struct sched_param param;
+//
+//    pthread_getschedparam(thread.native_handle(), &policy, &param);
+//    param.sched_priority = 95;
+//    pthread_setschedparam(thread.native_handle(), SCHED_FIFO, &param);
+//
+//}
