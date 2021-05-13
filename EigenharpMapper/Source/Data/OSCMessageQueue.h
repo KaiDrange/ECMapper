@@ -24,6 +24,7 @@ struct Message {
     int yaw = 0;
     unsigned int strip = 0;
     unsigned int pedal = 0;
+    unsigned int breath = 0;
     int colour = 0;
 };
 

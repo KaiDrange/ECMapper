@@ -52,7 +52,7 @@ void* EigenharpCore::eigenharpProcess(OSC::OSCMessageFifo *msgQueue, void* arg) 
         if (msgQueue->getMessageCount() > 0) {
             msgQueue->read(&msg);
             if (msg.type == OSC::MessageType::LED)
-                pE->setLED(deviceId, msg.course, msg.key, msg.colour);
+                pE->setLED(deviceId, msg.course, msg.key, msg.value);
         }
         
 #ifdef MEASURE_EIGENAPIPROCESSTIME

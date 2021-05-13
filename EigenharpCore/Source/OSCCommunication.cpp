@@ -49,7 +49,7 @@ void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
             .type = OSC::MessageType::LED,
             .course = (unsigned int)message[0].getInt32(),
             .key = (unsigned int)message[1].getInt32(),
-            .colour = message[2].getInt32(),
+            .value = (unsigned int)message[2].getInt32(),
             .active = 0,
             .pressure = 0,
             .roll = 0,
@@ -115,6 +115,15 @@ void* OSCCommunication::sendProcess() {
             switch (msg.type) {
                 case OSC::MessageType::Key:
                     sendKey(msg.course, msg.key, msg.active, msg.pressure, msg.roll, msg.yaw);
+                    break;
+                case OSC::MessageType::Breath:
+                    sendBreath(msg.value);
+                    break;
+                case OSC::MessageType::Strip:
+                    sendStrip(msg.strip, msg.value);
+                    break;
+                case OSC::MessageType::Pedal:
+                    sendStrip(msg.pedal, msg.value);
                     break;
                 default:
                     break;

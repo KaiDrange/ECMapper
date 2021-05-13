@@ -5,7 +5,7 @@ using namespace OSC;
 void OSCMessageFifo::add(const Message *message) {
     if (getMessageCount() >= queueSize-1) {
         std::cout << "OSCMessage buffer overflow!" << std::endl;
-        return;
+        fifo.reset();
     }
         
     int start1, size1, start2, size2;
