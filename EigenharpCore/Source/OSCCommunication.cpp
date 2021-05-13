@@ -104,7 +104,11 @@ void OSCCommunication::timerCallback() {
 }
 
 void* OSCCommunication::sendProcess() {
-    while (1) {
+    while (!exitThreads) {
+#ifdef MEASURE_OSCSENDPROCESSTIME
+        static int counter = 0;
+        auto begin = std::chrono::high_resolution_clock::now();
+#endif
         static OSC::Message msg;
         while (sendQueue->getMessageCount() > 0) {
             sendQueue->read(&msg);
@@ -116,6 +120,14 @@ void* OSCCommunication::sendProcess() {
                     break;
             }
         }
+#ifdef MEASURE_OSCSENDPROCESSTIME
+        auto end = std::chrono::high_resolution_clock::now();
+        if (counter%1000 == 0) {
+            auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin);
+            std::cout << "OSC sendProcess time: " << elapsed.count() << std::endl;
+        }
+#endif
+
         std::this_thread::sleep_for(std::chrono::microseconds(MSGPROCESS_MICROSEC_SLEEP));
     }
     return nullptr;

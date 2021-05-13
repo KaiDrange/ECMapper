@@ -5,7 +5,10 @@
 #include <thread>
 #include "OSCMessageQueue.h"
 
-#define MSGPROCESS_MICROSEC_SLEEP 10
+#define MSGPROCESS_MICROSEC_SLEEP 100
+//#define MEASURE_OSCSENDPROCESSTIME
+
+extern volatile std::atomic<bool> exitThreads;
 
 class OSCCommunication : private juce::OSCReceiver::Listener<juce::OSCReceiver::MessageLoopCallback>, juce::Timer {
 public:

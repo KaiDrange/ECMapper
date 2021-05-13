@@ -7,7 +7,9 @@
 #include "OSCCommunication.h"
 #include "OSCMessageQueue.h"
 
-#define PROCESS_MICROSEC_SLEEP 10
+#define PROCESS_MICROSEC_SLEEP 100
+//#define MEASURE_EIGENAPIPROCESSTIME
+#define EIGENAPI_POLLTIME 100
 
 class EigenharpCore : public juce::JUCEApplication {
 public:
@@ -34,7 +36,7 @@ private:
 };
 
 static EigenharpCore *coreInstance = nullptr;
-static volatile int keepRunning = 1;
+volatile std::atomic<bool> exitThreads;
 
 
 START_JUCE_APPLICATION (EigenharpCore)

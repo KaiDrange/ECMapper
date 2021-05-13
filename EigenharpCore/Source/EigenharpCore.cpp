@@ -6,11 +6,12 @@ EigenharpCore::EigenharpCore() : eigenApi("./"), osc(&oscSendQueue, &oscReceiveQ
 }
 
 void EigenharpCore::initialise(const juce::String &) {
+    exitThreads = false;
     signal(SIGINT, EigenharpCore::intHandler);
     osc.connectSender("127.0.0.1", senderPort);
     osc.connectReceiver(receiverPort);
 
-    eigenApi.setPollTime(100);
+    eigenApi.setPollTime(EIGENAPI_POLLTIME);
     apiCallback = new APICallback(eigenApi, &oscSendQueue);
     eigenApi.addCallback(apiCallback);
     if(!eigenApi.start()) {
@@ -22,11 +23,8 @@ void EigenharpCore::initialise(const juce::String &) {
 
 void EigenharpCore::shutdown() {
     std::cout << "Trying to quit gracefully..." << std::endl;
-    if(keepRunning==0) {
-        sleep(1);
-        exit(-1);
-    }
-    keepRunning = 0;
+    exitThreads = true;
+    sleep(1);
     eigenApiProcessThread.join();
     eigenApi.stop();
     osc.disconnectReceiver();
@@ -42,14 +40,29 @@ void EigenharpCore::intHandler(int dummy) {
 
 void* EigenharpCore::eigenharpProcess(OSC::OSCMessageFifo *msgQueue, void* arg) {
     EigenApi::Eigenharp *pE = static_cast<EigenApi::Eigenharp*>(arg);
-    while(keepRunning) {
+    while(!exitThreads) {
+
+#ifdef MEASURE_EIGENAPIPROCESSTIME
+        static int counter = 0;
+        auto begin = std::chrono::high_resolution_clock::now();
+#endif
+
         pE->process();
         static OSC::Message msg;
-        while (msgQueue->getMessageCount() > 0) {
+        if (msgQueue->getMessageCount() > 0) {
             msgQueue->read(&msg);
             if (msg.type == OSC::MessageType::LED)
                 pE->setLED(deviceId, msg.course, msg.key, msg.colour);
         }
+        
+#ifdef MEASURE_EIGENAPIPROCESSTIME
+        auto end = std::chrono::high_resolution_clock::now();
+        if (counter%1000 == 0) {
+            auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin);
+            std::cout << "EigenharpProcess time: " << elapsed.count() << std::endl;
+        }
+#endif
+        
         std::this_thread::sleep_for(std::chrono::microseconds(PROCESS_MICROSEC_SLEEP));
     }
     return nullptr;
