@@ -1,5 +1,7 @@
 # EigenharpMapper
 
-A scalable UI for mapping the keys on the Eigenharps. Might end up as a standalone application and vst/au plugin that listens to Eigenharp key presses as OSC data via localhost and converts that to midi. Another option might be to use EigenLite (https://github.com/TheTechnobear/EigenLite) as part of this project. For now it will just be a UI that doesn't really do much.
+ A pair of applications for Eigenharps. "Core" is a console app that uses the EigenLite API (https://github.com/TheTechnobear/EigenLite) to communicate with the hardware and then sends that data via OSC.
+ 
+The other application, "Mapper" is a standalone/vst/au that receives the Eigenharp OSC from Core and converts it to midi. How physical keys should map to midi is configured per key in the UI.
 
 Made with Juce 6 and Projucer.
