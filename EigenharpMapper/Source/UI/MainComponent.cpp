@@ -10,9 +10,9 @@ MainComponent::MainComponent() : tabs(juce::TabbedButtonBar::TabsAtTop), uiSetti
     tabs.addTab("Pico", bgColour, tabPages[2], false);
     addAndMakeVisible(tabs);
     
-    uiSettings.addChild(tabPages[0]->getEigenharpMapping()->getValueTree(), 0, nullptr);
-    uiSettings.addChild(tabPages[1]->getEigenharpMapping()->getValueTree(), 1, nullptr);
-    uiSettings.addChild(tabPages[2]->getEigenharpMapping()->getValueTree(), 2, nullptr);
+    uiSettings.addChild(tabPages[0]->getLayout()->getValueTree(), 0, nullptr);
+    uiSettings.addChild(tabPages[1]->getLayout()->getValueTree(), 1, nullptr);
+    uiSettings.addChild(tabPages[2]->getLayout()->getValueTree(), 2, nullptr);
 
     resized();
 }

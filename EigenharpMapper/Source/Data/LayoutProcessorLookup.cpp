@@ -4,6 +4,14 @@ LayoutProcessorLookup::LayoutProcessorLookup(OSC::OSCMessageFifo *oscSendQueue) 
     this->oscSendQueue = oscSendQueue;
 }
 
+void LayoutProcessorLookup::setUISettingsPointer(juce::ValueTree *uiSettings) {
+    this->uiSettings = uiSettings;
+}
+
+void LayoutProcessorLookup::updateLookup() {
+}
+
+
 void LayoutProcessorLookup::valueTreePropertyChanged(juce::ValueTree &vTree, const juce::Identifier &property) {
     if (vTree.getType().toString() == "key") {
         auto key = MappedKey(vTree);
@@ -22,6 +30,8 @@ void LayoutProcessorLookup::valueTreePropertyChanged(juce::ValueTree &vTree, con
         };
         oscSendQueue->add(&msg);
     }
+    updateLookup();
+    
 }
 
 void LayoutProcessorLookup::valueTreeChildAdded(juce::ValueTree &parentTree, juce::ValueTree &childTree) {}

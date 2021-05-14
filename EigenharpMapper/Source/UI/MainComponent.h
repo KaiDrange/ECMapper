@@ -1,7 +1,7 @@
 #pragma once
 #include <JuceHeader.h>
 #include "../Models/Enums.h"
-#include "../Models/EigenharpMapping.h"
+#include "../Models/Layout.h"
 #include "KeymapPanelComponent.h"
 #include "TabPage.h"
 

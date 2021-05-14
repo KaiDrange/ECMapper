@@ -3,7 +3,7 @@
 #include <JuceHeader.h>
 #include "KeymapPanelComponent.h"
 #include "ZonePanelComponent.h"
-#include "../Models/EigenharpMapping.h"
+#include "../Models/Layout.h"
 #include "../Models/Enums.h"
 #include "../Data/FileUtil.h"
 
@@ -14,7 +14,7 @@ public:
 
     void paint (juce::Graphics&) override;
     void resized() override;
-    EigenharpMapping* getEigenharpMapping();
+    Layout* getLayout();
     juce::String text;
 
 private:
@@ -23,7 +23,7 @@ private:
     ZonePanelComponent *zonePanels[3];
     juce::TextEditor oscIPInput;
 
-    EigenharpMapping *keymap;
+    Layout *keymap;
     juce::MidiKeyboardState keyboardState;
     juce::MidiKeyboardComponent keyboard;
     juce::TextButton saveMappingButton;

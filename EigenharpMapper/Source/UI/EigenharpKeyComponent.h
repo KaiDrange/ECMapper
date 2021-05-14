@@ -2,7 +2,7 @@
 
 #include <JuceHeader.h>
 #include "../Models/Enums.h"
-#include "../Models/EigenharpMapping.h"
+#include "../Models/Layout.h"
 #include "Utility.h"
 #include "../Models/MappedKey.h"
 

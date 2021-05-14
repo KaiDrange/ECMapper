@@ -2,7 +2,7 @@
 
 #include <JuceHeader.h>
 #include "PanelComponent.h"
-#include "../Models/EigenharpMapping.h"
+#include "../Models/Layout.h"
 #include "EigenharpKeyComponent.h"
 #include "MidiMessageSectionComponent.h"
 #include "Utility.h"
@@ -12,7 +12,7 @@ class KeymapPanelComponent  : public PanelComponent,
                               public juce::KeyListener,
                               public MidiMessageSectionComponent::Listener {
 public:
-    KeymapPanelComponent(EigenharpMapping *eigenharpMapping, float widthFactor, float heightFactor);
+    KeymapPanelComponent(Layout *layout, float widthFactor, float heightFactor);
     ~KeymapPanelComponent() override;
     void handleNoteOn(juce::MidiKeyboardState*, int midiChannel, int midiNoteNumber, float velocity) override;
     void handleNoteOff(juce::MidiKeyboardState*, int midiChannel, int midiNoteNumber, float velocity) override;
@@ -30,7 +30,7 @@ private:
     MidiMessageSectionComponent midiMessageSectionComponent;
     void valuesChanged(MidiMessageSectionComponent*) override;
 
-    EigenharpMapping *eigenharpMapping;
+    Layout *layout;
 
     juce::DrawablePath* createBtnImage(juce::Colour colour);
     void enableDisableMenuButtons(bool enable);

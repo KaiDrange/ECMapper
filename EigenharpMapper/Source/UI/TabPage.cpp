@@ -1,7 +1,7 @@
 #include "TabPage.h"
 
 TabPage::TabPage(InstrumentType model) : keyboard(keyboardState, juce::MidiKeyboardComponent::Orientation::verticalKeyboardFacingRight) {
-    keymap = new EigenharpMapping(model);
+    keymap = new Layout(model);
     keymapPanel = new KeymapPanelComponent(keymap, 0.4, 1);
     addAndMakeVisible(keymapPanel);
     for (int i = 0; i < 3; i++) {
@@ -61,7 +61,7 @@ void TabPage::resized() {
     }
 }
 
-EigenharpMapping* TabPage::getEigenharpMapping() {
+Layout* TabPage::getLayout() {
     return keymap;
 }
 
