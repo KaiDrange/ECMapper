@@ -1,7 +1,7 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
-EigenharpMapperAudioProcessor::EigenharpMapperAudioProcessor() : AudioProcessor (BusesProperties()), osc(&oscSendQueue, &oscReceiveQueue) {
+EigenharpMapperAudioProcessor::EigenharpMapperAudioProcessor() : AudioProcessor (BusesProperties()), lpLookup(&oscSendQueue), osc(&oscSendQueue, &oscReceiveQueue) {
     osc.connectSender("127.0.0.1", senderPort);
     osc.connectReceiver(receiverPort);
 }

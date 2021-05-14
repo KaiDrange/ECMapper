@@ -31,5 +31,7 @@ private:
     OSC::OSCMessageFifo *sendQueue;
     OSC::OSCMessageFifo *receiveQueue;
     OSC::Message msg;
+    
+    void sendOutgoingMessages();
 };
 static bool testBlink = false;

@@ -20,8 +20,8 @@ const static juce::Colour zoneColours[5] = {
 const static juce::Colour keyColours[4] {
     juce::Colour(0x00000000),
     juce::Colour(0xFF00FF00),
-    juce::Colour(0xFFFFFF00),
-    juce::Colour(0xFFFF0000)
+    juce::Colour(0xFFFF0000),
+    juce::Colour(0xFFFFFF00)
 };
 
 

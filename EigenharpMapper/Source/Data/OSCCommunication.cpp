@@ -63,6 +63,20 @@ void OSCCommunication::timerCallback() {
         std::cout << "Connection to Core timed out" << std::endl;
         pingCounter = -1;
     }
-    testBlink = !testBlink;
-    sendLED(0, 4, testBlink);
+    
+    sendOutgoingMessages();
+}
+
+void OSCCommunication::sendOutgoingMessages() {
+    static OSC::Message msg;
+    while (sendQueue->getMessageCount() > 0) {
+        sendQueue->read(&msg);
+        switch (msg.type) {
+            case OSC::MessageType::LED:
+                sendLED(msg.course, msg.key, msg.value);
+                break;
+            default:
+                break;
+        }
+    }
 }

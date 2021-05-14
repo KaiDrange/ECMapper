@@ -28,8 +28,8 @@ KeymapPanelComponent::KeymapPanelComponent(EigenharpMapping *eigenharpMapping, f
         juce::PopupMenu menu;
         menu.addItem("None", [&] { selectedKey->setKeyColour(KeyColour::Off); repaint();});
         menu.addItem("Green", [&] { selectedKey->setKeyColour(KeyColour::Green); repaint();});
-        menu.addItem("Yellow", [&] { selectedKey->setKeyColour(KeyColour::Yellow); repaint();});
         menu.addItem("Red", [&] { selectedKey->setKeyColour(KeyColour::Red); repaint();});
+        menu.addItem("Yellow", [&] { selectedKey->setKeyColour(KeyColour::Yellow); repaint();});
         menu.showMenuAsync (juce::PopupMenu::Options{}.withTargetComponent(colourMenuButton));
     };
 

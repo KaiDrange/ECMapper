@@ -12,7 +12,7 @@ MappedKey::MappedKey(EigenharpKeyType keyType, juce::ValueTree &rootValueTree): 
 }
 
 MappedKey::MappedKey(juce::ValueTree &keyTree) {
-    setValueTree(keyTree);
+    valueTree = keyTree;
 }
 
 juce::ValueTree MappedKey::getValueTree() const {
