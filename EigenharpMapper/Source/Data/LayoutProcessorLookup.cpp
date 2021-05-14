@@ -4,13 +4,26 @@ LayoutProcessorLookup::LayoutProcessorLookup(OSC::OSCMessageFifo *oscSendQueue) 
     this->oscSendQueue = oscSendQueue;
 }
 
-void LayoutProcessorLookup::setUISettingsPointer(juce::ValueTree *uiSettings) {
-    this->uiSettings = uiSettings;
+void LayoutProcessorLookup::setActiveLayout(Layout *layout) {
+    this->layout = layout;
+    updateLookup();
 }
 
 void LayoutProcessorLookup::updateLookup() {
+    KeyConfig *keyConfigs = layout->getKeyConfigs();
+    for (int i = 0; i < layout->getNormalkeyCount(); i++) {
+        Key key;
+        key.mapType = keyConfigs[i].getMappingType();
+        key.zone = keyConfigs[i].getZone();
+        key.note = key.mapType == KeyMappingType::Note ? keyConfigs[i].getMappingValue().getIntValue() : 0;
+        lookup[0][i] = key;
+    }
+        
+    if (layout->getInstrumentType() == InstrumentType::Pico) {
+        //TODO: rest of courses
+    }
+    
 }
-
 
 void LayoutProcessorLookup::valueTreePropertyChanged(juce::ValueTree &vTree, const juce::Identifier &property) {
     if (vTree.getType().toString() == "key") {

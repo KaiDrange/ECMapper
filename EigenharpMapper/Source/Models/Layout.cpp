@@ -123,3 +123,7 @@ InstrumentType Layout::getInstrumentType() const {
 KeyConfig* Layout::getKeyConfigs() {
     return keyConfigs.data();
 }
+
+void Layout::addListener(juce::ValueTree::Listener *listener) {
+    valueTree.addListener(listener);
+}

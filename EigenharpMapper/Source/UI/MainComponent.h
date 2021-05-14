@@ -13,7 +13,7 @@ public:
     void paint (juce::Graphics&) override;
     void resized() override;
     
-    juce::ValueTree* getValueTree();
+    Layout* getActiveLayout();
 
 private:
     juce::TabbedComponent tabs;

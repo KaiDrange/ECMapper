@@ -14,7 +14,7 @@ public:
     ~EigenharpMapperAudioProcessorEditor() override;
 
     void resized() override;
-    juce::ValueTree* getUISettings();
+    Layout* getActiveLayout();
 
 private:
     // This reference is provided as a quick way for your editor to

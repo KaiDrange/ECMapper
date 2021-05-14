@@ -4,12 +4,13 @@
 #include "OSCCommunication.h"
 #include "OSCMessageQueue.h"
 #include "../Models/Enums.h"
+#include "../Models/Layout.h"
 
 class LayoutProcessorLookup : public juce::ValueTree::Listener {
 public:
     LayoutProcessorLookup(OSC::OSCMessageFifo *oscSendQueue);
     
-    void setUISettingsPointer(juce::ValueTree *uiSettings);
+    void setActiveLayout(Layout *layout);
 private:
     void valueTreePropertyChanged(juce::ValueTree &vTree, const juce::Identifier &property);
     void valueTreeChildAdded(juce::ValueTree &parentTree, juce::ValueTree &childTree);
@@ -20,7 +21,7 @@ private:
     
     void updateLookup();
     OSC::OSCMessageFifo *oscSendQueue;
-    juce::ValueTree *uiSettings;
+    Layout *layout;
     
     enum KeyStatus {
         Off = 0,

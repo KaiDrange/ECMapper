@@ -27,6 +27,6 @@ void EigenharpMapperAudioProcessorEditor::resized() {
     mainComponent.setBounds(getLocalBounds());
 }
 
-juce::ValueTree* EigenharpMapperAudioProcessorEditor::getUISettings() {
-    return mainComponent.getValueTree();
+Layout* EigenharpMapperAudioProcessorEditor::getActiveLayout() {
+    return mainComponent.getActiveLayout();
 }

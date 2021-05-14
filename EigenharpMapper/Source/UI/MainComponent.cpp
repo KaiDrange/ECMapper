@@ -8,6 +8,7 @@ MainComponent::MainComponent() : tabs(juce::TabbedButtonBar::TabsAtTop), uiSetti
     tabs.addTab("Alpha", bgColour, tabPages[0], false);
     tabs.addTab("Tau", bgColour, tabPages[1], false);
     tabs.addTab("Pico", bgColour, tabPages[2], false);
+    tabs.setCurrentTabIndex(2);
     addAndMakeVisible(tabs);
     
     uiSettings.addChild(tabPages[0]->getLayout()->getValueTree(), 0, nullptr);
@@ -31,7 +32,7 @@ void MainComponent::resized() {
     tabs.setBounds(area);
 }
 
-juce::ValueTree* MainComponent::getValueTree() {
-    return &uiSettings;
+Layout* MainComponent::getActiveLayout() {
+    return tabPages[tabs.getCurrentTabIndex()]->getLayout();
 }
 

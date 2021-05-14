@@ -26,6 +26,8 @@ public:
     InstrumentType getInstrumentType() const;
     KeyConfig* getKeyConfigs();
     
+    void addListener(juce::ValueTree::Listener *listener);
+    
 private:
     juce::ValueTree valueTree;
     juce::Identifier id_keyMapping = "keyMapping";
