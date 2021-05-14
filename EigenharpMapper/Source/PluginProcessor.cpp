@@ -104,6 +104,7 @@ bool EigenharpMapperAudioProcessor::hasEditor() const {
 juce::AudioProcessorEditor* EigenharpMapperAudioProcessor::createEditor() {
     auto editor = new EigenharpMapperAudioProcessorEditor(*this);
     auto uiSettings = editor->getUISettings();
+    lpLookup.setUISettingsPointer(uiSettings);
     uiSettings->addListener(&lpLookup);
     return editor;
 }
