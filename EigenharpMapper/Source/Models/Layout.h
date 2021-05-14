@@ -1,7 +1,7 @@
 #pragma once
 #include <JuceHeader.h>
 #include "Enums.h"
-#include "MappedKey.h"
+#include "KeyConfig.h"
 
 
 #define MAX_ROWS 5
@@ -11,7 +11,7 @@ public:
     Layout(InstrumentType instrumentType);
     ~Layout();
 
-    void addMappedKey(EigenharpKeyType keyType, int course, int key);
+    void addKeyConfig(EigenharpKeyType keyType, int course, int key);
     juce::ValueTree getValueTree() const;
     void setValueTree(juce::ValueTree valueTree);
     int getNormalkeyCount() const;
@@ -24,7 +24,7 @@ public:
     int getPercKeyStartIndex() const;
     int getButtonStartIndex() const;
     InstrumentType getInstrumentType() const;
-    MappedKey* getMappedKeys();
+    KeyConfig* getKeyConfigs();
     
 private:
     juce::ValueTree valueTree;
@@ -37,6 +37,6 @@ private:
     int stripCount;
     int keyRowCount;
     int keyRowLengths[MAX_ROWS];
-    std::vector<MappedKey> mappedKeys;
+    std::vector<KeyConfig> keyConfigs;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (Layout)
 };

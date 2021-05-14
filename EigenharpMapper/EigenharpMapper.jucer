@@ -64,8 +64,8 @@
         <FILE id="f1zAxw" name="Layout.cpp" compile="1" resource="0" file="Source/Models/Layout.cpp"/>
         <FILE id="GO64U8" name="Layout.h" compile="0" resource="0" file="Source/Models/Layout.h"/>
         <FILE id="Rw9BUS" name="Enums.h" compile="0" resource="0" file="Source/Models/Enums.h"/>
-        <FILE id="BUvX2Q" name="MappedKey.cpp" compile="1" resource="0" file="Source/Models/MappedKey.cpp"/>
-        <FILE id="ECTwYB" name="MappedKey.h" compile="0" resource="0" file="Source/Models/MappedKey.h"/>
+        <FILE id="BUvX2Q" name="KeyConfig.cpp" compile="1" resource="0" file="Source/Models/KeyConfig.cpp"/>
+        <FILE id="ECTwYB" name="KeyConfig.h" compile="0" resource="0" file="Source/Models/KeyConfig.h"/>
       </GROUP>
       <FILE id="asCXop" name="PluginProcessor.cpp" compile="1" resource="0"
             file="Source/PluginProcessor.cpp"/>

@@ -1,9 +1,9 @@
 #include "EigenharpKeyComponent.h"
 
-EigenharpKeyComponent::EigenharpKeyComponent(const EigenharpKeyType keyType, const MappedKey *mappedKey)
+EigenharpKeyComponent::EigenharpKeyComponent(const EigenharpKeyType keyType, const KeyConfig *keyConfig)
     : juce::DrawableButton("btn", juce::DrawableButton::ImageStretched) {
     this->keyType = keyType;
-    this->mappedKey = mappedKey;
+    this->keyConfig = keyConfig;
     setClickingTogglesState(true);
 }
 
@@ -16,19 +16,19 @@ void EigenharpKeyComponent::paint(juce::Graphics& g) {
 
     g.setColour (juce::Colours::white);
     g.setFont (10.0f);
-    juce::String keyText = mappedKey->getMappingValue();
-    if (mappedKey->getMappingType() == KeyMappingType::Note) {
+    juce::String keyText = keyConfig->getMappingValue();
+    if (keyConfig->getMappingType() == KeyMappingType::Note) {
         keyText = juce::MidiMessage::getMidiNoteName(keyText.getIntValue(), true, true, 3);
     }
         
     g.drawFittedText(keyText, getLocalBounds(),
                 juce::Justification::centred, true);
 
-    g.setColour(juce::Colour(Utility::keyColourEnumToColour(mappedKey->getKeyColour())));
+    g.setColour(juce::Colour(Utility::keyColourEnumToColour(keyConfig->getKeyColour())));
     auto lightPosition = area.getX() + area.getWidth()/2.0f;
     g.drawEllipse(lightPosition-2, 3, 3, 3, 3);
 
-    g.setColour(Utility::zoneEnumToColour(mappedKey->getZone()));
+    g.setColour(Utility::zoneEnumToColour(keyConfig->getZone()));
     if (keyType == EigenharpKeyType::Normal) {
         g.drawRoundedRectangle(area.getX()+1, area.getY()+1, area.getWidth()-2, area.getHeight()-2, 5, 2);
     }
@@ -40,6 +40,6 @@ void EigenharpKeyComponent::paint(juce::Graphics& g) {
     }
 }
 
-MappedKey::KeyId EigenharpKeyComponent::getKeyId() const {
-    return mappedKey->getKeyId();
+KeyConfig::KeyId EigenharpKeyComponent::getKeyId() const {
+    return keyConfig->getKeyId();
 }

@@ -14,7 +14,7 @@ void LayoutProcessorLookup::updateLookup() {
 
 void LayoutProcessorLookup::valueTreePropertyChanged(juce::ValueTree &vTree, const juce::Identifier &property) {
     if (vTree.getType().toString() == "key") {
-        auto key = MappedKey(vTree);
+        auto key = KeyConfig(vTree);
         auto keyId = key.getKeyId();
         OSC::Message msg {
             .type = OSC::MessageType::LED,

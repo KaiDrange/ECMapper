@@ -168,13 +168,13 @@ void KeymapPanelComponent::deselectAllOtherKeys(const EigenharpKeyComponent *key
 
 void KeymapPanelComponent::createKeys() {
     for (int i = 0; i < layout->getTotalKeyCount(); i++) {
-        keys[i] = new EigenharpKeyComponent(layout->getMappedKeys()[i].getKeyType(), &layout->getMappedKeys()[i]);
+        keys[i] = new EigenharpKeyComponent(layout->getKeyConfigs()[i].getKeyType(), &layout->getKeyConfigs()[i]);
         addAndMakeVisible(keys[i]);
         keys[i]->setImages(keyImgNormal, keyImgOver, keyImgDown, nullptr, keyImgOn);
         keys[i]->onClick = [this, i] {
             auto selected = keys[i]->getToggleState();
             deselectAllOtherKeys(keys[i]);
-            selectedKey = selected ? &this->layout->getMappedKeys()[i] : nullptr;
+            selectedKey = selected ? &this->layout->getKeyConfigs()[i] : nullptr;
             enableDisableMenuButtons(selected);
             showHidePanels();
         };

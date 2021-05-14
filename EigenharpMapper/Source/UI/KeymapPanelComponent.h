@@ -21,7 +21,7 @@ public:
     void resized() override;
 
 private:
-    MappedKey *selectedKey = nullptr;
+    KeyConfig *selectedKey = nullptr;
     EigenharpKeyComponent *keys[120+12+8];
     juce::DrawablePath *keyImgNormal, *keyImgOver, *keyImgDown, *keyImgOn;
     juce::TextButton colourMenuButton;
