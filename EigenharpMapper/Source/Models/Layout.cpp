@@ -45,28 +45,28 @@ Layout::Layout(InstrumentType instrumentType): valueTree("layout") {
 
     valueTree.setProperty(id_instrumentType, instrumentType, nullptr);
     for (int i = 0; i < normalKeyCount; i++)
-        addMappedKey(EigenharpKeyType::Normal, 0, i);
+        addKeyConfig(EigenharpKeyType::Normal, 0, i);
 
     if (instrumentType == InstrumentType::Pico) {
         for (int i = 0; i < buttonCount; i++)
-            addMappedKey(EigenharpKeyType::Button, 1, i);
+            addKeyConfig(EigenharpKeyType::Button, 1, i);
     }
     else {
         for (int i = 0; i < percKeyCount; i++)
-            addMappedKey(EigenharpKeyType::Perc, 1, i);
+            addKeyConfig(EigenharpKeyType::Perc, 1, i);
         for (int i = 0; i < buttonCount; i++)
-            addMappedKey(EigenharpKeyType::Button, 2, i);
+            addKeyConfig(EigenharpKeyType::Button, 2, i);
     }
 }
 
 Layout::~Layout() {
 }
 
-void Layout::addMappedKey(EigenharpKeyType keyType, int course, int key) {
-    auto keyMap = MappedKey(keyType, valueTree);
-    MappedKey::KeyId id = { .course = course, .keyNo = key };
+void Layout::addKeyConfig(EigenharpKeyType keyType, int course, int key) {
+    auto keyMap = KeyConfig(keyType, valueTree);
+    KeyConfig::KeyId id = { .course = course, .keyNo = key };
     keyMap.setKeyId(id);
-    mappedKeys.push_back(keyMap);
+    keyConfigs.push_back(keyMap);
 }
 
 juce::ValueTree Layout::getValueTree() const {
@@ -76,7 +76,7 @@ juce::ValueTree Layout::getValueTree() const {
 void Layout::setValueTree(juce::ValueTree valueTree) {
     this->valueTree.copyPropertiesFrom(valueTree, nullptr);
     for (int i = 0; i < valueTree.getNumChildren(); i++) {
-        mappedKeys[i].setValueTree(valueTree.getChild(i));
+        keyConfigs[i].setValueTree(valueTree.getChild(i));
     }
 }
 
@@ -120,6 +120,6 @@ InstrumentType Layout::getInstrumentType() const {
     return (InstrumentType)valueTree[id_instrumentType].toString().getIntValue();
 }
 
-MappedKey* Layout::getMappedKeys() {
-    return mappedKeys.data();
+KeyConfig* Layout::getKeyConfigs() {
+    return keyConfigs.data();
 }
