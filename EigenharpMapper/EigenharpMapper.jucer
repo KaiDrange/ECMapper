@@ -47,6 +47,10 @@
       <GROUP id="{F44D70E0-70D2-134A-9C7E-2A351C2CC9E3}" name="Data">
         <FILE id="r4bh2b" name="FileUtil.cpp" compile="1" resource="0" file="Source/Data/FileUtil.cpp"/>
         <FILE id="xuCVfs" name="FileUtil.h" compile="0" resource="0" file="Source/Data/FileUtil.h"/>
+        <FILE id="hCQ4E4" name="LayoutProcessorLookup.cpp" compile="1" resource="0"
+              file="Source/Data/LayoutProcessorLookup.cpp"/>
+        <FILE id="x3Kc4K" name="LayoutProcessorLookup.h" compile="0" resource="0"
+              file="Source/Data/LayoutProcessorLookup.h"/>
         <FILE id="oxg6Rl" name="OSCCommunication.cpp" compile="1" resource="0"
               file="Source/Data/OSCCommunication.cpp"/>
         <FILE id="PQbhVl" name="OSCCommunication.h" compile="0" resource="0"

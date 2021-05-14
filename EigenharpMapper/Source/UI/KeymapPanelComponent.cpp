@@ -157,8 +157,9 @@ void KeymapPanelComponent::showHidePanels() {
 }
 
 void KeymapPanelComponent::deselectAllOtherKeys(const EigenharpKeyComponent *key) {
+    auto keyId = key->getKeyId();
     for (int i = 0; i < eigenharpMapping->getTotalKeyCount(); i++) {
-        if (keys[i]->getKeyId() != key->getKeyId()) {
+        if (!keys[i]->getKeyId().equals(keyId)) {
             keys[i]->setToggleState(false, juce::NotificationType::dontSendNotification);
             keys[i]->setState(juce::Button::buttonNormal);
         }
@@ -199,8 +200,9 @@ bool KeymapPanelComponent::keyPressed(const juce::KeyPress &key, juce::Component
     return true;
     
     auto oldKeyIndex = -1;
+    auto keyId = selectedKey->getKeyId();
     for (int i = 0; i < eigenharpMapping->getTotalKeyCount(); i++) {
-        if (selectedKey->getKeyId() == keys[i]->getKeyId()) {
+        if (keys[i]->getKeyId().equals(keyId)) {
             oldKeyIndex = i;
             break;
         }

@@ -5,9 +5,16 @@
 class MappedKey {
 public:
     MappedKey(EigenharpKeyType keyType, juce::ValueTree &rootValueTree);
+    MappedKey(juce::ValueTree &keyTree);
     
-    juce::String getKeyId() const;
-    void setKeyId(juce::String keyId);
+    struct KeyId {
+        int course = 0;
+        int keyNo = 0;
+        bool equals(KeyId &id) { return course == id.course && keyNo == id.keyNo; }
+    };
+    
+    KeyId getKeyId() const;
+    void setKeyId(KeyId keyId);
     EigenharpKeyType getKeyType() const;
     void setKeyType(EigenharpKeyType keyType);
     KeyColour getKeyColour() const;
@@ -22,11 +29,13 @@ public:
     void setValueTree(juce::ValueTree valueTree);
 
 private:
-    juce::Identifier id_keyId = "keyId";
+    juce::Identifier id_keyNo = "keyNo";
+    juce::Identifier id_course = "course";
     juce::Identifier id_keyType = "keyType";
     juce::Identifier id_keyColour = "keyColour";
     juce::Identifier id_keyMappingType = "keyMappingType";
     juce::Identifier id_mappingValue = "mappingValue";
     juce::Identifier id_zone = "zone";
     juce::ValueTree valueTree;
+    
 };

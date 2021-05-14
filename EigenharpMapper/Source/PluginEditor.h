@@ -13,9 +13,8 @@ public:
     EigenharpMapperAudioProcessorEditor (EigenharpMapperAudioProcessor&);
     ~EigenharpMapperAudioProcessorEditor() override;
 
-    //==============================================================================
-//    void paint (juce::Graphics&) override;
     void resized() override;
+    juce::ValueTree* getUISettings();
 
 private:
     // This reference is provided as a quick way for your editor to

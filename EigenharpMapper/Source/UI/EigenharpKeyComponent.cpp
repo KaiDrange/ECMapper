@@ -40,6 +40,6 @@ void EigenharpKeyComponent::paint(juce::Graphics& g) {
     }
 }
 
-juce::String EigenharpKeyComponent::getKeyId() const {
+MappedKey::KeyId EigenharpKeyComponent::getKeyId() const {
     return mappedKey->getKeyId();
 }

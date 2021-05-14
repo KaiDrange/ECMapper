@@ -1,20 +1,11 @@
-/*
-  ==============================================================================
-
-    This file contains the basic framework code for a JUCE plugin processor.
-
-  ==============================================================================
-*/
-
 #pragma once
 
 #include <JuceHeader.h>
 #include "UI/MainComponent.h"
 #include "Data/OSCCommunication.h"
+#include "Data/LayoutProcessorLookup.h"
+#include "Models/Enums.h"
 
-//==============================================================================
-/**
-*/
 class EigenharpMapperAudioProcessor  : public juce::AudioProcessor
 {
 public:
@@ -55,6 +46,7 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
+    LayoutProcessorLookup lpLookup;
 private:
     OSCCommunication osc;
     const int senderPort = 7000;

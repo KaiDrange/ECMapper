@@ -12,10 +12,13 @@ public:
 
     void paint (juce::Graphics&) override;
     void resized() override;
+    
+    juce::ValueTree* getValueTree();
 
 private:
     juce::TabbedComponent tabs;
     TabPage *tabPages[3];
-    
+    juce::ValueTree uiSettings;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainComponent)
 };

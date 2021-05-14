@@ -4,6 +4,7 @@
 #include "../Models/Enums.h"
 #include "../Models/EigenharpMapping.h"
 #include "Utility.h"
+#include "../Models/MappedKey.h"
 
 class EigenharpKeyComponent  : public juce::DrawableButton {
 public:
@@ -11,7 +12,7 @@ public:
     ~EigenharpKeyComponent() override;
 
     void paint (juce::Graphics&) override;
-    juce::String getKeyId() const;
+    MappedKey::KeyId getKeyId() const;
 
 private:
     EigenharpKeyType keyType;

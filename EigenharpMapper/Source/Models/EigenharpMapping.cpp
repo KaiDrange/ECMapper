@@ -45,21 +45,28 @@ EigenharpMapping::EigenharpMapping(InstrumentType instrumentType): valueTree("la
 
     valueTree.setProperty(id_instrumentType, instrumentType, nullptr);
     for (int i = 0; i < normalKeyCount; i++)
-        addMappedKey(EigenharpKeyType::Normal);
-    for (int i = getPercKeyStartIndex(); i < getButtonStartIndex(); i++)
-        addMappedKey(EigenharpKeyType::Perc);
-    for (int i = getButtonStartIndex(); i < getTotalKeyCount(); i++)
-        addMappedKey(EigenharpKeyType::Button);
+        addMappedKey(EigenharpKeyType::Normal, 0, i);
 
+    if (instrumentType == InstrumentType::Pico) {
+        for (int i = 0; i < buttonCount; i++)
+            addMappedKey(EigenharpKeyType::Button, 1, i);
+    }
+    else {
+        for (int i = 0; i < percKeyCount; i++)
+            addMappedKey(EigenharpKeyType::Perc, 1, i);
+        for (int i = 0; i < buttonCount; i++)
+            addMappedKey(EigenharpKeyType::Button, 2, i);
+    }
 }
 
 EigenharpMapping::~EigenharpMapping() {
 }
 
-void EigenharpMapping::addMappedKey(EigenharpKeyType keyType) {
-    auto key = MappedKey(keyType, valueTree);
-    mappedKeys.push_back(key);
-    key.setKeyId(juce::String(mappedKeys.size()));
+void EigenharpMapping::addMappedKey(EigenharpKeyType keyType, int course, int key) {
+    auto keyMap = MappedKey(keyType, valueTree);
+    MappedKey::KeyId id = { .course = course, .keyNo = key };
+    keyMap.setKeyId(id);
+    mappedKeys.push_back(keyMap);
 }
 
 juce::ValueTree EigenharpMapping::getValueTree() const {
@@ -67,7 +74,7 @@ juce::ValueTree EigenharpMapping::getValueTree() const {
 }
 
 void EigenharpMapping::setValueTree(juce::ValueTree valueTree) {
-    this->valueTree = valueTree;
+    this->valueTree.copyPropertiesFrom(valueTree, nullptr);
     for (int i = 0; i < valueTree.getNumChildren(); i++) {
         mappedKeys[i].setValueTree(valueTree.getChild(i));
     }

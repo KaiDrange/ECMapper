@@ -61,3 +61,8 @@ void TabPage::resized() {
     }
 }
 
+EigenharpMapping* TabPage::getEigenharpMapping() {
+    return keymap;
+}
+
+

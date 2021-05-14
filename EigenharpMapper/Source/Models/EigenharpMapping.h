@@ -11,7 +11,7 @@ public:
     EigenharpMapping(InstrumentType instrumentType);
     ~EigenharpMapping();
 
-    void addMappedKey(EigenharpKeyType keyType);
+    void addMappedKey(EigenharpKeyType keyType, int course, int key);
     juce::ValueTree getValueTree() const;
     void setValueTree(juce::ValueTree valueTree);
     int getNormalkeyCount() const;

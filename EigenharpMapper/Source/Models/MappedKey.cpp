@@ -11,12 +11,16 @@ MappedKey::MappedKey(EigenharpKeyType keyType, juce::ValueTree &rootValueTree): 
     rootValueTree.addChild(valueTree, -1, nullptr);
 }
 
+MappedKey::MappedKey(juce::ValueTree &keyTree) {
+    setValueTree(keyTree);
+}
+
 juce::ValueTree MappedKey::getValueTree() const {
     return valueTree;
 }
 
 void MappedKey::setValueTree(juce::ValueTree valueTree) {
-    this->valueTree = valueTree;
+    this->valueTree.copyPropertiesFrom(valueTree, nullptr);
 }
 
 EigenharpKeyType MappedKey::getKeyType() const {
@@ -62,12 +66,16 @@ void MappedKey::setMappingValue(juce::String mappingValue) {
     valueTree.setProperty(id_mappingValue, mappingValue, nullptr);
 }
 
-juce::String MappedKey::getKeyId() const {
-    return valueTree[id_keyId].toString();
+MappedKey::KeyId MappedKey::getKeyId() const {
+    return KeyId {
+        .keyNo = valueTree.getProperty(id_keyNo),
+        .course = valueTree.getProperty(id_course)
+    };
 }
 
-void MappedKey::setKeyId(juce::String keyId) {
-    valueTree.setProperty(id_keyId, keyId, nullptr);
+void MappedKey::setKeyId(KeyId keyId) {
+    valueTree.setProperty(id_keyNo, keyId.keyNo, nullptr);
+    valueTree.setProperty(id_course, keyId.course, nullptr);
 }
 
 

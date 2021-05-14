@@ -14,6 +14,7 @@ public:
 
     void paint (juce::Graphics&) override;
     void resized() override;
+    EigenharpMapping* getEigenharpMapping();
     juce::String text;
 
 private:
