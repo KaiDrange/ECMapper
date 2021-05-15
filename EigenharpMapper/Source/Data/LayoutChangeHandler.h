@@ -10,7 +10,7 @@
 class LayoutChangeHandler : public juce::ValueTree::Listener {
 public:
     LayoutChangeHandler(OSC::OSCMessageFifo *oscSendQueue);
-    void setActiveLayout(Layout *layout);
+    void setKeyConfigLookup(KeyConfigLookup *keyConfigLookup);
 
 private:
     void valueTreePropertyChanged(juce::ValueTree &vTree, const juce::Identifier &property);
@@ -21,6 +21,5 @@ private:
     void valueTreeRedirected(juce::ValueTree &vTree);
     
     OSC::OSCMessageFifo *oscSendQueue;
-//    Layout *layout;
-    KeyConfigLookup keyConfigLookup;
+    KeyConfigLookup *keyConfigLookup;
 };

@@ -4,8 +4,8 @@ LayoutChangeHandler::LayoutChangeHandler(OSC::OSCMessageFifo *oscSendQueue) {
     this->oscSendQueue = oscSendQueue;
 }
 
-void LayoutChangeHandler::setActiveLayout(Layout *layout) {
-    keyConfigLookup.setActiveLayout(layout);
+void LayoutChangeHandler::setKeyConfigLookup(KeyConfigLookup *keyConfigLookup) {
+    this->keyConfigLookup = keyConfigLookup;
 }
 
 void LayoutChangeHandler::valueTreePropertyChanged(juce::ValueTree &vTree, const juce::Identifier &property) {
@@ -26,8 +26,7 @@ void LayoutChangeHandler::valueTreePropertyChanged(juce::ValueTree &vTree, const
         };
         oscSendQueue->add(&msg);
     }
-    keyConfigLookup.updateAll();
-
+    keyConfigLookup->updateAll();
 }
 
 void LayoutChangeHandler::valueTreeChildAdded(juce::ValueTree &parentTree, juce::ValueTree &childTree) {}

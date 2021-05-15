@@ -54,6 +54,9 @@
               file="Source/Data/LayoutChangeHandler.cpp"/>
         <FILE id="x3Kc4K" name="LayoutChangeHandler.h" compile="0" resource="0"
               file="Source/Data/LayoutChangeHandler.h"/>
+        <FILE id="ilGGMF" name="MidiGenerator.cpp" compile="1" resource="0"
+              file="Source/Data/MidiGenerator.cpp"/>
+        <FILE id="l6QPzR" name="MidiGenerator.h" compile="0" resource="0" file="Source/Data/MidiGenerator.h"/>
         <FILE id="oxg6Rl" name="OSCCommunication.cpp" compile="1" resource="0"
               file="Source/Data/OSCCommunication.cpp"/>
         <FILE id="PQbhVl" name="OSCCommunication.h" compile="0" resource="0"

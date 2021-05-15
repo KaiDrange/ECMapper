@@ -5,6 +5,7 @@
 #include "Data/OSCCommunication.h"
 #include "Data/LayoutChangeHandler.h"
 #include "Models/Enums.h"
+#include "Data/MidiGenerator.h"
 
 class EigenharpMapperAudioProcessor  : public juce::AudioProcessor
 {
@@ -53,6 +54,7 @@ private:
     const int receiverPort = 7001;
     OSC::OSCMessageFifo oscSendQueue;
     OSC::OSCMessageFifo oscReceiveQueue;
+    MidiGenerator midiGenerator;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (EigenharpMapperAudioProcessor)
 };

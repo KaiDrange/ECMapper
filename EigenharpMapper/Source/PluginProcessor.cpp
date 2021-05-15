@@ -99,6 +99,7 @@ void EigenharpMapperAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
     static OSC::Message msg;
     while (osc.receiveQueue->getMessageCount() > 0) {
         osc.receiveQueue->read(&msg);
+        midiGenerator.processOSCMessage(msg, midiMessages);
     }
 }
 
@@ -109,7 +110,8 @@ bool EigenharpMapperAudioProcessor::hasEditor() const {
 juce::AudioProcessorEditor* EigenharpMapperAudioProcessor::createEditor() {
     auto editor = new EigenharpMapperAudioProcessorEditor(*this);
     auto layout = editor->getActiveLayout();
-    layoutChangeHandler.setActiveLayout(layout);
+    midiGenerator.keyConfigLookup.setActiveLayout(layout);
+    layoutChangeHandler.setKeyConfigLookup(&midiGenerator.keyConfigLookup);
     layout->addListener(&layoutChangeHandler);
     return editor;
 }

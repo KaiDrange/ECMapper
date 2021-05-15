@@ -11,7 +11,7 @@ void KeyConfigLookup::updateAll() {
         Key key;
         key.mapType = keyConfigs[i].getMappingType();
         key.note = key.mapType == KeyMappingType::Note ? keyConfigs[i].getMappingValue().getIntValue() : 0;
-        lookup[0][i] = key;
+        keys[0][i] = key;
     }
         
     if (layout->getInstrumentType() == InstrumentType::Pico) {
