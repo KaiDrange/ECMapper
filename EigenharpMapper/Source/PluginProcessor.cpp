@@ -1,7 +1,7 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
-EigenharpMapperAudioProcessor::EigenharpMapperAudioProcessor() : AudioProcessor (BusesProperties()), lpLookup(&oscSendQueue), osc(&oscSendQueue, &oscReceiveQueue) {
+EigenharpMapperAudioProcessor::EigenharpMapperAudioProcessor() : AudioProcessor (BusesProperties()), layoutChangeHandler(&oscSendQueue), osc(&oscSendQueue, &oscReceiveQueue) {
     osc.connectSender("127.0.0.1", senderPort);
     osc.connectReceiver(receiverPort);
 }
@@ -94,7 +94,6 @@ void EigenharpMapperAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
     
 //    auto midiMsg = juce::MidiMessage::controllerEvent(1, 3, 99);
 //    midiMessages.addEvent(midiMsg, 0);
-    
 }
 
 bool EigenharpMapperAudioProcessor::hasEditor() const {
@@ -104,8 +103,8 @@ bool EigenharpMapperAudioProcessor::hasEditor() const {
 juce::AudioProcessorEditor* EigenharpMapperAudioProcessor::createEditor() {
     auto editor = new EigenharpMapperAudioProcessorEditor(*this);
     auto layout = editor->getActiveLayout();
-    lpLookup.setActiveLayout(layout);
-    layout->addListener(&lpLookup);
+    layoutChangeHandler.setActiveLayout(layout);
+    layout->addListener(&layoutChangeHandler);
     return editor;
 }
 
