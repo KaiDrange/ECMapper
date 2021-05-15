@@ -44,8 +44,69 @@ void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
             std::cout << "Core connected" << std::endl;
         pingCounter = 0;
     }
-    else if (message.getAddressPattern() == "/EigenharpCore/key") {
-        
+    else if (message.getAddressPattern() == "/EigenharpCore/key" && message.size() == 6) {
+        msg = {
+            .type = OSC::MessageType::Key,
+            .course = (unsigned int)message[0].getInt32(),
+            .key = (unsigned int)message[1].getInt32(),
+            .active = message[2].getInt32(),
+            .pressure = (unsigned int)message[3].getInt32(),
+            .roll = message[4].getInt32(),
+            .yaw = message[5].getInt32(),
+            .strip = 0,
+            .pedal = 0,
+            .value = 0
+        };
+
+        receiveQueue->add(&msg);
+    }
+    else if (message.getAddressPattern() == "/EigenharpCore/breath" && message.size() == 1) {
+        msg = {
+            .type = OSC::MessageType::Breath,
+            .course = 0,
+            .key = 0,
+            .active = 0,
+            .pressure = 0,
+            .roll = 0,
+            .yaw = 0,
+            .strip = 0,
+            .pedal = 0,
+            .value = (unsigned int)message[0].getInt32()
+        };
+
+        receiveQueue->add(&msg);
+    }
+    else if (message.getAddressPattern() == "/EigenharpCore/strip" && message.size() == 2) {
+        msg = {
+            .type = OSC::MessageType::Strip,
+            .course = 0,
+            .key = 0,
+            .active = 0,
+            .pressure = 0,
+            .roll = 0,
+            .yaw = 0,
+            .strip = (unsigned int)message[0].getInt32(),
+            .pedal = 0,
+            .value = (unsigned int)message[0].getInt32()
+        };
+
+        receiveQueue->add(&msg);
+    }
+    else if (message.getAddressPattern() == "/EigenharpCore/pedal" && message.size() == 2) {
+        msg = {
+            .type = OSC::MessageType::Strip,
+            .course = 0,
+            .key = 0,
+            .active = 0,
+            .pressure = 0,
+            .roll = 0,
+            .yaw = 0,
+            .strip = 0,
+            .pedal = (unsigned int)message[0].getInt32(),
+            .value = (unsigned int)message[0].getInt32()
+        };
+
+        receiveQueue->add(&msg);
     }
 }
 

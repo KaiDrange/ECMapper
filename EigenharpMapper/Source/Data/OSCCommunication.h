@@ -14,6 +14,8 @@ public:
     void disconnectReceiver();
     
     void sendLED(int course, int key, int led);
+    OSC::OSCMessageFifo *receiveQueue;
+
 private:
     juce::OSCSender sender;
     juce::String senderIP;
@@ -29,9 +31,7 @@ private:
     const int pingInterval = 100;
 
     OSC::OSCMessageFifo *sendQueue;
-    OSC::OSCMessageFifo *receiveQueue;
     OSC::Message msg;
     
     void sendOutgoingMessages();
 };
-static bool testBlink = false;

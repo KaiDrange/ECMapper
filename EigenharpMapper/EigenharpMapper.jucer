@@ -2,9 +2,8 @@
 
 <JUCERPROJECT id="USfU6k" name="EigenharpMapper" projectType="audioplug" useAppConfig="0"
               addUsingNamespaceToJuceHeader="0" displaySplashScreen="1" jucerFormatVersion="1"
-              pluginCharacteristicsValue="pluginIsMidiEffectPlugin,pluginProducesMidiOut"
-              pluginManufacturer="KaiDrange" pluginManufacturerCode="KD" pluginCode="5632"
-              aaxIdentifier="EigenharpMapper">
+              pluginCharacteristicsValue="pluginProducesMidiOut" pluginManufacturer="KaiDrange"
+              pluginManufacturerCode="KD" pluginCode="5632" aaxIdentifier="EigenharpMapper">
   <MAINGROUP id="vhB8QE" name="EigenharpMapper">
     <GROUP id="{5DC590AE-B94A-F53F-3A94-BEFDDBFEA6DC}" name="Source">
       <GROUP id="{0966D1C5-EBFE-2204-5620-C352A5F938AA}" name="UI">
