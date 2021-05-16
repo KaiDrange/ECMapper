@@ -11,6 +11,8 @@ class LayoutChangeHandler : public juce::ValueTree::Listener {
 public:
     LayoutChangeHandler(OSC::OSCMessageFifo *oscSendQueue);
     void setKeyConfigLookup(KeyConfigLookup *keyConfigLookup);
+    
+    bool layoutMidiRPNSent = false;
 
 private:
     void valueTreePropertyChanged(juce::ValueTree &vTree, const juce::Identifier &property);

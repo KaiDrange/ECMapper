@@ -1,7 +1,8 @@
 #include "MidiGenerator.h"
 
 MidiGenerator::MidiGenerator() {
-    mpeZone.setLowerZone(15, 12, 2);
+    mpeZone.setLowerZone(15, 2, 12);
+    
     chanAssigner = new juce::MPEChannelAssigner(mpeZone.getLowerZone());
 }
 
@@ -64,7 +65,7 @@ void MidiGenerator::createNoteOff(int note, KeyState *state, juce::MidiBuffer &b
 
 void MidiGenerator::createNoteHold(int note, KeyState *state, juce::MidiBuffer &buffer) {
     int channel = state->midiChannel;
-    auto pb = juce::MPEValue::from14BitInt(bipolar(state->ehRoll)*0x1fff + 0x1fff);
+    auto pb = juce::MPEValue::from14BitInt((calculatePitchBendCurve(bipolar(state->ehRoll*1.7f))/12.0f)*0x1fff + 0x1fff);
     auto press = juce::MPEValue::from7BitInt(unipolar(state->ehPressure)*127);
     auto timbre = juce::MPEValue::from7BitInt(bipolar(state->ehYaw)*63+63);
     
@@ -76,4 +77,18 @@ void MidiGenerator::createNoteHold(int note, KeyState *state, juce::MidiBuffer &
     buffer.addEvent(pressMsg, 0);
     buffer.addEvent(pbMsg, 0);
     state->messageCount = 0;
+    
+    auto ccMsg = juce::MidiMessage::controllerEvent(7, 2, 11);
+    buffer.addEvent(ccMsg, buffer.getLastEventTime());
+
+}
+
+void MidiGenerator::createLayoutRPNs(juce::MidiBuffer &buffer) {
+    buffer.clear();
+    auto buff = juce::MPEMessages::setZoneLayout(mpeZone);
+    buffer.addEvents(buffer, 0, -1, 0);
+}
+
+float MidiGenerator::calculatePitchBendCurve(float value) {
+    return clamp((tan(value)/3.14159265f) * 2.0f, -1.0, 1.0);
 }

@@ -1,7 +1,9 @@
 #pragma once
 #include <JuceHeader.h>
+#include <Math.h>
 #include "KeyConfigLookup.h"
 #include "OSCMessageQueue.h"
+
 
 class MidiGenerator {
 public:
@@ -11,6 +13,9 @@ public:
     const int decimation = 4;
     KeyConfigLookup keyConfigLookup;
     void processOSCMessage(OSC::Message &oscMsg, juce::MidiBuffer &midiBuffer);
+    juce::MPEZoneLayout mpeZone;
+    
+    void createLayoutRPNs(juce::MidiBuffer &buffer);
 
 private:
     enum KeyStatus {
@@ -47,7 +52,6 @@ private:
     unsigned int midiPedal1 = 0;
     unsigned int midiPedal2 = 0;
     
-    juce::MPEZoneLayout mpeZone;
     juce::MPEChannelAssigner *chanAssigner;
     
     void createNoteOn(int note, KeyState *state, juce::MidiBuffer &buffer);
@@ -57,4 +61,7 @@ private:
     inline float clamp(float v, float mn, float mx) { return (std::max(std::min(v, mx), mn)); }
     float unipolar(int val) { return std::min(float(val) / 4096.0f, 1.0f); }
     float bipolar(int val) { return clamp(float(val) / 4096.0f, -1.0f, 1.0f); }
+    float calculatePitchBendCurve(float value);
+
+    
 };

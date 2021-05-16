@@ -27,6 +27,7 @@ void LayoutChangeHandler::valueTreePropertyChanged(juce::ValueTree &vTree, const
         oscSendQueue->add(&msg);
     }
     keyConfigLookup->updateAll();
+    layoutMidiRPNSent = false;
 }
 
 void LayoutChangeHandler::valueTreeChildAdded(juce::ValueTree &parentTree, juce::ValueTree &childTree) {}

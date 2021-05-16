@@ -5,6 +5,7 @@ EigenharpMapperAudioProcessor::EigenharpMapperAudioProcessor() : AudioProcessor 
 ), layoutChangeHandler(&oscSendQueue), osc(&oscSendQueue, &oscReceiveQueue) {
     osc.connectSender("127.0.0.1", senderPort);
     osc.connectReceiver(receiverPort);
+    
 }
 
 EigenharpMapperAudioProcessor::~EigenharpMapperAudioProcessor() {
@@ -92,11 +93,13 @@ void EigenharpMapperAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
 
         // ..do something to the data...
     }
-    
-//    auto midiMsg = juce::MidiMessage::controllerEvent(1, 3, 99);
-//    midiMessages.addEvent(midiMsg, 0);
-    
+        
     static OSC::Message msg;
+    if (!layoutChangeHandler.layoutMidiRPNSent) {
+        midiGenerator.createLayoutRPNs(midiMessages);
+        layoutChangeHandler.layoutMidiRPNSent = true;
+    }
+    
     while (osc.receiveQueue->getMessageCount() > 0) {
         osc.receiveQueue->read(&msg);
         midiGenerator.processOSCMessage(msg, midiMessages);
