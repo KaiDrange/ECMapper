@@ -5,6 +5,9 @@
 
 class MidiGenerator {
 public:
+    MidiGenerator();
+    ~MidiGenerator();
+    
     const int decimation = 4;
     KeyConfigLookup keyConfigLookup;
     void processOSCMessage(OSC::Message &oscMsg, juce::MidiBuffer &midiBuffer);
@@ -27,6 +30,7 @@ private:
         unsigned int midiRoll = 0;
         unsigned int midiYaw = 0;
         int midiChannel = 1;
+        int messageCount = 0;
     };
     
     KeyState keyStates[3][120];
@@ -43,4 +47,14 @@ private:
     unsigned int midiPedal1 = 0;
     unsigned int midiPedal2 = 0;
     
+    juce::MPEZoneLayout mpeZone;
+    juce::MPEChannelAssigner *chanAssigner;
+    
+    void createNoteOn(int note, KeyState *state, juce::MidiBuffer &buffer);
+    void createNoteOff(int note, KeyState *state, juce::MidiBuffer &buffer);
+    void createNoteHold(int note, KeyState *state, juce::MidiBuffer &buffer);
+    
+    inline float clamp(float v, float mn, float mx) { return (std::max(std::min(v, mx), mn)); }
+    float unipolar(int val) { return std::min(float(val) / 4096.0f, 1.0f); }
+    float bipolar(int val) { return clamp(float(val) / 4096.0f, -1.0f, 1.0f); }
 };

@@ -25,7 +25,10 @@ void APICallback::device(const char* dev, DeviceType dt, int rows, int cols, int
 }
 
 void APICallback::key(const char* dev, unsigned long long t, unsigned course, unsigned key, bool a, unsigned p, int r, int y) {
-//    std::cout  << "key " << dev << " @ " << t << " - " << course << ":" << key << ' ' << a << ' ' << p << ' ' << r << ' ' << y << std::endl;
+    static int counter = 0;
+    counter++;
+    if (counter%1024 == 0)
+        std::cout  << "key " << dev << " @ " << t << " - " << course << ":" << key << ' ' << a << ' ' << p << ' ' << r << ' ' << y << std::endl;
     
     OSC::Message msg {
         .type = OSC::MessageType::Key,
