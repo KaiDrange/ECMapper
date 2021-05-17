@@ -14,7 +14,7 @@ void KeyConfigLookup::updateAll() {
         keys[0][i] = key;
     }
         
-    if (layout->getInstrumentType() == InstrumentType::Pico) {
+    if (layout->getDeviceType() == DeviceType::Pico) {
         //TODO: rest of courses
     }
 }

@@ -1,9 +1,9 @@
 #include "MainComponent.h"
 
 MainComponent::MainComponent() : tabs(juce::TabbedButtonBar::TabsAtTop), uiSettings("uiSettings") {
-    tabPages[0] = new TabPage(InstrumentType::Alpha);
-    tabPages[1] = new TabPage(InstrumentType::Tau);
-    tabPages[2] = new TabPage(InstrumentType::Pico);
+    tabPages[0] = new TabPage(DeviceType::Alpha);
+    tabPages[1] = new TabPage(DeviceType::Tau);
+    tabPages[2] = new TabPage(DeviceType::Pico);
     auto bgColour = getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId);
     tabs.addTab("Alpha", bgColour, tabPages[0], false);
     tabs.addTab("Tau", bgColour, tabPages[1], false);

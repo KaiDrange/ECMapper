@@ -44,7 +44,7 @@ void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
             std::cout << "Core connected" << std::endl;
         pingCounter = 0;
     }
-    else if (message.getAddressPattern() == "/EigenharpCore/key" && message.size() == 6) {
+    else if (message.getAddressPattern() == "/EigenharpCore/key" && message.size() == 7) {
         msg = {
             .type = OSC::MessageType::Key,
             .course = (unsigned int)message[0].getInt32(),
@@ -55,12 +55,13 @@ void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
             .yaw = message[5].getInt32(),
             .strip = 0,
             .pedal = 0,
-            .value = 0
+            .value = 0,
+            .device = (DeviceType::DeviceType)message[6].getInt32()
         };
 
         receiveQueue->add(&msg);
     }
-    else if (message.getAddressPattern() == "/EigenharpCore/breath" && message.size() == 1) {
+    else if (message.getAddressPattern() == "/EigenharpCore/breath" && message.size() == 2) {
         msg = {
             .type = OSC::MessageType::Breath,
             .course = 0,
@@ -71,12 +72,13 @@ void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
             .yaw = 0,
             .strip = 0,
             .pedal = 0,
-            .value = (unsigned int)message[0].getInt32()
+            .value = (unsigned int)message[0].getInt32(),
+            .device = (DeviceType::DeviceType)message[1].getInt32()
         };
 
         receiveQueue->add(&msg);
     }
-    else if (message.getAddressPattern() == "/EigenharpCore/strip" && message.size() == 2) {
+    else if (message.getAddressPattern() == "/EigenharpCore/strip" && message.size() == 3) {
         msg = {
             .type = OSC::MessageType::Strip,
             .course = 0,
@@ -87,12 +89,13 @@ void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
             .yaw = 0,
             .strip = (unsigned int)message[0].getInt32(),
             .pedal = 0,
-            .value = (unsigned int)message[0].getInt32()
+            .value = (unsigned int)message[1].getInt32(),
+            .device = (DeviceType::DeviceType)message[2].getInt32()
         };
 
         receiveQueue->add(&msg);
     }
-    else if (message.getAddressPattern() == "/EigenharpCore/pedal" && message.size() == 2) {
+    else if (message.getAddressPattern() == "/EigenharpCore/pedal" && message.size() == 3) {
         msg = {
             .type = OSC::MessageType::Strip,
             .course = 0,
@@ -103,7 +106,8 @@ void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
             .yaw = 0,
             .strip = 0,
             .pedal = (unsigned int)message[0].getInt32(),
-            .value = (unsigned int)message[0].getInt32()
+            .value = (unsigned int)message[1].getInt32(),
+            .device = (DeviceType::DeviceType)message[2].getInt32()
         };
 
         receiveQueue->add(&msg);

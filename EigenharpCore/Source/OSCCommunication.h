@@ -9,7 +9,8 @@
 //#define MEASURE_OSCSENDPROCESSTIME
 
 extern volatile std::atomic<bool> exitThreads;
-extern bool mapperConnected;
+extern std::atomic<bool> mapperConnected;
+extern std::atomic<DeviceType> currentDevice;
 
 class OSCCommunication : private juce::OSCReceiver::Listener<juce::OSCReceiver::MessageLoopCallback>, juce::Timer {
 public:
@@ -21,7 +22,7 @@ public:
     void disconnectReceiver();
     
     void sendKey(unsigned course, unsigned key, bool a, unsigned p, int r, int y);
-    void sendDeviceName(const juce::String &name);
+    void sendDevice(DeviceType deviceType);
     void sendBreath(unsigned val);
     void sendStrip(unsigned strip, unsigned val);
     void sendPedal(unsigned pedal, unsigned val);

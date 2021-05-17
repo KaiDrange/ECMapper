@@ -6,12 +6,12 @@
 #include "APICallback.h"
 #include "OSCCommunication.h"
 #include "OSCMessageQueue.h"
+#include "Enums.h"
 
 #define PROCESS_MICROSEC_SLEEP 100
 //#define MEASURE_EIGENAPIPROCESSTIME
 #define EIGENAPI_POLLTIME 100
 
-bool mapperConnected = false;
 
 class EigenharpCore : public juce::JUCEApplication {
 public:
@@ -20,6 +20,8 @@ public:
     const juce::String getApplicationVersion() override { return "0.0.1"; }
     void initialise(const juce::String &) override;
     void shutdown() override;
+    
+    static void turnOffAllLEDs(EigenApi::Eigenharp *api);
     
 private:
     EigenApi::Eigenharp eigenApi;
@@ -39,6 +41,7 @@ private:
 
 static EigenharpCore *coreInstance = nullptr;
 volatile std::atomic<bool> exitThreads;
-
+std::atomic<bool> mapperConnected;
+std::atomic<DeviceType> currentDevice;
 
 START_JUCE_APPLICATION (EigenharpCore)

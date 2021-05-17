@@ -1,6 +1,6 @@
 #include "TabPage.h"
 
-TabPage::TabPage(InstrumentType model) : keyboard(keyboardState, juce::MidiKeyboardComponent::Orientation::verticalKeyboardFacingRight) {
+TabPage::TabPage(DeviceType::DeviceType model) : keyboard(keyboardState, juce::MidiKeyboardComponent::Orientation::verticalKeyboardFacingRight) {
     keymap = new Layout(model);
     keymapPanel = new KeymapPanelComponent(keymap, 0.4, 1);
     addAndMakeVisible(keymapPanel);

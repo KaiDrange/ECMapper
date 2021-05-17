@@ -7,9 +7,10 @@
 #include <iostream>
 #include <thread>
 #include "OSCCommunication.h"
+#include "Enums.h"
 
 static const char *deviceId = nullptr;
-
+extern std::atomic<DeviceType> currentDevice;
 
 class APICallback: public EigenApi::Callback {
 public:

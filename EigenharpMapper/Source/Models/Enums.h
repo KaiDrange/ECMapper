@@ -1,10 +1,13 @@
 #pragma once
 
-enum InstrumentType {
-    Alpha = 1,
-    Tau = 2,
-    Pico = 3
-};
+namespace DeviceType {
+    enum DeviceType {
+        None = 0,
+        Alpha = 1,
+        Tau = 2,
+        Pico = 3
+    };
+}
 
 enum KeyMappingType {
     None = 0,

@@ -8,18 +8,36 @@ void APICallback::device(const char* dev, DeviceType dt, int rows, int cols, int
     deviceId = dev;
     switch(cols) {
         case 2:
-            modelName = "Pico";
+            currentDevice = Pico;
             break;
         case 4:
-            modelName = "Tau";
+            currentDevice = Tau;
             break;
         case 5:
-            modelName = "Alpha";
+            currentDevice = Alpha;
             break;
         default:
-            modelName = "";
+            currentDevice = None;
             break;
     }
+    
+    OSC::Message msg {
+        .type = OSC::MessageType::Device,
+        .key = 0,
+        .course = 0,
+        .active = 0,
+        .pressure = 0,
+        .roll = 0,
+        .yaw = 0,
+        .value = 0,
+        .pedal = 0,
+        .strip = 0,
+        .device = currentDevice
+    };
+    sendQueue->add(&msg);
+
+    
+    
 //    
 //    std::cout << "device " << dev << " (" << dt << ") " << rows << " x " << cols << " strips " << ribbons << " pedals " << pedals << std::endl;
 }
@@ -40,7 +58,8 @@ void APICallback::key(const char* dev, unsigned long long t, unsigned course, un
         .yaw = y,
         .value = 0,
         .pedal = 0,
-        .strip = 0
+        .strip = 0,
+        .device = currentDevice
     };
     sendQueue->add(&msg);
 }
@@ -56,7 +75,8 @@ void APICallback::breath(const char* dev, unsigned long long t, unsigned val) {
         .yaw = 0,
         .value = val,
         .pedal = 0,
-        .strip = 0
+        .strip = 0,
+        .device = currentDevice
     };
     sendQueue->add(&msg);
 }
@@ -74,7 +94,8 @@ void APICallback::strip(const char* dev, unsigned long long t, unsigned strip, u
         .yaw = 0,
         .value = val,
         .pedal = 0,
-        .strip = strip
+        .strip = strip,
+        .device = currentDevice
     };
     sendQueue->add(&msg);
 }
@@ -91,7 +112,8 @@ void APICallback::pedal(const char* dev, unsigned long long t, unsigned pedal, u
         .yaw = 0,
         .value = val,
         .pedal = pedal,
-        .strip = 0
+        .strip = 0,
+        .device = currentDevice
     };
     sendQueue->add(&msg);
 }

@@ -1,7 +1,7 @@
 #include "FileUtil.h"
 
 
-juce::String FileUtil::openMapping(InstrumentType instrumentType) {
+juce::String FileUtil::openMapping(DeviceType::DeviceType instrumentType) {
     juce::File pathFile("./Mappings/");
     
     juce::FileChooser fileChooser("Open mapping", pathFile, getFileExtension(instrumentType));
@@ -15,7 +15,7 @@ juce::String FileUtil::openMapping(InstrumentType instrumentType) {
     return "";
 }
 
-bool FileUtil::saveMapping(juce::ValueTree valueTree, InstrumentType instrumentType) {
+bool FileUtil::saveMapping(juce::ValueTree valueTree, DeviceType::DeviceType instrumentType) {
     auto success = false;
     juce::File pathFile("./Mappings/");
     juce::FileChooser fileChooser("Save mapping", pathFile, getFileExtension(instrumentType));
@@ -26,16 +26,16 @@ bool FileUtil::saveMapping(juce::ValueTree valueTree, InstrumentType instrumentT
     return success;
 }
 
-juce::String FileUtil::getFileExtension(InstrumentType instrumentType) {
+juce::String FileUtil::getFileExtension(DeviceType::DeviceType instrumentType) {
     juce::String fileExtension;
     switch (instrumentType) {
-        case InstrumentType::Alpha:
+        case DeviceType::Alpha:
             fileExtension = "*.alphamap";
             break;
-        case InstrumentType::Tau:
+        case DeviceType::Tau:
             fileExtension = "*.taumap";
             break;
-        case InstrumentType::Pico:
+        case DeviceType::Pico:
             fileExtension = "*.picomap";
             break;
         default:

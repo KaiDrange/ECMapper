@@ -1,8 +1,8 @@
 #include "Layout.h"
 
-Layout::Layout(InstrumentType instrumentType): valueTree("layout") {
+Layout::Layout(DeviceType::DeviceType instrumentType): valueTree("layout") {
     switch(instrumentType) {
-        case InstrumentType::Alpha:
+        case DeviceType::Alpha:
             normalKeyCount = 120;
             percKeyCount = 12;
             keyRowCount = 5;
@@ -14,7 +14,7 @@ Layout::Layout(InstrumentType instrumentType): valueTree("layout") {
             buttonCount = 0;
             stripCount = 2;
             break;
-        case InstrumentType::Tau:
+        case DeviceType::Tau:
             normalKeyCount = 72;
             percKeyCount = 12;
             keyRowCount = 4;
@@ -26,7 +26,7 @@ Layout::Layout(InstrumentType instrumentType): valueTree("layout") {
             buttonCount = 8;
             stripCount = 1;
             break;
-        case InstrumentType::Pico:
+        case DeviceType::Pico:
             normalKeyCount = 18;
             percKeyCount = 0;
             keyRowCount = 2;
@@ -47,7 +47,7 @@ Layout::Layout(InstrumentType instrumentType): valueTree("layout") {
     for (int i = 0; i < normalKeyCount; i++)
         addKeyConfig(EigenharpKeyType::Normal, 0, i);
 
-    if (instrumentType == InstrumentType::Pico) {
+    if (instrumentType == DeviceType::Pico) {
         for (int i = 0; i < buttonCount; i++)
             addKeyConfig(EigenharpKeyType::Button, 1, i);
     }
@@ -116,8 +116,8 @@ int Layout::getButtonStartIndex() const {
     return normalKeyCount + percKeyCount;
 }
 
-InstrumentType Layout::getInstrumentType() const {
-    return (InstrumentType)valueTree[id_instrumentType].toString().getIntValue();
+DeviceType::DeviceType Layout::getDeviceType() const {
+    return (DeviceType::DeviceType)valueTree[id_instrumentType].toString().getIntValue();
 }
 
 KeyConfig* Layout::getKeyConfigs() {

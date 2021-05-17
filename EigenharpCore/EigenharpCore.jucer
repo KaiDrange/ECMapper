@@ -17,6 +17,7 @@
       <FILE id="SdQa3B" name="EigenharpCore.cpp" compile="1" resource="0"
             file="Source/EigenharpCore.cpp"/>
       <FILE id="lYxAzA" name="EigenharpCore.h" compile="0" resource="0" file="Source/EigenharpCore.h"/>
+      <FILE id="E8k0IV" name="Enums.h" compile="0" resource="0" file="Source/Enums.h"/>
       <FILE id="anXIFD" name="OSCCommunication.cpp" compile="1" resource="0"
             file="Source/OSCCommunication.cpp"/>
       <FILE id="eMY1gO" name="OSCCommunication.h" compile="0" resource="0"

@@ -8,7 +8,7 @@
 
 class Layout {
 public:
-    Layout(InstrumentType instrumentType);
+    Layout(DeviceType::DeviceType instrumentType);
     ~Layout();
 
     void addKeyConfig(EigenharpKeyType keyType, int course, int key);
@@ -23,7 +23,7 @@ public:
     int getTotalKeyCount() const;
     int getPercKeyStartIndex() const;
     int getButtonStartIndex() const;
-    InstrumentType getInstrumentType() const;
+    DeviceType::DeviceType getDeviceType() const;
     KeyConfig* getKeyConfigs();
     
     void addListener(juce::ValueTree::Listener *listener);

@@ -1,6 +1,7 @@
 #pragma once
 #include <JuceHeader.h>
 #include <stdio.h>
+#include "../Models/Enums.h"
 
 namespace OSC {
 
@@ -25,6 +26,7 @@ struct Message {
     unsigned int strip = 0;
     unsigned int pedal = 0;
     unsigned int value = 0;
+    DeviceType::DeviceType device = DeviceType::None;
 };
 
 const int MessageSize = sizeof(Message)/sizeof(int);

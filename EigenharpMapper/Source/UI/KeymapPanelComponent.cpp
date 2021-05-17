@@ -116,7 +116,7 @@ void KeymapPanelComponent::resized()
     
     percRowArea.removeFromTop(margin*2);
     
-    if (layout->getInstrumentType() == InstrumentType::Tau) {
+    if (layout->getDeviceType() == DeviceType::Tau) {
         for (int i = layout->getButtonStartIndex() + layout->getButtonCount()/2; i < layout->getTotalKeyCount(); i++) {
             keys[i]->setBounds(percRowArea.removeFromTop(buttonDiameter).removeFromLeft(buttonDiameter));
 
@@ -251,7 +251,7 @@ int KeymapPanelComponent::navigateNormalKeys(const juce::KeyPress &key, int sele
         else if (key == juce::KeyPress::leftKey) {
             if (rowNumber == 0)
                 selectedKeyIndex += rowStartIndexes[layout->getKeyRowCount()-1];
-            else if (layout->getInstrumentType() == InstrumentType::Tau &&
+            else if (layout->getDeviceType() == DeviceType::Tau &&
                      selectedKeyIndex >= rowStartIndexes[3]-4 && selectedKeyIndex < rowStartIndexes[3]) {
                 selectedKeyIndex += rowLengths[3];
             }
@@ -259,7 +259,7 @@ int KeymapPanelComponent::navigateNormalKeys(const juce::KeyPress &key, int sele
                 selectedKeyIndex -= rowLengths[rowNumber-1];
         }
         else if (key == juce::KeyPress::rightKey) {
-            if (layout->getInstrumentType() == InstrumentType::Tau &&
+            if (layout->getDeviceType() == DeviceType::Tau &&
                      selectedKeyIndex >= rowStartIndexes[4]-4 && selectedKeyIndex < rowStartIndexes[4]) {
                 selectedKeyIndex -= rowLengths[3];
             }
