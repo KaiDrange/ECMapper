@@ -9,6 +9,7 @@
 //#define MEASURE_OSCSENDPROCESSTIME
 
 extern volatile std::atomic<bool> exitThreads;
+extern bool mapperConnected;
 
 class OSCCommunication : private juce::OSCReceiver::Listener<juce::OSCReceiver::MessageLoopCallback>, juce::Timer {
 public:

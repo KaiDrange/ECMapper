@@ -46,13 +46,14 @@ void* EigenharpCore::eigenharpProcess(OSC::OSCMessageFifo *msgQueue, void* arg) 
         static int counter = 0;
         auto begin = std::chrono::high_resolution_clock::now();
 #endif
-
-        pE->process();
-        static OSC::Message msg;
-        if (msgQueue->getMessageCount() > 0) {
-            msgQueue->read(&msg);
-            if (msg.type == OSC::MessageType::LED)
-                pE->setLED(deviceId, msg.course, msg.key, msg.value);
+        if (mapperConnected) {
+            pE->process();
+            static OSC::Message msg;
+            if (msgQueue->getMessageCount() > 0) {
+                msgQueue->read(&msg);
+                if (msg.type == OSC::MessageType::LED)
+                    pE->setLED(deviceId, msg.course, msg.key, msg.value);
+            }
         }
         
 #ifdef MEASURE_EIGENAPIPROCESSTIME
@@ -63,7 +64,7 @@ void* EigenharpCore::eigenharpProcess(OSC::OSCMessageFifo *msgQueue, void* arg) 
         }
 #endif
         
-        std::this_thread::sleep_for(std::chrono::microseconds(PROCESS_MICROSEC_SLEEP));
+        std::this_thread::sleep_for(std::chrono::microseconds(PROCESS_MICROSEC_SLEEP + 100000*!mapperConnected));
     }
     return nullptr;
 }

@@ -61,8 +61,10 @@ void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
         receiveQueue->add(&msg);
     }
     else if (message.getAddressPattern() == "/EigenharpMapper/ping") {
-        if (pingCounter == -1)
+        if (pingCounter == -1) {
+            mapperConnected = true;
             std::cout << "Mapper connected" << std::endl;
+        }
         pingCounter = 0;
     }
 }
@@ -98,6 +100,7 @@ void OSCCommunication::timerCallback() {
         pingCounter++;
     
     if (pingCounter > 10) {
+        mapperConnected = false;
         std::cout << "Connection to Mapper timed out" << std::endl;
         pingCounter = -1;
     }
@@ -137,7 +140,7 @@ void* OSCCommunication::sendProcess() {
         }
 #endif
 
-        std::this_thread::sleep_for(std::chrono::microseconds(MSGPROCESS_MICROSEC_SLEEP));
+        std::this_thread::sleep_for(std::chrono::microseconds(MSGPROCESS_MICROSEC_SLEEP + 100000*!mapperConnected));
     }
     return nullptr;
 }

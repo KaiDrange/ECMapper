@@ -29,7 +29,7 @@ void MidiGenerator::processOSCMessage(OSC::Message &oscMsg, juce::MidiBuffer &mi
                 else if (keyState->status == KeyStatus::Active && !oscMsg.active) {
                     createNoteOff(keyLookup->note, keyState, midiBuffer);
                 }
-                else if (keyState->messageCount == 16) {
+                else if (keyState->messageCount == 16 && keyState->status != KeyStatus::Pending) {
                     createNoteHold(Note, keyState, midiBuffer);
                 }
             }
@@ -45,7 +45,7 @@ void MidiGenerator::createNoteOn(int note, KeyState *state, juce::MidiBuffer &bu
     createNoteHold(note, state, buffer);
     auto vel = juce::MPEValue::from7BitInt(unipolar(state->ehPressure*4)*126+1);
     auto noteOnMsg = juce::MidiMessage::noteOn(channel, note, vel.asUnsignedFloat());
-    buffer.addEvent(noteOnMsg, 0);
+    buffer.addEvent(noteOnMsg, buffer.getLastEventTime()+1);
     
     state->status = KeyStatus::Active;
 }
@@ -58,7 +58,7 @@ void MidiGenerator::createNoteOff(int note, KeyState *state, juce::MidiBuffer &b
     auto pressMsg = juce::MidiMessage::aftertouchChange(channel, note, 0);
 
     buffer.addEvent(noteOffMsg, 0);
-    buffer.addEvent(pressMsg, 0);
+    buffer.addEvent(pressMsg, 1);
     state->status = KeyStatus::Off;
     state->messageCount = 0;
 }
@@ -74,13 +74,9 @@ void MidiGenerator::createNoteHold(int note, KeyState *state, juce::MidiBuffer &
     auto pbMsg = juce::MidiMessage::pitchWheel(channel, pb.as14BitInt());
 
     buffer.addEvent(timbreMsg, 0);
-    buffer.addEvent(pressMsg, 0);
-    buffer.addEvent(pbMsg, 0);
+    buffer.addEvent(pressMsg, 1);
+    buffer.addEvent(pbMsg, 2);
     state->messageCount = 0;
-    
-    auto ccMsg = juce::MidiMessage::controllerEvent(7, 2, 11);
-    buffer.addEvent(ccMsg, buffer.getLastEventTime());
-
 }
 
 void MidiGenerator::createLayoutRPNs(juce::MidiBuffer &buffer) {

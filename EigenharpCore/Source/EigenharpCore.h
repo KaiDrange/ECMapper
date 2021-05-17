@@ -11,6 +11,8 @@
 //#define MEASURE_EIGENAPIPROCESSTIME
 #define EIGENAPI_POLLTIME 100
 
+bool mapperConnected = false;
+
 class EigenharpCore : public juce::JUCEApplication {
 public:
     EigenharpCore();

@@ -99,7 +99,6 @@ void EigenharpMapperAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
         midiGenerator.createLayoutRPNs(midiMessages);
         layoutChangeHandler.layoutMidiRPNSent = true;
     }
-    
     while (osc.receiveQueue->getMessageCount() > 0) {
         osc.receiveQueue->read(&msg);
         midiGenerator.processOSCMessage(msg, midiMessages);
