@@ -111,10 +111,19 @@ bool EigenharpMapperAudioProcessor::hasEditor() const {
 
 juce::AudioProcessorEditor* EigenharpMapperAudioProcessor::createEditor() {
     auto editor = new EigenharpMapperAudioProcessorEditor(*this);
-    auto layout = editor->getActiveLayout();
-    midiGenerator.keyConfigLookup.setActiveLayout(layout);
-    layoutChangeHandler.setKeyConfigLookup(&midiGenerator.keyConfigLookup);
-    layout->addListener(&layoutChangeHandler);
+    
+    auto alphaLayout = editor->getLayout(DeviceType::Alpha);
+    auto tauLayout = editor->getLayout(DeviceType::Tau);
+    auto picoLayout = editor->getLayout(DeviceType::Pico);
+    midiGenerator.keyConfigLookups[0].setLayout(alphaLayout);
+    midiGenerator.keyConfigLookups[1].setLayout(tauLayout);
+    midiGenerator.keyConfigLookups[2].setLayout(picoLayout);
+    layoutChangeHandler.setKeyConfigLookup(&midiGenerator.keyConfigLookups[0], alphaLayout->getDeviceType());
+    layoutChangeHandler.setKeyConfigLookup(&midiGenerator.keyConfigLookups[1], tauLayout->getDeviceType());
+    layoutChangeHandler.setKeyConfigLookup(&midiGenerator.keyConfigLookups[2], picoLayout->getDeviceType());
+    alphaLayout->addListener(&layoutChangeHandler);
+    tauLayout->addListener(&layoutChangeHandler);
+    picoLayout->addListener(&layoutChangeHandler);
     return editor;
 }
 

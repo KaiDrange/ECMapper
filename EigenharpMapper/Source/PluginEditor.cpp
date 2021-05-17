@@ -27,6 +27,6 @@ void EigenharpMapperAudioProcessorEditor::resized() {
     mainComponent.setBounds(getLocalBounds());
 }
 
-Layout* EigenharpMapperAudioProcessorEditor::getActiveLayout() {
-    return mainComponent.getActiveLayout();
+Layout* EigenharpMapperAudioProcessorEditor::getLayout(DeviceType::DeviceType deviceType) {
+    return mainComponent.getLayout(deviceType);
 }

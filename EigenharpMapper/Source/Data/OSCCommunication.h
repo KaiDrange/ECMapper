@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 #include <iostream>
 #include "OSCMessageQueue.h"
+#include "../Models/Enums.h"
 
 class OSCCommunication : private juce::OSCReceiver::Listener<juce::OSCReceiver::MessageLoopCallback>, juce::Timer {
 public:
@@ -13,7 +14,7 @@ public:
     bool connectReceiver(int port);
     void disconnectReceiver();
     
-    void sendLED(int course, int key, int led);
+    void sendLED(int course, int key, int led, DeviceType::DeviceType deviceType);
     OSC::OSCMessageFifo *receiveQueue;
 
 private:

@@ -114,9 +114,9 @@ void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
     }
 }
 
-void OSCCommunication::sendLED(int course, int key, int led) {
+void OSCCommunication::sendLED(int course, int key, int led, DeviceType::DeviceType deviceType) {
     if (pingCounter > -1)
-        sender.send("/EigenharpMapper/led", course, key, led);
+        sender.send("/EigenharpMapper/led", course, key, led, (int)deviceType);
 }
 
 void OSCCommunication::timerCallback() {
@@ -138,7 +138,7 @@ void OSCCommunication::sendOutgoingMessages() {
         sendQueue->read(&msg);
         switch (msg.type) {
             case OSC::MessageType::LED:
-                sendLED(msg.course, msg.key, msg.value);
+                sendLED(msg.course, msg.key, msg.value, msg.device);
                 break;
             default:
                 break;

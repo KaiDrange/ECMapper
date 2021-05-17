@@ -11,7 +11,7 @@ public:
     ~MidiGenerator();
     
     const int decimation = 4;
-    KeyConfigLookup keyConfigLookup;
+    KeyConfigLookup keyConfigLookups[3];
     void processOSCMessage(OSC::Message &oscMsg, juce::MidiBuffer &midiBuffer);
     juce::MPEZoneLayout mpeZone;
     
@@ -38,7 +38,7 @@ private:
         int messageCount = 0;
     };
     
-    KeyState keyStates[3][120];
+    KeyState keyStates[3][3][120];
     
     unsigned int ehBreath = 0;
     unsigned int ehPedal1 = 0;

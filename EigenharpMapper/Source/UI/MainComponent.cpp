@@ -32,7 +32,7 @@ void MainComponent::resized() {
     tabs.setBounds(area);
 }
 
-Layout* MainComponent::getActiveLayout() {
-    return tabPages[tabs.getCurrentTabIndex()]->getLayout();
+Layout* MainComponent::getLayout(DeviceType::DeviceType deviceType) {
+        return tabPages[(int)deviceType-1]->getLayout();
 }
 

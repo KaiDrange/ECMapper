@@ -1,6 +1,6 @@
 #include "KeyConfigLookup.h"
 
-void KeyConfigLookup::setActiveLayout(Layout *layout) {
+void KeyConfigLookup::setLayout(Layout *layout) {
     this->layout = layout;
     updateAll();
 }

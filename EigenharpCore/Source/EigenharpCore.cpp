@@ -25,6 +25,7 @@ void EigenharpCore::initialise(const juce::String &) {
 
 void EigenharpCore::shutdown() {
     std::cout << "Trying to quit gracefully..." << std::endl;
+    turnOffAllLEDs(&eigenApi);
     exitThreads = true;
     sleep(1);
     eigenApiProcessThread.join();

@@ -13,13 +13,14 @@ MidiGenerator::~MidiGenerator() {
 void MidiGenerator::processOSCMessage(OSC::Message &oscMsg, juce::MidiBuffer &midiBuffer) {
     switch (oscMsg.type) {
             case OSC::MessageType::Key: {
-                KeyState *keyState = &keyStates[oscMsg.course][oscMsg.key];
+                int deviceIndex = (int)oscMsg.device -1;
+                KeyState *keyState = &keyStates[deviceIndex][oscMsg.course][oscMsg.key];
                 keyState->messageCount++;
                 keyState->ehPressure = oscMsg.pressure;
                 keyState->ehYaw = oscMsg.yaw;
                 keyState->ehRoll = oscMsg.roll;
 
-                KeyConfigLookup::Key *keyLookup = &keyConfigLookup.keys[oscMsg.course][oscMsg.key];
+                KeyConfigLookup::Key *keyLookup = &keyConfigLookups[deviceIndex].keys[oscMsg.course][oscMsg.key];
                 if (keyState->status == KeyStatus::Off && oscMsg.active) {
                     keyState->status = KeyStatus::Pending;
                 }

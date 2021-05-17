@@ -8,7 +8,7 @@
 class KeyConfigLookup {
 public:
     void updateAll();
-    void setActiveLayout(Layout *layout);
+    void setLayout(Layout *layout);
     
     struct Key {
         KeyMappingType mapType = KeyMappingType::None;

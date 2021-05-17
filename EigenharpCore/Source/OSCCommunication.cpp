@@ -44,7 +44,7 @@ void OSCCommunication::disconnectReceiver() {
 }
 
 void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
-    if (message.getAddressPattern() == "/EigenharpMapper/led" && message.size() == 3) {
+    if (message.getAddressPattern() == "/EigenharpMapper/led" && message.size() == 4) {
         msg = {
             .type = OSC::MessageType::LED,
             .course = (unsigned int)message[0].getInt32(),
@@ -56,7 +56,7 @@ void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
             .yaw = 0,
             .strip = 0,
             .pedal = 0,
-            .device = DeviceType::None
+            .device = (DeviceType)message[3].getInt32()
         };
 
         receiveQueue->add(&msg);

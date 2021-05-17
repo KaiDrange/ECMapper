@@ -10,7 +10,7 @@
 class LayoutChangeHandler : public juce::ValueTree::Listener {
 public:
     LayoutChangeHandler(OSC::OSCMessageFifo *oscSendQueue);
-    void setKeyConfigLookup(KeyConfigLookup *keyConfigLookup);
+    void setKeyConfigLookup(KeyConfigLookup *keyConfigLookup, DeviceType::DeviceType deviceType);
     
     bool layoutMidiRPNSent = false;
 
@@ -23,5 +23,7 @@ private:
     void valueTreeRedirected(juce::ValueTree &vTree);
     
     OSC::OSCMessageFifo *oscSendQueue;
-    KeyConfigLookup *keyConfigLookup;
+    KeyConfigLookup *keyConfigLookups[3];
+    
+    int getConfigIndexFromDeviceType(DeviceType::DeviceType type);
 };

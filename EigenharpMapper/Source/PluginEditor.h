@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
 #include "UI/MainComponent.h"
+#include "Models/Enums.h"
 
 //==============================================================================
 /**
@@ -14,7 +15,7 @@ public:
     ~EigenharpMapperAudioProcessorEditor() override;
 
     void resized() override;
-    Layout* getActiveLayout();
+    Layout* getLayout(DeviceType::DeviceType deviceType);
 
 private:
     // This reference is provided as a quick way for your editor to
