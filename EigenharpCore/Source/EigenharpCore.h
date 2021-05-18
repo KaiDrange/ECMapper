@@ -37,11 +37,13 @@ private:
     APICallback *apiCallback;
     OSC::OSCMessageFifo oscSendQueue;
     OSC::OSCMessageFifo oscReceiveQueue;
+    
+    static const char* getDevFromType(const EHDeviceType type);
 };
 
 static EigenharpCore *coreInstance = nullptr;
 volatile std::atomic<bool> exitThreads;
 std::atomic<bool> mapperConnected;
-std::atomic<DeviceType> currentDevice;
+std::list<ConnectedDevice> connectedDevices;
 
 START_JUCE_APPLICATION (EigenharpCore)

@@ -4,7 +4,6 @@ EigenharpCore::EigenharpCore() : eigenApi("./"), osc(&oscSendQueue, &oscReceiveQ
     jassert(coreInstance == nullptr);
     coreInstance = this;
     mapperConnected = false;
-    currentDevice = DeviceType::None;
 }
 
 void EigenharpCore::initialise(const juce::String &) {
@@ -45,31 +44,33 @@ void EigenharpCore::turnOffAllLEDs(EigenApi::Eigenharp *api) {
     int course0Length = 0;
     int course1Length = 0;
     int course2Length = 0;
-    switch (currentDevice) {
-        case DeviceType::Pico:
-            course0Length = 18;
-            course1Length = 4;
-            break;
-        case DeviceType::Tau:
-            course0Length = 72;
-            course1Length = 12;
-            course2Length = 4; //TODO: Check if Tau has 2x4 or 8
-            break;
-        case DeviceType::Alpha:
-            course0Length = 120;
-            course1Length = 12;
-            course2Length = 0;
-            break;
-        default:
-            break;
+    for (auto device : connectedDevices) {
+        switch (device.type) {
+            case EHDeviceType::Pico:
+                course0Length = 18;
+                course1Length = 4;
+                break;
+            case EHDeviceType::Tau:
+                course0Length = 72;
+                course1Length = 12;
+                course2Length = 4; //TODO: Check if Tau has 2x4 or 8
+                break;
+            case EHDeviceType::Alpha:
+                course0Length = 120;
+                course1Length = 12;
+                course2Length = 0;
+                break;
+            default:
+                break;
+        }
+
+        for (int i = 0; i < course0Length; i++)
+            api->setLED(device.dev, 0, i, 0);
+        for (int i = 0; i < course1Length; i++)
+            api->setLED(device.dev, 1, i, 0);
+        for (int i = 0; i < course2Length; i++)
+            api->setLED(device.dev, 2, i, 0);
     }
-    
-    for (int i = 0; i < course0Length; i++)
-        api->setLED(deviceId, 0, i, 0);
-    for (int i = 0; i < course1Length; i++)
-        api->setLED(deviceId, 1, i, 0);
-    for (int i = 0; i < course2Length; i++)
-        api->setLED(deviceId, 2, i, 0);
 }
 
 void* EigenharpCore::eigenharpProcess(OSC::OSCMessageFifo *msgQueue, void* arg) {
@@ -92,8 +93,11 @@ void* EigenharpCore::eigenharpProcess(OSC::OSCMessageFifo *msgQueue, void* arg) 
             static OSC::Message msg;
             if (msgQueue->getMessageCount() > 0) {
                 msgQueue->read(&msg);
-                if (msg.type == OSC::MessageType::LED)
-                    pE->setLED(deviceId, msg.course, msg.key, msg.value);
+                if (msg.type == OSC::MessageType::LED) {
+                    auto dev = getDevFromType(msg.device);
+                    if (dev != nullptr)
+                        pE->setLED(dev, msg.course, msg.key, msg.value);
+                }
             }
         }
         
@@ -106,6 +110,14 @@ void* EigenharpCore::eigenharpProcess(OSC::OSCMessageFifo *msgQueue, void* arg) 
 #endif
         
         std::this_thread::sleep_for(std::chrono::microseconds(PROCESS_MICROSEC_SLEEP + 100000*!mapperConnected));
+    }
+    return nullptr;
+}
+
+const char* EigenharpCore::getDevFromType(const EHDeviceType type) {
+    for (auto device : connectedDevices) {
+        if (device.type == type)
+            return device.dev;
     }
     return nullptr;
 }

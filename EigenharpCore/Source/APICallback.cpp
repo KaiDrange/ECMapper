@@ -5,21 +5,23 @@ APICallback::APICallback(EigenApi::Eigenharp& eh, OSC::OSCMessageFifo *sendQueue
 }
 
 void APICallback::device(const char* dev, DeviceType dt, int rows, int cols, int ribbons, int pedals) {
-    deviceId = dev;
+    EHDeviceType devType;
     switch(cols) {
         case 2:
-            currentDevice = Pico;
+            devType = EHDeviceType::Pico;
             break;
         case 4:
-            currentDevice = Tau;
+            devType = EHDeviceType::Tau;
             break;
         case 5:
-            currentDevice = Alpha;
+            devType = EHDeviceType::Alpha;
             break;
         default:
-            currentDevice = None;
+            devType = EHDeviceType::None;
             break;
     }
+    ConnectedDevice newDev { .dev = dev, .type = devType };
+    connectedDevices.push_back(newDev);
     
     OSC::Message msg {
         .type = OSC::MessageType::Device,
@@ -32,7 +34,7 @@ void APICallback::device(const char* dev, DeviceType dt, int rows, int cols, int
         .value = 0,
         .pedal = 0,
         .strip = 0,
-        .device = currentDevice
+        .device = devType
     };
     sendQueue->add(&msg);
 
@@ -59,7 +61,7 @@ void APICallback::key(const char* dev, unsigned long long t, unsigned course, un
         .value = 0,
         .pedal = 0,
         .strip = 0,
-        .device = currentDevice
+        .device = getTypeFromDev(dev)
     };
     sendQueue->add(&msg);
 }
@@ -76,7 +78,7 @@ void APICallback::breath(const char* dev, unsigned long long t, unsigned val) {
         .value = val,
         .pedal = 0,
         .strip = 0,
-        .device = currentDevice
+        .device = getTypeFromDev(dev)
     };
     sendQueue->add(&msg);
 }
@@ -95,7 +97,7 @@ void APICallback::strip(const char* dev, unsigned long long t, unsigned strip, u
         .value = val,
         .pedal = 0,
         .strip = strip,
-        .device = currentDevice
+        .device = getTypeFromDev(dev)
     };
     sendQueue->add(&msg);
 }
@@ -113,7 +115,15 @@ void APICallback::pedal(const char* dev, unsigned long long t, unsigned pedal, u
         .value = val,
         .pedal = pedal,
         .strip = 0,
-        .device = currentDevice
+        .device = getTypeFromDev(dev)
     };
     sendQueue->add(&msg);
+}
+
+EHDeviceType APICallback::getTypeFromDev(const char* dev) const {
+    for (auto device : connectedDevices) {
+        if (device.dev == dev)
+            return device.type;
+    }
+    return EHDeviceType::None;
 }

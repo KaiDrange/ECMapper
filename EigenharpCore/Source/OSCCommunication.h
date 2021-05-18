@@ -10,7 +10,6 @@
 
 extern volatile std::atomic<bool> exitThreads;
 extern std::atomic<bool> mapperConnected;
-extern std::atomic<DeviceType> currentDevice;
 
 class OSCCommunication : private juce::OSCReceiver::Listener<juce::OSCReceiver::MessageLoopCallback>, juce::Timer {
 public:
@@ -21,11 +20,11 @@ public:
     bool connectReceiver(int port);
     void disconnectReceiver();
     
-    void sendKey(unsigned course, unsigned key, bool a, unsigned p, int r, int y);
-    void sendDevice(DeviceType deviceType);
-    void sendBreath(unsigned val);
-    void sendStrip(unsigned strip, unsigned val);
-    void sendPedal(unsigned pedal, unsigned val);
+    void sendKey(unsigned course, unsigned key, bool a, unsigned p, int r, int y, EHDeviceType deviceType);
+    void sendDevice(EHDeviceType deviceType);
+    void sendBreath(unsigned val, EHDeviceType deviceType);
+    void sendStrip(unsigned strip, unsigned val, EHDeviceType deviceType);
+    void sendPedal(unsigned pedal, unsigned val, EHDeviceType deviceType);
 
     OSC::OSCMessageFifo *sendQueue;
 private:

@@ -26,7 +26,7 @@ struct Message {
     unsigned int strip = 0;
     unsigned int pedal = 0;
     unsigned int value = 0;
-    DeviceType device = None;
+    EHDeviceType device = EHDeviceType::None;
 };
 
 const int MessageSize = sizeof(Message)/sizeof(int);

@@ -56,7 +56,7 @@ void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
             .yaw = 0,
             .strip = 0,
             .pedal = 0,
-            .device = (DeviceType)message[3].getInt32()
+            .device = (EHDeviceType)message[3].getInt32()
         };
 
         receiveQueue->add(&msg);
@@ -70,29 +70,29 @@ void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
     }
 }
 
-void OSCCommunication::sendDevice(const DeviceType deviceType) {
+void OSCCommunication::sendDevice(const EHDeviceType deviceType) {
     if (pingCounter > -1)
-        sender.send("/EigenharpCore/device", deviceType);
+        sender.send("/EigenharpCore/device", (int)deviceType);
 }
 
-void OSCCommunication::sendKey(unsigned course, unsigned key, bool a, unsigned p, int r, int y) {
+void OSCCommunication::sendKey(unsigned course, unsigned key, bool a, unsigned p, int r, int y, EHDeviceType deviceType) {
     if (pingCounter > -1)
-        sender.send("/EigenharpCore/key", (int)course, (int)key, (int)a, (int)p, (int)r, (int)y, (int)currentDevice);
+        sender.send("/EigenharpCore/key", (int)course, (int)key, (int)a, (int)p, (int)r, (int)y, (int)deviceType);
 }
 
-void OSCCommunication::sendBreath(unsigned val) {
+void OSCCommunication::sendBreath(unsigned val, EHDeviceType deviceType) {
     if (pingCounter > -1)
-        sender.send("/EigenharpCore/breath", (int)val, (int)currentDevice);
+        sender.send("/EigenharpCore/breath", (int)val, (int)deviceType);
 }
 
-void OSCCommunication::sendStrip(unsigned strip, unsigned val) {
+void OSCCommunication::sendStrip(unsigned strip, unsigned val, EHDeviceType deviceType) {
     if (pingCounter > -1)
-        sender.send("/EigenharpCore/strip", (int)strip, (int)val, (int)currentDevice);
+        sender.send("/EigenharpCore/strip", (int)strip, (int)val, (int)deviceType);
 }
 
-void OSCCommunication::sendPedal(unsigned pedal, unsigned val) {
+void OSCCommunication::sendPedal(unsigned pedal, unsigned val, EHDeviceType deviceType) {
     if (pingCounter > -1)
-        sender.send("/EigenharpCore/pedal", (int)pedal, (int)val, (int)currentDevice);
+        sender.send("/EigenharpCore/pedal", (int)pedal, (int)val, (int)deviceType);
 }
 
 void OSCCommunication::timerCallback() {
@@ -118,16 +118,16 @@ void* OSCCommunication::sendProcess() {
             sendQueue->read(&msg);
             switch (msg.type) {
                 case OSC::MessageType::Key:
-                    sendKey(msg.course, msg.key, msg.active, msg.pressure, msg.roll, msg.yaw);
+                    sendKey(msg.course, msg.key, msg.active, msg.pressure, msg.roll, msg.yaw, msg.device);
                     break;
                 case OSC::MessageType::Breath:
-                    sendBreath(msg.value);
+                    sendBreath(msg.value, msg.device);
                     break;
                 case OSC::MessageType::Strip:
-                    sendStrip(msg.strip, msg.value);
+                    sendStrip(msg.strip, msg.value, msg.device);
                     break;
                 case OSC::MessageType::Pedal:
-                    sendStrip(msg.pedal, msg.value);
+                    sendStrip(msg.pedal, msg.value, msg.device);
                     break;
                 default:
                     break;

@@ -9,8 +9,11 @@
 #include "OSCCommunication.h"
 #include "Enums.h"
 
-static const char *deviceId = nullptr;
-extern std::atomic<DeviceType> currentDevice;
+struct ConnectedDevice {
+    const char *dev;
+    EHDeviceType type = EHDeviceType::None;
+};
+extern std::list<ConnectedDevice> connectedDevices;
 
 class APICallback: public EigenApi::Callback {
 public:
@@ -22,7 +25,8 @@ public:
     virtual void pedal(const char* dev, unsigned long long t, unsigned pedal, unsigned val);
     
     EigenApi::Eigenharp& eh_;
-    juce::String modelName = "";
+
 private:
     OSC::OSCMessageFifo *sendQueue;
+    EHDeviceType getTypeFromDev(const char* dev) const;
 };
