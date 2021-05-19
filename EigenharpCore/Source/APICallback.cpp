@@ -21,6 +21,12 @@ void APICallback::device(const char* dev, DeviceType dt, int rows, int cols, int
             break;
     }
     ConnectedDevice newDev { .dev = dev, .type = devType };
+    for (auto i = begin(connectedDevices); i != end(connectedDevices); i++) {
+        if (i->type == newDev.type) {
+            connectedDevices.erase(i);
+        }
+    }
+    
     connectedDevices.push_back(newDev);
     
     OSC::Message msg {
