@@ -17,7 +17,13 @@ transposeInput("Transpose:", 3, -24, 24, 0), globalPitchbendRangeInput("Global p
     midiChannelDropdown.setLabelText("Midi channel:");
     for (int i = 1; i <= 16; i++)
         midiChannelDropdown.addItem(juce::String(i), i);
-    midiChannelDropdown.addItem("MPE", 17);
+    midiChannelDropdown.addItem("MPE1_16", 17);
+    midiChannelDropdown.addItem("MPE1_14", 18);
+    midiChannelDropdown.addItem("MPE1_12", 19);
+    midiChannelDropdown.addItem("MPE1_8", 20);
+    midiChannelDropdown.addItem("MPE9_16", 21);
+    midiChannelDropdown.addItem("MPE13_16", 22);
+
     midiChannelDropdown.setSelectedItemId(17);
     
     addAndMakeVisible(pressureDropdown);
