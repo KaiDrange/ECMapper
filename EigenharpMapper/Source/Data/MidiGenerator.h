@@ -1,6 +1,6 @@
 #pragma once
 #include <JuceHeader.h>
-#include <Math.h>
+#include <math.h>
 #include "KeyConfigLookup.h"
 #include "OSCMessageQueue.h"
 

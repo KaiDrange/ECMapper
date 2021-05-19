@@ -13,7 +13,7 @@ public:
     void paint (juce::Graphics&) override;
     void resized() override;
     
-    Layout* getLayout(DeviceType::DeviceType deviceType);
+    Layout* getLayout(DeviceType deviceType);
 
 private:
     juce::TabbedComponent tabs;

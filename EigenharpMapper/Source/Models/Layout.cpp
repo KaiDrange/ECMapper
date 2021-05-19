@@ -1,6 +1,6 @@
 #include "Layout.h"
 
-Layout::Layout(DeviceType::DeviceType instrumentType): valueTree("layout") {
+Layout::Layout(DeviceType instrumentType): valueTree("layout") {
     switch(instrumentType) {
         case DeviceType::Alpha:
             normalKeyCount = 120;
@@ -43,7 +43,7 @@ Layout::Layout(DeviceType::DeviceType instrumentType): valueTree("layout") {
     }
     
 
-    valueTree.setProperty(id_instrumentType, instrumentType, nullptr);
+    valueTree.setProperty(id_instrumentType, (int)instrumentType, nullptr);
     for (int i = 0; i < normalKeyCount; i++)
         addKeyConfig(EigenharpKeyType::Normal, 0, i);
 
@@ -116,8 +116,8 @@ int Layout::getButtonStartIndex() const {
     return normalKeyCount + percKeyCount;
 }
 
-DeviceType::DeviceType Layout::getDeviceType() const {
-    return (DeviceType::DeviceType)valueTree[id_instrumentType].toString().getIntValue();
+DeviceType Layout::getDeviceType() const {
+    return (DeviceType)valueTree[id_instrumentType].toString().getIntValue();
 }
 
 KeyConfig* Layout::getKeyConfigs() {

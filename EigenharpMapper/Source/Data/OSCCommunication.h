@@ -14,7 +14,7 @@ public:
     bool connectReceiver(int port);
     void disconnectReceiver();
     
-    void sendLED(int course, int key, int led, DeviceType::DeviceType deviceType);
+    void sendLED(int course, int key, int led, DeviceType deviceType);
     OSC::OSCMessageFifo *receiveQueue;
 
 private:

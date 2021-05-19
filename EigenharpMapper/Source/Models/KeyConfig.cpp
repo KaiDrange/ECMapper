@@ -28,7 +28,7 @@ EigenharpKeyType KeyConfig::getKeyType() const {
 }
 
 void KeyConfig::setKeyType(EigenharpKeyType keyType) {
-    valueTree.setProperty(id_keyType, keyType, nullptr);
+    valueTree.setProperty(id_keyType, (int)keyType, nullptr);
 }
 
 KeyColour KeyConfig::getKeyColour() const {
@@ -44,7 +44,7 @@ Zone KeyConfig::getZone() const {
 }
 
 void KeyConfig::setZone(Zone zone) {
-    valueTree.setProperty(id_zone, zone, nullptr);
+    valueTree.setProperty(id_zone, (int)zone, nullptr);
 }
 
 KeyMappingType KeyConfig::getMappingType() const {
@@ -52,7 +52,7 @@ KeyMappingType KeyConfig::getMappingType() const {
 }
 
 void KeyConfig::setMappingType(KeyMappingType mappingType) {
-    valueTree.setProperty(id_keyMappingType, mappingType, nullptr);
+    valueTree.setProperty(id_keyMappingType, (int)mappingType, nullptr);
     mappingType == KeyMappingType::Note ?
         setMappingValue("24") :
     setMappingValue("");

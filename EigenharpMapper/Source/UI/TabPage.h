@@ -9,7 +9,7 @@
 
 class TabPage : public juce::Component {
 public:
-    TabPage(DeviceType::DeviceType model);
+    TabPage(DeviceType model);
     ~TabPage() override;
 
     void paint (juce::Graphics&) override;
@@ -18,7 +18,7 @@ public:
     juce::String text;
 
 private:
-    DeviceType::DeviceType model;
+    DeviceType model;
     KeymapPanelComponent *keymapPanel;
     ZonePanelComponent *zonePanels[3];
     juce::TextEditor oscIPInput;

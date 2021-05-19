@@ -4,16 +4,16 @@ LayoutChangeHandler::LayoutChangeHandler(OSC::OSCMessageFifo *oscSendQueue) {
     this->oscSendQueue = oscSendQueue;
 }
 
-void LayoutChangeHandler::setKeyConfigLookup(KeyConfigLookup *keyConfigLookup, DeviceType::DeviceType deviceType) {
+void LayoutChangeHandler::setKeyConfigLookup(KeyConfigLookup *keyConfigLookup, DeviceType deviceType) {
     this->keyConfigLookups[getConfigIndexFromDeviceType(deviceType)] = keyConfigLookup;
 }
 
 void LayoutChangeHandler::valueTreePropertyChanged(juce::ValueTree &vTree, const juce::Identifier &property) {
-    DeviceType::DeviceType deviceType = DeviceType::None;
+    DeviceType deviceType = DeviceType::None;
     if (vTree.getType().toString() == "key") {
         auto key = KeyConfig(vTree);
         auto keyId = key.getKeyId();
-        deviceType = (DeviceType::DeviceType)vTree.getParent().getPropertyAsValue("instrumentType", nullptr).toString().getIntValue();
+        deviceType = (DeviceType)vTree.getParent().getPropertyAsValue("instrumentType", nullptr).toString().getIntValue();
         OSC::Message msg {
             .type = OSC::MessageType::LED,
             .key = (unsigned int)keyId.keyNo,
@@ -22,7 +22,7 @@ void LayoutChangeHandler::valueTreePropertyChanged(juce::ValueTree &vTree, const
             .pressure = 0,
             .roll = 0,
             .yaw = 0,
-            .value = key.getKeyColour(),
+            .value = (unsigned int)key.getKeyColour(),
             .pedal = 0,
             .strip = 0,
             .device = deviceType
@@ -35,7 +35,7 @@ void LayoutChangeHandler::valueTreePropertyChanged(juce::ValueTree &vTree, const
     }
 }
 
-int LayoutChangeHandler::getConfigIndexFromDeviceType(DeviceType::DeviceType type) {
+int LayoutChangeHandler::getConfigIndexFromDeviceType(DeviceType type) {
     return (int)type - 1;
 }
 

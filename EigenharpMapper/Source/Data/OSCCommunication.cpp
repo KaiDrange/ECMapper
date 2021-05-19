@@ -56,7 +56,7 @@ void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
             .strip = 0,
             .pedal = 0,
             .value = 0,
-            .device = (DeviceType::DeviceType)message[6].getInt32()
+            .device = (DeviceType)message[6].getInt32()
         };
 
         receiveQueue->add(&msg);
@@ -73,7 +73,7 @@ void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
             .strip = 0,
             .pedal = 0,
             .value = (unsigned int)message[0].getInt32(),
-            .device = (DeviceType::DeviceType)message[1].getInt32()
+            .device = (DeviceType)message[1].getInt32()
         };
 
         receiveQueue->add(&msg);
@@ -90,7 +90,7 @@ void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
             .strip = (unsigned int)message[0].getInt32(),
             .pedal = 0,
             .value = (unsigned int)message[1].getInt32(),
-            .device = (DeviceType::DeviceType)message[2].getInt32()
+            .device = (DeviceType)message[2].getInt32()
         };
 
         receiveQueue->add(&msg);
@@ -107,14 +107,14 @@ void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
             .strip = 0,
             .pedal = (unsigned int)message[0].getInt32(),
             .value = (unsigned int)message[1].getInt32(),
-            .device = (DeviceType::DeviceType)message[2].getInt32()
+            .device = (DeviceType)message[2].getInt32()
         };
 
         receiveQueue->add(&msg);
     }
 }
 
-void OSCCommunication::sendLED(int course, int key, int led, DeviceType::DeviceType deviceType) {
+void OSCCommunication::sendLED(int course, int key, int led, DeviceType deviceType) {
     if (pingCounter > -1)
         sender.send("/EigenharpMapper/led", course, key, led, (int)deviceType);
 }

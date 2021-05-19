@@ -31,7 +31,7 @@ void MidiGenerator::processOSCMessage(OSC::Message &oscMsg, juce::MidiBuffer &mi
                     createNoteOff(keyLookup->note, keyState, midiBuffer);
                 }
                 else if (keyState->messageCount == 16 && keyState->status != KeyStatus::Pending) {
-                    createNoteHold(Note, keyState, midiBuffer);
+                    createNoteHold(keyLookup->note, keyState, midiBuffer);
                 }
             }
             break;

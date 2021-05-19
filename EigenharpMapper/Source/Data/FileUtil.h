@@ -6,9 +6,9 @@
 
 class FileUtil {
 public:
-    static juce::String openMapping(DeviceType::DeviceType instrumentType);
-    static bool saveMapping(juce::ValueTree valueTree, DeviceType::DeviceType instrumentType);
+    static juce::String openMapping(DeviceType instrumentType);
+    static bool saveMapping(juce::ValueTree valueTree, DeviceType instrumentType);
 
 private:
-    static juce::String getFileExtension(DeviceType::DeviceType instrumentType);
+    static juce::String getFileExtension(DeviceType instrumentType);
 };

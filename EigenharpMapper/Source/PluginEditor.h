@@ -15,7 +15,7 @@ public:
     ~EigenharpMapperAudioProcessorEditor() override;
 
     void resized() override;
-    Layout* getLayout(DeviceType::DeviceType deviceType);
+    Layout* getLayout(DeviceType deviceType);
 
 private:
     // This reference is provided as a quick way for your editor to
