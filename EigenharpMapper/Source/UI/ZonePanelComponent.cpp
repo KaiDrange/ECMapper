@@ -1,9 +1,10 @@
 #include <JuceHeader.h>
 #include "ZonePanelComponent.h"
 
-ZonePanelComponent::ZonePanelComponent(int zoneNumber, float widthFactor, float heightFactor): PanelComponent(widthFactor, heightFactor),
+ZonePanelComponent::ZonePanelComponent(int zoneNumber, float widthFactor, float heightFactor, ZoneConfig *config): PanelComponent(widthFactor, heightFactor),
 transposeInput("Transpose:", 3, -24, 24, 0), globalPitchbendRangeInput("Global pitchbend:", 2, 0, 96, 12), keyPitchbendRangeInput("Key pitchbend:", 2, 0, 96, 2) {
     this->zoneNumber = zoneNumber;
+    this->zoneConfig = config;
     addAndMakeVisible(label);
     label.setText("Zone " + juce::String(zoneNumber), juce::NotificationType::dontSendNotification);
 
@@ -56,10 +57,10 @@ transposeInput("Transpose:", 3, -24, 24, 0), globalPitchbendRangeInput("Global p
     addAndMakeVisible(globalPitchbendRangeInput);
     addAndMakeVisible(keyPitchbendRangeInput);
     
-    addAndMakeVisible(deviceOutput);
-    deviceOutput.setLabelText("Output:");
-    deviceOutput.addItem("Midi out 1",1);
-    deviceOutput.setSelectedItemId(1);
+//    addAndMakeVisible(deviceOutput);
+//    deviceOutput.setLabelText("Output:");
+//    deviceOutput.addItem("Midi out 1",1);
+//    deviceOutput.setSelectedItemId(1);
 
 }
 

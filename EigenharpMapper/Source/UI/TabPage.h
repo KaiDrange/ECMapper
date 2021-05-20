@@ -24,6 +24,7 @@ private:
     juce::TextEditor oscIPInput;
 
     Layout *keymap;
+    ZoneConfig *zoneConfigs[3];
     juce::MidiKeyboardState keyboardState;
     juce::MidiKeyboardComponent keyboard;
     juce::TextButton saveMappingButton;

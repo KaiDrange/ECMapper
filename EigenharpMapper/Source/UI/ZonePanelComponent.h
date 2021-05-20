@@ -5,10 +5,11 @@
 #include "Utility.h"
 #include "DropdownComponent.h"
 #include "NumberInputComponent.h"
+#include "../Models/ZoneConfig.h"
 
 class ZonePanelComponent  : public PanelComponent {
 public:
-    ZonePanelComponent(int zoneNumber, float widthFactor, float heightFactor);
+    ZonePanelComponent(int zoneNumber, float widthFactor, float heightFactor, ZoneConfig *config);
     ~ZonePanelComponent() override;
 
     void paint (juce::Graphics&) override;
@@ -35,6 +36,8 @@ private:
     NumberInputComponent globalPitchbendRangeInput;
     NumberInputComponent keyPitchbendRangeInput;
     DropdownComponent deviceOutput;
+    
+    ZoneConfig *zoneConfig;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ZonePanelComponent)
 };

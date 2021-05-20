@@ -5,7 +5,8 @@ TabPage::TabPage(DeviceType model) : keyboard(keyboardState, juce::MidiKeyboardC
     keymapPanel = new KeymapPanelComponent(keymap, 0.4, 1);
     addAndMakeVisible(keymapPanel);
     for (int i = 0; i < 3; i++) {
-        zonePanels[i] = new ZonePanelComponent(i+1, 1, 1.0/3.0);
+        zoneConfigs[i] = new ZoneConfig((Zone)(i+1));
+        zonePanels[i] = new ZonePanelComponent(i+1, 1, 1.0/3.0, zoneConfigs[i]);
         addAndMakeVisible(zonePanels[i]);
     }
     
@@ -36,6 +37,7 @@ TabPage::~TabPage() {
     delete keymapPanel;
     for (int i = 0; i < 3; i++) {
         delete zonePanels[i];
+        delete zoneConfigs[i];
     }
     delete keymap;
 }
