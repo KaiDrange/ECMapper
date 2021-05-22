@@ -55,6 +55,10 @@ private:
     OSC::OSCMessageFifo oscSendQueue;
     OSC::OSCMessageFifo oscReceiveQueue;
     MidiGenerator midiGenerator;
+    juce::AudioProcessorValueTreeState pluginState;
+    juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
+    void copyTreePropertiesRecursive(const juce::ValueTree source, juce::ValueTree dest);
+    juce::AudioProcessorEditor *editor;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (EigenharpMapperAudioProcessor)
 };

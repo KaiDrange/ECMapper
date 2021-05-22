@@ -18,11 +18,11 @@ public:
     };
     void addListener(Listener *listenerToAdd);
     void removeListener(Listener *listenerToRemove);
-    
+    juce::TextEditor input;
+
 private:
     void sendChangeMessage();
     juce::Label label;
-    juce::TextEditor input;
     int maxValue;
     int minValue;
     juce::ListenerList<Listener> listeners;

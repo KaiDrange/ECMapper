@@ -15,6 +15,7 @@ public:
     void paint (juce::Graphics&) override;
     void resized() override;
     Layout* getLayout();
+    ZoneConfig* getZoneConfig(Zone zone);
     juce::String text;
 
 private:
@@ -24,7 +25,6 @@ private:
     juce::TextEditor oscIPInput;
 
     Layout *keymap;
-    ZoneConfig *zoneConfigs[3];
     juce::MidiKeyboardState keyboardState;
     juce::MidiKeyboardComponent keyboard;
     juce::TextButton saveMappingButton;

@@ -6,6 +6,8 @@ class ZoneConfig {
 public:
     ZoneConfig(Zone zone);
     Zone zone;
+    juce::ValueTree getValueTree() const;
+    
     bool isEnabled() const;
     void setEnabled(bool enabled);
     int getTranspose() const;
@@ -32,9 +34,9 @@ public:
     void setStrip2Abs(juce::String strip2abs);
     juce::String getBreath() const;
     void setBreath(juce::String breath);
+    
+    void addListener(juce::ValueTree::Listener *listener);
 
-private:
-    juce::ValueTree valueTree;
     juce::Identifier id_enabled = "enabled";
     juce::Identifier id_transpose = "transpose";
     juce::Identifier id_globalPitchbend = "globalPitchbend";
@@ -48,4 +50,6 @@ private:
     juce::Identifier id_strip2Rel = "strip2Rel";
     juce::Identifier id_strip2Abs = "strip2Abs";
     juce::Identifier id_breath = "breath";
+    juce::ValueTree valueTree;
+private:
 };

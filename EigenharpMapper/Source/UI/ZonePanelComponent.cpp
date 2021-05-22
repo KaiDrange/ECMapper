@@ -1,19 +1,26 @@
 #include <JuceHeader.h>
 #include "ZonePanelComponent.h"
 
-ZonePanelComponent::ZonePanelComponent(int zoneNumber, float widthFactor, float heightFactor, ZoneConfig *config): PanelComponent(widthFactor, heightFactor),
-transposeInput("Transpose:", 3, -24, 24, 0), globalPitchbendRangeInput("Global pitchbend:", 2, 0, 96, 12), keyPitchbendRangeInput("Key pitchbend:", 2, 0, 96, 2) {
+ZonePanelComponent::ZonePanelComponent(int zoneNumber, float widthFactor, float heightFactor):
+        PanelComponent(widthFactor, heightFactor),
+        transposeInput("Transpose:", 3, -24, 24, 0),
+        globalPitchbendRangeInput("Global pitchbend:", 2, 0, 96, 12),
+        keyPitchbendRangeInput("Key pitchbend:", 2, 0, 96, 2),
+        zoneConfig((Zone)zoneNumber) {
     this->zoneNumber = zoneNumber;
-    this->zoneConfig = config;
     addAndMakeVisible(label);
     label.setText("Zone " + juce::String(zoneNumber), juce::NotificationType::dontSendNotification);
 
     addAndMakeVisible(enableZoneButton);
     enableZoneButton.setButtonText("On");
-    enableZoneButton.onStateChange = [&] {
-        enabled = enableZoneButton.getState();
+    enableZoneButton.onClick = [&] {
+        zoneConfig.setEnabled(enableZoneButton.getToggleState());
     };
-        
+    
+    transposeInput.input.onTextChange = [&] {
+        zoneConfig.setTranspose(transposeInput.getValue());
+    };
+            
     addAndMakeVisible(midiChannelDropdown);
     midiChannelDropdown.setLabelText("Midi channel:");
     for (int i = 1; i <= 16; i++)
@@ -26,6 +33,10 @@ transposeInput("Transpose:", 3, -24, 24, 0), globalPitchbendRangeInput("Global p
     midiChannelDropdown.addItem("MPE13_16", 22);
 
     midiChannelDropdown.setSelectedItemId(17);
+    midiChannelDropdown.box.onChange = [&] {
+        zoneConfig.setMidiChannelType((MidiChannelType)midiChannelDropdown.box.getSelectedId());
+    };
+            
     
     addAndMakeVisible(pressureDropdown);
     pressureDropdown.setLabelText("Pressure:");
@@ -62,6 +73,7 @@ transposeInput("Transpose:", 3, -24, 24, 0), globalPitchbendRangeInput("Global p
 //    deviceOutput.addItem("Midi out 1",1);
 //    deviceOutput.setSelectedItemId(1);
 
+    zoneConfig.addListener(this);
 }
 
 ZonePanelComponent::~ZonePanelComponent() {
@@ -113,3 +125,21 @@ void ZonePanelComponent::setStandardMidiDropdownParams(DropdownComponent &dropdo
     dropdown.addItem("Off", 132);
     dropdown.setSelectedItemId(defaultId);
 }
+
+ZoneConfig* ZonePanelComponent::getZoneConfig() {
+    return &zoneConfig;
+}
+
+void ZonePanelComponent::valueTreePropertyChanged(juce::ValueTree &vTree, const juce::Identifier &property) {
+    if (property == zoneConfig.id_enabled) {
+        enableZoneButton.setToggleState(zoneConfig.isEnabled(), juce::dontSendNotification);
+    }
+    else if (property == zoneConfig.id_transpose) {
+        transposeInput.setValue(zoneConfig.getTranspose());
+    }
+    else if (property == zoneConfig.id_midiChannelType) {
+        midiChannelDropdown.box.setSelectedId((int)zoneConfig.getMidiChannelType());
+    }
+}
+
+

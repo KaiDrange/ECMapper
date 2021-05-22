@@ -4,6 +4,10 @@ ZoneConfig::ZoneConfig(Zone zone): valueTree("zone") {
     this->zone = zone;
 }
 
+juce::ValueTree ZoneConfig::getValueTree() const {
+    return valueTree;
+}
+
 bool ZoneConfig::isEnabled() const {
     return valueTree.getProperty(id_enabled).toString().getIntValue() > 0;
 }
@@ -105,4 +109,8 @@ juce::String ZoneConfig::getBreath() const {
 
 void ZoneConfig::setBreath(juce::String breath) {
     valueTree.setProperty(id_breath, breath, nullptr);
+}
+
+void ZoneConfig::addListener(juce::ValueTree::Listener *listener) {
+    valueTree.addListener(listener);
 }

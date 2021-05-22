@@ -1,6 +1,6 @@
 #include "MainComponent.h"
 
-MainComponent::MainComponent() : tabs(juce::TabbedButtonBar::TabsAtTop), uiSettings("uiSettings") {
+MainComponent::MainComponent() : uiSettings("uiSettings"), tabs(juce::TabbedButtonBar::TabsAtTop) {
     tabPages[0] = new TabPage(DeviceType::Alpha);
     tabPages[1] = new TabPage(DeviceType::Tau);
     tabPages[2] = new TabPage(DeviceType::Pico);
@@ -14,6 +14,12 @@ MainComponent::MainComponent() : tabs(juce::TabbedButtonBar::TabsAtTop), uiSetti
     uiSettings.addChild(tabPages[0]->getLayout()->getValueTree(), 0, nullptr);
     uiSettings.addChild(tabPages[1]->getLayout()->getValueTree(), 1, nullptr);
     uiSettings.addChild(tabPages[2]->getLayout()->getValueTree(), 2, nullptr);
+
+    for (int i = 0; i < 3; i++) {
+        uiSettings.addChild(tabPages[i]->getZoneConfig(Zone::Zone1)->getValueTree(), 3 + (i*3), nullptr);
+        uiSettings.addChild(tabPages[i]->getZoneConfig(Zone::Zone2)->getValueTree(), 4 + (i*3), nullptr);
+        uiSettings.addChild(tabPages[i]->getZoneConfig(Zone::Zone3)->getValueTree(), 5 + (i*3), nullptr);
+    }
 
     resized();
 }
@@ -30,9 +36,13 @@ void MainComponent::paint (juce::Graphics& g) {
 void MainComponent::resized() {
     auto area = getLocalBounds();
     tabs.setBounds(area);
+    
 }
 
 Layout* MainComponent::getLayout(DeviceType deviceType) {
         return tabPages[(int)deviceType-1]->getLayout();
 }
 
+void MainComponent::addListener(juce::ValueTree::Listener *listener) {
+    uiSettings.addListener(listener);
+}

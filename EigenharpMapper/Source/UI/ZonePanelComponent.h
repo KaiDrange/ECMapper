@@ -7,18 +7,18 @@
 #include "NumberInputComponent.h"
 #include "../Models/ZoneConfig.h"
 
-class ZonePanelComponent  : public PanelComponent {
+class ZonePanelComponent  : public PanelComponent, public juce::ValueTree::Listener {
 public:
-    ZonePanelComponent(int zoneNumber, float widthFactor, float heightFactor, ZoneConfig *config);
+    ZonePanelComponent(int zoneNumber, float widthFactor, float heightFactor);
     ~ZonePanelComponent() override;
 
     void paint (juce::Graphics&) override;
     void resized() override;
+    ZoneConfig* getZoneConfig();
 
 private:
     void setStandardMidiDropdownParams(DropdownComponent &dropdown, int defaultId);
     int zoneNumber;
-    bool enabled;
     juce::Label label;
     juce::ToggleButton enableZoneButton;
 
@@ -37,7 +37,9 @@ private:
     NumberInputComponent keyPitchbendRangeInput;
     DropdownComponent deviceOutput;
     
-    ZoneConfig *zoneConfig;
+    ZoneConfig zoneConfig;
+    
+    void valueTreePropertyChanged(juce::ValueTree &vTree, const juce::Identifier &property) override;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ZonePanelComponent)
 };

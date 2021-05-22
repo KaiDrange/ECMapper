@@ -2,7 +2,9 @@
 #include "PluginEditor.h"
 
 EigenharpMapperAudioProcessor::EigenharpMapperAudioProcessor() : AudioProcessor (BusesProperties().withOutput("Output", juce::AudioChannelSet::stereo(), true)
-), layoutChangeHandler(&oscSendQueue), osc(&oscSendQueue, &oscReceiveQueue) {
+), layoutChangeHandler(&oscSendQueue), osc(&oscSendQueue, &oscReceiveQueue),
+pluginState(*this, nullptr, juce::Identifier("pluginState"), createParameterLayout())
+{
     osc.connectSender("127.0.0.1", senderPort);
     osc.connectReceiver(receiverPort);
     
@@ -111,6 +113,7 @@ bool EigenharpMapperAudioProcessor::hasEditor() const {
 
 juce::AudioProcessorEditor* EigenharpMapperAudioProcessor::createEditor() {
     auto editor = new EigenharpMapperAudioProcessorEditor(*this);
+    this->editor = editor;
     
     auto alphaLayout = editor->getLayout(DeviceType::Alpha);
     auto tauLayout = editor->getLayout(DeviceType::Tau);
@@ -121,25 +124,49 @@ juce::AudioProcessorEditor* EigenharpMapperAudioProcessor::createEditor() {
     layoutChangeHandler.setKeyConfigLookup(&midiGenerator.keyConfigLookups[0], alphaLayout->getDeviceType());
     layoutChangeHandler.setKeyConfigLookup(&midiGenerator.keyConfigLookups[1], tauLayout->getDeviceType());
     layoutChangeHandler.setKeyConfigLookup(&midiGenerator.keyConfigLookups[2], picoLayout->getDeviceType());
-    alphaLayout->addListener(&layoutChangeHandler);
-    tauLayout->addListener(&layoutChangeHandler);
-    picoLayout->addListener(&layoutChangeHandler);
+//    alphaLayout->addListener(&layoutChangeHandler);
+//    tauLayout->addListener(&layoutChangeHandler);
+//    picoLayout->addListener(&layoutChangeHandler);
+    
+    pluginState.state.addChild(editor->mainComponent.uiSettings, 0, nullptr);
+    editor->mainComponent.addListener(&layoutChangeHandler);
+    
     return editor;
 }
 
-void EigenharpMapperAudioProcessor::getStateInformation(juce::MemoryBlock& destData) {
-    // You should use this method to store your parameters in the memory block.
-    // You could do that either as raw data, or use the XML or ValueTree classes
-    // as intermediaries to make it easy to save and load complex data.
+void EigenharpMapperAudioProcessor::getStateInformation(juce::MemoryBlock &destData) {
+    auto state = pluginState.copyState();
+    std::unique_ptr<juce::XmlElement> xml(state.createXml());
+    copyXmlToBinary (*xml, destData);
 }
 
 void EigenharpMapperAudioProcessor::setStateInformation (const void* data, int sizeInBytes) {
-    // You should use this method to restore your parameters from this memory block,
-    // whose contents will have been created by the getStateInformation() call.
+    std::unique_ptr<juce::XmlElement> xmlState (getXmlFromBinary (data, sizeInBytes));
+
+    if (xmlState.get() != nullptr) {
+        if (xmlState->hasTagName(pluginState.state.getType())) {
+            auto newTreeState = juce::ValueTree::fromXml (*xmlState);
+            copyTreePropertiesRecursive(newTreeState, pluginState.state);
+            if (editor != nullptr)
+                editor->repaint();
+        }
+    }
+}
+
+void EigenharpMapperAudioProcessor::copyTreePropertiesRecursive(const juce::ValueTree source, juce::ValueTree dest) {
+    dest.copyPropertiesFrom(source, nullptr);
+    for (int i = 0; i < dest.getNumChildren(); i++)
+        copyTreePropertiesRecursive(source.getChild(i), dest.getChild(i));
 }
 
 //==============================================================================
 // This creates new instances of the plugin..
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() {
     return new EigenharpMapperAudioProcessor();
+}
+
+juce::AudioProcessorValueTreeState::ParameterLayout EigenharpMapperAudioProcessor::createParameterLayout() {
+    juce::AudioProcessorValueTreeState::ParameterLayout paramLayout;
+    paramLayout.add(std::make_unique<juce::AudioParameterInt>("transpose", "Transpose", -48, 48, 0));
+    return paramLayout;
 }
