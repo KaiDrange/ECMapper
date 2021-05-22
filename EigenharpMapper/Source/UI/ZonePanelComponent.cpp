@@ -20,7 +20,15 @@ ZonePanelComponent::ZonePanelComponent(int zoneNumber, float widthFactor, float 
     transposeInput.input.onTextChange = [&] {
         zoneConfig.setTranspose(transposeInput.getValue());
     };
-            
+
+    globalPitchbendRangeInput.input.onTextChange = [&] {
+        zoneConfig.setGlobalPitchbend(globalPitchbendRangeInput.getValue());
+    };
+
+    keyPitchbendRangeInput.input.onTextChange = [&] {
+        zoneConfig.setKeyPitchbend(keyPitchbendRangeInput.getValue());
+    };
+
     addAndMakeVisible(midiChannelDropdown);
     midiChannelDropdown.setLabelText("Midi channel:");
     for (int i = 1; i <= 16; i++)
@@ -40,29 +48,30 @@ ZonePanelComponent::ZonePanelComponent(int zoneNumber, float widthFactor, float 
     
     addAndMakeVisible(pressureDropdown);
     pressureDropdown.setLabelText("Pressure:");
-    setStandardMidiDropdownParams(pressureDropdown, 129);
+    setStandardMidiDropdownParams(pressureDropdown, 129, zoneConfig.id_pressure);
+            
     addAndMakeVisible(yawDropdown);
     yawDropdown.setLabelText("Yaw:");
-    setStandardMidiDropdownParams(yawDropdown, 75);
+    setStandardMidiDropdownParams(yawDropdown, 75, zoneConfig.id_yaw);
     addAndMakeVisible(rollDropdown);
     rollDropdown.setLabelText("Roll:");
-    setStandardMidiDropdownParams(rollDropdown, 131);
+    setStandardMidiDropdownParams(rollDropdown, 131, zoneConfig.id_roll);
 
     addAndMakeVisible(strip1RelativeDropdown);
     strip1RelativeDropdown.setLabelText("Strip1 Rel:");
-    setStandardMidiDropdownParams(strip1RelativeDropdown, 131);
+    setStandardMidiDropdownParams(strip1RelativeDropdown, 131, zoneConfig.id_strip1Rel);
     addAndMakeVisible(strip1AbsoluteDropdown);
     strip1AbsoluteDropdown.setLabelText("Strip1 Abs:");
-    setStandardMidiDropdownParams(strip1AbsoluteDropdown, 132);
+    setStandardMidiDropdownParams(strip1AbsoluteDropdown, 132, zoneConfig.id_strip1Abs);
     addAndMakeVisible(strip2RelativeDropdown);
     strip2RelativeDropdown.setLabelText("Strip2 Rel:");
-    setStandardMidiDropdownParams(strip2RelativeDropdown, 132);
+    setStandardMidiDropdownParams(strip2RelativeDropdown, 132, zoneConfig.id_strip2Rel);
     addAndMakeVisible(strip2AbsoluteDropdown);
     strip2AbsoluteDropdown.setLabelText("Strip2 Abs:");
-    setStandardMidiDropdownParams(strip2AbsoluteDropdown, 132);
+    setStandardMidiDropdownParams(strip2AbsoluteDropdown, 132, zoneConfig.id_strip2Abs);
     addAndMakeVisible(breathDropdown);
     breathDropdown.setLabelText("Breath:");
-    setStandardMidiDropdownParams(breathDropdown, 3);
+    setStandardMidiDropdownParams(breathDropdown, 3, zoneConfig.id_breath);
     
     addAndMakeVisible(transposeInput);
     addAndMakeVisible(globalPitchbendRangeInput);
@@ -116,14 +125,30 @@ void ZonePanelComponent::resized() {
     deviceOutput.setBounds(col2.removeFromBottom(lineHeight));
 }
 
-void ZonePanelComponent::setStandardMidiDropdownParams(DropdownComponent &dropdown, int defaultId) {
+void ZonePanelComponent::setStandardMidiDropdownParams(DropdownComponent &dropdown, int defaultId, juce::Identifier treeId) {
     for (int i = 0; i < 128; i++)
     dropdown.addItem("CC #" + juce::String(i), i+1);
-    dropdown.addItem("Chan aftertouch", 129);
-    dropdown.addItem("Poly aftertouch", 130);
-    dropdown.addItem("Pitchbend", 131);
+    dropdown.addItem("Pitchbend", 129);
+    dropdown.addItem("Chan aftertouch", 130);
+    dropdown.addItem("Poly aftertouch", 131);
     dropdown.addItem("Off", 132);
     dropdown.setSelectedItemId(defaultId);
+
+    dropdown.box.onChange = [&, treeId] {
+        ZoneConfig::MidiValue midiValue;
+        auto selIndex = dropdown.box.getSelectedItemIndex();
+        if (selIndex < 128) {
+            midiValue.valueType = MidiValueType::CC;
+            midiValue.ccNo = selIndex;
+        }
+        else {
+            midiValue.valueType = (MidiValueType)(selIndex - 126);
+            midiValue.ccNo = 0;
+        }
+        
+        zoneConfig.setMidiValue(treeId, midiValue);
+    };
+
 }
 
 ZoneConfig* ZonePanelComponent::getZoneConfig() {
@@ -140,6 +165,47 @@ void ZonePanelComponent::valueTreePropertyChanged(juce::ValueTree &vTree, const 
     else if (property == zoneConfig.id_midiChannelType) {
         midiChannelDropdown.box.setSelectedId((int)zoneConfig.getMidiChannelType());
     }
+    else if (property == zoneConfig.id_globalPitchbend) {
+        globalPitchbendRangeInput.setValue(zoneConfig.getGlobalPitchbend());
+    }
+    else if (property == zoneConfig.id_keyPitchbend) {
+        keyPitchbendRangeInput.setValue(zoneConfig.getKeyPitchbend());
+    }
+    else if (vTree.getType() == zoneConfig.id_pressure) {
+        updateStandardMidiParamsDropdown(zoneConfig.id_pressure, pressureDropdown);
+    }
+    else if (vTree.getType() == zoneConfig.id_yaw) {
+        updateStandardMidiParamsDropdown(zoneConfig.id_yaw, yawDropdown);
+    }
+    else if (vTree.getType() == zoneConfig.id_roll) {
+        updateStandardMidiParamsDropdown(zoneConfig.id_roll, rollDropdown);
+    }
+    else if (vTree.getType() == zoneConfig.id_strip1Rel) {
+        updateStandardMidiParamsDropdown(zoneConfig.id_strip1Rel, strip1RelativeDropdown);
+    }
+    else if (vTree.getType() == zoneConfig.id_strip1Abs) {
+        updateStandardMidiParamsDropdown(zoneConfig.id_strip1Abs, strip1AbsoluteDropdown);
+    }
+    else if (vTree.getType() == zoneConfig.id_strip2Rel) {
+        updateStandardMidiParamsDropdown(zoneConfig.id_strip2Rel, strip2RelativeDropdown);
+    }
+    else if (vTree.getType() == zoneConfig.id_strip2Abs) {
+        updateStandardMidiParamsDropdown(zoneConfig.id_strip2Abs, strip2AbsoluteDropdown);
+    }
+    else if (vTree.getType() == zoneConfig.id_breath) {
+        updateStandardMidiParamsDropdown(zoneConfig.id_breath, breathDropdown);
+    }
 }
 
+void ZonePanelComponent::updateStandardMidiParamsDropdown(juce::Identifier &id, DropdownComponent &dropdown) {
+    auto midiValue = zoneConfig.getMidiValue(id);
+    if (midiValue.valueType == MidiValueType::CC) {
+        if (dropdown.box.getSelectedItemIndex() != midiValue.ccNo)
+            dropdown.box.setSelectedItemIndex(midiValue.ccNo);
+    }
+    else {
+        if (dropdown.box.getSelectedItemIndex() != 126 + (int)midiValue.valueType)
+            dropdown.box.setSelectedItemIndex(126 + (int)midiValue.valueType);
+    }
 
+}

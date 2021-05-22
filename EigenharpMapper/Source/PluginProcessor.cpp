@@ -8,6 +8,25 @@ pluginState(*this, nullptr, juce::Identifier("pluginState"), createParameterLayo
     osc.connectSender("127.0.0.1", senderPort);
     osc.connectReceiver(receiverPort);
     
+    auto editor = new EigenharpMapperAudioProcessorEditor(*this);
+    this->editor = editor;
+    
+    auto alphaLayout = editor->getLayout(DeviceType::Alpha);
+    auto tauLayout = editor->getLayout(DeviceType::Tau);
+    auto picoLayout = editor->getLayout(DeviceType::Pico);
+    midiGenerator.keyConfigLookups[0].setLayout(alphaLayout);
+    midiGenerator.keyConfigLookups[1].setLayout(tauLayout);
+    midiGenerator.keyConfigLookups[2].setLayout(picoLayout);
+    layoutChangeHandler.setKeyConfigLookup(&midiGenerator.keyConfigLookups[0], alphaLayout->getDeviceType());
+    layoutChangeHandler.setKeyConfigLookup(&midiGenerator.keyConfigLookups[1], tauLayout->getDeviceType());
+    layoutChangeHandler.setKeyConfigLookup(&midiGenerator.keyConfigLookups[2], picoLayout->getDeviceType());
+//    alphaLayout->addListener(&layoutChangeHandler);
+//    tauLayout->addListener(&layoutChangeHandler);
+//    picoLayout->addListener(&layoutChangeHandler);
+    
+    pluginState.state.addChild(editor->mainComponent.uiSettings, 0, nullptr);
+    editor->mainComponent.addListener(&layoutChangeHandler);
+
 }
 
 EigenharpMapperAudioProcessor::~EigenharpMapperAudioProcessor() {
@@ -58,8 +77,7 @@ void EigenharpMapperAudioProcessor::prepareToPlay (double sampleRate, int sample
     // initialisation that you need..
 }
 
-void EigenharpMapperAudioProcessor::releaseResources()
-{
+void EigenharpMapperAudioProcessor::releaseResources() {
     // When playback stops, you can use this as an opportunity to free up any
     // spare memory, etc.
 }
@@ -112,24 +130,6 @@ bool EigenharpMapperAudioProcessor::hasEditor() const {
 }
 
 juce::AudioProcessorEditor* EigenharpMapperAudioProcessor::createEditor() {
-    auto editor = new EigenharpMapperAudioProcessorEditor(*this);
-    this->editor = editor;
-    
-    auto alphaLayout = editor->getLayout(DeviceType::Alpha);
-    auto tauLayout = editor->getLayout(DeviceType::Tau);
-    auto picoLayout = editor->getLayout(DeviceType::Pico);
-    midiGenerator.keyConfigLookups[0].setLayout(alphaLayout);
-    midiGenerator.keyConfigLookups[1].setLayout(tauLayout);
-    midiGenerator.keyConfigLookups[2].setLayout(picoLayout);
-    layoutChangeHandler.setKeyConfigLookup(&midiGenerator.keyConfigLookups[0], alphaLayout->getDeviceType());
-    layoutChangeHandler.setKeyConfigLookup(&midiGenerator.keyConfigLookups[1], tauLayout->getDeviceType());
-    layoutChangeHandler.setKeyConfigLookup(&midiGenerator.keyConfigLookups[2], picoLayout->getDeviceType());
-//    alphaLayout->addListener(&layoutChangeHandler);
-//    tauLayout->addListener(&layoutChangeHandler);
-//    picoLayout->addListener(&layoutChangeHandler);
-    
-    pluginState.state.addChild(editor->mainComponent.uiSettings, 0, nullptr);
-    editor->mainComponent.addListener(&layoutChangeHandler);
     
     return editor;
 }

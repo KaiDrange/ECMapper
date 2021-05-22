@@ -44,3 +44,11 @@ enum class MidiChannelType {
     MPE9_16,
     MPE13_16
 };
+
+enum class MidiValueType {
+    CC = 1,
+    Pitchbend,
+    ChannelAftertouch,
+    PolyAftertouch,
+    Off
+};

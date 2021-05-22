@@ -5,6 +5,12 @@
 class ZoneConfig {
 public:
     ZoneConfig(Zone zone);
+
+    struct MidiValue {
+        MidiValueType valueType = MidiValueType::CC;
+        int ccNo = 0;
+    };
+
     Zone zone;
     juce::ValueTree getValueTree() const;
     
@@ -18,24 +24,27 @@ public:
     void setKeyPitchbend(int pitchbend);
     MidiChannelType getMidiChannelType() const;
     void setMidiChannelType(MidiChannelType type);
-    juce::String getPressure() const;
-    void setPressure(juce::String pressure);
-    juce::String getRoll() const;
-    void setRoll(juce::String roll);
-    juce::String getYaw() const;
-    void setYaw(juce::String yaw);
-    juce::String getStrip1Rel() const;
-    void setStrip1Rel(juce::String strip1rel);
-    juce::String getStrip1Abs() const;
-    void setStrip1Abs(juce::String strip1abs);
-    juce::String getStrip2Rel() const;
-    void setStrip2Rel(juce::String strip2rel);
-    juce::String getStrip2Abs() const;
-    void setStrip2Abs(juce::String strip2abs);
-    juce::String getBreath() const;
-    void setBreath(juce::String breath);
+//    juce::String getPressure() const;
+//    void setPressure(juce::String pressure);
+//    juce::String getRoll() const;
+//    void setRoll(juce::String roll);
+//    juce::String getYaw() const;
+//    void setYaw(juce::String yaw);
+//    juce::String getStrip1Rel() const;
+//    void setStrip1Rel(juce::String strip1rel);
+//    juce::String getStrip1Abs() const;
+//    void setStrip1Abs(juce::String strip1abs);
+//    juce::String getStrip2Rel() const;
+//    void setStrip2Rel(juce::String strip2rel);
+//    juce::String getStrip2Abs() const;
+//    void setStrip2Abs(juce::String strip2abs);
+//    juce::String getBreath() const;
+//    void setBreath(juce::String breath);
     
     void addListener(juce::ValueTree::Listener *listener);
+    
+    MidiValue getMidiValue(juce::Identifier childId) const;
+    void setMidiValue(juce::Identifier childId, MidiValue midiValue);
 
     juce::Identifier id_enabled = "enabled";
     juce::Identifier id_transpose = "transpose";
@@ -50,6 +59,9 @@ public:
     juce::Identifier id_strip2Rel = "strip2Rel";
     juce::Identifier id_strip2Abs = "strip2Abs";
     juce::Identifier id_breath = "breath";
+    juce::Identifier id_midiValType = "midiValType";
+    juce::Identifier id_midiCCNo = "midiCCNo";
+    juce::Identifier id_midiVal = "midiVal";
     juce::ValueTree valueTree;
 private:
 };

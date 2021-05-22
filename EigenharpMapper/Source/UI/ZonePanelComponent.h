@@ -17,7 +17,9 @@ public:
     ZoneConfig* getZoneConfig();
 
 private:
-    void setStandardMidiDropdownParams(DropdownComponent &dropdown, int defaultId);
+    void setStandardMidiDropdownParams(DropdownComponent &dropdown, int defaultId, juce::Identifier treeId);
+    void updateStandardMidiParamsDropdown(juce::Identifier &id, DropdownComponent &dropdown);
+
     int zoneNumber;
     juce::Label label;
     juce::ToggleButton enableZoneButton;
