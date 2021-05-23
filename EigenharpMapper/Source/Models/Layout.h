@@ -8,12 +8,12 @@
 
 class Layout {
 public:
-    Layout(DeviceType instrumentType);
+    Layout(DeviceType instrumentType, juce::ValueTree parentTree);
     ~Layout();
 
     void addKeyConfig(EigenharpKeyType keyType, int course, int key);
     juce::ValueTree getValueTree() const;
-    void setValueTree(juce::ValueTree valueTree);
+//    void setValueTree(juce::ValueTree valueTree);
     int getNormalkeyCount() const;
     int getPercKeyCount() const;
     int getButtonCount() const;
@@ -24,14 +24,15 @@ public:
     int getPercKeyStartIndex() const;
     int getButtonStartIndex() const;
     DeviceType getDeviceType() const;
-    KeyConfig* getKeyConfigs();
+//    KeyConfig* getKeyConfigs();
     
-    void addListener(juce::ValueTree::Listener *listener);
-    
-private:
-    juce::ValueTree valueTree;
     juce::Identifier id_keyMapping = "keyMapping";
     juce::Identifier id_instrumentType = "instrumentType";
+    juce::Identifier id_layout = "layout";
+    juce::ValueTree valueTree;
+    void addListener(juce::ValueTree::Listener *listener);
+
+private:
 
     int normalKeyCount;
     int percKeyCount;
@@ -39,6 +40,6 @@ private:
     int stripCount;
     int keyRowCount;
     int keyRowLengths[MAX_ROWS];
-    std::vector<KeyConfig> keyConfigs;
+//    std::vector<KeyConfig> keyConfigs;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (Layout)
 };

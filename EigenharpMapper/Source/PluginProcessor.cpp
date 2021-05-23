@@ -2,31 +2,11 @@
 #include "PluginEditor.h"
 
 EigenharpMapperAudioProcessor::EigenharpMapperAudioProcessor() : AudioProcessor (BusesProperties().withOutput("Output", juce::AudioChannelSet::stereo(), true)
-), layoutChangeHandler(&oscSendQueue), osc(&oscSendQueue, &oscReceiveQueue),
-pluginState(*this, nullptr, juce::Identifier("pluginState"), createParameterLayout())
+), layoutChangeHandler(&oscSendQueue),
+pluginState(*this, nullptr, id_state, createParameterLayout()), osc(&oscSendQueue, &oscReceiveQueue)
 {
     osc.connectSender("127.0.0.1", senderPort);
     osc.connectReceiver(receiverPort);
-    
-    auto editor = new EigenharpMapperAudioProcessorEditor(*this);
-    this->editor = editor;
-    
-    auto alphaLayout = editor->getLayout(DeviceType::Alpha);
-    auto tauLayout = editor->getLayout(DeviceType::Tau);
-    auto picoLayout = editor->getLayout(DeviceType::Pico);
-    midiGenerator.keyConfigLookups[0].setLayout(alphaLayout);
-    midiGenerator.keyConfigLookups[1].setLayout(tauLayout);
-    midiGenerator.keyConfigLookups[2].setLayout(picoLayout);
-    layoutChangeHandler.setKeyConfigLookup(&midiGenerator.keyConfigLookups[0], alphaLayout->getDeviceType());
-    layoutChangeHandler.setKeyConfigLookup(&midiGenerator.keyConfigLookups[1], tauLayout->getDeviceType());
-    layoutChangeHandler.setKeyConfigLookup(&midiGenerator.keyConfigLookups[2], picoLayout->getDeviceType());
-//    alphaLayout->addListener(&layoutChangeHandler);
-//    tauLayout->addListener(&layoutChangeHandler);
-//    picoLayout->addListener(&layoutChangeHandler);
-    
-    pluginState.state.addChild(editor->mainComponent.uiSettings, 0, nullptr);
-    editor->mainComponent.addListener(&layoutChangeHandler);
-
 }
 
 EigenharpMapperAudioProcessor::~EigenharpMapperAudioProcessor() {
@@ -130,7 +110,29 @@ bool EigenharpMapperAudioProcessor::hasEditor() const {
 }
 
 juce::AudioProcessorEditor* EigenharpMapperAudioProcessor::createEditor() {
+    std::cout << pluginState.state.getChildWithName("uiSettings").getChild(0).getChild(0).getProperty("keyColour").toString() << std::endl;
+    auto editor = new EigenharpMapperAudioProcessorEditor(*this);
+    this->editor = editor;
+    std::cout << pluginState.state.getChildWithName("uiSettings").getChild(0).getChild(0).getProperty("keyColour").toString() << std::endl;
+
+//    auto alphaLayout = editor->getLayout(DeviceType::Alpha);
+//    auto tauLayout = editor->getLayout(DeviceType::Tau);
+//    auto picoLayout = editor->getLayout(DeviceType::Pico);
+//    midiGenerator.keyConfigLookups[0].setLayout(alphaLayout);
+//    midiGenerator.keyConfigLookups[1].setLayout(tauLayout);
+//    midiGenerator.keyConfigLookups[2].setLayout(picoLayout);
+//    layoutChangeHandler.setKeyConfigLookup(&midiGenerator.keyConfigLookups[0], alphaLayout->getDeviceType());
+//    layoutChangeHandler.setKeyConfigLookup(&midiGenerator.keyConfigLookups[1], tauLayout->getDeviceType());
+//    layoutChangeHandler.setKeyConfigLookup(&midiGenerator.keyConfigLookups[2], picoLayout->getDeviceType());
+
     
+//    alphaLayout->addListener(&layoutChangeHandler);
+//    tauLayout->addListener(&layoutChangeHandler);
+//    picoLayout->addListener(&layoutChangeHandler);
+    
+//    pluginState.state.addChild(editor->mainComponent.uiSettings, 0, nullptr);
+    editor->mainComponent.addListener(&layoutChangeHandler);
+
     return editor;
 }
 
@@ -140,17 +142,24 @@ void EigenharpMapperAudioProcessor::getStateInformation(juce::MemoryBlock &destD
     copyXmlToBinary (*xml, destData);
 }
 
-void EigenharpMapperAudioProcessor::setStateInformation (const void* data, int sizeInBytes) {
-    std::unique_ptr<juce::XmlElement> xmlState (getXmlFromBinary (data, sizeInBytes));
+void EigenharpMapperAudioProcessor::setStateInformation(const void* data, int sizeInBytes) {
+    std::unique_ptr<juce::XmlElement>xmlState(getXmlFromBinary(data, sizeInBytes));
 
-    if (xmlState.get() != nullptr) {
-        if (xmlState->hasTagName(pluginState.state.getType())) {
-            auto newTreeState = juce::ValueTree::fromXml (*xmlState);
-            copyTreePropertiesRecursive(newTreeState, pluginState.state);
-            if (editor != nullptr)
-                editor->repaint();
-        }
-    }
+            if (xmlState.get() != nullptr)
+                if (xmlState->hasTagName (pluginState.state.getType())) {
+                    pluginState.replaceState(juce::ValueTree::fromXml(*xmlState));
+                }
+    
+//    std::unique_ptr<juce::XmlElement> xmlState (getXmlFromBinary (data, sizeInBytes));
+//
+//    if (xmlState.get() != nullptr) {
+//        if (xmlState->hasTagName(pluginState.state.getType())) {
+//            auto newTreeState = juce::ValueTree::fromXml(*xmlState);
+//            copyTreePropertiesRecursive(newTreeState, pluginState.state);
+//            if (editor != nullptr)
+//                editor->repaint();
+//        }
+//    }
 }
 
 void EigenharpMapperAudioProcessor::copyTreePropertiesRecursive(const juce::ValueTree source, juce::ValueTree dest) {

@@ -1,27 +1,33 @@
 #include "KeyConfig.h"
 
-KeyConfig::KeyConfig(EigenharpKeyType keyType, juce::ValueTree &rootValueTree): valueTree("key") {
-    setKeyColour(KeyColour::Off);
-    setKeyType(keyType);
-    setZone(Zone::NoZone);
-    keyType == EigenharpKeyType::Button ?
-        setMappingType(KeyMappingType::None) :
-        setMappingType(KeyMappingType::Note);
+KeyConfig::KeyConfig(KeyConfig::KeyId keyId, EigenharpKeyType keyType, juce::ValueTree parentTree) {
+    juce::Identifier id = id_key + juce::String(keyId.course) + "_" + juce::String(keyId.keyNo);
+    bool alreadyExists = parentTree.getChildWithName(id).isValid();
+    valueTree = parentTree.getOrCreateChildWithName(id, nullptr);
 
-    rootValueTree.addChild(valueTree, -1, nullptr);
+    if (!alreadyExists) {
+        setKeyColour(KeyColour::Off);
+        setKeyType(keyType);
+        setZone(Zone::NoZone);
+        keyType == EigenharpKeyType::Button ?
+            setMappingType(KeyMappingType::None) :
+            setMappingType(KeyMappingType::Note);
+    }
+
+//    rootValueTree.addChild(valueTree, -1, nullptr);
 }
 
-KeyConfig::KeyConfig(juce::ValueTree &keyTree) {
-    valueTree = keyTree;
-}
+//KeyConfig::KeyConfig(juce::ValueTree &keyTree) {
+//    valueTree = keyTree;
+//}
 
 juce::ValueTree KeyConfig::getValueTree() const {
     return valueTree;
 }
 
-void KeyConfig::setValueTree(juce::ValueTree valueTree) {
-    this->valueTree.copyPropertiesFrom(valueTree, nullptr);
-}
+//void KeyConfig::setValueTree(juce::ValueTree valueTree) {
+//    this->valueTree.copyPropertiesFrom(valueTree, nullptr);
+//}
 
 EigenharpKeyType KeyConfig::getKeyType() const {
     return (EigenharpKeyType)valueTree[id_keyType].toString().getIntValue();

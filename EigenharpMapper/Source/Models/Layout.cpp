@@ -1,6 +1,8 @@
 #include "Layout.h"
 
-Layout::Layout(DeviceType instrumentType): valueTree("layout") {
+Layout::Layout(DeviceType instrumentType, juce::ValueTree parentTree) {
+    valueTree = parentTree.getOrCreateChildWithName(id_instrumentType + juce::String((int)instrumentType), nullptr);
+
     switch(instrumentType) {
         case DeviceType::Alpha:
             normalKeyCount = 120;
@@ -44,41 +46,28 @@ Layout::Layout(DeviceType instrumentType): valueTree("layout") {
     
 
     valueTree.setProperty(id_instrumentType, (int)instrumentType, nullptr);
-    for (int i = 0; i < normalKeyCount; i++)
-        addKeyConfig(EigenharpKeyType::Normal, 0, i);
-
-    if (instrumentType == DeviceType::Pico) {
-        for (int i = 0; i < buttonCount; i++)
-            addKeyConfig(EigenharpKeyType::Button, 1, i);
-    }
-    else {
-        for (int i = 0; i < percKeyCount; i++)
-            addKeyConfig(EigenharpKeyType::Perc, 1, i);
-        for (int i = 0; i < buttonCount; i++)
-            addKeyConfig(EigenharpKeyType::Button, 2, i);
-    }
 }
 
 Layout::~Layout() {
 }
 
-void Layout::addKeyConfig(EigenharpKeyType keyType, int course, int key) {
-    auto keyMap = KeyConfig(keyType, valueTree);
-    KeyConfig::KeyId id = { .course = course, .keyNo = key };
-    keyMap.setKeyId(id);
-    keyConfigs.push_back(keyMap);
-}
+//void Layout::addKeyConfig(EigenharpKeyType keyType, int course, int key) {
+//    KeyConfig::KeyId id = { .course = course, .keyNo = key };
+//    auto keyMap = KeyConfig(id, keyType, valueTree);
+////    keyMap.setKeyId(id);
+//    keyConfigs.push_back(keyMap);
+//}
 
 juce::ValueTree Layout::getValueTree() const {
     return valueTree;
 }
 
-void Layout::setValueTree(juce::ValueTree valueTree) {
-    this->valueTree.copyPropertiesFrom(valueTree, nullptr);
-    for (int i = 0; i < valueTree.getNumChildren(); i++) {
-        keyConfigs[i].setValueTree(valueTree.getChild(i));
-    }
-}
+//void Layout::setValueTree(juce::ValueTree valueTree) {
+//    this->valueTree.copyPropertiesFrom(valueTree, nullptr);
+//    for (int i = 0; i < valueTree.getNumChildren(); i++) {
+//        keyConfigs[i].setValueTree(valueTree.getChild(i));
+//    }
+//}
 
 int Layout::getNormalkeyCount() const {
     return normalKeyCount;
@@ -120,9 +109,9 @@ DeviceType Layout::getDeviceType() const {
     return (DeviceType)valueTree[id_instrumentType].toString().getIntValue();
 }
 
-KeyConfig* Layout::getKeyConfigs() {
-    return keyConfigs.data();
-}
+//KeyConfig* Layout::getKeyConfigs() {
+//    return keyConfigs.data();
+//}
 
 void Layout::addListener(juce::ValueTree::Listener *listener) {
     valueTree.addListener(listener);

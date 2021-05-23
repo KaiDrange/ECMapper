@@ -12,17 +12,18 @@ class KeymapPanelComponent  : public PanelComponent,
                               public juce::KeyListener,
                               public MidiMessageSectionComponent::Listener {
 public:
-    KeymapPanelComponent(Layout *layout, float widthFactor, float heightFactor);
+    KeymapPanelComponent(DeviceType model, float widthFactor, float heightFactor, juce::ValueTree parentTree);
     ~KeymapPanelComponent() override;
     void handleNoteOn(juce::MidiKeyboardState*, int midiChannel, int midiNoteNumber, float velocity) override;
     void handleNoteOff(juce::MidiKeyboardState*, int midiChannel, int midiNoteNumber, float velocity) override;
     bool keyPressed(const juce::KeyPress &key, juce::Component *originatingComponent) override;
 
     void resized() override;
+    Layout layout;
 
 private:
     KeyConfig *selectedKey = nullptr;
-    EigenharpKeyComponent *keys[120+12+8];
+    std::vector<EigenharpKeyComponent*> keys;
     juce::DrawablePath *keyImgNormal, *keyImgOver, *keyImgDown, *keyImgOn;
     juce::TextButton colourMenuButton;
     juce::TextButton zoneMenuButton;
@@ -30,7 +31,6 @@ private:
     MidiMessageSectionComponent midiMessageSectionComponent;
     void valuesChanged(MidiMessageSectionComponent*) override;
 
-    Layout *layout;
 
     juce::DrawablePath* createBtnImage(juce::Colour colour);
     void enableDisableMenuButtons(bool enable);

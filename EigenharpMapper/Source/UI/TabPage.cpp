@@ -1,8 +1,8 @@
 #include "TabPage.h"
 
-TabPage::TabPage(DeviceType model) : keyboard(keyboardState, juce::MidiKeyboardComponent::Orientation::verticalKeyboardFacingRight) {
-    keymap = new Layout(model);
-    keymapPanel = new KeymapPanelComponent(keymap, 0.4, 1);
+TabPage::TabPage(DeviceType model, juce::ValueTree parentTree) : keyboard(keyboardState, juce::MidiKeyboardComponent::Orientation::verticalKeyboardFacingRight) {
+//    keymap = new Layout(model, parentTree);
+    keymapPanel = new KeymapPanelComponent(model, 0.4, 1, parentTree);
     addAndMakeVisible(keymapPanel);
     for (int i = 0; i < 3; i++) {
         zonePanels[i] = new ZonePanelComponent(i+1, 1, 1.0/3.0);
@@ -15,14 +15,14 @@ TabPage::TabPage(DeviceType model) : keyboard(keyboardState, juce::MidiKeyboardC
     addAndMakeVisible(saveMappingButton);
     saveMappingButton.setButtonText("Save");
     saveMappingButton.onClick = [&] {
-        FileUtil::saveMapping(keymap->getValueTree(), model);
+//        FileUtil::saveMapping(keymap->getValueTree(), model);
     };
     addAndMakeVisible(loadMappingButton);
     loadMappingButton.setButtonText("load");
     loadMappingButton.onClick = [&] {
         auto xml = FileUtil::openMapping(model);
         auto loadedMap = juce::ValueTree::fromXml(xml);
-        keymap->setValueTree(loadedMap);
+//        keymap->setValueTree(loadedMap);
         repaint();
     };
     
@@ -37,7 +37,7 @@ TabPage::~TabPage() {
     for (int i = 0; i < 3; i++) {
         delete zonePanels[i];
     }
-    delete keymap;
+//    delete keymap;
 }
 
 void TabPage::paint(juce::Graphics& g) {
@@ -62,7 +62,8 @@ void TabPage::resized() {
 }
 
 Layout* TabPage::getLayout() {
-    return keymap;
+    return &keymapPanel->layout;
+//    return keymap;
 }
 
 ZoneConfig* TabPage::getZoneConfig(Zone zone) {

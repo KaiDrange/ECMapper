@@ -2,7 +2,7 @@
 
 void KeyConfigLookup::setLayout(Layout *layout) {
     this->layout = layout;
-    updateAll();
+//    updateAll();
 }
 
 void KeyConfigLookup::updateAll() {

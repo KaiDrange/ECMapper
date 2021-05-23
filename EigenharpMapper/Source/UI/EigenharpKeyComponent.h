@@ -8,15 +8,15 @@
 
 class EigenharpKeyComponent  : public juce::DrawableButton {
 public:
-    EigenharpKeyComponent(const EigenharpKeyType keyType, const KeyConfig *keyConfig);
+    EigenharpKeyComponent(KeyConfig::KeyId id, EigenharpKeyType keyType, juce::ValueTree parentTree);
     ~EigenharpKeyComponent() override;
 
     void paint (juce::Graphics&) override;
     KeyConfig::KeyId getKeyId() const;
+    KeyConfig keyConfig;
 
 private:
     EigenharpKeyType keyType;
-    const KeyConfig *keyConfig;
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (EigenharpKeyComponent)
 };

@@ -7,7 +7,7 @@
 
 class EigenharpMapperAudioProcessorEditor  : public juce::AudioProcessorEditor {
 public:
-    EigenharpMapperAudioProcessorEditor (EigenharpMapperAudioProcessor&);
+    EigenharpMapperAudioProcessorEditor(EigenharpMapperAudioProcessor&);
     ~EigenharpMapperAudioProcessorEditor() override;
 
     void resized() override;

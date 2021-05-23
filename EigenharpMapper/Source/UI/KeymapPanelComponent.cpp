@@ -1,13 +1,13 @@
 #include "KeymapPanelComponent.h"
 
-KeymapPanelComponent::KeymapPanelComponent(Layout *layout, float widthFactor, float heightFactor) : PanelComponent(widthFactor, heightFactor)
+KeymapPanelComponent::KeymapPanelComponent(DeviceType model, float widthFactor, float heightFactor, juce::ValueTree parentTree) : PanelComponent(widthFactor, heightFactor), layout(model, parentTree)
 {
+    
     keyImgNormal = createBtnImage(juce::Colour::fromFloatRGBA(1.0f, 1.0f, 1.0f, 0.0f));
     keyImgOver = createBtnImage(juce::Colour::fromFloatRGBA(1.0f, 1.0f, 1.0f, 0.8f));
     keyImgDown = createBtnImage(juce::Colour::fromFloatRGBA(1.0f, 1.0f, 1.0f, 1.0f));
     keyImgOn = createBtnImage(juce::Colour::fromFloatRGBA(1.0f, 1.0f, 1.0f, 0.4f));
     
-    this->layout = layout;
     createKeys();
     
     addAndMakeVisible(mapTypeMenuButton);
@@ -62,13 +62,12 @@ KeymapPanelComponent::KeymapPanelComponent(Layout *layout, float widthFactor, fl
 
 KeymapPanelComponent::~KeymapPanelComponent()
 {
-    for (int i = 0; i < layout->getTotalKeyCount(); i++) {
-        delete keys[i];
-    }
     delete keyImgNormal;
     delete keyImgOver;
     delete keyImgDown;
     delete keyImgOn;
+    for (auto key : keys)
+        delete key;
 }
 
 void KeymapPanelComponent::resized()
@@ -92,9 +91,9 @@ void KeymapPanelComponent::resized()
     auto buttonDiameter = area.getHeight()/32.0;
     
     auto currentKeyIndex = 0;
-    for (int j = 0; j < layout->getKeyRowCount(); j++) {
+    for (int j = 0; j < layout.getKeyRowCount(); j++) {
         auto rowArea = area.removeFromLeft(keyWidth);
-        for (int i = 0; i < layout->getKeyRowLengths()[j]; i++) {
+        for (int i = 0; i < layout.getKeyRowLengths()[j]; i++) {
             keys[currentKeyIndex]->setBounds(rowArea.removeFromTop(keyHeight));
             currentKeyIndex++;
         }
@@ -103,28 +102,28 @@ void KeymapPanelComponent::resized()
     area.removeFromLeft(margin);
     auto percRowArea = area.removeFromLeft(percKeyWidth*2);
 
-    for (int i = layout->getPercKeyStartIndex(); i < layout->getButtonStartIndex(); i++) {
+    for (int i = layout.getPercKeyStartIndex(); i < layout.getButtonStartIndex(); i++) {
         keys[i]->setBounds(percRowArea.removeFromTop(percKeyHeight).removeFromLeft(percRowArea.getWidth()/2));
     }
 
     percRowArea.removeFromTop(margin*2);
     auto horizontalButtonArea = percRowArea.removeFromTop(buttonDiameter);
 
-    for (int i = layout->getButtonStartIndex(); i < layout->getButtonStartIndex() + layout->getButtonCount()/2; i++) {
+    for (int i = layout.getButtonStartIndex(); i < layout.getButtonStartIndex() + layout.getButtonCount()/2; i++) {
         keys[i]->setBounds(horizontalButtonArea.removeFromLeft(buttonDiameter));
     }
     
     percRowArea.removeFromTop(margin*2);
     
-    if (layout->getDeviceType() == DeviceType::Tau) {
-        for (int i = layout->getButtonStartIndex() + layout->getButtonCount()/2; i < layout->getTotalKeyCount(); i++) {
+    if (layout.getDeviceType() == DeviceType::Tau) {
+        for (int i = layout.getButtonStartIndex() + layout.getButtonCount()/2; i < layout.getTotalKeyCount(); i++) {
             keys[i]->setBounds(percRowArea.removeFromTop(buttonDiameter).removeFromLeft(buttonDiameter));
 
         }
     }
     else {
         horizontalButtonArea = percRowArea.removeFromTop(buttonDiameter);
-        for (int i = layout->getButtonStartIndex() + layout->getButtonCount()/2; i < layout->getTotalKeyCount(); i++) {
+        for (int i = layout.getButtonStartIndex() + layout.getButtonCount()/2; i < layout.getTotalKeyCount(); i++) {
             keys[i]->setBounds(horizontalButtonArea.removeFromLeft(buttonDiameter));
         }
     }
@@ -158,7 +157,7 @@ void KeymapPanelComponent::showHidePanels() {
 
 void KeymapPanelComponent::deselectAllOtherKeys(const EigenharpKeyComponent *key) {
     auto keyId = key->getKeyId();
-    for (int i = 0; i < layout->getTotalKeyCount(); i++) {
+    for (int i = 0; i < layout.getTotalKeyCount(); i++) {
         if (!keys[i]->getKeyId().equals(keyId)) {
             keys[i]->setToggleState(false, juce::NotificationType::dontSendNotification);
             keys[i]->setState(juce::Button::buttonNormal);
@@ -167,14 +166,37 @@ void KeymapPanelComponent::deselectAllOtherKeys(const EigenharpKeyComponent *key
 }
 
 void KeymapPanelComponent::createKeys() {
-    for (int i = 0; i < layout->getTotalKeyCount(); i++) {
-        keys[i] = new EigenharpKeyComponent(layout->getKeyConfigs()[i].getKeyType(), &layout->getKeyConfigs()[i]);
+    
+    for (int i = 0; i < layout.getNormalkeyCount(); i++) {
+        KeyConfig::KeyId id = { .course = 0, .keyNo = i };
+//        EigenharpKeyComponent *key = new EigenharpKeyComponent(id, EigenharpKeyType::Normal, layout.valueTree);
+        keys.push_back(new EigenharpKeyComponent(id, EigenharpKeyType::Normal, layout.valueTree));
+    }
+
+    if (layout.getDeviceType() == DeviceType::Pico) {
+        for (int i = 0; i < layout.getButtonCount(); i++) {
+            KeyConfig::KeyId id = { .course = 1, .keyNo = i };
+            keys.push_back(new EigenharpKeyComponent(id, EigenharpKeyType::Button, layout.valueTree));
+        }
+    }
+    else {
+        for (int i = 0; i < layout.getPercKeyCount(); i++) {
+            KeyConfig::KeyId id = { .course = 1, .keyNo = i };
+            keys.push_back(new EigenharpKeyComponent(id, EigenharpKeyType::Perc, layout.valueTree));
+        }
+        for (int i = 0; i < layout.getButtonCount(); i++) {
+            KeyConfig::KeyId id = { .course = 2, .keyNo = i };
+            keys.push_back(new EigenharpKeyComponent(id, EigenharpKeyType::Button, layout.valueTree));
+        }
+    }
+    
+    for (int i = 0; i < layout.getTotalKeyCount(); i++) {
         addAndMakeVisible(keys[i]);
         keys[i]->setImages(keyImgNormal, keyImgOver, keyImgDown, nullptr, keyImgOn);
         keys[i]->onClick = [this, i] {
             auto selected = keys[i]->getToggleState();
             deselectAllOtherKeys(keys[i]);
-            selectedKey = selected ? &this->layout->getKeyConfigs()[i] : nullptr;
+            selectedKey = selected ? &keys[i]->keyConfig : nullptr;
             enableDisableMenuButtons(selected);
             showHidePanels();
         };
@@ -201,7 +223,7 @@ bool KeymapPanelComponent::keyPressed(const juce::KeyPress &key, juce::Component
     
     auto oldKeyIndex = -1;
     auto keyId = selectedKey->getKeyId();
-    for (int i = 0; i < layout->getTotalKeyCount(); i++) {
+    for (int i = 0; i < layout.getTotalKeyCount(); i++) {
         if (keys[i]->getKeyId().equals(keyId)) {
             oldKeyIndex = i;
             break;
@@ -224,7 +246,7 @@ bool KeymapPanelComponent::keyPressed(const juce::KeyPress &key, juce::Component
 }
 
 int KeymapPanelComponent::navigateNormalKeys(const juce::KeyPress &key, int selectedKeyIndex) {
-    const int *rowLengths = layout->getKeyRowLengths();
+    const int *rowLengths = layout.getKeyRowLengths();
 
     int rowStartIndexes[5] = {
         0,
@@ -244,14 +266,14 @@ int KeymapPanelComponent::navigateNormalKeys(const juce::KeyPress &key, int sele
         }
         else if (key == juce::KeyPress::downKey) {
             selectedKeyIndex++;
-            if (selectedKeyIndex >= layout->getPercKeyStartIndex() ||
+            if (selectedKeyIndex >= layout.getPercKeyStartIndex() ||
                     selectedKeyIndex == rowStartIndexes[rowNumber+1])
                 selectedKeyIndex -= rowLengths[rowNumber];
         }
         else if (key == juce::KeyPress::leftKey) {
             if (rowNumber == 0)
-                selectedKeyIndex += rowStartIndexes[layout->getKeyRowCount()-1];
-            else if (layout->getDeviceType() == DeviceType::Tau &&
+                selectedKeyIndex += rowStartIndexes[layout.getKeyRowCount()-1];
+            else if (layout.getDeviceType() == DeviceType::Tau &&
                      selectedKeyIndex >= rowStartIndexes[3]-4 && selectedKeyIndex < rowStartIndexes[3]) {
                 selectedKeyIndex += rowLengths[3];
             }
@@ -259,11 +281,11 @@ int KeymapPanelComponent::navigateNormalKeys(const juce::KeyPress &key, int sele
                 selectedKeyIndex -= rowLengths[rowNumber-1];
         }
         else if (key == juce::KeyPress::rightKey) {
-            if (layout->getDeviceType() == DeviceType::Tau &&
+            if (layout.getDeviceType() == DeviceType::Tau &&
                      selectedKeyIndex >= rowStartIndexes[4]-4 && selectedKeyIndex < rowStartIndexes[4]) {
                 selectedKeyIndex -= rowLengths[3];
             }
-            else if (rowNumber == layout->getKeyRowCount()-1)
+            else if (rowNumber == layout.getKeyRowCount()-1)
                 selectedKeyIndex -= rowStartIndexes[rowNumber];
             else
                 selectedKeyIndex += rowLengths[rowNumber];
@@ -275,13 +297,13 @@ int KeymapPanelComponent::navigateNormalKeys(const juce::KeyPress &key, int sele
 int KeymapPanelComponent::navigatePercKeys(const juce::KeyPress &key, int selectedKeyIndex) {
     if (key == juce::KeyPress::upKey) {
         selectedKeyIndex--;
-        if (selectedKeyIndex == layout->getPercKeyStartIndex()-1)
-            selectedKeyIndex += layout->getPercKeyCount();
+        if (selectedKeyIndex == layout.getPercKeyStartIndex()-1)
+            selectedKeyIndex += layout.getPercKeyCount();
     }
     else if (key == juce::KeyPress::downKey) {
         selectedKeyIndex++;
-        if (selectedKeyIndex >= layout->getButtonStartIndex())
-            selectedKeyIndex -= layout->getPercKeyCount();
+        if (selectedKeyIndex >= layout.getButtonStartIndex())
+            selectedKeyIndex -= layout.getPercKeyCount();
     }
     
     return selectedKeyIndex;
@@ -294,7 +316,7 @@ int KeymapPanelComponent::navigateButtons(const juce::KeyPress &key, int selecte
 
 
 int KeymapPanelComponent::getRowNumber(int keyIndex) {
-    const int *rowLengths = layout->getKeyRowLengths();
+    const int *rowLengths = layout.getKeyRowLengths();
     int row = 0;
     int counter = rowLengths[row];
     while (keyIndex >= counter) {

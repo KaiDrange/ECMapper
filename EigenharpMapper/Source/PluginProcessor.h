@@ -48,6 +48,8 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
 
     LayoutChangeHandler layoutChangeHandler;
+    juce::Identifier id_state = "pluginState";
+    juce::AudioProcessorValueTreeState pluginState;
 private:
     OSCCommunication osc;
     const int senderPort = 7000;
@@ -55,7 +57,6 @@ private:
     OSC::OSCMessageFifo oscSendQueue;
     OSC::OSCMessageFifo oscReceiveQueue;
     MidiGenerator midiGenerator;
-    juce::AudioProcessorValueTreeState pluginState;
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     void copyTreePropertiesRecursive(const juce::ValueTree source, juce::ValueTree dest);
     juce::AudioProcessorEditor *editor;

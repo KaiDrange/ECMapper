@@ -2,7 +2,7 @@
 #include "PluginEditor.h"
 
 EigenharpMapperAudioProcessorEditor::EigenharpMapperAudioProcessorEditor (EigenharpMapperAudioProcessor& p)
-    : AudioProcessorEditor (&p), audioProcessor (p) {
+    : AudioProcessorEditor(&p), mainComponent(p.pluginState.state), audioProcessor(p) {
     setSize (800, 600);
     addAndMakeVisible(mainComponent);
     mainComponent.setBounds(getLocalBounds());

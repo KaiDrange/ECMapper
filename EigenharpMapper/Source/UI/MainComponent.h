@@ -7,7 +7,7 @@
 
 class MainComponent : public juce::Component {
 public:
-    MainComponent();
+    MainComponent(juce::ValueTree state);
     ~MainComponent() override;
 
     void paint (juce::Graphics&) override;
@@ -19,6 +19,7 @@ public:
     juce::ValueTree uiSettings;
 
 private:
+    juce::Identifier id_uiSettings = "uiSettings";
     juce::TabbedComponent tabs;
     TabPage *tabPages[3];
 
