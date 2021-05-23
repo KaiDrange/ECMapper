@@ -15,14 +15,22 @@ TabPage::TabPage(DeviceType model, juce::ValueTree parentTree) : keyboard(keyboa
     addAndMakeVisible(saveMappingButton);
     saveMappingButton.setButtonText("Save");
     saveMappingButton.onClick = [&] {
-//        FileUtil::saveMapping(keymap->getValueTree(), model);
+        FileUtil::saveMapping(keymapPanel->layout.getValueTree(), model);
     };
     addAndMakeVisible(loadMappingButton);
     loadMappingButton.setButtonText("load");
     loadMappingButton.onClick = [&] {
         auto xml = FileUtil::openMapping(model);
         auto loadedMap = juce::ValueTree::fromXml(xml);
-//        keymap->setValueTree(loadedMap);
+        std::cout << loadedMap.getType().toString() << std::endl;
+        std::cout << loadedMap.getChild(0).getProperty("keyColour").toString() << std::endl;
+        
+        auto oldTree = keymapPanel->layout.getValueTree();
+        oldTree.copyPropertiesFrom(loadedMap, nullptr);
+        for (int i = 0; i < oldTree.getNumChildren(); i++) {
+            oldTree.getChild(i).copyPropertiesFrom(loadedMap.getChild(i), nullptr);
+        }
+        
         repaint();
     };
     

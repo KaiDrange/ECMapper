@@ -110,10 +110,8 @@ bool EigenharpMapperAudioProcessor::hasEditor() const {
 }
 
 juce::AudioProcessorEditor* EigenharpMapperAudioProcessor::createEditor() {
-    std::cout << pluginState.state.getChildWithName("uiSettings").getChild(0).getChild(0).getProperty("keyColour").toString() << std::endl;
     auto editor = new EigenharpMapperAudioProcessorEditor(*this);
     this->editor = editor;
-    std::cout << pluginState.state.getChildWithName("uiSettings").getChild(0).getChild(0).getProperty("keyColour").toString() << std::endl;
 
 //    auto alphaLayout = editor->getLayout(DeviceType::Alpha);
 //    auto tauLayout = editor->getLayout(DeviceType::Tau);
