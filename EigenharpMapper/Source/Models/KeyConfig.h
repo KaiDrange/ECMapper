@@ -11,7 +11,7 @@ public:
     };
     
     KeyConfig(KeyConfig::KeyId keyId, EigenharpKeyType keyType, juce::ValueTree parentTree);
-//    KeyConfig(juce::ValueTree &keyTree);
+    KeyConfig(juce::ValueTree keyTree);
         
     KeyId getKeyId() const;
     void setKeyId(KeyId keyId);

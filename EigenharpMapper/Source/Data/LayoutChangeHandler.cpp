@@ -9,30 +9,31 @@ void LayoutChangeHandler::setKeyConfigLookup(KeyConfigLookup *keyConfigLookup, D
 }
 
 void LayoutChangeHandler::valueTreePropertyChanged(juce::ValueTree &vTree, const juce::Identifier &property) {
-//    DeviceType deviceType = DeviceType::None;
-//    if (vTree.getType().toString() == "key") {
-//        auto key = KeyConfig(vTree);
-//        auto keyId = key.getKeyId();
-//        deviceType = (DeviceType)vTree.getParent().getPropertyAsValue("instrumentType", nullptr).toString().getIntValue();
-//        OSC::Message msg {
-//            .type = OSC::MessageType::LED,
-//            .key = (unsigned int)keyId.keyNo,
-//            .course = (unsigned int)keyId.course,
-//            .active = 0,
-//            .pressure = 0,
-//            .roll = 0,
-//            .yaw = 0,
-//            .value = (unsigned int)key.getKeyColour(),
-//            .pedal = 0,
-//            .strip = 0,
-//            .device = deviceType
-//        };
-//        oscSendQueue->add(&msg);
-//    }
-//    if (deviceType != DeviceType::None) {
-//        keyConfigLookups[getConfigIndexFromDeviceType(deviceType)]->updateAll();
-//        layoutMidiRPNSent = false;
-//    }
+    DeviceType deviceType = DeviceType::None;
+    auto vTreeType = vTree.getType().toString();
+    if (vTreeType.startsWith("key")) {
+        
+        KeyConfig key(vTree);
+        deviceType = (DeviceType)vTree.getParent().getPropertyAsValue("instrumentType", nullptr).toString().getIntValue();
+        OSC::Message msg {
+            .type = OSC::MessageType::LED,
+            .key = (unsigned int)key.getKeyId().keyNo,
+            .course = (unsigned int)key.getKeyId().course,
+            .active = 0,
+            .pressure = 0,
+            .roll = 0,
+            .yaw = 0,
+            .value = (unsigned int)key.getKeyColour(),
+            .pedal = 0,
+            .strip = 0,
+            .device = deviceType
+        };
+        oscSendQueue->add(&msg);
+    }
+    if (deviceType != DeviceType::None) {
+        keyConfigLookups[getConfigIndexFromDeviceType(deviceType)]->updateAll();
+        layoutMidiRPNSent = false;
+    }
 }
 
 int LayoutChangeHandler::getConfigIndexFromDeviceType(DeviceType type) {

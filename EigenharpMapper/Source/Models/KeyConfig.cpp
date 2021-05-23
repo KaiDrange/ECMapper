@@ -6,6 +6,7 @@ KeyConfig::KeyConfig(KeyConfig::KeyId keyId, EigenharpKeyType keyType, juce::Val
     valueTree = parentTree.getOrCreateChildWithName(id, nullptr);
 
     if (!alreadyExists) {
+        setKeyId(keyId);
         setKeyColour(KeyColour::Off);
         setKeyType(keyType);
         setZone(Zone::NoZone);
@@ -17,9 +18,9 @@ KeyConfig::KeyConfig(KeyConfig::KeyId keyId, EigenharpKeyType keyType, juce::Val
 //    rootValueTree.addChild(valueTree, -1, nullptr);
 }
 
-//KeyConfig::KeyConfig(juce::ValueTree &keyTree) {
-//    valueTree = keyTree;
-//}
+KeyConfig::KeyConfig(juce::ValueTree keyTree) {
+    valueTree = keyTree;
+}
 
 juce::ValueTree KeyConfig::getValueTree() const {
     return valueTree;
