@@ -2,13 +2,12 @@
 #include <JuceHeader.h>
 #include "../Models/KeyConfig.h"
 #include "../Models/Enums.h"
-#include "../Models/Layout.h"
 
 
 class KeyConfigLookup {
 public:
+    KeyConfigLookup(juce::ValueTree layoutTree);
     void updateAll();
-    void setLayout(Layout *layout);
     
     struct Key {
         KeyMappingType mapType = KeyMappingType::None;
@@ -21,5 +20,5 @@ public:
     Key keys[3][120];
 
 private:
-    Layout *layout;
+    juce::ValueTree layoutTree;
 };

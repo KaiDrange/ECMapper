@@ -1,7 +1,7 @@
 #include "Layout.h"
 
 Layout::Layout(DeviceType instrumentType, juce::ValueTree parentTree) {
-    valueTree = parentTree.getOrCreateChildWithName(id_instrumentType + juce::String((int)instrumentType), nullptr);
+    valueTree = parentTree.getOrCreateChildWithName(id_layout + juce::String((int)instrumentType), nullptr);
 
     switch(instrumentType) {
         case DeviceType::Alpha:

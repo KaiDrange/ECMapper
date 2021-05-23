@@ -7,7 +7,7 @@
 
 class MidiGenerator {
 public:
-    MidiGenerator();
+    MidiGenerator(juce::ValueTree uiSettings);
     ~MidiGenerator();
     
     const int decimation = 4;

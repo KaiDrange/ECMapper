@@ -1,19 +1,19 @@
 #include "KeyConfigLookup.h"
 
-void KeyConfigLookup::setLayout(Layout *layout) {
-    this->layout = layout;
-//    updateAll();
+KeyConfigLookup::KeyConfigLookup(juce::ValueTree layoutTree) {
+    this->layoutTree = layoutTree;
+    updateAll();
 }
 
 void KeyConfigLookup::updateAll() {
-//    KeyConfig *keyConfigs = layout->getKeyConfigs();
-//    for (int i = 0; i < layout->getNormalkeyCount(); i++) {
-//        Key key;
-//        key.mapType = keyConfigs[i].getMappingType();
-//        key.note = key.mapType == KeyMappingType::Note ? keyConfigs[i].getMappingValue().getIntValue() : 0;
-//        keys[0][i] = key;
-//    }
-//        
+    for (int i = 0; i < layoutTree.getNumChildren(); i++) {
+        auto keyChild = layoutTree.getChild(i);
+        Key key;
+        key.mapType = (KeyMappingType)keyChild.getProperty("keyMappingType").toString().getIntValue();
+        key.note = key.mapType == KeyMappingType::Note ? keyChild.getProperty("mappingValue").toString().getIntValue() : 0;
+        keys[0][i] = key;
+    }
+
 //    if (layout->getDeviceType() == DeviceType::Pico) {
 //        //TODO: rest of courses
 //    }

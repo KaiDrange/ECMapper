@@ -12,6 +12,7 @@ pluginState(*this, nullptr, id_state, createParameterLayout()), osc(&oscSendQueu
 EigenharpMapperAudioProcessor::~EigenharpMapperAudioProcessor() {
     osc.disconnectSender();
     osc.disconnectReceiver();
+//    delete midiGenerator;
 }
 
 const juce::String EigenharpMapperAudioProcessor::getName() const {
@@ -53,13 +54,11 @@ void EigenharpMapperAudioProcessor::changeProgramName (int index, const juce::St
 }
 
 void EigenharpMapperAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock) {
-    // Use this method as the place to do any pre-playback
-    // initialisation that you need..
+    midiGenerator = new MidiGenerator(pluginState.state.getChildWithName("uiSettings"));
 }
 
 void EigenharpMapperAudioProcessor::releaseResources() {
-    // When playback stops, you can use this as an opportunity to free up any
-    // spare memory, etc.
+    delete midiGenerator;
 }
 
 bool EigenharpMapperAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const {
@@ -96,12 +95,12 @@ void EigenharpMapperAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
         
     static OSC::Message msg;
     if (!layoutChangeHandler.layoutMidiRPNSent) {
-        midiGenerator.createLayoutRPNs(midiMessages);
+        midiGenerator->createLayoutRPNs(midiMessages);
         layoutChangeHandler.layoutMidiRPNSent = true;
     }
     while (osc.receiveQueue->getMessageCount() > 0) {
         osc.receiveQueue->read(&msg);
-        midiGenerator.processOSCMessage(msg, midiMessages);
+        midiGenerator->processOSCMessage(msg, midiMessages);
     }
 }
 
@@ -113,15 +112,15 @@ juce::AudioProcessorEditor* EigenharpMapperAudioProcessor::createEditor() {
     auto editor = new EigenharpMapperAudioProcessorEditor(*this);
     this->editor = editor;
 
-//    auto alphaLayout = editor->getLayout(DeviceType::Alpha);
-//    auto tauLayout = editor->getLayout(DeviceType::Tau);
-//    auto picoLayout = editor->getLayout(DeviceType::Pico);
-//    midiGenerator.keyConfigLookups[0].setLayout(alphaLayout);
-//    midiGenerator.keyConfigLookups[1].setLayout(tauLayout);
-//    midiGenerator.keyConfigLookups[2].setLayout(picoLayout);
-//    layoutChangeHandler.setKeyConfigLookup(&midiGenerator.keyConfigLookups[0], alphaLayout->getDeviceType());
-//    layoutChangeHandler.setKeyConfigLookup(&midiGenerator.keyConfigLookups[1], tauLayout->getDeviceType());
-//    layoutChangeHandler.setKeyConfigLookup(&midiGenerator.keyConfigLookups[2], picoLayout->getDeviceType());
+    auto alphaLayout = editor->getLayout(DeviceType::Alpha);
+    auto tauLayout = editor->getLayout(DeviceType::Tau);
+    auto picoLayout = editor->getLayout(DeviceType::Pico);
+//    midiGenerator->keyConfigLookups[0].setLayout(alphaLayout);
+//    midiGenerator->keyConfigLookups[1].setLayout(tauLayout);
+//    midiGenerator->keyConfigLookups[2].setLayout(picoLayout);
+    layoutChangeHandler.setKeyConfigLookup(&midiGenerator->keyConfigLookups[0], alphaLayout->getDeviceType());
+    layoutChangeHandler.setKeyConfigLookup(&midiGenerator->keyConfigLookups[1], tauLayout->getDeviceType());
+    layoutChangeHandler.setKeyConfigLookup(&midiGenerator->keyConfigLookups[2], picoLayout->getDeviceType());
 
     
 //    alphaLayout->addListener(&layoutChangeHandler);
@@ -143,10 +142,11 @@ void EigenharpMapperAudioProcessor::getStateInformation(juce::MemoryBlock &destD
 void EigenharpMapperAudioProcessor::setStateInformation(const void* data, int sizeInBytes) {
     std::unique_ptr<juce::XmlElement>xmlState(getXmlFromBinary(data, sizeInBytes));
 
-            if (xmlState.get() != nullptr)
-                if (xmlState->hasTagName (pluginState.state.getType())) {
-                    pluginState.replaceState(juce::ValueTree::fromXml(*xmlState));
-                }
+    if (xmlState.get() != nullptr) {
+        if (xmlState->hasTagName (pluginState.state.getType())) {
+            pluginState.replaceState(juce::ValueTree::fromXml(*xmlState));
+        }
+    }
     
 //    std::unique_ptr<juce::XmlElement> xmlState (getXmlFromBinary (data, sizeInBytes));
 //

@@ -1,6 +1,6 @@
 #include "MidiGenerator.h"
 
-MidiGenerator::MidiGenerator() {
+MidiGenerator::MidiGenerator(juce::ValueTree uiSettings): keyConfigLookups{uiSettings.getChild(0), uiSettings.getChild(1), uiSettings.getChild(2)} {
     mpeZone.setLowerZone(15, 2, 12);
     
     chanAssigner = new juce::MPEChannelAssigner(mpeZone.getLowerZone());

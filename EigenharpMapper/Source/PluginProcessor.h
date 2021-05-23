@@ -56,7 +56,7 @@ private:
     const int receiverPort = 7001;
     OSC::OSCMessageFifo oscSendQueue;
     OSC::OSCMessageFifo oscReceiveQueue;
-    MidiGenerator midiGenerator;
+    MidiGenerator *midiGenerator;
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     void copyTreePropertiesRecursive(const juce::ValueTree source, juce::ValueTree dest);
     juce::AudioProcessorEditor *editor;
