@@ -9,7 +9,7 @@
 
 class ZonePanelComponent  : public PanelComponent, public juce::ValueTree::Listener {
 public:
-    ZonePanelComponent(int zoneNumber, float widthFactor, float heightFactor);
+    ZonePanelComponent(int tabIndex, int zoneNumber, float widthFactor, float heightFactor, juce::ValueTree parentTree);
     ~ZonePanelComponent() override;
 
     void paint (juce::Graphics&) override;

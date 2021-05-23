@@ -26,7 +26,6 @@ public:
     juce::String getMappingValue() const;
     void setMappingValue(juce::String mappingValue);
     juce::ValueTree getValueTree() const;
-//    void setValueTree(juce::ValueTree valueTree);
 
 private:
     juce::Identifier id_keyNo = "keyNo";

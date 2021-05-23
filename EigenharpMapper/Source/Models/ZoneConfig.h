@@ -4,7 +4,7 @@
 
 class ZoneConfig {
 public:
-    ZoneConfig(Zone zone);
+    ZoneConfig(int tabNo, Zone zone, juce::ValueTree parentTree);
 
     struct MidiValue {
         MidiValueType valueType = MidiValueType::CC;
@@ -24,23 +24,7 @@ public:
     void setKeyPitchbend(int pitchbend);
     MidiChannelType getMidiChannelType() const;
     void setMidiChannelType(MidiChannelType type);
-//    juce::String getPressure() const;
-//    void setPressure(juce::String pressure);
-//    juce::String getRoll() const;
-//    void setRoll(juce::String roll);
-//    juce::String getYaw() const;
-//    void setYaw(juce::String yaw);
-//    juce::String getStrip1Rel() const;
-//    void setStrip1Rel(juce::String strip1rel);
-//    juce::String getStrip1Abs() const;
-//    void setStrip1Abs(juce::String strip1abs);
-//    juce::String getStrip2Rel() const;
-//    void setStrip2Rel(juce::String strip2rel);
-//    juce::String getStrip2Abs() const;
-//    void setStrip2Abs(juce::String strip2abs);
-//    juce::String getBreath() const;
-//    void setBreath(juce::String breath);
-    
+
     void addListener(juce::ValueTree::Listener *listener);
     
     MidiValue getMidiValue(juce::Identifier childId) const;

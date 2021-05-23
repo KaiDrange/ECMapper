@@ -36,6 +36,7 @@ enum class Zone {
 };
 
 enum class MidiChannelType {
+    Undefined = 0,
     Chan1 = 1, Chan2, Chan3, Chan4, Chan5, Chan6, Chan7, Chan8, Chan9, Chan10, Chan11, Chan12, Chan13, Chan14, Chan15, Chan16,
     MPE1_16,
     MPE1_14,
@@ -46,6 +47,7 @@ enum class MidiChannelType {
 };
 
 enum class MidiValueType {
+    Undefined = 0,
     CC = 1,
     Pitchbend,
     ChannelAftertouch,

@@ -1,23 +1,40 @@
 #include "ZoneConfig.h"
 
-ZoneConfig::ZoneConfig(Zone zone): valueTree("zone") {
+ZoneConfig::ZoneConfig(int tabNo, Zone zone, juce::ValueTree parentTree) {
+    valueTree = parentTree.getOrCreateChildWithName("zone" + juce::String(tabNo) + "_" + juce::String((int)zone), nullptr);
     this->zone = zone;
-    juce::ValueTree midiPressureTree(id_pressure);
-    valueTree.addChild(midiPressureTree, 0, nullptr);
-    juce::ValueTree midiRollTree(id_roll);
-    valueTree.addChild(midiRollTree, 1, nullptr);
-    juce::ValueTree midiYawTree(id_yaw);
-    valueTree.addChild(midiYawTree, 2, nullptr);
-    juce::ValueTree midiStrip1RelTree(id_strip1Rel);
-    valueTree.addChild(midiStrip1RelTree, 3, nullptr);
-    juce::ValueTree midiStrip1AbsTree(id_strip1Abs);
-    valueTree.addChild(midiStrip1AbsTree, 4, nullptr);
-    juce::ValueTree midiStrip2RelTree(id_strip2Rel);
-    valueTree.addChild(midiStrip2RelTree, 5, nullptr);
-    juce::ValueTree midiStrip2AbsTree(id_strip2Abs);
-    valueTree.addChild(midiStrip2AbsTree, 6, nullptr);
-    juce::ValueTree midiBreathTree(id_breath);
-    valueTree.addChild(midiBreathTree, 7, nullptr);
+    if (!valueTree.getChildWithName(id_pressure).isValid()) {
+        juce::ValueTree midiPressureTree(id_pressure);
+        valueTree.appendChild(midiPressureTree, nullptr);
+    }
+    if (!valueTree.getChildWithName(id_roll).isValid()) {
+        juce::ValueTree midiRollTree(id_roll);
+        valueTree.appendChild(midiRollTree, nullptr);
+    }
+    if (!valueTree.getChildWithName(id_yaw).isValid()) {
+        juce::ValueTree midiYawTree(id_yaw);
+        valueTree.appendChild(midiYawTree, nullptr);
+    }
+    if (!valueTree.getChildWithName(id_strip1Rel).isValid()) {
+        juce::ValueTree midiStrip1RelTree(id_strip1Rel);
+        valueTree.appendChild(midiStrip1RelTree, nullptr);
+    }
+    if (!valueTree.getChildWithName(id_strip1Abs).isValid()) {
+        juce::ValueTree midiStrip1AbsTree(id_strip1Abs);
+        valueTree.appendChild(midiStrip1AbsTree, nullptr);
+    }
+    if (!valueTree.getChildWithName(id_strip2Rel).isValid()) {
+        juce::ValueTree midiStrip2RelTree(id_strip2Rel);
+        valueTree.appendChild(midiStrip2RelTree, nullptr);
+    }
+    if (!valueTree.getChildWithName(id_strip2Abs).isValid()) {
+        juce::ValueTree midiStrip2AbsTree(id_strip2Abs);
+        valueTree.appendChild(midiStrip2AbsTree, nullptr);
+    }
+    if (!valueTree.getChildWithName(id_breath).isValid()) {
+        juce::ValueTree midiBreathTree(id_breath);
+        valueTree.appendChild(midiBreathTree, nullptr);
+    }
 }
 
 juce::ValueTree ZoneConfig::getValueTree() const {
@@ -33,7 +50,8 @@ void ZoneConfig::setEnabled(bool enabled) {
 }
 
 int ZoneConfig::getTranspose() const {
-    return valueTree.getProperty(id_transpose).toString().getIntValue();
+    bool hasValue = !valueTree.getProperty(id_transpose).isVoid();
+    return hasValue ? valueTree.getProperty(id_transpose).toString().getIntValue() : INT_MIN;
 }
 
 void ZoneConfig::setTranspose(int transpose) {
@@ -41,7 +59,8 @@ void ZoneConfig::setTranspose(int transpose) {
 }
 
 int ZoneConfig::getGlobalPitchbend() const {
-    return valueTree.getProperty(id_globalPitchbend).toString().getIntValue();
+    bool hasValue = !valueTree.getProperty(id_globalPitchbend).isVoid();
+    return hasValue ? valueTree.getProperty(id_globalPitchbend).toString().getIntValue() : INT_MIN;
 }
 
 void ZoneConfig::setGlobalPitchbend(int pitchbend) {
@@ -49,7 +68,8 @@ void ZoneConfig::setGlobalPitchbend(int pitchbend) {
 }
 
 int ZoneConfig::getKeyPitchbend() const {
-    return valueTree.getProperty(id_keyPitchbend).toString().getIntValue();
+    bool hasValue = !valueTree.getProperty(id_keyPitchbend).isVoid();
+    return hasValue ? valueTree.getProperty(id_keyPitchbend).toString().getIntValue() : INT_MIN;
 }
 
 void ZoneConfig::setKeyPitchbend(int pitchbend) {
@@ -63,69 +83,6 @@ MidiChannelType ZoneConfig::getMidiChannelType() const {
 void ZoneConfig::setMidiChannelType(MidiChannelType type) {
     valueTree.setProperty(id_midiChannelType, (int)type, nullptr);
 }
-
-//juce::String ZoneConfig::getPressure() const {
-//    return valueTree.getProperty(id_pressure).toString();
-//}
-//void ZoneConfig::setPressure(juce::String pressure) {
-//    valueTree.setProperty(id_pressure, pressure, nullptr);
-//}
-//
-//juce::String ZoneConfig::getRoll() const {
-//    return valueTree.getProperty(id_roll).toString();
-//}
-//
-//void ZoneConfig::setRoll(juce::String roll) {
-//    valueTree.setProperty(id_pressure, roll, nullptr);
-//}
-//
-//juce::String ZoneConfig::getYaw() const {
-//    return valueTree.getProperty(id_yaw).toString();
-//}
-//
-//void ZoneConfig::setYaw(juce::String yaw) {
-//    valueTree.setProperty(id_roll, yaw, nullptr);
-//}
-//
-//juce::String ZoneConfig::getStrip1Rel() const {
-//    return valueTree.getProperty(id_strip1Rel).toString();
-//}
-//
-//void ZoneConfig::setStrip1Rel(juce::String strip1rel) {
-//    valueTree.setProperty(id_strip1Rel, strip1rel, nullptr);
-//}
-//
-//juce::String ZoneConfig::getStrip1Abs() const {
-//    return valueTree.getProperty(id_strip1Abs).toString();
-//}
-//
-//void ZoneConfig::setStrip1Abs(juce::String strip1abs) {
-//    valueTree.setProperty(id_strip1Abs, strip1abs, nullptr);
-//}
-//
-//juce::String ZoneConfig::getStrip2Rel() const {
-//    return valueTree.getProperty(id_strip2Rel).toString();
-//}
-//
-//void ZoneConfig::setStrip2Rel(juce::String strip2rel) {
-//    valueTree.setProperty(id_strip2Rel, strip2rel, nullptr);
-//}
-//
-//juce::String ZoneConfig::getStrip2Abs() const {
-//    return valueTree.getProperty(id_strip2Abs).toString();
-//}
-//
-//void ZoneConfig::setStrip2Abs(juce::String strip2abs) {
-//    valueTree.setProperty(id_strip2Abs, strip2abs, nullptr);
-//}
-//
-//juce::String ZoneConfig::getBreath() const {
-//    return valueTree.getProperty(id_breath).toString();
-//}
-//
-//void ZoneConfig::setBreath(juce::String breath) {
-//    valueTree.setProperty(id_breath, breath, nullptr);
-//}
 
 void ZoneConfig::addListener(juce::ValueTree::Listener *listener) {
     valueTree.addListener(listener);

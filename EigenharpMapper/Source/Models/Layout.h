@@ -13,7 +13,6 @@ public:
 
     void addKeyConfig(EigenharpKeyType keyType, int course, int key);
     juce::ValueTree getValueTree() const;
-//    void setValueTree(juce::ValueTree valueTree);
     int getNormalkeyCount() const;
     int getPercKeyCount() const;
     int getButtonCount() const;
@@ -24,7 +23,6 @@ public:
     int getPercKeyStartIndex() const;
     int getButtonStartIndex() const;
     DeviceType getDeviceType() const;
-//    KeyConfig* getKeyConfigs();
     
     juce::Identifier id_keyMapping = "keyMapping";
     juce::Identifier id_instrumentType = "instrumentType";
@@ -40,6 +38,6 @@ private:
     int stripCount;
     int keyRowCount;
     int keyRowLengths[MAX_ROWS];
-//    std::vector<KeyConfig> keyConfigs;
+    
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (Layout)
 };

@@ -115,21 +115,11 @@ juce::AudioProcessorEditor* EigenharpMapperAudioProcessor::createEditor() {
     auto alphaLayout = editor->getLayout(DeviceType::Alpha);
     auto tauLayout = editor->getLayout(DeviceType::Tau);
     auto picoLayout = editor->getLayout(DeviceType::Pico);
-//    midiGenerator->keyConfigLookups[0].setLayout(alphaLayout);
-//    midiGenerator->keyConfigLookups[1].setLayout(tauLayout);
-//    midiGenerator->keyConfigLookups[2].setLayout(picoLayout);
     layoutChangeHandler.setKeyConfigLookup(&midiGenerator->keyConfigLookups[0], alphaLayout->getDeviceType());
     layoutChangeHandler.setKeyConfigLookup(&midiGenerator->keyConfigLookups[1], tauLayout->getDeviceType());
     layoutChangeHandler.setKeyConfigLookup(&midiGenerator->keyConfigLookups[2], picoLayout->getDeviceType());
 
-    
-//    alphaLayout->addListener(&layoutChangeHandler);
-//    tauLayout->addListener(&layoutChangeHandler);
-//    picoLayout->addListener(&layoutChangeHandler);
-    
-//    pluginState.state.addChild(editor->mainComponent.uiSettings, 0, nullptr);
     editor->mainComponent.addListener(&layoutChangeHandler);
-
     return editor;
 }
 
@@ -147,27 +137,8 @@ void EigenharpMapperAudioProcessor::setStateInformation(const void* data, int si
             pluginState.replaceState(juce::ValueTree::fromXml(*xmlState));
         }
     }
-    
-//    std::unique_ptr<juce::XmlElement> xmlState (getXmlFromBinary (data, sizeInBytes));
-//
-//    if (xmlState.get() != nullptr) {
-//        if (xmlState->hasTagName(pluginState.state.getType())) {
-//            auto newTreeState = juce::ValueTree::fromXml(*xmlState);
-//            copyTreePropertiesRecursive(newTreeState, pluginState.state);
-//            if (editor != nullptr)
-//                editor->repaint();
-//        }
-//    }
 }
 
-void EigenharpMapperAudioProcessor::copyTreePropertiesRecursive(const juce::ValueTree source, juce::ValueTree dest) {
-    dest.copyPropertiesFrom(source, nullptr);
-    for (int i = 0; i < dest.getNumChildren(); i++)
-        copyTreePropertiesRecursive(source.getChild(i), dest.getChild(i));
-}
-
-//==============================================================================
-// This creates new instances of the plugin..
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() {
     return new EigenharpMapperAudioProcessor();
 }

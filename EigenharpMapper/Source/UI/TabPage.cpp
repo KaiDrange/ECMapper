@@ -1,11 +1,10 @@
 #include "TabPage.h"
 
-TabPage::TabPage(DeviceType model, juce::ValueTree parentTree) : keyboard(keyboardState, juce::MidiKeyboardComponent::Orientation::verticalKeyboardFacingRight) {
-//    keymap = new Layout(model, parentTree);
+TabPage::TabPage(int tabIndex, DeviceType model, juce::ValueTree parentTree) : keyboard(keyboardState, juce::MidiKeyboardComponent::Orientation::verticalKeyboardFacingRight) {
     keymapPanel = new KeymapPanelComponent(model, 0.4, 1, parentTree);
     addAndMakeVisible(keymapPanel);
     for (int i = 0; i < 3; i++) {
-        zonePanels[i] = new ZonePanelComponent(i+1, 1, 1.0/3.0);
+        zonePanels[i] = new ZonePanelComponent(tabIndex, i+1, 1, 1.0/3.0, parentTree);
         addAndMakeVisible(zonePanels[i]);
     }
     
@@ -45,7 +44,6 @@ TabPage::~TabPage() {
     for (int i = 0; i < 3; i++) {
         delete zonePanels[i];
     }
-//    delete keymap;
 }
 
 void TabPage::paint(juce::Graphics& g) {

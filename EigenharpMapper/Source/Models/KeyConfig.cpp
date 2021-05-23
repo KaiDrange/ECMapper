@@ -14,8 +14,6 @@ KeyConfig::KeyConfig(KeyConfig::KeyId keyId, EigenharpKeyType keyType, juce::Val
             setMappingType(KeyMappingType::None) :
             setMappingType(KeyMappingType::Note);
     }
-
-//    rootValueTree.addChild(valueTree, -1, nullptr);
 }
 
 KeyConfig::KeyConfig(juce::ValueTree keyTree) {
@@ -25,10 +23,6 @@ KeyConfig::KeyConfig(juce::ValueTree keyTree) {
 juce::ValueTree KeyConfig::getValueTree() const {
     return valueTree;
 }
-
-//void KeyConfig::setValueTree(juce::ValueTree valueTree) {
-//    this->valueTree.copyPropertiesFrom(valueTree, nullptr);
-//}
 
 EigenharpKeyType KeyConfig::getKeyType() const {
     return (EigenharpKeyType)valueTree[id_keyType].toString().getIntValue();

@@ -1,12 +1,12 @@
 #include <JuceHeader.h>
 #include "ZonePanelComponent.h"
 
-ZonePanelComponent::ZonePanelComponent(int zoneNumber, float widthFactor, float heightFactor):
+ZonePanelComponent::ZonePanelComponent(int tabIndex, int zoneNumber, float widthFactor, float heightFactor, juce::ValueTree parentTree):
         PanelComponent(widthFactor, heightFactor),
         transposeInput("Transpose:", 3, -24, 24, 0),
         globalPitchbendRangeInput("Global pitchbend:", 2, 0, 96, 12),
         keyPitchbendRangeInput("Key pitchbend:", 2, 0, 96, 2),
-        zoneConfig((Zone)zoneNumber) {
+        zoneConfig(tabIndex, (Zone)zoneNumber, parentTree) {
     this->zoneNumber = zoneNumber;
     addAndMakeVisible(label);
     label.setText("Zone " + juce::String(zoneNumber), juce::NotificationType::dontSendNotification);
@@ -40,26 +40,29 @@ ZonePanelComponent::ZonePanelComponent(int zoneNumber, float widthFactor, float 
     midiChannelDropdown.addItem("MPE9_16", 21);
     midiChannelDropdown.addItem("MPE13_16", 22);
 
-    midiChannelDropdown.setSelectedItemId(17);
+    if (zoneConfig.getMidiChannelType() == MidiChannelType::Undefined)
+        midiChannelDropdown.setSelectedItemId(17);
+    else
+        midiChannelDropdown.setSelectedItemId((int)zoneConfig.getMidiChannelType());
+            
     midiChannelDropdown.box.onChange = [&] {
         zoneConfig.setMidiChannelType((MidiChannelType)midiChannelDropdown.box.getSelectedId());
     };
-            
     
     addAndMakeVisible(pressureDropdown);
     pressureDropdown.setLabelText("Pressure:");
-    setStandardMidiDropdownParams(pressureDropdown, 129, zoneConfig.id_pressure);
+    setStandardMidiDropdownParams(pressureDropdown, 130, zoneConfig.id_pressure);
             
     addAndMakeVisible(yawDropdown);
     yawDropdown.setLabelText("Yaw:");
     setStandardMidiDropdownParams(yawDropdown, 75, zoneConfig.id_yaw);
     addAndMakeVisible(rollDropdown);
     rollDropdown.setLabelText("Roll:");
-    setStandardMidiDropdownParams(rollDropdown, 131, zoneConfig.id_roll);
+    setStandardMidiDropdownParams(rollDropdown, 129, zoneConfig.id_roll);
 
     addAndMakeVisible(strip1RelativeDropdown);
     strip1RelativeDropdown.setLabelText("Strip1 Rel:");
-    setStandardMidiDropdownParams(strip1RelativeDropdown, 131, zoneConfig.id_strip1Rel);
+    setStandardMidiDropdownParams(strip1RelativeDropdown, 129, zoneConfig.id_strip1Rel);
     addAndMakeVisible(strip1AbsoluteDropdown);
     strip1AbsoluteDropdown.setLabelText("Strip1 Abs:");
     setStandardMidiDropdownParams(strip1AbsoluteDropdown, 132, zoneConfig.id_strip1Abs);
@@ -72,7 +75,15 @@ ZonePanelComponent::ZonePanelComponent(int zoneNumber, float widthFactor, float 
     addAndMakeVisible(breathDropdown);
     breathDropdown.setLabelText("Breath:");
     setStandardMidiDropdownParams(breathDropdown, 3, zoneConfig.id_breath);
-    
+
+    enableZoneButton.setToggleState(zoneConfig.isEnabled(), juce::dontSendNotification);
+    if (zoneConfig.getTranspose() > INT_MIN)
+        transposeInput.setValue(zoneConfig.getTranspose());
+    if (zoneConfig.getGlobalPitchbend() > INT_MIN)
+        globalPitchbendRangeInput.setValue(zoneConfig.getGlobalPitchbend());
+    if (zoneConfig.getKeyPitchbend() > INT_MIN)
+        keyPitchbendRangeInput.setValue(zoneConfig.getKeyPitchbend());
+            
     addAndMakeVisible(transposeInput);
     addAndMakeVisible(globalPitchbendRangeInput);
     addAndMakeVisible(keyPitchbendRangeInput);
@@ -132,7 +143,16 @@ void ZonePanelComponent::setStandardMidiDropdownParams(DropdownComponent &dropdo
     dropdown.addItem("Chan aftertouch", 130);
     dropdown.addItem("Poly aftertouch", 131);
     dropdown.addItem("Off", 132);
-    dropdown.setSelectedItemId(defaultId);
+
+    ZoneConfig::MidiValue midiValue = zoneConfig.getMidiValue(treeId);
+    if (midiValue.valueType != MidiValueType::Undefined) {
+        if (midiValue.valueType == MidiValueType::CC)
+            dropdown.box.setSelectedItemIndex(midiValue.ccNo);
+        else
+            dropdown.box.setSelectedItemIndex(126 + (int)midiValue.valueType);
+    }
+    else
+        dropdown.setSelectedItemId(defaultId);
 
     dropdown.box.onChange = [&, treeId] {
         ZoneConfig::MidiValue midiValue;
@@ -148,7 +168,6 @@ void ZonePanelComponent::setStandardMidiDropdownParams(DropdownComponent &dropdo
         
         zoneConfig.setMidiValue(treeId, midiValue);
     };
-
 }
 
 ZoneConfig* ZonePanelComponent::getZoneConfig() {
