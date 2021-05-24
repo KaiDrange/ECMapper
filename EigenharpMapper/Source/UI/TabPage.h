@@ -1,7 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include "KeymapPanelComponent.h"
+#include "LayoutComponent.h"
 #include "ZonePanelComponent.h"
 #include "../Models/Layout.h"
 #include "../Models/Enums.h"
@@ -20,7 +20,7 @@ public:
 
 private:
     DeviceType model;
-    KeymapPanelComponent *keymapPanel;
+    LayoutComponent *layoutPanel;
     ZonePanelComponent *zonePanels[3];
     juce::TextEditor oscIPInput;
 

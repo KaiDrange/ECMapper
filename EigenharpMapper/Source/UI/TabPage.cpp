@@ -1,20 +1,20 @@
 #include "TabPage.h"
 
 TabPage::TabPage(int tabIndex, DeviceType model, juce::ValueTree parentTree) : keyboard(keyboardState, juce::MidiKeyboardComponent::Orientation::verticalKeyboardFacingRight) {
-    keymapPanel = new KeymapPanelComponent(model, 0.4, 1, parentTree);
-    addAndMakeVisible(keymapPanel);
+    layoutPanel = new LayoutComponent(model, 0.4, 1, parentTree);
+    addAndMakeVisible(layoutPanel);
     for (int i = 0; i < 3; i++) {
         zonePanels[i] = new ZonePanelComponent(tabIndex, i+1, 1, 1.0/3.0, parentTree);
         addAndMakeVisible(zonePanels[i]);
     }
     
     addAndMakeVisible(keyboard);
-    keyboardState.addListener(keymapPanel);
+    keyboardState.addListener(layoutPanel);
 
     addAndMakeVisible(saveMappingButton);
     saveMappingButton.setButtonText("Save");
     saveMappingButton.onClick = [&] {
-        FileUtil::saveMapping(keymapPanel->layout.getValueTree(), model);
+        FileUtil::saveMapping(layoutPanel->layout.getValueTree(), model);
     };
     addAndMakeVisible(loadMappingButton);
     loadMappingButton.setButtonText("load");
@@ -24,7 +24,7 @@ TabPage::TabPage(int tabIndex, DeviceType model, juce::ValueTree parentTree) : k
         std::cout << loadedMap.getType().toString() << std::endl;
         std::cout << loadedMap.getChild(0).getProperty("keyColour").toString() << std::endl;
         
-        auto oldTree = keymapPanel->layout.getValueTree();
+        auto oldTree = layoutPanel->layout.getValueTree();
         oldTree.copyPropertiesFrom(loadedMap, nullptr);
         for (int i = 0; i < oldTree.getNumChildren(); i++) {
             oldTree.getChild(i).copyPropertiesFrom(loadedMap.getChild(i), nullptr);
@@ -36,11 +36,11 @@ TabPage::TabPage(int tabIndex, DeviceType model, juce::ValueTree parentTree) : k
     addAndMakeVisible(oscIPInput);
     oscIPInput.setText("localhost:7001");
     
-    addKeyListener(keymapPanel);
+    addKeyListener(layoutPanel);
 }
 
 TabPage::~TabPage() {
-    delete keymapPanel;
+    delete layoutPanel;
     for (int i = 0; i < 3; i++) {
         delete zonePanels[i];
     }
@@ -59,7 +59,7 @@ void TabPage::resized() {
     saveMappingButton.setBounds(btnarea.removeFromLeft(area.getWidth()*0.1));
     oscIPInput.setBounds(btnarea.removeFromRight(area.getWidth()*0.2));
 
-    keymapPanel->setBounds(area.removeFromLeft(area.getWidth()*keymapPanel->widthFactor));
+    layoutPanel->setBounds(area.removeFromLeft(area.getWidth()*layoutPanel->widthFactor));
     
     auto zoneArea = area.removeFromRight(area.getWidth()*0.98);
     for (int i = 0; i < 3; i++) {
@@ -68,8 +68,8 @@ void TabPage::resized() {
 }
 
 Layout* TabPage::getLayout() {
-    return &keymapPanel->layout;
-//    return keymap;
+    return &layoutPanel->layout;
+//    return layout;
 }
 
 ZoneConfig* TabPage::getZoneConfig(Zone zone) {

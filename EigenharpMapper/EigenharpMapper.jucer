@@ -11,14 +11,14 @@
               file="Source/UI/DropdownComponent.cpp"/>
         <FILE id="ADVnJq" name="DropdownComponent.h" compile="0" resource="0"
               file="Source/UI/DropdownComponent.h"/>
-        <FILE id="JQKobt" name="EigenharpKeyComponent.cpp" compile="1" resource="0"
-              file="Source/UI/EigenharpKeyComponent.cpp"/>
-        <FILE id="KIKt9U" name="EigenharpKeyComponent.h" compile="0" resource="0"
-              file="Source/UI/EigenharpKeyComponent.h"/>
-        <FILE id="WLAg59" name="KeymapPanelComponent.cpp" compile="1" resource="0"
-              file="Source/UI/KeymapPanelComponent.cpp"/>
-        <FILE id="FKKTKW" name="KeymapPanelComponent.h" compile="0" resource="0"
-              file="Source/UI/KeymapPanelComponent.h"/>
+        <FILE id="JQKobt" name="KeyConfigComponent.cpp" compile="1" resource="0"
+              file="Source/UI/KeyConfigComponent.cpp"/>
+        <FILE id="KIKt9U" name="KeyConfigComponent.h" compile="0" resource="0"
+              file="Source/UI/KeyConfigComponent.h"/>
+        <FILE id="WLAg59" name="LayoutComponent.cpp" compile="1" resource="0"
+              file="Source/UI/LayoutComponent.cpp"/>
+        <FILE id="FKKTKW" name="LayoutComponent.h" compile="0" resource="0"
+              file="Source/UI/LayoutComponent.h"/>
         <FILE id="K2916l" name="MainComponent.cpp" compile="1" resource="0"
               file="Source/UI/MainComponent.cpp"/>
         <FILE id="ZKUs69" name="MainComponent.h" compile="0" resource="0" file="Source/UI/MainComponent.h"/>
