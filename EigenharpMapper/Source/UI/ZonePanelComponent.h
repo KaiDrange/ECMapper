@@ -35,9 +35,9 @@ private:
     DropdownComponent breathDropdown;
     
     NumberInputComponent transposeInput;
-    NumberInputComponent globalPitchbendRangeInput;
+//    NumberInputComponent globalPitchbendRangeInput;
     NumberInputComponent keyPitchbendRangeInput;
-    DropdownComponent deviceOutput;
+//    DropdownComponent deviceOutput;
     
     ZoneConfig zoneConfig;
     

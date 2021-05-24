@@ -5,7 +5,9 @@ NumberInputComponent::NumberInputComponent(const juce::String labelText,
                                            const int maxDigits,
                                            const int minValue,
                                            const int maxValue,
-                                           const int defaultValue) {
+                                           const int defaultValue,
+                                           const bool labelAboveInput) {
+    this->labelAboveInput = labelAboveInput;
     label.setText(labelText, juce::dontSendNotification);
     input.setText(juce::String(defaultValue), juce::dontSendNotification);
     input.setInputFilter(new juce::TextEditor::LengthAndCharacterRestriction(maxDigits, "-0123456789"), true);
@@ -31,7 +33,10 @@ NumberInputComponent::~NumberInputComponent() {
 
 void NumberInputComponent::resized() {
     auto area = getLocalBounds();
-    label.setBounds(area.removeFromLeft(area.getWidth()*0.5));
+    if (labelAboveInput)
+        label.setBounds(area.removeFromTop(area.getHeight()*0.5));
+    else
+        label.setBounds(area.removeFromLeft(area.getWidth()*0.5));
     input.setBounds(area);
 }
 

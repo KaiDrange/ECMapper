@@ -4,9 +4,9 @@
 MidiMessageSectionComponent::MidiMessageSectionComponent() :
         cmdKeyTypeRadioGroup("keyCmdType", "Key cmd type"),
         midiMsgTypeRadioGroup("midiMsgType", "Message type"),
-        midiCmdValue("CC #", 3, 0, 127, 0),
-        offValue("Off val:", 3, 0, 127, 0),
-        onValue("On val:", 3, 0, 127, 127) {
+        midiCmdValue("CC #", 3, 0, 127, 0, false),
+        offValue("Off val:", 3, 0, 127, 0, false),
+        onValue("On val:", 3, 0, 127, 127, false) {
     addAndMakeVisible(cmdKeyTypeRadioGroup);
     
     cmdKeyTypeLatch.setButtonText("Latch");

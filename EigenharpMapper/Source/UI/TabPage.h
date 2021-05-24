@@ -22,7 +22,6 @@ private:
     DeviceType model;
     LayoutComponent *layoutPanel;
     ZonePanelComponent *zonePanels[3];
-    juce::TextEditor oscIPInput;
 
     juce::MidiKeyboardState keyboardState;
     juce::MidiKeyboardComponent keyboard;

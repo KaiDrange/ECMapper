@@ -4,6 +4,8 @@
 #include "../Models/Layout.h"
 #include "LayoutComponent.h"
 #include "TabPage.h"
+#include "NumberInputComponent.h"
+#include "DropdownComponent.h"
 
 class MainComponent : public juce::Component {
 public:
@@ -19,6 +21,12 @@ public:
     juce::ValueTree uiSettings;
 
 private:
+    NumberInputComponent lowMPEChannelCount;
+    NumberInputComponent lowMPEPitchbendRange;
+    NumberInputComponent highMPEPitchbendRange;
+    juce::Label oscIPLabel;
+    juce::TextEditor oscIPInput;
+
     juce::Identifier id_uiSettings = "uiSettings";
     juce::TabbedComponent tabs;
     TabPage *tabPages[3];

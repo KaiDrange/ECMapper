@@ -38,12 +38,8 @@ enum class Zone {
 enum class MidiChannelType {
     Undefined = 0,
     Chan1 = 1, Chan2, Chan3, Chan4, Chan5, Chan6, Chan7, Chan8, Chan9, Chan10, Chan11, Chan12, Chan13, Chan14, Chan15, Chan16,
-    MPE1_16,
-    MPE1_14,
-    MPE1_12,
-    MPE1_8,
-    MPE9_16,
-    MPE13_16
+    MPE_Low,
+    MPE_High
 };
 
 enum class MidiValueType {

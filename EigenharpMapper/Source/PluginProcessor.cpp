@@ -12,7 +12,6 @@ pluginState(*this, nullptr, id_state, createParameterLayout()), osc(&oscSendQueu
 EigenharpMapperAudioProcessor::~EigenharpMapperAudioProcessor() {
     osc.disconnectSender();
     osc.disconnectReceiver();
-//    delete midiGenerator;
 }
 
 const juce::String EigenharpMapperAudioProcessor::getName() const {

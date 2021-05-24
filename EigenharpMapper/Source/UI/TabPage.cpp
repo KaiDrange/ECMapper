@@ -33,9 +33,6 @@ TabPage::TabPage(int tabIndex, DeviceType model, juce::ValueTree parentTree) : k
         repaint();
     };
     
-    addAndMakeVisible(oscIPInput);
-    oscIPInput.setText("localhost:7001");
-    
     addKeyListener(layoutPanel);
 }
 
@@ -57,7 +54,6 @@ void TabPage::resized() {
     auto btnarea = area.removeFromTop(area.getHeight()*0.03);
     loadMappingButton.setBounds(btnarea.removeFromLeft(area.getWidth()*0.1));
     saveMappingButton.setBounds(btnarea.removeFromLeft(area.getWidth()*0.1));
-    oscIPInput.setBounds(btnarea.removeFromRight(area.getWidth()*0.2));
 
     layoutPanel->setBounds(area.removeFromLeft(area.getWidth()*layoutPanel->widthFactor));
     

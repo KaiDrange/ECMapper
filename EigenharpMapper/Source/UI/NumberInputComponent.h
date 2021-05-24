@@ -3,7 +3,7 @@
 
 class NumberInputComponent  : public juce::Component {
 public:
-    NumberInputComponent(const juce::String labelText, const int maxDigits, const int minValue, const int maxValue, const int defaultValue);
+    NumberInputComponent(const juce::String labelText, const int maxDigits, const int minValue, const int maxValue, const int defaultValue, const bool labelAboveInput);
     ~NumberInputComponent() override;
 
     int getValue();
@@ -26,6 +26,7 @@ private:
     int maxValue;
     int minValue;
     juce::ListenerList<Listener> listeners;
+    bool labelAboveInput;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (NumberInputComponent)
 };

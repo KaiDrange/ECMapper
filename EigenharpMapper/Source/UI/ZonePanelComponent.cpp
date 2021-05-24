@@ -3,9 +3,9 @@
 
 ZonePanelComponent::ZonePanelComponent(int tabIndex, int zoneNumber, float widthFactor, float heightFactor, juce::ValueTree parentTree):
         PanelComponent(widthFactor, heightFactor),
-        transposeInput("Transpose:", 3, -24, 24, 0),
-        globalPitchbendRangeInput("Global pitchbend:", 2, 0, 96, 12),
-        keyPitchbendRangeInput("Key pitchbend:", 2, 0, 96, 2),
+        transposeInput("Transpose:", 3, -24, 24, 0, false),
+//        globalPitchbendRangeInput("Global pitchbend:", 2, 0, 96, 12, false),
+        keyPitchbendRangeInput("Key pitchbend:", 2, 0, 96, 2, false),
         zoneConfig(tabIndex, (Zone)zoneNumber, parentTree) {
     this->zoneNumber = zoneNumber;
     addAndMakeVisible(label);
@@ -21,9 +21,9 @@ ZonePanelComponent::ZonePanelComponent(int tabIndex, int zoneNumber, float width
         zoneConfig.setTranspose(transposeInput.getValue());
     };
 
-    globalPitchbendRangeInput.input.onTextChange = [&] {
-        zoneConfig.setGlobalPitchbend(globalPitchbendRangeInput.getValue());
-    };
+//    globalPitchbendRangeInput.input.onTextChange = [&] {
+//        zoneConfig.setGlobalPitchbend(globalPitchbendRangeInput.getValue());
+//    };
 
     keyPitchbendRangeInput.input.onTextChange = [&] {
         zoneConfig.setKeyPitchbend(keyPitchbendRangeInput.getValue());
@@ -33,12 +33,8 @@ ZonePanelComponent::ZonePanelComponent(int tabIndex, int zoneNumber, float width
     midiChannelDropdown.setLabelText("Midi channel:");
     for (int i = 1; i <= 16; i++)
         midiChannelDropdown.addItem(juce::String(i), i);
-    midiChannelDropdown.addItem("MPE1_16", 17);
-    midiChannelDropdown.addItem("MPE1_14", 18);
-    midiChannelDropdown.addItem("MPE1_12", 19);
-    midiChannelDropdown.addItem("MPE1_8", 20);
-    midiChannelDropdown.addItem("MPE9_16", 21);
-    midiChannelDropdown.addItem("MPE13_16", 22);
+    midiChannelDropdown.addItem("MPE Low", 17);
+    midiChannelDropdown.addItem("MPE High", 18);
 
     if (zoneConfig.getMidiChannelType() == MidiChannelType::Undefined)
         midiChannelDropdown.setSelectedItemId(17);
@@ -79,13 +75,13 @@ ZonePanelComponent::ZonePanelComponent(int tabIndex, int zoneNumber, float width
     enableZoneButton.setToggleState(zoneConfig.isEnabled(), juce::dontSendNotification);
     if (zoneConfig.getTranspose() > INT_MIN)
         transposeInput.setValue(zoneConfig.getTranspose());
-    if (zoneConfig.getGlobalPitchbend() > INT_MIN)
-        globalPitchbendRangeInput.setValue(zoneConfig.getGlobalPitchbend());
+//    if (zoneConfig.getGlobalPitchbend() > INT_MIN)
+//        globalPitchbendRangeInput.setValue(zoneConfig.getGlobalPitchbend());
     if (zoneConfig.getKeyPitchbend() > INT_MIN)
         keyPitchbendRangeInput.setValue(zoneConfig.getKeyPitchbend());
             
     addAndMakeVisible(transposeInput);
-    addAndMakeVisible(globalPitchbendRangeInput);
+//    addAndMakeVisible(globalPitchbendRangeInput);
     addAndMakeVisible(keyPitchbendRangeInput);
     
 //    addAndMakeVisible(deviceOutput);
@@ -111,13 +107,12 @@ void ZonePanelComponent::resized() {
     area.reduce(area.getWidth()*0.01, area.getWidth()*0.01);
     auto lineHeight = area.getHeight()*0.1;
     auto colWidth = area.getWidth()*0.5;
-    auto topArea = area.removeFromTop(lineHeight);
+    auto topArea = area.removeFromTop(lineHeight*1.5);
     label.setBounds(topArea.removeFromLeft(area.getWidth()*0.2));
     enableZoneButton.setBounds(topArea.removeFromRight(area.getWidth()*0.1));
 
     auto col1 = area.removeFromLeft(colWidth);
     col1.reduce(col1.getWidth()*0.01, col1.getWidth()*0.01);
-    midiChannelDropdown.setBounds(col1.removeFromTop(lineHeight));
     pressureDropdown.setBounds(col1.removeFromTop(lineHeight));
     yawDropdown.setBounds(col1.removeFromTop(lineHeight));
     rollDropdown.setBounds(col1.removeFromTop(lineHeight));
@@ -129,11 +124,12 @@ void ZonePanelComponent::resized() {
     
     auto col2 = area;
     col2.reduce(col2.getWidth()*0.01, col2.getWidth()*0.01);
+    midiChannelDropdown.setBounds(col2.removeFromTop(lineHeight));
     transposeInput.setBounds(col2.removeFromTop(lineHeight));
-    globalPitchbendRangeInput.setBounds(col2.removeFromTop(lineHeight));
+//    globalPitchbendRangeInput.setBounds(col2.removeFromTop(lineHeight));
     keyPitchbendRangeInput.setBounds(col2.removeFromTop(lineHeight));
     
-    deviceOutput.setBounds(col2.removeFromBottom(lineHeight));
+//    deviceOutput.setBounds(col2.removeFromBottom(lineHeight));
 }
 
 void ZonePanelComponent::setStandardMidiDropdownParams(DropdownComponent &dropdown, int defaultId, juce::Identifier treeId) {
@@ -184,9 +180,9 @@ void ZonePanelComponent::valueTreePropertyChanged(juce::ValueTree &vTree, const 
     else if (property == zoneConfig.id_midiChannelType) {
         midiChannelDropdown.box.setSelectedId((int)zoneConfig.getMidiChannelType());
     }
-    else if (property == zoneConfig.id_globalPitchbend) {
-        globalPitchbendRangeInput.setValue(zoneConfig.getGlobalPitchbend());
-    }
+//    else if (property == zoneConfig.id_globalPitchbend) {
+//        globalPitchbendRangeInput.setValue(zoneConfig.getGlobalPitchbend());
+//    }
     else if (property == zoneConfig.id_keyPitchbend) {
         keyPitchbendRangeInput.setValue(zoneConfig.getKeyPitchbend());
     }
