@@ -12,6 +12,7 @@ public:
     LayoutChangeHandler(OSC::OSCMessageFifo *oscSendQueue);
     void setKeyConfigLookup(KeyConfigLookup *keyConfigLookup, DeviceType deviceType);
     
+    void sendLEDMsgForAllKeys(juce::ValueTree layoutTree);
     bool layoutMidiRPNSent = false;
 
 private:

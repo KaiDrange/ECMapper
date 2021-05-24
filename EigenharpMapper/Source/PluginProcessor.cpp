@@ -115,8 +115,12 @@ void EigenharpMapperAudioProcessor::setStateInformation(const void* data, int si
     std::unique_ptr<juce::XmlElement>xmlState(getXmlFromBinary(data, sizeInBytes));
 
     if (xmlState.get() != nullptr) {
-        if (xmlState->hasTagName (pluginState.state.getType())) {
+        if (xmlState->hasTagName(pluginState.state.getType())) {
             pluginState.replaceState(juce::ValueTree::fromXml(*xmlState));
+            for (int i = 0; i < 3; i++) {
+                layoutChangeHandler.sendLEDMsgForAllKeys(pluginState.state.getChildWithName("uiSettings").getChildWithName("layout" + juce::String(i+1)));
+            }
+
         }
     }
 }
