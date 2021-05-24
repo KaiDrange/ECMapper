@@ -11,7 +11,7 @@ public:
     ~MidiGenerator();
     
     const int decimation = 4;
-    KeyConfigLookup keyConfigLookups[3];
+    KeyConfigLookup *keyConfigLookups[3];
     void processOSCMessage(OSC::Message &oscMsg, juce::MidiBuffer &midiBuffer);
     juce::MPEZoneLayout mpeZone;
     
