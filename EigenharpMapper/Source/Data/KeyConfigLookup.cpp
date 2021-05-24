@@ -1,7 +1,10 @@
 #include "KeyConfigLookup.h"
 
-KeyConfigLookup::KeyConfigLookup(juce::ValueTree layoutTree) {
+KeyConfigLookup::KeyConfigLookup(juce::ValueTree layoutTree, juce::ValueTree zoneTree1, juce::ValueTree zoneTree2, juce::ValueTree zoneTree3) {
     this->layoutTree = layoutTree;
+    this->zoneTrees[0] = zoneTree1;
+    this->zoneTrees[1] = zoneTree2;
+    this->zoneTrees[2] = zoneTree3;
     updateAll();
 }
 

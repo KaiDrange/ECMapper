@@ -120,7 +120,6 @@ void EigenharpMapperAudioProcessor::setStateInformation(const void* data, int si
             for (int i = 0; i < 3; i++) {
                 layoutChangeHandler.sendLEDMsgForAllKeys(pluginState.state.getChildWithName("uiSettings").getChildWithName("layout" + juce::String(i+1)));
             }
-
         }
     }
 }

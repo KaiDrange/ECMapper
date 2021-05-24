@@ -6,7 +6,7 @@
 
 class KeyConfigLookup {
 public:
-    KeyConfigLookup(juce::ValueTree layoutTree);
+    KeyConfigLookup(juce::ValueTree layoutTree, juce::ValueTree zoneTree1, juce::ValueTree zoneTree2, juce::ValueTree zoneTree3);
     void updateAll();
     
     struct Key {
@@ -21,4 +21,5 @@ public:
 
 private:
     juce::ValueTree layoutTree;
+    juce::ValueTree zoneTrees[3];
 };

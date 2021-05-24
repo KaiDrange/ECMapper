@@ -2,7 +2,13 @@
 
 MidiGenerator::MidiGenerator(juce::ValueTree uiSettings) {
     for (int i = 0; i < 3; i++)
-        keyConfigLookups[i] = new KeyConfigLookup(uiSettings.getChildWithName("layout" + juce::String(i+1)));
+        keyConfigLookups[i] = new KeyConfigLookup(
+          uiSettings.getChildWithName("layout" + juce::String(i+1)),
+          uiSettings.getChildWithName("zone" + juce::String(i) + "_1"),
+          uiSettings.getChildWithName("zone" + juce::String(i) + "_2"),
+          uiSettings.getChildWithName("zone" + juce::String(i) + "_3")
+        );
+    
     mpeZone.setLowerZone(15, 2, 12);
     chanAssigner = new juce::MPEChannelAssigner(mpeZone.getLowerZone());
 }
