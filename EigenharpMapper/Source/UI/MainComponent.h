@@ -2,7 +2,7 @@
 #include <JuceHeader.h>
 #include "../Models/Enums.h"
 #include "../Models/Layout.h"
-#include "KeymapPanelComponent.h"
+#include "LayoutComponent.h"
 #include "TabPage.h"
 
 class MainComponent : public juce::Component {
