@@ -16,7 +16,7 @@ void SettingsWrapper::setIP(juce::String ip) {
 }
 
 juce::ValueTree SettingsWrapper::getSettingsTree() {
-    return rootState->getOrCreateChildWithName(id_GlobalSettings, nullptr);
+    return rootState->getOrCreateChildWithName(id_globalSettings, nullptr);
 }
 
 void SettingsWrapper::setLowMPEToChannel(int channel) {

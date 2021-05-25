@@ -1,32 +1,30 @@
 #include <JuceHeader.h>
 #include "ZonePanelComponent.h"
 
-ZonePanelComponent::ZonePanelComponent(int tabIndex, int zoneNumber, float widthFactor, float heightFactor, juce::ValueTree parentTree):
-        PanelComponent(widthFactor, heightFactor),
-        transposeInput("Transpose:", 3, -24, 24, 0, false),
-//        globalPitchbendRangeInput("Global pitchbend:", 2, 0, 96, 12, false),
-        keyPitchbendRangeInput("Key pitchbend:", 2, 0, 96, 2, false),
-        zoneConfig(tabIndex, (Zone)zoneNumber, parentTree) {
+ZonePanelComponent::ZonePanelComponent(int tabIndex, int zoneNumber, float widthFactor, float heightFactor, juce::ValueTree parentTree): PanelComponent(widthFactor, heightFactor), transposeInput("Transpose:", 3, -24, 24, 0, false), keyPitchbendRangeInput("Key pitchbend:", 2, 0, 96, 2, false), zoneConfig(tabIndex, (Zone)zoneNumber, parentTree) {
     this->zoneNumber = zoneNumber;
+    this->deviceType = (DeviceType)(tabIndex+1);
+    this->zone = (Zone)zoneNumber;
     addAndMakeVisible(label);
     label.setText("Zone " + juce::String(zoneNumber), juce::NotificationType::dontSendNotification);
 
     addAndMakeVisible(enableZoneButton);
     enableZoneButton.setButtonText("On");
+    enableZoneButton.setToggleState(ZoneWrapper::getEnabled(deviceType, zone), juce::dontSendNotification);
     enableZoneButton.onClick = [&] {
-        zoneConfig.setEnabled(enableZoneButton.getToggleState());
+        ZoneWrapper::setEnabled(deviceType, zone, enableZoneButton.getToggleState());
     };
     
-    transposeInput.input.onTextChange = [&] {
-        zoneConfig.setTranspose(transposeInput.getValue());
+    addAndMakeVisible(transposeInput);
+    transposeInput.setValue(ZoneWrapper::getTranspose(deviceType, zone));
+    transposeInput.input.onFocusLost = [&] {
+        ZoneWrapper::setTranspose(deviceType, zone, transposeInput.getValue());
     };
 
-//    globalPitchbendRangeInput.input.onTextChange = [&] {
-//        zoneConfig.setGlobalPitchbend(globalPitchbendRangeInput.getValue());
-//    };
-
+    addAndMakeVisible(keyPitchbendRangeInput);
+    keyPitchbendRangeInput.setValue(ZoneWrapper::getKeyPitchbend(deviceType, zone));
     keyPitchbendRangeInput.input.onTextChange = [&] {
-        zoneConfig.setKeyPitchbend(keyPitchbendRangeInput.getValue());
+        ZoneWrapper::setKeyPitchbend(deviceType, zone, keyPitchbendRangeInput.getValue());
     };
 
     addAndMakeVisible(midiChannelDropdown);
@@ -36,60 +34,36 @@ ZonePanelComponent::ZonePanelComponent(int tabIndex, int zoneNumber, float width
     midiChannelDropdown.addItem("MPE Low", 17);
     midiChannelDropdown.addItem("MPE High", 18);
 
-    if (zoneConfig.getMidiChannelType() == MidiChannelType::Undefined)
-        midiChannelDropdown.setSelectedItemId(17);
-    else
-        midiChannelDropdown.setSelectedItemId((int)zoneConfig.getMidiChannelType());
-            
+    midiChannelDropdown.setSelectedItemId((int)ZoneWrapper::getMidiChannelType(deviceType, zone));
     midiChannelDropdown.box.onChange = [&] {
-        zoneConfig.setMidiChannelType((MidiChannelType)midiChannelDropdown.box.getSelectedId());
+        ZoneWrapper::setMidiChannelType(deviceType, zone, (MidiChannelType)midiChannelDropdown.box.getSelectedId());
     };
     
-    addAndMakeVisible(pressureDropdown);
     pressureDropdown.setLabelText("Pressure:");
-    setStandardMidiDropdownParams(pressureDropdown, 130, zoneConfig.id_pressure);
+    setStandardMidiDropdownParams(pressureDropdown, ZoneWrapper::id_pressure, ZoneWrapper::default_pressure);
             
-    addAndMakeVisible(yawDropdown);
     yawDropdown.setLabelText("Yaw:");
-    setStandardMidiDropdownParams(yawDropdown, 75, zoneConfig.id_yaw);
-    addAndMakeVisible(rollDropdown);
+    setStandardMidiDropdownParams(yawDropdown, ZoneWrapper::id_yaw, ZoneWrapper::default_yaw);
+
     rollDropdown.setLabelText("Roll:");
-    setStandardMidiDropdownParams(rollDropdown, 129, zoneConfig.id_roll);
+    setStandardMidiDropdownParams(rollDropdown, ZoneWrapper::id_roll, ZoneWrapper::default_roll);
 
-    addAndMakeVisible(strip1RelativeDropdown);
     strip1RelativeDropdown.setLabelText("Strip1 Rel:");
-    setStandardMidiDropdownParams(strip1RelativeDropdown, 129, zoneConfig.id_strip1Rel);
-    addAndMakeVisible(strip1AbsoluteDropdown);
+    setStandardMidiDropdownParams(strip1RelativeDropdown, ZoneWrapper::id_strip1Rel, ZoneWrapper::default_strip1Rel);
+
     strip1AbsoluteDropdown.setLabelText("Strip1 Abs:");
-    setStandardMidiDropdownParams(strip1AbsoluteDropdown, 132, zoneConfig.id_strip1Abs);
-    addAndMakeVisible(strip2RelativeDropdown);
+    setStandardMidiDropdownParams(strip1AbsoluteDropdown, ZoneWrapper::id_strip1Abs, ZoneWrapper::default_strip1Abs);
+
     strip2RelativeDropdown.setLabelText("Strip2 Rel:");
-    setStandardMidiDropdownParams(strip2RelativeDropdown, 132, zoneConfig.id_strip2Rel);
-    addAndMakeVisible(strip2AbsoluteDropdown);
+    setStandardMidiDropdownParams(strip2RelativeDropdown, ZoneWrapper::id_strip2Rel, ZoneWrapper::default_strip2Rel);
+
     strip2AbsoluteDropdown.setLabelText("Strip2 Abs:");
-    setStandardMidiDropdownParams(strip2AbsoluteDropdown, 132, zoneConfig.id_strip2Abs);
-    addAndMakeVisible(breathDropdown);
+    setStandardMidiDropdownParams(strip2AbsoluteDropdown, ZoneWrapper::id_strip2Abs, ZoneWrapper::default_strip2Abs);
+
     breathDropdown.setLabelText("Breath:");
-    setStandardMidiDropdownParams(breathDropdown, 3, zoneConfig.id_breath);
+    setStandardMidiDropdownParams(breathDropdown, ZoneWrapper::id_breath, ZoneWrapper::default_breath);
 
-    enableZoneButton.setToggleState(zoneConfig.isEnabled(), juce::dontSendNotification);
-    if (zoneConfig.getTranspose() > INT_MIN)
-        transposeInput.setValue(zoneConfig.getTranspose());
-//    if (zoneConfig.getGlobalPitchbend() > INT_MIN)
-//        globalPitchbendRangeInput.setValue(zoneConfig.getGlobalPitchbend());
-    if (zoneConfig.getKeyPitchbend() > INT_MIN)
-        keyPitchbendRangeInput.setValue(zoneConfig.getKeyPitchbend());
-            
-    addAndMakeVisible(transposeInput);
-//    addAndMakeVisible(globalPitchbendRangeInput);
-    addAndMakeVisible(keyPitchbendRangeInput);
-    
-//    addAndMakeVisible(deviceOutput);
-//    deviceOutput.setLabelText("Output:");
-//    deviceOutput.addItem("Midi out 1",1);
-//    deviceOutput.setSelectedItemId(1);
-
-    zoneConfig.addListener(this);
+//    zoneConfig.addListener(this);
 }
 
 ZonePanelComponent::~ZonePanelComponent() {
@@ -126,13 +100,10 @@ void ZonePanelComponent::resized() {
     col2.reduce(col2.getWidth()*0.01, col2.getWidth()*0.01);
     midiChannelDropdown.setBounds(col2.removeFromTop(lineHeight));
     transposeInput.setBounds(col2.removeFromTop(lineHeight));
-//    globalPitchbendRangeInput.setBounds(col2.removeFromTop(lineHeight));
     keyPitchbendRangeInput.setBounds(col2.removeFromTop(lineHeight));
-    
-//    deviceOutput.setBounds(col2.removeFromBottom(lineHeight));
 }
 
-void ZonePanelComponent::setStandardMidiDropdownParams(DropdownComponent &dropdown, int defaultId, juce::Identifier treeId) {
+void ZonePanelComponent::setStandardMidiDropdownParams(DropdownComponent &dropdown, juce::Identifier treeId, const ZoneWrapper::MidiValue &defaultValue) {
     for (int i = 0; i < 128; i++)
     dropdown.addItem("CC #" + juce::String(i), i+1);
     dropdown.addItem("Pitchbend", 129);
@@ -140,18 +111,14 @@ void ZonePanelComponent::setStandardMidiDropdownParams(DropdownComponent &dropdo
     dropdown.addItem("Poly aftertouch", 131);
     dropdown.addItem("Off", 132);
 
-    ZoneConfig::MidiValue midiValue = zoneConfig.getMidiValue(treeId);
-    if (midiValue.valueType != MidiValueType::Undefined) {
-        if (midiValue.valueType == MidiValueType::CC)
-            dropdown.box.setSelectedItemIndex(midiValue.ccNo);
-        else
-            dropdown.box.setSelectedItemIndex(126 + (int)midiValue.valueType);
-    }
+    ZoneWrapper::MidiValue midiValue = ZoneWrapper::getMidiValue(deviceType, zone, treeId, defaultValue);
+    if (midiValue.valueType == MidiValueType::CC)
+        dropdown.box.setSelectedItemIndex(midiValue.ccNo);
     else
-        dropdown.setSelectedItemId(defaultId);
+        dropdown.box.setSelectedItemIndex(126 + (int)midiValue.valueType);
 
     dropdown.box.onChange = [&, treeId] {
-        ZoneConfig::MidiValue midiValue;
+        ZoneWrapper::MidiValue midiValue;
         auto selIndex = dropdown.box.getSelectedItemIndex();
         if (selIndex < 128) {
             midiValue.valueType = MidiValueType::CC;
@@ -162,8 +129,10 @@ void ZonePanelComponent::setStandardMidiDropdownParams(DropdownComponent &dropdo
             midiValue.ccNo = 0;
         }
         
-        zoneConfig.setMidiValue(treeId, midiValue);
+        ZoneWrapper::setMidiValue(deviceType, zone, treeId, midiValue);
     };
+    
+    addAndMakeVisible(dropdown);
 }
 
 ZoneConfig* ZonePanelComponent::getZoneConfig() {

@@ -68,6 +68,8 @@
               file="Source/Data/OSCMessageQueue.h"/>
       </GROUP>
       <GROUP id="{1F899284-5C01-F5F1-6C8F-EEA46D8DDFB9}" name="Models">
+        <FILE id="smoUqc" name="ZoneWrapper.cpp" compile="1" resource="0" file="Source/Models/ZoneWrapper.cpp"/>
+        <FILE id="APYXid" name="ZoneWrapper.h" compile="0" resource="0" file="Source/Models/ZoneWrapper.h"/>
         <FILE id="rvKtk2" name="SettingsWrapper.cpp" compile="1" resource="0"
               file="Source/Models/SettingsWrapper.cpp"/>
         <FILE id="hE5PHh" name="SettingsWrapper.h" compile="0" resource="0"

@@ -5,7 +5,7 @@ extern juce::ValueTree *rootState;
 
 class SettingsWrapper {
 public:
-    static inline const juce::Identifier id_GlobalSettings { "globalsettings" };
+    static inline const juce::Identifier id_globalSettings { "globalsettings" };
     static inline const juce::Identifier id_IP { "ipaddress" };
     static inline const juce::Identifier id_lowMPEToChannel {"lowmpetochannel"};
     static inline const juce::Identifier id_lowMPEPB {"lowmpepb"};

@@ -6,6 +6,7 @@
 #include "DropdownComponent.h"
 #include "NumberInputComponent.h"
 #include "../Models/ZoneConfig.h"
+#include "../Models/ZoneWrapper.h"
 
 class ZonePanelComponent  : public PanelComponent, public juce::ValueTree::Listener {
 public:
@@ -17,7 +18,7 @@ public:
     ZoneConfig* getZoneConfig();
 
 private:
-    void setStandardMidiDropdownParams(DropdownComponent &dropdown, int defaultId, juce::Identifier treeId);
+    void setStandardMidiDropdownParams(DropdownComponent &dropdown, juce::Identifier treeId, const ZoneWrapper::MidiValue &defaultValue);
     void updateStandardMidiParamsDropdown(juce::Identifier &id, DropdownComponent &dropdown);
 
     int zoneNumber;
@@ -38,6 +39,8 @@ private:
     NumberInputComponent keyPitchbendRangeInput;
     
     ZoneConfig zoneConfig;
+    DeviceType deviceType; // temp until ZoneConfig is gone
+    Zone zone; // temp until ZoneConfig is gone
     
     void valueTreePropertyChanged(juce::ValueTree &vTree, const juce::Identifier &property) override;
 
