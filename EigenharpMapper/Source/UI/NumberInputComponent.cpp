@@ -9,7 +9,7 @@ NumberInputComponent::NumberInputComponent(const juce::String labelText,
                                            const bool labelAboveInput) {
     this->labelAboveInput = labelAboveInput;
     label.setText(labelText, juce::dontSendNotification);
-    input.setText(juce::String(defaultValue), juce::dontSendNotification);
+//    input.setText(juce::String(defaultValue), juce::dontSendNotification);
     input.setInputFilter(new juce::TextEditor::LengthAndCharacterRestriction(maxDigits, "-0123456789"), true);
     addAndMakeVisible(label);
     addAndMakeVisible(input);

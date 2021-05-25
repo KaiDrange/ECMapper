@@ -2,6 +2,27 @@
 
 MainComponent::MainComponent(juce::ValueTree state): lowMPEChannelCount("Low MPE chan to:", 2, 0, 16, 16, true), lowMPEPitchbendRange("Low MPE pb:", 2, 0, 96, 48, true), highMPEPitchbendRange("High MPE pb:", 2, 0, 96, 48, true), tabs(juce::TabbedButtonBar::TabsAtTop) {
     
+    SettingsWrapper::addListener(this);
+    oscIPInput.setText(SettingsWrapper::getIP());
+    oscIPInput.onFocusLost = [&] {
+        SettingsWrapper::setIP(oscIPInput.getText());
+    };
+    
+    lowMPEChannelCount.setValue(SettingsWrapper::getLowMPEToChannel());
+    lowMPEChannelCount.input.onFocusLost = [&] {
+        SettingsWrapper::setLowMPEToChannel(lowMPEChannelCount.getValue());
+    };
+    
+    lowMPEPitchbendRange.setValue(SettingsWrapper::getLowMPEPB());
+    lowMPEPitchbendRange.input.onFocusLost = [&] {
+        SettingsWrapper::setLowMPEPB(lowMPEPitchbendRange.getValue());
+    };
+
+    highMPEPitchbendRange.setValue(SettingsWrapper::getHighMPEPB());
+    highMPEPitchbendRange.input.onFocusLost = [&] {
+        SettingsWrapper::setHighMPEPB(highMPEPitchbendRange.getValue());
+    };
+    
     uiSettings = state.getOrCreateChildWithName(id_uiSettings, nullptr);
     
     tabPages[0] = new TabPage(0, DeviceType::Alpha, uiSettings);
@@ -13,9 +34,7 @@ MainComponent::MainComponent(juce::ValueTree state): lowMPEChannelCount("Low MPE
     tabs.addTab("Pico", bgColour, tabPages[2], false);
     tabs.setCurrentTabIndex(2);
     
-    
     oscIPLabel.setText("Core IP:", juce::dontSendNotification);
-    oscIPInput.setText("127.0.0.1:7001");
     addAndMakeVisible(tabs);
     addAndMakeVisible(oscIPLabel);
     addAndMakeVisible(oscIPInput);
@@ -33,6 +52,9 @@ MainComponent::~MainComponent() {
 }
 
 void MainComponent::paint (juce::Graphics& g) {
+    g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
+    g.setColour (juce::Colours::grey);
+    g.drawRect (getLocalBounds(), 1);
 }
 
 void MainComponent::resized() {
@@ -59,4 +81,7 @@ Layout* MainComponent::getLayout(DeviceType deviceType) {
 
 void MainComponent::addListener(juce::ValueTree::Listener *listener) {
     uiSettings.addListener(listener);
+}
+
+void MainComponent::valueTreePropertyChanged(juce::ValueTree &vTree, const juce::Identifier &property) {
 }

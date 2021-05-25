@@ -6,6 +6,8 @@ class Utility {
 public:
     static juce::Colour zoneEnumToColour(Zone zone);
     static juce::Colour keyColourEnumToColour(KeyColour colour);
+    static void splitString(const juce::String &text, const juce::String &separator, juce::StringArray &tokens);
+
 private:
 };
 

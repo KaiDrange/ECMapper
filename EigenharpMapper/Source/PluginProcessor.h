@@ -6,6 +6,8 @@
 #include "Data/LayoutChangeHandler.h"
 #include "Models/Enums.h"
 #include "Data/MidiGenerator.h"
+#include "Models/SettingsWrapper.h"
+#include "UI/Utility.h"
 
 class EigenharpMapperAudioProcessor  : public juce::AudioProcessor
 {
