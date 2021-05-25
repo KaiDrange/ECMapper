@@ -30,6 +30,7 @@ void LayoutChangeHandler::valueTreePropertyChanged(juce::ValueTree &vTree, const
         };
         oscSendQueue->add(&msg);
     }
+
     if (deviceType != DeviceType::None) {
         keyConfigLookups[getConfigIndexFromDeviceType(deviceType)]->updateAll();
         layoutMidiRPNSent = false;
@@ -59,10 +60,6 @@ void LayoutChangeHandler::sendLEDMsgForAllKeys(juce::ValueTree layoutTree) {
             .device = deviceType
         };
         oscSendQueue->add(&msg);
-
-        
-        
-        
     }
 }
 

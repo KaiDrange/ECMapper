@@ -12,7 +12,8 @@ public:
 
     void resized() override;
     Layout* getLayout(DeviceType deviceType);
-    MainComponent mainComponent;
+    void recreateMainComponent();
+    MainComponent *mainComponent;
 
 private:
     EigenharpMapperAudioProcessor& audioProcessor;

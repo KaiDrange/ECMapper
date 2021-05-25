@@ -180,9 +180,6 @@ void ZonePanelComponent::valueTreePropertyChanged(juce::ValueTree &vTree, const 
     else if (property == zoneConfig.id_midiChannelType) {
         midiChannelDropdown.box.setSelectedId((int)zoneConfig.getMidiChannelType());
     }
-//    else if (property == zoneConfig.id_globalPitchbend) {
-//        globalPitchbendRangeInput.setValue(zoneConfig.getGlobalPitchbend());
-//    }
     else if (property == zoneConfig.id_keyPitchbend) {
         keyPitchbendRangeInput.setValue(zoneConfig.getKeyPitchbend());
     }
@@ -222,5 +219,4 @@ void ZonePanelComponent::updateStandardMidiParamsDropdown(juce::Identifier &id, 
         if (dropdown.box.getSelectedItemIndex() != 126 + (int)midiValue.valueType)
             dropdown.box.setSelectedItemIndex(126 + (int)midiValue.valueType);
     }
-
 }

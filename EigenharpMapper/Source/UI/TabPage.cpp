@@ -65,7 +65,6 @@ void TabPage::resized() {
 
 Layout* TabPage::getLayout() {
     return &layoutPanel->layout;
-//    return layout;
 }
 
 ZoneConfig* TabPage::getZoneConfig(Zone zone) {

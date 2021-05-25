@@ -4,9 +4,9 @@ MidiGenerator::MidiGenerator(juce::ValueTree uiSettings) {
     for (int i = 0; i < 3; i++)
         keyConfigLookups[i] = new KeyConfigLookup(
           uiSettings.getChildWithName("layout" + juce::String(i+1)),
-          uiSettings.getChildWithName("zone" + juce::String(i) + "_1"),
-          uiSettings.getChildWithName("zone" + juce::String(i) + "_2"),
-          uiSettings.getChildWithName("zone" + juce::String(i) + "_3")
+          uiSettings.getChildWithName("zone" + juce::String(i+1) + "_1"),
+          uiSettings.getChildWithName("zone" + juce::String(i+1) + "_2"),
+          uiSettings.getChildWithName("zone" + juce::String(i+1) + "_3")
         );
     
     mpeZone.setLowerZone(15, 2, 12);

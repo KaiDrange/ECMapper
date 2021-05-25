@@ -52,7 +52,7 @@ private:
     OSC::OSCMessageFifo oscReceiveQueue;
     MidiGenerator *midiGenerator;
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
-    juce::AudioProcessorEditor *editor;
+    juce::AudioProcessorEditor *editor = nullptr;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (EigenharpMapperAudioProcessor)
 };

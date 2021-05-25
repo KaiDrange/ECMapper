@@ -11,7 +11,7 @@ private:
 
 const static juce::Colour zoneColours[5] = {
     juce::Colours::black,
-    juce::Colours::darkblue,
+    (const juce::Colour)0xff1010bb,
     juce::Colours::maroon,
     juce::Colours::darkorange,
     juce::Colours::white

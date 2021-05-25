@@ -16,7 +16,6 @@ public:
     void resized() override;
     Layout* getLayout();
     ZoneConfig* getZoneConfig(Zone zone);
-    juce::String text;
 
 private:
     DeviceType model;

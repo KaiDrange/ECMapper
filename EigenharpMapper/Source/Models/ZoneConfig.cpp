@@ -1,7 +1,7 @@
 #include "ZoneConfig.h"
 
 ZoneConfig::ZoneConfig(int tabNo, Zone zone, juce::ValueTree parentTree) {
-    valueTree = parentTree.getOrCreateChildWithName("zone" + juce::String(tabNo) + "_" + juce::String((int)zone), nullptr);
+    valueTree = parentTree.getOrCreateChildWithName("zone" + juce::String(tabNo+1) + "_" + juce::String((int)zone), nullptr);
     this->zone = zone;
     if (!valueTree.getChildWithName(id_pressure).isValid()) {
         juce::ValueTree midiPressureTree(id_pressure);

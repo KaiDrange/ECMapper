@@ -12,7 +12,7 @@ public:
     ZonePanelComponent(int tabIndex, int zoneNumber, float widthFactor, float heightFactor, juce::ValueTree parentTree);
     ~ZonePanelComponent() override;
 
-    void paint (juce::Graphics&) override;
+    void paint(juce::Graphics&) override;
     void resized() override;
     ZoneConfig* getZoneConfig();
 
@@ -35,9 +35,7 @@ private:
     DropdownComponent breathDropdown;
     
     NumberInputComponent transposeInput;
-//    NumberInputComponent globalPitchbendRangeInput;
     NumberInputComponent keyPitchbendRangeInput;
-//    DropdownComponent deviceOutput;
     
     ZoneConfig zoneConfig;
     
