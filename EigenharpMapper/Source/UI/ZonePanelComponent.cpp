@@ -1,10 +1,9 @@
 #include <JuceHeader.h>
 #include "ZonePanelComponent.h"
 
-ZonePanelComponent::ZonePanelComponent(int tabIndex, int zoneNumber, float widthFactor, float heightFactor, juce::ValueTree parentTree): PanelComponent(widthFactor, heightFactor), transposeInput("Transpose:", 3, -24, 24, 0, false), keyPitchbendRangeInput("Key pitchbend:", 2, 0, 96, 2, false), zoneConfig(tabIndex, (Zone)zoneNumber, parentTree) {
-    this->zoneNumber = zoneNumber;
-    this->deviceType = (DeviceType)(tabIndex+1);
-    this->zone = (Zone)zoneNumber;
+ZonePanelComponent::ZonePanelComponent(DeviceType deviceType, Zone zone, float widthFactor, float heightFactor): PanelComponent(widthFactor, heightFactor), transposeInput("Transpose:", 3, -24, 24, 0, false), keyPitchbendRangeInput("Key pitchbend:", 2, 0, 96, 2, false) {
+    this->zone = zone;
+    this->deviceType = deviceType;
     addAndMakeVisible(label);
     label.setText("Zone " + juce::String(zoneNumber), juce::NotificationType::dontSendNotification);
 
@@ -62,8 +61,6 @@ ZonePanelComponent::ZonePanelComponent(int tabIndex, int zoneNumber, float width
 
     breathDropdown.setLabelText("Breath:");
     setStandardMidiDropdownParams(breathDropdown, ZoneWrapper::id_breath, ZoneWrapper::default_breath);
-
-//    zoneConfig.addListener(this);
 }
 
 ZonePanelComponent::~ZonePanelComponent() {
@@ -135,57 +132,3 @@ void ZonePanelComponent::setStandardMidiDropdownParams(DropdownComponent &dropdo
     addAndMakeVisible(dropdown);
 }
 
-ZoneConfig* ZonePanelComponent::getZoneConfig() {
-    return &zoneConfig;
-}
-
-void ZonePanelComponent::valueTreePropertyChanged(juce::ValueTree &vTree, const juce::Identifier &property) {
-    if (property == zoneConfig.id_enabled) {
-        enableZoneButton.setToggleState(zoneConfig.isEnabled(), juce::dontSendNotification);
-    }
-    else if (property == zoneConfig.id_transpose) {
-        transposeInput.setValue(zoneConfig.getTranspose());
-    }
-    else if (property == zoneConfig.id_midiChannelType) {
-        midiChannelDropdown.box.setSelectedId((int)zoneConfig.getMidiChannelType());
-    }
-    else if (property == zoneConfig.id_keyPitchbend) {
-        keyPitchbendRangeInput.setValue(zoneConfig.getKeyPitchbend());
-    }
-    else if (vTree.getType() == zoneConfig.id_pressure) {
-        updateStandardMidiParamsDropdown(zoneConfig.id_pressure, pressureDropdown);
-    }
-    else if (vTree.getType() == zoneConfig.id_yaw) {
-        updateStandardMidiParamsDropdown(zoneConfig.id_yaw, yawDropdown);
-    }
-    else if (vTree.getType() == zoneConfig.id_roll) {
-        updateStandardMidiParamsDropdown(zoneConfig.id_roll, rollDropdown);
-    }
-    else if (vTree.getType() == zoneConfig.id_strip1Rel) {
-        updateStandardMidiParamsDropdown(zoneConfig.id_strip1Rel, strip1RelativeDropdown);
-    }
-    else if (vTree.getType() == zoneConfig.id_strip1Abs) {
-        updateStandardMidiParamsDropdown(zoneConfig.id_strip1Abs, strip1AbsoluteDropdown);
-    }
-    else if (vTree.getType() == zoneConfig.id_strip2Rel) {
-        updateStandardMidiParamsDropdown(zoneConfig.id_strip2Rel, strip2RelativeDropdown);
-    }
-    else if (vTree.getType() == zoneConfig.id_strip2Abs) {
-        updateStandardMidiParamsDropdown(zoneConfig.id_strip2Abs, strip2AbsoluteDropdown);
-    }
-    else if (vTree.getType() == zoneConfig.id_breath) {
-        updateStandardMidiParamsDropdown(zoneConfig.id_breath, breathDropdown);
-    }
-}
-
-void ZonePanelComponent::updateStandardMidiParamsDropdown(juce::Identifier &id, DropdownComponent &dropdown) {
-    auto midiValue = zoneConfig.getMidiValue(id);
-    if (midiValue.valueType == MidiValueType::CC) {
-        if (dropdown.box.getSelectedItemIndex() != midiValue.ccNo)
-            dropdown.box.setSelectedItemIndex(midiValue.ccNo);
-    }
-    else {
-        if (dropdown.box.getSelectedItemIndex() != 126 + (int)midiValue.valueType)
-            dropdown.box.setSelectedItemIndex(126 + (int)midiValue.valueType);
-    }
-}

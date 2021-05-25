@@ -1,10 +1,10 @@
 #include "TabPage.h"
 
-TabPage::TabPage(int tabIndex, DeviceType model, juce::ValueTree parentTree) : keyboard(keyboardState, juce::MidiKeyboardComponent::Orientation::verticalKeyboardFacingRight) {
-    layoutPanel = new LayoutComponent(model, 0.4, 1, parentTree);
+TabPage::TabPage(int tabIndex, DeviceType deviceType, juce::ValueTree parentTree) : keyboard(keyboardState, juce::MidiKeyboardComponent::Orientation::verticalKeyboardFacingRight) {
+    layoutPanel = new LayoutComponent(deviceType, 0.4, 1, parentTree);
     addAndMakeVisible(layoutPanel);
     for (int i = 0; i < 3; i++) {
-        zonePanels[i] = new ZonePanelComponent(tabIndex, i+1, 1, 1.0/3.0, parentTree);
+        zonePanels[i] = new ZonePanelComponent(deviceType, (Zone)(i+1), 1, 1.0/3.0);
         addAndMakeVisible(zonePanels[i]);
     }
     
@@ -14,12 +14,12 @@ TabPage::TabPage(int tabIndex, DeviceType model, juce::ValueTree parentTree) : k
     addAndMakeVisible(saveMappingButton);
     saveMappingButton.setButtonText("Save");
     saveMappingButton.onClick = [&] {
-        FileUtil::saveMapping(layoutPanel->layout.getValueTree(), model);
+        FileUtil::saveMapping(layoutPanel->layout.getValueTree(), deviceType);
     };
     addAndMakeVisible(loadMappingButton);
     loadMappingButton.setButtonText("load");
     loadMappingButton.onClick = [&] {
-        auto xml = FileUtil::openMapping(model);
+        auto xml = FileUtil::openMapping(deviceType);
         auto loadedMap = juce::ValueTree::fromXml(xml);
         std::cout << loadedMap.getType().toString() << std::endl;
         std::cout << loadedMap.getChild(0).getProperty("keyColour").toString() << std::endl;
@@ -66,9 +66,3 @@ void TabPage::resized() {
 Layout* TabPage::getLayout() {
     return &layoutPanel->layout;
 }
-
-ZoneConfig* TabPage::getZoneConfig(Zone zone) {
-    return zonePanels[((int)zone) - 1]->getZoneConfig();
-}
-
-

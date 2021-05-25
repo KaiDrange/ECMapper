@@ -9,16 +9,16 @@
 
 class TabPage : public juce::Component {
 public:
-    TabPage(int tabIndex, DeviceType model, juce::ValueTree parentTree);
+    TabPage(int tabIndex, DeviceType deviceType, juce::ValueTree parentTree);
     ~TabPage() override;
 
     void paint (juce::Graphics&) override;
     void resized() override;
     Layout* getLayout();
-    ZoneConfig* getZoneConfig(Zone zone);
+//    ZoneConfig* getZoneConfig(Zone zone);
 
 private:
-    DeviceType model;
+    DeviceType deviceType;
     LayoutComponent *layoutPanel;
     ZonePanelComponent *zonePanels[3];
 

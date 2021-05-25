@@ -74,8 +74,6 @@
               file="Source/Models/SettingsWrapper.cpp"/>
         <FILE id="hE5PHh" name="SettingsWrapper.h" compile="0" resource="0"
               file="Source/Models/SettingsWrapper.h"/>
-        <FILE id="l1HzfR" name="ZoneConfig.cpp" compile="1" resource="0" file="Source/Models/ZoneConfig.cpp"/>
-        <FILE id="Cu5zxA" name="ZoneConfig.h" compile="0" resource="0" file="Source/Models/ZoneConfig.h"/>
         <FILE id="f1zAxw" name="Layout.cpp" compile="1" resource="0" file="Source/Models/Layout.cpp"/>
         <FILE id="GO64U8" name="Layout.h" compile="0" resource="0" file="Source/Models/Layout.h"/>
         <FILE id="Rw9BUS" name="Enums.h" compile="0" resource="0" file="Source/Models/Enums.h"/>
