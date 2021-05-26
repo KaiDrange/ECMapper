@@ -5,7 +5,7 @@ ZonePanelComponent::ZonePanelComponent(DeviceType deviceType, Zone zone, float w
     this->zone = zone;
     this->deviceType = deviceType;
     addAndMakeVisible(label);
-    label.setText("Zone " + juce::String(zoneNumber), juce::NotificationType::dontSendNotification);
+    label.setText("Zone " + juce::String((int)zone), juce::NotificationType::dontSendNotification);
 
     addAndMakeVisible(enableZoneButton);
     enableZoneButton.setButtonText("On");
@@ -69,7 +69,7 @@ ZonePanelComponent::~ZonePanelComponent() {
 void ZonePanelComponent::paint(juce::Graphics& g) {
     g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
 
-    g.setColour(Utility::zoneEnumToColour((Zone)zoneNumber));
+    g.setColour(Utility::zoneEnumToColour(zone));
     g.drawRect(getLocalBounds(), 1);
 }
 

@@ -18,7 +18,6 @@ public:
 private:
     void setStandardMidiDropdownParams(DropdownComponent &dropdown, juce::Identifier treeId, const ZoneWrapper::MidiValue &defaultValue);
 
-    int zoneNumber;
     juce::Label label;
     juce::ToggleButton enableZoneButton;
 
