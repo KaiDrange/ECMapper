@@ -7,9 +7,23 @@ EigenharpMapperAudioProcessor::EigenharpMapperAudioProcessor() : AudioProcessor 
 ), layoutChangeHandler(&oscSendQueue),
 pluginState(*this, nullptr, id_state, createParameterLayout()), osc(&oscSendQueue, &oscReceiveQueue) {
     rootState = &pluginState.state;
+
+    juce::StringArray ipAndPortNo;
+    Utility::splitString(SettingsWrapper::getIP(), ":", ipAndPortNo);
+    if (ipAndPortNo.size() == 2) {
+        osc.connectSender(ipAndPortNo[0], ipAndPortNo[1].getIntValue());
+        osc.connectReceiver(ipAndPortNo[1].getIntValue() + 1);
+    }
+    midiGenerator = new MidiGenerator();
+    layoutChangeHandler.setKeyConfigLookup(midiGenerator->keyConfigLookups[0], DeviceType::Alpha);
+    layoutChangeHandler.setKeyConfigLookup(midiGenerator->keyConfigLookups[0], DeviceType::Tau);
+    layoutChangeHandler.setKeyConfigLookup(midiGenerator->keyConfigLookups[0], DeviceType::Pico);
 }
 
 EigenharpMapperAudioProcessor::~EigenharpMapperAudioProcessor() {
+    osc.disconnectSender();
+    osc.disconnectReceiver();
+    delete midiGenerator;
 }
 
 const juce::String EigenharpMapperAudioProcessor::getName() const {
@@ -51,29 +65,9 @@ void EigenharpMapperAudioProcessor::changeProgramName(int index, const juce::Str
 }
 
 void EigenharpMapperAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
-    auto uiSettings = pluginState.state.getOrCreateChildWithName("uiSettings", nullptr);
-    midiGenerator = new MidiGenerator(uiSettings);
-
-    juce::StringArray ipAndPortNo;
-    Utility::splitString(SettingsWrapper::getIP(), ":", ipAndPortNo);
-    if (ipAndPortNo.size() == 2) {
-        osc.connectSender(ipAndPortNo[0], ipAndPortNo[1].getIntValue());
-        osc.connectReceiver(receiverPort);
-    }
-    
-    auto alphaLayout = uiSettings.getOrCreateChildWithName("layout1", nullptr);
-    auto tauLayout = uiSettings.getOrCreateChildWithName("layout2", nullptr);
-    auto picoLayout = uiSettings.getOrCreateChildWithName("layout3", nullptr);
-    
-    layoutChangeHandler.setKeyConfigLookup(midiGenerator->keyConfigLookups[0], (DeviceType)alphaLayout.getProperty("instrumentType").toString().getIntValue());
-    layoutChangeHandler.setKeyConfigLookup(midiGenerator->keyConfigLookups[1], (DeviceType)tauLayout.getProperty("instrumentType").toString().getIntValue());
-    layoutChangeHandler.setKeyConfigLookup(midiGenerator->keyConfigLookups[2], (DeviceType)picoLayout.getProperty("instrumentType").toString().getIntValue());
 }
 
 void EigenharpMapperAudioProcessor::releaseResources() {
-    delete midiGenerator;
-    osc.disconnectSender();
-    osc.disconnectReceiver();
 }
 
 bool EigenharpMapperAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
@@ -126,10 +120,13 @@ void EigenharpMapperAudioProcessor::setStateInformation(const void* data, int si
         if (xmlState->hasTagName(pluginState.state.getType())) {
             pluginState.replaceState(juce::ValueTree::fromXml(*xmlState));
             rootState = &pluginState.state;
-            for (int i = 0; i < 3; i++) {
-                layoutChangeHandler.sendLEDMsgForAllKeys(pluginState.state.getChildWithName("uiSettings").getChildWithName("layout" + juce::String(i+1)));
-            }
-            
+            layoutChangeHandler.setKeyConfigLookup(midiGenerator->keyConfigLookups[0], DeviceType::Alpha);
+            layoutChangeHandler.setKeyConfigLookup(midiGenerator->keyConfigLookups[0], DeviceType::Tau);
+            layoutChangeHandler.setKeyConfigLookup(midiGenerator->keyConfigLookups[0], DeviceType::Pico);
+            layoutChangeHandler.sendLEDMsgForAllKeys(DeviceType::Alpha);
+            layoutChangeHandler.sendLEDMsgForAllKeys(DeviceType::Tau);
+            layoutChangeHandler.sendLEDMsgForAllKeys(DeviceType::Pico);
+
             if (editor != nullptr) {
                 ((EigenharpMapperAudioProcessorEditor*)editor)->recreateMainComponent();
             }

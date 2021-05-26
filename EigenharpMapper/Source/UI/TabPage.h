@@ -9,13 +9,11 @@
 
 class TabPage : public juce::Component {
 public:
-    TabPage(int tabIndex, DeviceType deviceType, juce::ValueTree parentTree);
+    TabPage(int tabIndex, DeviceType deviceType);
     ~TabPage() override;
 
     void paint (juce::Graphics&) override;
     void resized() override;
-//    Layout* getLayout();
-//    ZoneConfig* getZoneConfig(Zone zone);
 
 private:
     DeviceType deviceType;

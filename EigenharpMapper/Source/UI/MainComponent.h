@@ -10,7 +10,7 @@
 
 class MainComponent : public juce::Component, public juce::ValueTree::Listener {
 public:
-    MainComponent(juce::ValueTree state);
+    MainComponent();
     ~MainComponent() override;
 
     void paint (juce::Graphics&) override;
@@ -19,7 +19,6 @@ public:
 //    Layout* getLayout(DeviceType deviceType);
 
     void addListener(juce::ValueTree::Listener *listener);
-    juce::ValueTree uiSettings;
 
 private:
     NumberInputComponent lowMPEChannelCount;
@@ -28,7 +27,6 @@ private:
     juce::Label oscIPLabel;
     juce::TextEditor oscIPInput;
 
-    juce::Identifier id_uiSettings = "uiSettings";
     juce::TabbedComponent tabs;
     TabPage *tabPages[3];
 

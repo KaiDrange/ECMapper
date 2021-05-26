@@ -48,8 +48,6 @@ public:
     juce::AudioProcessorValueTreeState pluginState;
 private:
     OSCCommunication osc;
-    const int senderPort = 7000;
-    const int receiverPort = 7001;
     OSC::OSCMessageFifo oscSendQueue;
     OSC::OSCMessageFifo oscReceiveQueue;
     MidiGenerator *midiGenerator;

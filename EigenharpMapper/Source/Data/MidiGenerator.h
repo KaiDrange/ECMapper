@@ -7,10 +7,9 @@
 
 class MidiGenerator {
 public:
-    MidiGenerator(juce::ValueTree uiSettings);
+    MidiGenerator();
     ~MidiGenerator();
     
-    const int decimation = 4;
     KeyConfigLookup *keyConfigLookups[3];
     void processOSCMessage(OSC::Message &oscMsg, juce::MidiBuffer &midiBuffer);
     juce::MPEZoneLayout mpeZone;

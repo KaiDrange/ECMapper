@@ -4,7 +4,7 @@
 #include "OSCCommunication.h"
 #include "OSCMessageQueue.h"
 #include "../Models/Enums.h"
-#include "../Models/Layout.h"
+#include "../Models/LayoutWrapper.h"
 #include "KeyConfigLookup.h"
 
 class LayoutChangeHandler : public juce::ValueTree::Listener {
@@ -12,7 +12,7 @@ public:
     LayoutChangeHandler(OSC::OSCMessageFifo *oscSendQueue);
     void setKeyConfigLookup(KeyConfigLookup *keyConfigLookup, DeviceType deviceType);
     
-    void sendLEDMsgForAllKeys(juce::ValueTree layoutTree);
+    void sendLEDMsgForAllKeys(DeviceType deviceType);
     bool layoutMidiRPNSent = false;
 
 private:

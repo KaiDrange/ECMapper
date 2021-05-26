@@ -15,46 +15,55 @@ juce::ValueTree ZoneWrapper::getZoneTree(DeviceType deviceType, Zone zone) {
 }
 
 MidiChannelType ZoneWrapper::getMidiChannelType(DeviceType deviceType, Zone zone) {
+    if (deviceType == DeviceType::None) return default_midiChannelType;
     auto zoneTree = getZoneTree(deviceType, zone);
     return (MidiChannelType)int(zoneTree.getProperty(id_midiChannelType, (int)default_midiChannelType));
 }
 
 void ZoneWrapper::setMidiChannelType(DeviceType deviceType, Zone zone, MidiChannelType midiChannelType) {
+    if (deviceType == DeviceType::None) return;
     auto zoneTree = getZoneTree(deviceType, zone);
     zoneTree.setProperty(id_midiChannelType, (int)midiChannelType, nullptr);
 }
 
 int ZoneWrapper::getTranspose(DeviceType deviceType, Zone zone) {
+    if (deviceType == DeviceType::None) return default_transpose;
     auto zoneTree = getZoneTree(deviceType, zone);
     return zoneTree.getProperty(id_transpose, default_transpose);
 }
 
 void ZoneWrapper::setTranspose(DeviceType deviceType, Zone zone, int value) {
+    if (deviceType == DeviceType::None) return;
     auto zoneTree = getZoneTree(deviceType, zone);
     zoneTree.setProperty(id_transpose, value, nullptr);
 }
 
 void ZoneWrapper::setKeyPitchbend(DeviceType deviceType, Zone zone, int value) {
+    if (deviceType == DeviceType::None) return;
     auto zoneTree = getZoneTree(deviceType, zone);
     zoneTree.setProperty(id_keyPitchbend, value, nullptr);
 }
 
 int ZoneWrapper::getKeyPitchbend(DeviceType deviceType, Zone zone) {
+    if (deviceType == DeviceType::None) return default_keyPitchbend;
     auto zoneTree = getZoneTree(deviceType, zone);
     return zoneTree.getProperty(id_keyPitchbend, default_keyPitchbend);
 }
 
 void ZoneWrapper::setEnabled(DeviceType deviceType, Zone zone, bool enabled) {
+    if (deviceType == DeviceType::None) return;
     auto zoneTree = getZoneTree(deviceType, zone);
     zoneTree.setProperty(id_enabled, enabled, nullptr);
 }
 
 bool ZoneWrapper::getEnabled(DeviceType deviceType, Zone zone) {
+    if (deviceType == DeviceType::None) return default_enabled;
     auto zoneTree = getZoneTree(deviceType, zone);
     return zoneTree.getProperty(id_enabled, default_enabled);
 }
 
 ZoneWrapper::MidiValue ZoneWrapper::getMidiValue(DeviceType deviceType, Zone zone, juce::Identifier childId, ZoneWrapper::MidiValue defaultValue) {
+    if (deviceType == DeviceType::None) return defaultValue;
     auto zoneTree = getZoneTree(deviceType, zone);
     auto midiValChild = zoneTree.getChildWithName(childId);
     return midiValChild.isValid() ?
@@ -65,6 +74,7 @@ ZoneWrapper::MidiValue ZoneWrapper::getMidiValue(DeviceType deviceType, Zone zon
 }
 
 void ZoneWrapper::setMidiValue(DeviceType deviceType, Zone zone, juce::Identifier childId, MidiValue midiValue) {
+    if (deviceType == DeviceType::None) return;
     auto zoneTree = getZoneTree(deviceType, zone);
     auto midiValChild = zoneTree.getOrCreateChildWithName(childId, nullptr);
     midiValChild.setProperty(id_midiValType, (int)midiValue.valueType, nullptr);

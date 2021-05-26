@@ -1,13 +1,8 @@
 #include "MidiGenerator.h"
 
-MidiGenerator::MidiGenerator(juce::ValueTree uiSettings) {
+MidiGenerator::MidiGenerator() {
     for (int i = 0; i < 3; i++)
-        keyConfigLookups[i] = new KeyConfigLookup(
-          uiSettings.getChildWithName("layout" + juce::String(i+1)),
-          uiSettings.getChildWithName("zone" + juce::String(i+1) + "_1"),
-          uiSettings.getChildWithName("zone" + juce::String(i+1) + "_2"),
-          uiSettings.getChildWithName("zone" + juce::String(i+1) + "_3")
-        );
+        keyConfigLookups[i] = new KeyConfigLookup((DeviceType)(i+1));
     
     mpeZone.setLowerZone(15, 2, 12);
     chanAssigner = new juce::MPEChannelAssigner(mpeZone.getLowerZone());

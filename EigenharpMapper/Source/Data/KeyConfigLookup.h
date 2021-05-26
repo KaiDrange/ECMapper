@@ -1,12 +1,12 @@
 #pragma once
 #include <JuceHeader.h>
-#include "../Models/KeyConfig.h"
+#include "../Models/LayoutWrapper.h"
 #include "../Models/Enums.h"
 
 
 class KeyConfigLookup {
 public:
-    KeyConfigLookup(juce::ValueTree layoutTree, juce::ValueTree zoneTree1, juce::ValueTree zoneTree2, juce::ValueTree zoneTree3);
+    KeyConfigLookup(DeviceType deviceType);
     void updateAll();
     
     struct Key {
@@ -20,6 +20,7 @@ public:
     Key keys[3][120];
 
 private:
-    juce::ValueTree layoutTree;
-    juce::ValueTree zoneTrees[3];
+    DeviceType deviceType;
+//    juce::ValueTree layoutTree;
+//    juce::ValueTree zoneTrees[3];
 };

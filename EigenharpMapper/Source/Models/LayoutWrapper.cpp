@@ -60,3 +60,18 @@ void LayoutWrapper::setKeyMappingValue(KeyId &keyId, juce::String keyMappingValu
     auto keyTree = getKeyTree(keyId);
     keyTree.setProperty(id_mappingValue, keyMappingValue, nullptr);
 }
+
+LayoutWrapper::LayoutKey LayoutWrapper::getLayoutKeyFromKeyTree(juce::ValueTree keyTree) {
+    if (!keyTree.isValid())
+        return default_key;
+    DeviceType deviceType = (DeviceType)keyTree.getParent().getParent().getType().toString().substring(6, 7).getIntValue();
+    int course = keyTree.getType().toString().substring(4, 5).getIntValue();
+    int keyNo = keyTree.getType().toString().substring(6).getIntValue();
+    KeyId keyId = {
+        .deviceType = deviceType,
+        .course = course,
+        .keyNo = keyNo
+    };
+    
+    return getLayoutKey(keyId);
+}

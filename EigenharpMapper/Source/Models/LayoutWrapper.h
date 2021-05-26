@@ -44,6 +44,7 @@ public:
     static void setKeyMappingValue(KeyId &keyId, juce::String keyMappingValue);
     
     static juce::ValueTree getLayoutTree(DeviceType deviceType);
+    static LayoutKey getLayoutKeyFromKeyTree(juce::ValueTree keyTree);
     static void addListener(DeviceType deviceType, juce::ValueTree::Listener *listener);
 private:
     static juce::ValueTree getKeyTree(KeyId keyId);

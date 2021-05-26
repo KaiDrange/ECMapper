@@ -1,6 +1,6 @@
 #include "TabPage.h"
 
-TabPage::TabPage(int tabIndex, DeviceType deviceType, juce::ValueTree parentTree) : keyboard(keyboardState, juce::MidiKeyboardComponent::Orientation::verticalKeyboardFacingRight) {
+TabPage::TabPage(int tabIndex, DeviceType deviceType) : keyboard(keyboardState, juce::MidiKeyboardComponent::Orientation::verticalKeyboardFacingRight) {
     layoutPanel = new LayoutComponent(deviceType, 0.4, 1);
     addAndMakeVisible(layoutPanel);
     for (int i = 0; i < 3; i++) {

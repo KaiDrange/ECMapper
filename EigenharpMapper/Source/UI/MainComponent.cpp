@@ -1,6 +1,6 @@
 #include "MainComponent.h"
 
-MainComponent::MainComponent(juce::ValueTree state): lowMPEChannelCount("Low MPE chan to:", 2, 0, 16, 16, true), lowMPEPitchbendRange("Low MPE pb:", 2, 0, 96, 48, true), highMPEPitchbendRange("High MPE pb:", 2, 0, 96, 48, true), tabs(juce::TabbedButtonBar::TabsAtTop) {
+MainComponent::MainComponent(): lowMPEChannelCount("Low MPE chan to:", 2, 0, 16, 16, true), lowMPEPitchbendRange("Low MPE pb:", 2, 0, 96, 48, true), highMPEPitchbendRange("High MPE pb:", 2, 0, 96, 48, true), tabs(juce::TabbedButtonBar::TabsAtTop) {
     
     SettingsWrapper::addListener(this);
     oscIPInput.setText(SettingsWrapper::getIP());
@@ -23,11 +23,9 @@ MainComponent::MainComponent(juce::ValueTree state): lowMPEChannelCount("Low MPE
         SettingsWrapper::setHighMPEPB(highMPEPitchbendRange.getValue());
     };
     
-    uiSettings = state.getOrCreateChildWithName(id_uiSettings, nullptr);
-    
-    tabPages[0] = new TabPage(0, DeviceType::Alpha, uiSettings);
-    tabPages[1] = new TabPage(1, DeviceType::Tau, uiSettings);
-    tabPages[2] = new TabPage(2, DeviceType::Pico, uiSettings);
+    tabPages[0] = new TabPage(0, DeviceType::Alpha);
+    tabPages[1] = new TabPage(1, DeviceType::Tau);
+    tabPages[2] = new TabPage(2, DeviceType::Pico);
     auto bgColour = getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId);
     tabs.addTab("Alpha", bgColour, tabPages[0], false);
     tabs.addTab("Tau", bgColour, tabPages[1], false);
@@ -80,7 +78,7 @@ void MainComponent::resized() {
 //}
 
 void MainComponent::addListener(juce::ValueTree::Listener *listener) {
-    uiSettings.addListener(listener);
+//    uiSettings.addListener(listener);
 }
 
 void MainComponent::valueTreePropertyChanged(juce::ValueTree &vTree, const juce::Identifier &property) {
