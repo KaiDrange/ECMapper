@@ -7,11 +7,13 @@
 #include "../Models/LayoutWrapper.h"
 #include "KeyConfigLookup.h"
 
+extern juce::ValueTree *rootState;
+
 class LayoutChangeHandler : public juce::ValueTree::Listener {
 public:
     LayoutChangeHandler(OSC::OSCMessageFifo *oscSendQueue);
     void setKeyConfigLookup(KeyConfigLookup *keyConfigLookup, DeviceType deviceType);
-    
+    void sendLEDMsg(LayoutWrapper::LayoutKey layoutKey);
     void sendLEDMsgForAllKeys(DeviceType deviceType);
     bool layoutMidiRPNSent = false;
 

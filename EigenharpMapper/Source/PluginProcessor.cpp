@@ -18,6 +18,7 @@ pluginState(*this, nullptr, id_state, createParameterLayout()), osc(&oscSendQueu
     layoutChangeHandler.setKeyConfigLookup(midiGenerator->keyConfigLookups[0], DeviceType::Alpha);
     layoutChangeHandler.setKeyConfigLookup(midiGenerator->keyConfigLookups[0], DeviceType::Tau);
     layoutChangeHandler.setKeyConfigLookup(midiGenerator->keyConfigLookups[0], DeviceType::Pico);
+    pluginState.state.addListener(&layoutChangeHandler);
 }
 
 EigenharpMapperAudioProcessor::~EigenharpMapperAudioProcessor() {

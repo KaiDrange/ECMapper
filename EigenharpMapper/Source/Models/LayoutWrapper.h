@@ -45,6 +45,9 @@ public:
     
     static juce::ValueTree getLayoutTree(DeviceType deviceType);
     static LayoutKey getLayoutKeyFromKeyTree(juce::ValueTree keyTree);
+    static DeviceType getDeviceTypeFromKeyTree(juce::ValueTree keyTree);
+    static DeviceType getDeviceTypeFromLayoutTree(juce::ValueTree layoutTree);
+
     static void addListener(DeviceType deviceType, juce::ValueTree::Listener *listener);
 private:
     static juce::ValueTree getKeyTree(KeyId keyId);
