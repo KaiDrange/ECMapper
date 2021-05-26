@@ -16,7 +16,7 @@ public:
     void paint (juce::Graphics&) override;
     void resized() override;
     
-    Layout* getLayout(DeviceType deviceType);
+//    Layout* getLayout(DeviceType deviceType);
 
     void addListener(juce::ValueTree::Listener *listener);
     juce::ValueTree uiSettings;

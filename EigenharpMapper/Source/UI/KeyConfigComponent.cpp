@@ -1,8 +1,8 @@
 #include "KeyConfigComponent.h"
 
-KeyConfigComponent::KeyConfigComponent(KeyConfig::KeyId id, EigenharpKeyType keyType, juce::ValueTree parentTree)
-    : juce::DrawableButton("btn", juce::DrawableButton::ImageStretched), keyConfig(id, keyType, parentTree) {
+KeyConfigComponent::KeyConfigComponent(LayoutWrapper::KeyId id, EigenharpKeyType keyType) : juce::DrawableButton("btn", juce::DrawableButton::ImageStretched) {
     this->keyType = keyType;
+    this->keyId = id;
     setClickingTogglesState(true);
 }
 
@@ -10,24 +10,25 @@ KeyConfigComponent::~KeyConfigComponent() {
 }
 
 void KeyConfigComponent::paint(juce::Graphics& g) {
+    auto layoutKey = LayoutWrapper::getLayoutKey(keyId);
     auto area = getLocalBounds();
     g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
 
     g.setColour (juce::Colours::white);
     g.setFont (10.0f);
-    juce::String keyText = keyConfig.getMappingValue();
-    if (keyConfig.getMappingType() == KeyMappingType::Note) {
+    juce::String keyText = layoutKey.mappingValue;
+    if (layoutKey.keyMappingType == KeyMappingType::Note) {
         keyText = juce::MidiMessage::getMidiNoteName(keyText.getIntValue(), true, true, 3);
     }
         
     g.drawFittedText(keyText, getLocalBounds(),
                 juce::Justification::centred, true);
 
-    g.setColour(juce::Colour(Utility::keyColourEnumToColour(keyConfig.getKeyColour())));
+    g.setColour(juce::Colour(Utility::keyColourEnumToColour(layoutKey.keyColour)));
     auto lightPosition = area.getX() + area.getWidth()/2.0f;
     g.drawEllipse(lightPosition-2, 3, 3, 3, 3);
 
-    g.setColour(Utility::zoneEnumToColour(keyConfig.getZone()));
+    g.setColour(Utility::zoneEnumToColour(layoutKey.zone));
     if (keyType == EigenharpKeyType::Normal) {
         g.drawRoundedRectangle(area.getX()+1, area.getY()+1, area.getWidth()-2, area.getHeight()-2, 5, 2);
     }
@@ -39,6 +40,6 @@ void KeyConfigComponent::paint(juce::Graphics& g) {
     }
 }
 
-KeyConfig::KeyId KeyConfigComponent::getKeyId() const {
-    return keyConfig.getKeyId();
+LayoutWrapper::KeyId KeyConfigComponent::getKeyId() const {
+    return keyId;
 }

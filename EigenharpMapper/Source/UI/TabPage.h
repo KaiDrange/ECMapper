@@ -14,7 +14,7 @@ public:
 
     void paint (juce::Graphics&) override;
     void resized() override;
-    Layout* getLayout();
+//    Layout* getLayout();
 //    ZoneConfig* getZoneConfig(Zone zone);
 
 private:

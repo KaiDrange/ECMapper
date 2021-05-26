@@ -42,25 +42,25 @@ int LayoutChangeHandler::getConfigIndexFromDeviceType(DeviceType type) {
 }
 
 void LayoutChangeHandler::sendLEDMsgForAllKeys(juce::ValueTree layoutTree) {
-    for (int i = 0; i < layoutTree.getNumChildren(); i++) {
-
-        KeyConfig key(layoutTree.getChild(i));
-        DeviceType deviceType = (DeviceType)layoutTree.getPropertyAsValue("instrumentType", nullptr).toString().getIntValue();
-        OSC::Message msg {
-            .type = OSC::MessageType::LED,
-            .key = (unsigned int)key.getKeyId().keyNo,
-            .course = (unsigned int)key.getKeyId().course,
-            .active = 0,
-            .pressure = 0,
-            .roll = 0,
-            .yaw = 0,
-            .value = (unsigned int)key.getKeyColour(),
-            .pedal = 0,
-            .strip = 0,
-            .device = deviceType
-        };
-        oscSendQueue->add(&msg);
-    }
+//    for (int i = 0; i < layoutTree.getNumChildren(); i++) {
+//
+//        KeyConfig key(layoutTree.getChild(i));
+//        DeviceType deviceType = (DeviceType)layoutTree.getPropertyAsValue("instrumentType", nullptr).toString().getIntValue();
+//        OSC::Message msg {
+//            .type = OSC::MessageType::LED,
+//            .key = (unsigned int)key.getKeyId().keyNo,
+//            .course = (unsigned int)key.getKeyId().course,
+//            .active = 0,
+//            .pressure = 0,
+//            .roll = 0,
+//            .yaw = 0,
+//            .value = (unsigned int)key.getKeyColour(),
+//            .pedal = 0,
+//            .strip = 0,
+//            .device = deviceType
+//        };
+//        oscSendQueue->add(&msg);
+//    }
 }
 
 void LayoutChangeHandler::valueTreeChildAdded(juce::ValueTree &parentTree, juce::ValueTree &childTree) {}

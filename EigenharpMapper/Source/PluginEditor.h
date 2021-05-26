@@ -11,7 +11,7 @@ public:
     ~EigenharpMapperAudioProcessorEditor() override;
 
     void resized() override;
-    Layout* getLayout(DeviceType deviceType);
+//    Layout* getLayout(DeviceType deviceType);
     void recreateMainComponent();
     MainComponent *mainComponent;
 

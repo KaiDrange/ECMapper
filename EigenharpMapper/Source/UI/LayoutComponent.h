@@ -10,7 +10,7 @@
 
 class LayoutComponent : public PanelComponent, public juce::MidiKeyboardStateListener, public juce::KeyListener, public MidiMessageSectionComponent::Listener {
 public:
-    LayoutComponent(DeviceType model, float widthFactor, float heightFactor, juce::ValueTree parentTree);
+    LayoutComponent(DeviceType model, float widthFactor, float heightFactor);
     ~LayoutComponent() override;
     void handleNoteOn(juce::MidiKeyboardState*, int midiChannel, int midiNoteNumber, float velocity) override;
     void handleNoteOff(juce::MidiKeyboardState*, int midiChannel, int midiNoteNumber, float velocity) override;
@@ -30,7 +30,7 @@ public:
     int getButtonStartIndex() const;
     
 private:
-    KeyConfig *selectedKey = nullptr;
+    LayoutWrapper::KeyId activeKeyId;
     std::vector<KeyConfigComponent*> keys;
     juce::DrawablePath *keyImgNormal, *keyImgOver, *keyImgDown, *keyImgOn;
     juce::TextButton colourMenuButton;

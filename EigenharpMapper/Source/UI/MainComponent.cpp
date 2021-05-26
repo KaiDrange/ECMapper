@@ -75,9 +75,9 @@ void MainComponent::resized() {
     
 }
 
-Layout* MainComponent::getLayout(DeviceType deviceType) {
-        return tabPages[(int)deviceType-1]->getLayout();
-}
+//Layout* MainComponent::getLayout(DeviceType deviceType) {
+//        return tabPages[(int)deviceType-1]->getLayout();
+//}
 
 void MainComponent::addListener(juce::ValueTree::Listener *listener) {
     uiSettings.addListener(listener);

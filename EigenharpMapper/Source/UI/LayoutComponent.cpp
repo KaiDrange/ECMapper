@@ -1,8 +1,8 @@
 #include "LayoutComponent.h"
 
-LayoutComponent::LayoutComponent(DeviceType model, float widthFactor, float heightFactor, juce::ValueTree parentTree) : PanelComponent(widthFactor, heightFactor)
+LayoutComponent::LayoutComponent(DeviceType deviceType, float widthFactor, float heightFactor) : PanelComponent(widthFactor, heightFactor)
 {
-    deviceType = model;
+    this->deviceType = deviceType;
     setKeyCounts(deviceType);
     keyImgNormal = createBtnImage(juce::Colour::fromFloatRGBA(1.0f, 1.0f, 1.0f, 0.0f));
     keyImgOver = createBtnImage(juce::Colour::fromFloatRGBA(1.0f, 1.0f, 1.0f, 0.8f));
@@ -16,10 +16,10 @@ LayoutComponent::LayoutComponent(DeviceType model, float widthFactor, float heig
     
     mapTypeMenuButton.onClick = [&] {
         juce::PopupMenu menu;
-        menu.addItem("None", [&] { selectedKey->setMappingType(KeyMappingType::None); showHidePanels(); repaint();});
-        menu.addItem("Note", [&] { selectedKey->setMappingType(KeyMappingType::Note); showHidePanels(); repaint();});
-        menu.addItem("Midi msg", [&] { selectedKey->setMappingType(KeyMappingType::MidiMsg); showHidePanels(); repaint();});
-        menu.addItem("Internal ctrl", [&] { selectedKey->setMappingType(KeyMappingType::Internal); showHidePanels(); repaint();});
+        menu.addItem("None", [&] { LayoutWrapper::setKeyMappingType(activeKeyId, KeyMappingType::None); showHidePanels(); repaint();});
+        menu.addItem("Note", [&] { LayoutWrapper::setKeyMappingType(activeKeyId, KeyMappingType::Note); showHidePanels(); repaint();});
+        menu.addItem("Midi msg", [&] { LayoutWrapper::setKeyMappingType(activeKeyId, KeyMappingType::MidiMsg); showHidePanels(); repaint();});
+        menu.addItem("Internal ctrl", [&] { LayoutWrapper::setKeyMappingType(activeKeyId, KeyMappingType::Internal); showHidePanels(); repaint();});
         menu.showMenuAsync (juce::PopupMenu::Options{}.withTargetComponent(mapTypeMenuButton));
     };
 
@@ -27,10 +27,10 @@ LayoutComponent::LayoutComponent(DeviceType model, float widthFactor, float heig
     colourMenuButton.setButtonText("Colour");
     colourMenuButton.onClick = [&] {
         juce::PopupMenu menu;
-        menu.addItem("None", [&] { selectedKey->setKeyColour(KeyColour::Off); repaint();});
-        menu.addItem("Green", [&] { selectedKey->setKeyColour(KeyColour::Green); repaint();});
-        menu.addItem("Red", [&] { selectedKey->setKeyColour(KeyColour::Red); repaint();});
-        menu.addItem("Yellow", [&] { selectedKey->setKeyColour(KeyColour::Yellow); repaint();});
+        menu.addItem("None", [&] { LayoutWrapper::setKeyColour(activeKeyId, KeyColour::Off); repaint();});
+        menu.addItem("Green", [&] { LayoutWrapper::setKeyColour(activeKeyId, KeyColour::Green); repaint();});
+        menu.addItem("Red", [&] { LayoutWrapper::setKeyColour(activeKeyId, KeyColour::Red); repaint();});
+        menu.addItem("Yellow", [&] { LayoutWrapper::setKeyColour(activeKeyId, KeyColour::Yellow); repaint();});
         menu.showMenuAsync (juce::PopupMenu::Options{}.withTargetComponent(colourMenuButton));
     };
 
@@ -40,18 +40,18 @@ LayoutComponent::LayoutComponent(DeviceType model, float widthFactor, float heig
         juce::PopupMenu menu;
         auto zone1Item = juce::PopupMenu::Item("Zone1");
         zone1Item.setColour(zoneColours[1]);
-        zone1Item.setAction([&] { selectedKey->setZone(Zone::Zone1); repaint();});
+        zone1Item.setAction([&] { LayoutWrapper::setKeyZone(activeKeyId, Zone::Zone1); repaint();});
         auto zone2Item = juce::PopupMenu::Item("Zone2");
         zone2Item.setColour(zoneColours[2]);
-        zone2Item.setAction([&] { selectedKey->setZone(Zone::Zone2); repaint();});
+        zone2Item.setAction([&] { LayoutWrapper::setKeyZone(activeKeyId, Zone::Zone2); repaint();});
         auto zone3Item = juce::PopupMenu::Item("Zone3");
         zone3Item.setColour(zoneColours[3]);
-        zone3Item.setAction([&] { selectedKey->setZone(Zone::Zone3); repaint();});
-        menu.addItem("None", [&] { selectedKey->setZone(Zone::NoZone); repaint();});
+        zone3Item.setAction([&] { LayoutWrapper::setKeyZone(activeKeyId, Zone::Zone3); repaint();});
+        menu.addItem("None", [&] { LayoutWrapper::setKeyZone(activeKeyId, Zone::NoZone); repaint();});
         menu.addItem(zone1Item);
         menu.addItem(zone2Item);
         menu.addItem(zone3Item);
-        menu.addItem("All", [&] { selectedKey->setZone(Zone::AllZones); repaint();});
+        menu.addItem("All", [&] { LayoutWrapper::setKeyZone(activeKeyId, Zone::AllZones); repaint();});
         menu.showMenuAsync(juce::PopupMenu::Options{}.withTargetComponent(zoneMenuButton));
     };
     
@@ -148,8 +148,8 @@ void LayoutComponent::enableDisableMenuButtons(bool enable) {
 }
 
 void LayoutComponent::showHidePanels() {
-    if (selectedKey != nullptr && selectedKey->getMappingType() == KeyMappingType::MidiMsg) {
-        midiMessageSectionComponent.updatePanelFromMessageString(selectedKey->getMappingValue());
+    if (activeKeyId.deviceType != DeviceType::None && LayoutWrapper::getLayoutKey(activeKeyId).keyMappingType == KeyMappingType::MidiMsg) {
+        midiMessageSectionComponent.updatePanelFromMessageString(LayoutWrapper::getLayoutKey(activeKeyId).mappingValue);
         midiMessageSectionComponent.setVisible(true);
     }
     else
@@ -170,24 +170,23 @@ void LayoutComponent::createKeys() {
     
     for (int i = 0; i < getNormalkeyCount(); i++) {
         LayoutWrapper::KeyId id = { .deviceType = deviceType, .course = 0, .keyNo = i };
-//        EigenharpKeyComponent *key = new EigenharpKeyComponent(id, EigenharpKeyType::Normal, layout.valueTree);
-        keys.push_back(new KeyConfigComponent(id, EigenharpKeyType::Normal, layout.valueTree));
+        keys.push_back(new KeyConfigComponent(id, EigenharpKeyType::Normal));
     }
 
     if (deviceType == DeviceType::Pico) {
         for (int i = 0; i < getButtonCount(); i++) {
-            KeyConfig::KeyId id = { .course = 1, .keyNo = i };
-            keys.push_back(new KeyConfigComponent(id, EigenharpKeyType::Button, layout.valueTree));
+            LayoutWrapper::KeyId id = { .deviceType = deviceType, .course = 1, .keyNo = i };
+            keys.push_back(new KeyConfigComponent(id, EigenharpKeyType::Button));
         }
     }
     else {
         for (int i = 0; i < getPercKeyCount(); i++) {
             LayoutWrapper::KeyId id = { .deviceType = deviceType, .course = 1, .keyNo = i };
-            keys.push_back(new KeyConfigComponent(id, EigenharpKeyType::Perc, layout.valueTree));
+            keys.push_back(new KeyConfigComponent(id, EigenharpKeyType::Perc));
         }
         for (int i = 0; i < getButtonCount(); i++) {
-            KeyConfig::KeyId id = { .course = 2, .keyNo = i };
-            keys.push_back(new KeyConfigComponent(id, EigenharpKeyType::Button, layout.valueTree));
+            LayoutWrapper::KeyId id = { .deviceType = deviceType, .course = 2, .keyNo = i };
+            keys.push_back(new KeyConfigComponent(id, EigenharpKeyType::Button));
         }
     }
     
@@ -197,7 +196,8 @@ void LayoutComponent::createKeys() {
         keys[i]->onClick = [this, i] {
             auto selected = keys[i]->getToggleState();
             deselectAllOtherKeys(keys[i]);
-            selectedKey = selected ? &keys[i]->keyConfig : nullptr;
+            if (selected)
+                activeKeyId = keys[i]->getKeyId();
             enableDisableMenuButtons(selected);
             showHidePanels();
         };
@@ -205,8 +205,8 @@ void LayoutComponent::createKeys() {
 }
 
 void LayoutComponent::handleNoteOn(juce::MidiKeyboardState*, int midiChannel, int midiNoteNumber, float velocity) {
-    if (selectedKey != nullptr && selectedKey->getMappingType() == KeyMappingType::Note) {
-        selectedKey->setMappingValue(juce::String(midiNoteNumber));
+    if (activeKeyId.deviceType != DeviceType::None && LayoutWrapper::getLayoutKey(activeKeyId).keyMappingType == KeyMappingType::Note) {
+        LayoutWrapper::setKeyMappingValue(activeKeyId, juce::String(midiNoteNumber));
         repaint();
     }
 }
@@ -215,7 +215,7 @@ void LayoutComponent::handleNoteOff(juce::MidiKeyboardState*, int midiChannel, i
 }
 
 bool LayoutComponent::keyPressed(const juce::KeyPress &key, juce::Component *originatingComponent) {
-    if (selectedKey == nullptr || (
+    if (activeKeyId.deviceType == DeviceType::None || (
                key != juce::KeyPress::leftKey &&
                key != juce::KeyPress::rightKey &&
                key != juce::KeyPress::upKey &&
@@ -223,9 +223,8 @@ bool LayoutComponent::keyPressed(const juce::KeyPress &key, juce::Component *ori
     return true;
     
     auto oldKeyIndex = -1;
-    auto keyId = selectedKey->getKeyId();
     for (int i = 0; i < getTotalKeyCount(); i++) {
-        if (keys[i]->getKeyId().equals(keyId)) {
+        if (keys[i]->getKeyId().equals(activeKeyId)) {
             oldKeyIndex = i;
             break;
         }
@@ -234,11 +233,11 @@ bool LayoutComponent::keyPressed(const juce::KeyPress &key, juce::Component *ori
     keys[oldKeyIndex]->setState(juce::Button::buttonNormal);
     int newKeyIndex = 0;
 
-    if (selectedKey->getKeyType() == EigenharpKeyType::Normal)
+    if (LayoutWrapper::getLayoutKey(activeKeyId).keyType == EigenharpKeyType::Normal)
         newKeyIndex = navigateNormalKeys(key, oldKeyIndex);
-    else if (selectedKey->getKeyType() == EigenharpKeyType::Perc)
+    else if (LayoutWrapper::getLayoutKey(activeKeyId).keyType == EigenharpKeyType::Perc)
         newKeyIndex = navigatePercKeys(key, oldKeyIndex);
-    else if (selectedKey->getKeyType() == EigenharpKeyType::Button)
+    else if (LayoutWrapper::getLayoutKey(activeKeyId).keyType == EigenharpKeyType::Button)
         newKeyIndex = navigateButtons(key, oldKeyIndex);
 
     if (newKeyIndex != oldKeyIndex)
@@ -259,7 +258,7 @@ int LayoutComponent::navigateNormalKeys(const juce::KeyPress &key, int selectedK
 
     int rowNumber = getRowNumber(selectedKeyIndex);
 
-    if (selectedKey->getKeyType() == EigenharpKeyType::Normal) {
+    if (LayoutWrapper::getLayoutKey(activeKeyId).keyType == EigenharpKeyType::Normal) {
         if (key == juce::KeyPress::upKey) {
             selectedKeyIndex--;
             if (selectedKeyIndex == rowStartIndexes[rowNumber] - 1)
@@ -328,7 +327,7 @@ int LayoutComponent::getRowNumber(int keyIndex) {
 }
 
 void LayoutComponent::valuesChanged(MidiMessageSectionComponent*) {
-    selectedKey->setMappingValue(midiMessageSectionComponent.getMessageString());
+    LayoutWrapper::setKeyMappingValue(activeKeyId, midiMessageSectionComponent.getMessageString());
 }
 
 int LayoutComponent::getNormalkeyCount() const {

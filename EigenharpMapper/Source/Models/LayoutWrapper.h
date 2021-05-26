@@ -43,9 +43,9 @@ public:
     static void setKeyMappingType(KeyId &keyId, KeyMappingType keyMappingType);
     static void setKeyMappingValue(KeyId &keyId, juce::String keyMappingValue);
     
+    static juce::ValueTree getLayoutTree(DeviceType deviceType);
     static void addListener(DeviceType deviceType, juce::ValueTree::Listener *listener);
 private:
-    static juce::ValueTree getLayoutTree(DeviceType deviceType);
     static juce::ValueTree getKeyTree(KeyId keyId);
 
     static inline const LayoutKey default_key = {
