@@ -2,15 +2,38 @@
 
 MidiGenerator::MidiGenerator(KeyConfigLookup (&keyConfigLookups)[3]) {
     this->keyConfigLookups = keyConfigLookups;
-    mpeZone.setLowerZone(15, 2, 12);
-    chanAssigner = new juce::MPEChannelAssigner(mpeZone.getLowerZone());
 }
 
 MidiGenerator::~MidiGenerator() {
-    delete chanAssigner;
+    delete lowChanAssigner;
+    delete highChanAssigner;
+}
+
+void MidiGenerator::start() {
+    int lowChannelCount = SettingsWrapper::getLowMPEToChannel() -1;
+    mpeZone.setLowerZone(lowChannelCount, 2, SettingsWrapper::getLowMPEPB());
+    lowChanAssigner = new juce::MPEChannelAssigner(mpeZone.getLowerZone());
+    if (lowChannelCount < 14) {
+        mpeZone.setUpperZone(14-lowChannelCount, 2, SettingsWrapper::getHighMPEPB());
+        highChanAssigner = new juce::MPEChannelAssigner(mpeZone.getUpperZone());
+    }
+    else
+        highChanAssigner = nullptr;
+    initialized = true;
+}
+
+void MidiGenerator::stop() {
+    initialized = false;
+    delete lowChanAssigner;
+    delete highChanAssigner;
+    lowChanAssigner = nullptr;
+    highChanAssigner = nullptr;
 }
 
 void MidiGenerator::processOSCMessage(OSC::Message &oscMsg, juce::MidiBuffer &midiBuffer) {
+    if (!initialized)
+        return;
+    
     switch (oscMsg.type) {
             case OSC::MessageType::Key: {
                 int deviceIndex = (int)oscMsg.device -1;
@@ -21,17 +44,20 @@ void MidiGenerator::processOSCMessage(OSC::Message &oscMsg, juce::MidiBuffer &mi
                 keyState->ehRoll = oscMsg.roll;
 
                 KeyConfigLookup::Key keyLookup = keyConfigLookups[deviceIndex].keys[oscMsg.course][oscMsg.key];
+                if (keyLookup.output == MidiChannelType::Undefined)
+                    break;
+                
                 if (keyState->status == KeyStatus::Off && oscMsg.active) {
                     keyState->status = KeyStatus::Pending;
                 }
                 else if (keyState->messageCount == 4 && keyState->status == KeyStatus::Pending && oscMsg.active) {
-                    createNoteOn(keyLookup.note, keyState, midiBuffer);
+                    createNoteOn(keyLookup, keyState, midiBuffer);
                 }
                 else if (keyState->status == KeyStatus::Active && !oscMsg.active) {
-                    createNoteOff(keyLookup.note, keyState, midiBuffer);
+                    createNoteOff(keyLookup, keyState, midiBuffer);
                 }
                 else if (keyState->messageCount == 16 && keyState->status != KeyStatus::Pending) {
-                    createNoteHold(keyLookup.note, keyState, midiBuffer);
+                    createNoteHold(keyLookup, keyState, midiBuffer);
                 }
             }
             break;
@@ -40,23 +66,35 @@ void MidiGenerator::processOSCMessage(OSC::Message &oscMsg, juce::MidiBuffer &mi
     }
 }
 
-void MidiGenerator::createNoteOn(int note, KeyState *state, juce::MidiBuffer &buffer) {
-    int channel = chanAssigner->findMidiChannelForNewNote(note);
-    state->midiChannel = channel;
-    createNoteHold(note, state, buffer);
+void MidiGenerator::createNoteOn(KeyConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer) {
+    if (keyLookup.output == MidiChannelType::MPE_Low)
+        state->midiChannel = lowChanAssigner->findMidiChannelForNewNote(keyLookup.note);
+    else if (keyLookup.output == MidiChannelType::MPE_High) {
+        if (highChanAssigner != nullptr)
+            state->midiChannel = highChanAssigner->findMidiChannelForNewNote(keyLookup.note);
+    }
+    else
+        state->midiChannel = (int)keyLookup.output;
+    
+    createNoteHold(keyLookup, state, buffer);
     auto vel = juce::MPEValue::from7BitInt(unipolar(state->ehPressure*4)*126+1);
-    auto noteOnMsg = juce::MidiMessage::noteOn(channel, note, vel.asUnsignedFloat());
+    auto noteOnMsg = juce::MidiMessage::noteOn(state->midiChannel, keyLookup.note, vel.asUnsignedFloat());
     buffer.addEvent(noteOnMsg, buffer.getLastEventTime()+1);
     
     state->status = KeyStatus::Active;
 }
 
-void MidiGenerator::createNoteOff(int note, KeyState *state, juce::MidiBuffer &buffer) {
+void MidiGenerator::createNoteOff(KeyConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer) {
     int channel = state->midiChannel;
-    chanAssigner->noteOff(note, channel);
-    
-    auto noteOffMsg = juce::MidiMessage::noteOff(channel, note, 0.0f);
-    auto pressMsg = juce::MidiMessage::aftertouchChange(channel, note, 0);
+    if (keyLookup.output == MidiChannelType::MPE_Low)
+        lowChanAssigner->noteOff(keyLookup.note, channel);
+    else if (keyLookup.output == MidiChannelType::MPE_High) {
+        if (highChanAssigner != nullptr)
+            highChanAssigner->noteOff(keyLookup.note, channel);
+    }
+
+    auto noteOffMsg = juce::MidiMessage::noteOff(channel, keyLookup.note, 0.0f);
+    auto pressMsg = juce::MidiMessage::aftertouchChange(channel, keyLookup.note, 0);
 
     buffer.addEvent(noteOffMsg, 0);
     buffer.addEvent(pressMsg, 1);
@@ -64,14 +102,14 @@ void MidiGenerator::createNoteOff(int note, KeyState *state, juce::MidiBuffer &b
     state->messageCount = 0;
 }
 
-void MidiGenerator::createNoteHold(int note, KeyState *state, juce::MidiBuffer &buffer) {
+void MidiGenerator::createNoteHold(KeyConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer) {
     int channel = state->midiChannel;
-    auto pb = juce::MPEValue::from14BitInt((calculatePitchBendCurve(bipolar(state->ehRoll*1.7f))/12.0f)*0x1fff + 0x1fff);
+    auto pb = juce::MPEValue::from14BitInt((calculatePitchBendCurve(bipolar(state->ehRoll*1.7f))*keyLookup.pbRange)*0x1fff + 0x1fff);
     auto press = juce::MPEValue::from7BitInt(unipolar(state->ehPressure)*127);
     auto timbre = juce::MPEValue::from7BitInt(bipolar(state->ehYaw)*63+63);
     
     auto timbreMsg = juce::MidiMessage::controllerEvent(channel, 74, timbre.as7BitInt());
-    auto pressMsg = juce::MidiMessage::aftertouchChange(channel, note, press.as7BitInt());
+    auto pressMsg = juce::MidiMessage::aftertouchChange(channel, keyLookup.note, press.as7BitInt());
     auto pbMsg = juce::MidiMessage::pitchWheel(channel, pb.as14BitInt());
 
     buffer.addEvent(timbreMsg, 0);

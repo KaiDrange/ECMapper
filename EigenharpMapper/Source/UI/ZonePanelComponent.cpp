@@ -10,19 +10,19 @@ ZonePanelComponent::ZonePanelComponent(DeviceType deviceType, Zone zone, float w
     addAndMakeVisible(enableZoneButton);
     enableZoneButton.setButtonText("On");
     enableZoneButton.setToggleState(ZoneWrapper::getEnabled(deviceType, zone), juce::dontSendNotification);
-    enableZoneButton.onClick = [&] {
+    enableZoneButton.onClick = [&, deviceType, zone] {
         ZoneWrapper::setEnabled(deviceType, zone, enableZoneButton.getToggleState());
     };
     
     addAndMakeVisible(transposeInput);
     transposeInput.setValue(ZoneWrapper::getTranspose(deviceType, zone));
-    transposeInput.input.onFocusLost = [&] {
+    transposeInput.input.onFocusLost = [&, deviceType, zone] {
         ZoneWrapper::setTranspose(deviceType, zone, transposeInput.getValue());
     };
 
     addAndMakeVisible(keyPitchbendRangeInput);
     keyPitchbendRangeInput.setValue(ZoneWrapper::getKeyPitchbend(deviceType, zone));
-    keyPitchbendRangeInput.input.onTextChange = [&] {
+    keyPitchbendRangeInput.input.onTextChange = [&, deviceType, zone] {
         ZoneWrapper::setKeyPitchbend(deviceType, zone, keyPitchbendRangeInput.getValue());
     };
 
@@ -34,7 +34,7 @@ ZonePanelComponent::ZonePanelComponent(DeviceType deviceType, Zone zone, float w
     midiChannelDropdown.addItem("MPE High", 18);
 
     midiChannelDropdown.setSelectedItemId((int)ZoneWrapper::getMidiChannelType(deviceType, zone));
-    midiChannelDropdown.box.onChange = [&] {
+    midiChannelDropdown.box.onChange = [&, deviceType, zone] {
         ZoneWrapper::setMidiChannelType(deviceType, zone, (MidiChannelType)midiChannelDropdown.box.getSelectedId());
     };
     

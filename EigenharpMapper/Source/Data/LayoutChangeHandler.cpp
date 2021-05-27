@@ -11,14 +11,17 @@ void LayoutChangeHandler::valueTreePropertyChanged(juce::ValueTree &vTree, const
         LayoutWrapper::LayoutKey layoutKey = LayoutWrapper::getLayoutKeyFromKeyTree(vTree);
         deviceType = layoutKey.keyId.deviceType;
         
-        if (deviceType != DeviceType::None && property == LayoutWrapper::id_keyColour)
-            sendLEDMsg(layoutKey);
+        if (deviceType != DeviceType::None) {
+            if (property == LayoutWrapper::id_keyColour)
+                sendLEDMsg(layoutKey);
+            else
+                keyConfigLookups[getConfigIndexFromDeviceType(deviceType)].updateKey(vTree);
+        }
     }
 
-    if (deviceType != DeviceType::None) {
-        keyConfigLookups[getConfigIndexFromDeviceType(deviceType)].updateAll();
-        layoutMidiRPNSent = false;
-    }
+//    if (deviceType != DeviceType::None) {
+//        layoutMidiRPNSent = false;
+//    }
 }
 
 int LayoutChangeHandler::getConfigIndexFromDeviceType(DeviceType type) {

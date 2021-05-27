@@ -36,7 +36,7 @@ bool EigenharpMapperAudioProcessor::producesMidi() const {
 }
 
 bool EigenharpMapperAudioProcessor::isMidiEffect() const {
-    return false;
+    return true;
 }
 
 double EigenharpMapperAudioProcessor::getTailLengthSeconds() const {
@@ -62,9 +62,14 @@ void EigenharpMapperAudioProcessor::changeProgramName(int index, const juce::Str
 }
 
 void EigenharpMapperAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
+    if (juce::JUCEApplication::isStandaloneApp()) {
+    }
+    
+    midiGenerator->start();
 }
 
 void EigenharpMapperAudioProcessor::releaseResources() {
+    midiGenerator->stop();
 }
 
 bool EigenharpMapperAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {

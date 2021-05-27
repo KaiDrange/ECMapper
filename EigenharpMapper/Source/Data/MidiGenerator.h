@@ -13,7 +13,9 @@ public:
     juce::MPEZoneLayout mpeZone;
     
     void createLayoutRPNs(juce::MidiBuffer &buffer);
-
+    void start();
+    void stop();
+    
 private:
     enum KeyStatus {
         Off = 0,
@@ -49,11 +51,12 @@ private:
     unsigned int midiPedal1 = 0;
     unsigned int midiPedal2 = 0;
     
-    juce::MPEChannelAssigner *chanAssigner;
-    
-    void createNoteOn(int note, KeyState *state, juce::MidiBuffer &buffer);
-    void createNoteOff(int note, KeyState *state, juce::MidiBuffer &buffer);
-    void createNoteHold(int note, KeyState *state, juce::MidiBuffer &buffer);
+    juce::MPEChannelAssigner *lowChanAssigner;
+    juce::MPEChannelAssigner *highChanAssigner;
+
+    void createNoteOn(KeyConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer);
+    void createNoteOff(KeyConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer);
+    void createNoteHold(KeyConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer);
     
     inline float clamp(float v, float mn, float mx) { return (std::max(std::min(v, mx), mn)); }
     float unipolar(int val) { return std::min(float(val) / 4096.0f, 1.0f); }
@@ -61,4 +64,5 @@ private:
     float calculatePitchBendCurve(float value);
 
     KeyConfigLookup *keyConfigLookups;
+    bool initialized = false;
 };
