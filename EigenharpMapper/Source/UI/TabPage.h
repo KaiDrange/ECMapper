@@ -3,7 +3,6 @@
 #include <JuceHeader.h>
 #include "LayoutComponent.h"
 #include "ZonePanelComponent.h"
-#include "../Models/Layout.h"
 #include "../Models/Enums.h"
 #include "../Data/FileUtil.h"
 

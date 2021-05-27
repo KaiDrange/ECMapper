@@ -6,7 +6,6 @@
 #include "../Models/Enums.h"
 #include "../Models/LayoutWrapper.h"
 #include "KeyConfigLookup.h"
-#include "Globals.h"
 
 extern juce::ValueTree *rootState;
 

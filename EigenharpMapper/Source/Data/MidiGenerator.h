@@ -3,7 +3,6 @@
 #include <math.h>
 #include "KeyConfigLookup.h"
 #include "OSCMessageQueue.h"
-#include "Globals.h"
 
 class MidiGenerator {
 public:

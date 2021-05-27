@@ -1,7 +1,6 @@
 #pragma once
 #include <JuceHeader.h>
 #include "../Models/Enums.h"
-#include "../Models/Layout.h"
 #include "LayoutComponent.h"
 #include "TabPage.h"
 #include "NumberInputComponent.h"
