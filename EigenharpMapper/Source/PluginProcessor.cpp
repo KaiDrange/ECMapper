@@ -3,9 +3,8 @@
 
 juce::ValueTree* rootState;
 
-EigenharpMapperAudioProcessor::EigenharpMapperAudioProcessor() : AudioProcessor (BusesProperties().withOutput("Output", juce::AudioChannelSet::stereo(), true)
-), layoutChangeHandler(&oscSendQueue),
-pluginState(*this, nullptr, id_state, createParameterLayout()), osc(&oscSendQueue, &oscReceiveQueue) {
+EigenharpMapperAudioProcessor::EigenharpMapperAudioProcessor() : AudioProcessor (BusesProperties().withOutput("Output", juce::AudioChannelSet::stereo(), true)),
+pluginState(*this, nullptr, id_state, createParameterLayout()), osc(&oscSendQueue, &oscReceiveQueue), keyConfigLookups { KeyConfigLookup(DeviceType::Alpha), KeyConfigLookup(DeviceType::Tau), KeyConfigLookup(DeviceType::Pico)}, layoutChangeHandler(&oscSendQueue, keyConfigLookups) {
     rootState = &pluginState.state;
 
     juce::StringArray ipAndPortNo;
@@ -14,10 +13,7 @@ pluginState(*this, nullptr, id_state, createParameterLayout()), osc(&oscSendQueu
         osc.connectSender(ipAndPortNo[0], ipAndPortNo[1].getIntValue());
         osc.connectReceiver(ipAndPortNo[1].getIntValue() + 1);
     }
-    midiGenerator = new MidiGenerator();
-    layoutChangeHandler.setKeyConfigLookup(midiGenerator->keyConfigLookups[0], DeviceType::Alpha);
-    layoutChangeHandler.setKeyConfigLookup(midiGenerator->keyConfigLookups[0], DeviceType::Tau);
-    layoutChangeHandler.setKeyConfigLookup(midiGenerator->keyConfigLookups[0], DeviceType::Pico);
+    midiGenerator = new MidiGenerator(keyConfigLookups);
     pluginState.state.addListener(&layoutChangeHandler);
 }
 
@@ -121,9 +117,6 @@ void EigenharpMapperAudioProcessor::setStateInformation(const void* data, int si
         if (xmlState->hasTagName(pluginState.state.getType())) {
             pluginState.replaceState(juce::ValueTree::fromXml(*xmlState));
             rootState = &pluginState.state;
-            layoutChangeHandler.setKeyConfigLookup(midiGenerator->keyConfigLookups[0], DeviceType::Alpha);
-            layoutChangeHandler.setKeyConfigLookup(midiGenerator->keyConfigLookups[0], DeviceType::Tau);
-            layoutChangeHandler.setKeyConfigLookup(midiGenerator->keyConfigLookups[0], DeviceType::Pico);
             layoutChangeHandler.sendLEDMsgForAllKeys(DeviceType::Alpha);
             layoutChangeHandler.sendLEDMsgForAllKeys(DeviceType::Tau);
             layoutChangeHandler.sendLEDMsgForAllKeys(DeviceType::Pico);
@@ -144,3 +137,4 @@ juce::AudioProcessorValueTreeState::ParameterLayout EigenharpMapperAudioProcesso
 //    paramLayout.add(std::make_unique<juce::AudioParameterInt>("transpose", "Transpose", -48, 48, 0));
     return paramLayout;
 }
+

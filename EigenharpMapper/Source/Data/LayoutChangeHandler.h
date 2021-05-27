@@ -6,13 +6,13 @@
 #include "../Models/Enums.h"
 #include "../Models/LayoutWrapper.h"
 #include "KeyConfigLookup.h"
+#include "Globals.h"
 
 extern juce::ValueTree *rootState;
 
 class LayoutChangeHandler : public juce::ValueTree::Listener {
 public:
-    LayoutChangeHandler(OSC::OSCMessageFifo *oscSendQueue);
-    void setKeyConfigLookup(KeyConfigLookup *keyConfigLookup, DeviceType deviceType);
+    LayoutChangeHandler(OSC::OSCMessageFifo *oscSendQueue, KeyConfigLookup (&keyConfigLookups) [3]);
     void sendLEDMsg(LayoutWrapper::LayoutKey layoutKey);
     void sendLEDMsgForAllKeys(DeviceType deviceType);
     bool layoutMidiRPNSent = false;
@@ -26,7 +26,7 @@ private:
     void valueTreeRedirected(juce::ValueTree &vTree);
     
     OSC::OSCMessageFifo *oscSendQueue;
-    KeyConfigLookup *keyConfigLookups[3];
     
     int getConfigIndexFromDeviceType(DeviceType type);
+    KeyConfigLookup *keyConfigLookups;
 };

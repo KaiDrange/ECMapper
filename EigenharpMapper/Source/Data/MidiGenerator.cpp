@@ -1,17 +1,13 @@
 #include "MidiGenerator.h"
 
-MidiGenerator::MidiGenerator() {
-    for (int i = 0; i < 3; i++)
-        keyConfigLookups[i] = new KeyConfigLookup((DeviceType)(i+1));
-    
+MidiGenerator::MidiGenerator(KeyConfigLookup (&keyConfigLookups)[3]) {
+    this->keyConfigLookups = keyConfigLookups;
     mpeZone.setLowerZone(15, 2, 12);
     chanAssigner = new juce::MPEChannelAssigner(mpeZone.getLowerZone());
 }
 
 MidiGenerator::~MidiGenerator() {
     delete chanAssigner;
-    for (int i = 0; i < 3; i++)
-        delete keyConfigLookups[i];
 }
 
 void MidiGenerator::processOSCMessage(OSC::Message &oscMsg, juce::MidiBuffer &midiBuffer) {
@@ -24,18 +20,18 @@ void MidiGenerator::processOSCMessage(OSC::Message &oscMsg, juce::MidiBuffer &mi
                 keyState->ehYaw = oscMsg.yaw;
                 keyState->ehRoll = oscMsg.roll;
 
-                KeyConfigLookup::Key *keyLookup = &keyConfigLookups[deviceIndex]->keys[oscMsg.course][oscMsg.key];
+                KeyConfigLookup::Key keyLookup = keyConfigLookups[deviceIndex].keys[oscMsg.course][oscMsg.key];
                 if (keyState->status == KeyStatus::Off && oscMsg.active) {
                     keyState->status = KeyStatus::Pending;
                 }
                 else if (keyState->messageCount == 4 && keyState->status == KeyStatus::Pending && oscMsg.active) {
-                    createNoteOn(keyLookup->note, keyState, midiBuffer);
+                    createNoteOn(keyLookup.note, keyState, midiBuffer);
                 }
                 else if (keyState->status == KeyStatus::Active && !oscMsg.active) {
-                    createNoteOff(keyLookup->note, keyState, midiBuffer);
+                    createNoteOff(keyLookup.note, keyState, midiBuffer);
                 }
                 else if (keyState->messageCount == 16 && keyState->status != KeyStatus::Pending) {
-                    createNoteHold(keyLookup->note, keyState, midiBuffer);
+                    createNoteHold(keyLookup.note, keyState, midiBuffer);
                 }
             }
             break;

@@ -21,6 +21,4 @@ public:
 
 private:
     DeviceType deviceType;
-//    juce::ValueTree layoutTree;
-//    juce::ValueTree zoneTrees[3];
 };

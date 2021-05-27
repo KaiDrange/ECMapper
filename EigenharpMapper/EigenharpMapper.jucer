@@ -47,6 +47,7 @@
       <GROUP id="{F44D70E0-70D2-134A-9C7E-2A351C2CC9E3}" name="Data">
         <FILE id="r4bh2b" name="FileUtil.cpp" compile="1" resource="0" file="Source/Data/FileUtil.cpp"/>
         <FILE id="xuCVfs" name="FileUtil.h" compile="0" resource="0" file="Source/Data/FileUtil.h"/>
+        <FILE id="oPplzq" name="Globals.h" compile="0" resource="0" file="Source/Data/Globals.h"/>
         <FILE id="bW48HZ" name="KeyConfigLookup.cpp" compile="1" resource="0"
               file="Source/Data/KeyConfigLookup.cpp"/>
         <FILE id="UJImSm" name="KeyConfigLookup.h" compile="0" resource="0"

@@ -3,14 +3,13 @@
 #include <math.h>
 #include "KeyConfigLookup.h"
 #include "OSCMessageQueue.h"
-
+#include "Globals.h"
 
 class MidiGenerator {
 public:
-    MidiGenerator();
+    MidiGenerator(KeyConfigLookup (&keyConfigLookups) [3]);
     ~MidiGenerator();
     
-    KeyConfigLookup *keyConfigLookups[3];
     void processOSCMessage(OSC::Message &oscMsg, juce::MidiBuffer &midiBuffer);
     juce::MPEZoneLayout mpeZone;
     
@@ -62,5 +61,5 @@ private:
     float bipolar(int val) { return clamp(float(val) / 4096.0f, -1.0f, 1.0f); }
     float calculatePitchBendCurve(float value);
 
-    
+    KeyConfigLookup *keyConfigLookups;
 };

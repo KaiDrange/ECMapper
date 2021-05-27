@@ -25,5 +25,5 @@ void EigenharpMapperAudioProcessorEditor::recreateMainComponent() {
     mainComponent = new MainComponent();
     addAndMakeVisible(mainComponent);
     mainComponent->setBounds(getLocalBounds());
-    mainComponent->addListener(&audioProcessor.layoutChangeHandler);
+//    mainComponent->addListener(&audioProcessor.getLayoutChangeHandler());
 }

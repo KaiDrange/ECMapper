@@ -1,11 +1,8 @@
 #include "LayoutChangeHandler.h"
 
-LayoutChangeHandler::LayoutChangeHandler(OSC::OSCMessageFifo *oscSendQueue) {
+LayoutChangeHandler::LayoutChangeHandler(OSC::OSCMessageFifo *oscSendQueue, KeyConfigLookup (&keyConfigLookups) [3]) {
+    this->keyConfigLookups = keyConfigLookups;
     this->oscSendQueue = oscSendQueue;
-}
-
-void LayoutChangeHandler::setKeyConfigLookup(KeyConfigLookup *keyConfigLookup, DeviceType deviceType) {
-    this->keyConfigLookups[getConfigIndexFromDeviceType(deviceType)] = keyConfigLookup;
 }
 
 void LayoutChangeHandler::valueTreePropertyChanged(juce::ValueTree &vTree, const juce::Identifier &property) {
@@ -14,24 +11,12 @@ void LayoutChangeHandler::valueTreePropertyChanged(juce::ValueTree &vTree, const
         LayoutWrapper::LayoutKey layoutKey = LayoutWrapper::getLayoutKeyFromKeyTree(vTree);
         deviceType = layoutKey.keyId.deviceType;
         
-        OSC::Message msg {
-            .type = OSC::MessageType::LED,
-            .key = (unsigned int)layoutKey.keyId.keyNo,
-            .course = (unsigned int)layoutKey.keyId.course,
-            .active = 0,
-            .pressure = 0,
-            .roll = 0,
-            .yaw = 0,
-            .value = (unsigned int)layoutKey.keyColour,
-            .pedal = 0,
-            .strip = 0,
-            .device = deviceType
-        };
-        oscSendQueue->add(&msg);
+        if (deviceType != DeviceType::None && property == LayoutWrapper::id_keyColour)
+            sendLEDMsg(layoutKey);
     }
 
     if (deviceType != DeviceType::None) {
-        keyConfigLookups[getConfigIndexFromDeviceType(deviceType)]->updateAll();
+        keyConfigLookups[getConfigIndexFromDeviceType(deviceType)].updateAll();
         layoutMidiRPNSent = false;
     }
 }
@@ -71,12 +56,17 @@ void LayoutChangeHandler::sendLEDMsgForAllKeys(DeviceType deviceType) {
 void LayoutChangeHandler::valueTreeChildAdded(juce::ValueTree &parentTree, juce::ValueTree &childTree) {
     if (childTree.getType().toString().startsWith(LayoutWrapper::id_key + "_")) {
         LayoutWrapper::LayoutKey layoutKey = LayoutWrapper::getLayoutKeyFromKeyTree(childTree);
-        if (layoutKey.keyId.deviceType != DeviceType::None)
+        if (layoutKey.keyId.deviceType != DeviceType::None) {
             sendLEDMsg(layoutKey);
+        }
     }
 }
 
 void LayoutChangeHandler::valueTreeChildRemoved(juce::ValueTree &parentTree, juce::ValueTree &childTree, int removedAtIndex) {}
 void LayoutChangeHandler::valueTreeChildOrderChanged(juce::ValueTree &parentTree, juce::ValueTree &childTree, int oldIndex, int newIndex) {}
 void LayoutChangeHandler::valueTreeParentChanged(juce::ValueTree &vTree) {}
-void LayoutChangeHandler::valueTreeRedirected(juce::ValueTree &vTree) {}
+
+void LayoutChangeHandler::valueTreeRedirected(juce::ValueTree &vTree) {
+    for (int i = 0; i < 3; i++)
+        keyConfigLookups[i].updateAll();
+}

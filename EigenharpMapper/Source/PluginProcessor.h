@@ -43,7 +43,6 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
-    LayoutChangeHandler layoutChangeHandler;
     juce::Identifier id_state = "pluginState";
     juce::AudioProcessorValueTreeState pluginState;
 private:
@@ -53,6 +52,8 @@ private:
     MidiGenerator *midiGenerator;
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     juce::AudioProcessorEditor *editor = nullptr;
+    KeyConfigLookup keyConfigLookups[3];
+    LayoutChangeHandler layoutChangeHandler;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (EigenharpMapperAudioProcessor)
 };

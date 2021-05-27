@@ -13,12 +13,12 @@ TabPage::TabPage(int tabIndex, DeviceType deviceType) : keyboard(keyboardState, 
 
     addAndMakeVisible(saveMappingButton);
     saveMappingButton.setButtonText("Save");
-    saveMappingButton.onClick = [&] {
+    saveMappingButton.onClick = [&, deviceType] {
         FileUtil::saveMapping(LayoutWrapper::getLayoutTree(deviceType), deviceType);
     };
     addAndMakeVisible(loadMappingButton);
     loadMappingButton.setButtonText("load");
-    loadMappingButton.onClick = [&] {
+    loadMappingButton.onClick = [&, deviceType] {
         auto xml = FileUtil::openMapping(deviceType);
         auto loadedMap = juce::ValueTree::fromXml(xml);
         auto oldTree = LayoutWrapper::getLayoutTree(deviceType);
