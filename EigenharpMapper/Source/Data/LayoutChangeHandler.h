@@ -1,6 +1,5 @@
 #pragma once
 #include <JuceHeader.h>
-#include "../Models/KeyConfig.h"
 #include "OSCCommunication.h"
 #include "OSCMessageQueue.h"
 #include "../Models/Enums.h"

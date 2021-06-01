@@ -50,6 +50,18 @@ int ZoneWrapper::getKeyPitchbend(DeviceType deviceType, Zone zone) {
     return zoneTree.getProperty(id_keyPitchbend, default_keyPitchbend);
 }
 
+void ZoneWrapper::setChannelMaxPitchbend(DeviceType deviceType, Zone zone, int value) {
+    if (deviceType == DeviceType::None) return;
+    auto zoneTree = getZoneTree(deviceType, zone);
+    zoneTree.setProperty(id_channelMaxPitchbend, value, nullptr);
+}
+
+int ZoneWrapper::getChannelMaxPitchbend(DeviceType deviceType, Zone zone) {
+    if (deviceType == DeviceType::None) return default_channelMaxPitchbend;
+    auto zoneTree = getZoneTree(deviceType, zone);
+    return zoneTree.getProperty(id_channelMaxPitchbend, default_channelMaxPitchbend);
+}
+
 void ZoneWrapper::setEnabled(DeviceType deviceType, Zone zone, bool enabled) {
     if (deviceType == DeviceType::None) return;
     auto zoneTree = getZoneTree(deviceType, zone);

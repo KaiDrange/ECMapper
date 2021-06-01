@@ -57,6 +57,8 @@ private:
     void createNoteOn(KeyConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer);
     void createNoteOff(KeyConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer);
     void createNoteHold(KeyConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer);
+    void addMidiValueMessage(int channel, int ehValue, ZoneWrapper::MidiValue midiValue, KeyConfigLookup::Key &keyLookup, juce::MidiBuffer &buffer, bool isBipolar);
+    void createBreath(KeyConfigLookup &keyLookup, juce::MidiBuffer &buffer);
     
     inline float clamp(float v, float mn, float mx) { return (std::max(std::min(v, mx), mn)); }
     float unipolar(int val) { return std::min(float(val) / 4096.0f, 1.0f); }
@@ -65,4 +67,5 @@ private:
 
     KeyConfigLookup *keyConfigLookups;
     bool initialized = false;
+    int breathMessageCount = 0;
 };

@@ -9,6 +9,9 @@ void KeyConfigLookup::updateAll() {
     for (int i = 0; i < layoutTree.getNumChildren(); i++) {
         updateKey(layoutTree.getChild(i));
     }
+    updateBreath(Zone::Zone1);
+    updateBreath(Zone::Zone2);
+    updateBreath(Zone::Zone3);
 }
 
 void KeyConfigLookup::updateKey(juce::ValueTree keytree) {
@@ -42,8 +45,20 @@ void KeyConfigLookup::updateKey(juce::ValueTree keytree) {
             key.pbRange = std::min(((float)keyPB)/((float)SettingsWrapper::getLowMPEPB()), 1.0f);
         else if (key.output == MidiChannelType::MPE_High)
             key.pbRange = std::min(((float)keyPB)/((float)SettingsWrapper::getHighMPEPB()), 1.0f);
-        else //TODO: Add a non-mpe max pb
-            key.pbRange = std::min(((float)keyPB)/12.0f, 1.0f);
+        else
+            key.pbRange = std::min(((float)keyPB)/((float)ZoneWrapper::getChannelMaxPitchbend(layoutKey.keyId.deviceType, layoutKey.zone)), 1.0f);
     }
     keys[layoutKey.keyId.course][layoutKey.keyId.keyNo] = key;
+}
+
+void KeyConfigLookup::updateBreath(Zone zone) {
+    auto midiChannelType = ZoneWrapper::getMidiChannelType(deviceType, zone);
+    if (midiChannelType == MidiChannelType::MPE_Low)
+        breath[((int)zone)-1].channel = 1;
+    else if (midiChannelType == MidiChannelType::MPE_High)
+        breath[((int)zone)-1].channel = 16;
+    else
+        breath[((int)zone)-1].channel = (int)midiChannelType;
+    
+    breath[((int)zone)-1].midiValue = ZoneWrapper::getMidiValue(deviceType, zone, ZoneWrapper::id_breath, ZoneWrapper::default_breath);
 }

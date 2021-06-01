@@ -1,6 +1,6 @@
 #include "MainComponent.h"
 
-MainComponent::MainComponent(): lowMPEChannelCount("Low MPE chan to:", 2, 0, 16, 16, true), lowMPEPitchbendRange("Low MPE pb:", 2, 0, 96, 48, true), highMPEPitchbendRange("High MPE pb:", 2, 0, 96, 48, true), tabs(juce::TabbedButtonBar::TabsAtTop) {
+MainComponent::MainComponent(): lowMPEChannelCount("Low MPE chan to:", 2, 0, 16, true), lowMPEPitchbendRange("Low MPE pb:", 2, 0, 96, true), highMPEPitchbendRange("High MPE pb:", 2, 0, 96, true), tabs(juce::TabbedButtonBar::TabsAtTop) {
     
     SettingsWrapper::addListener(this);
     oscIPInput.setText(SettingsWrapper::getIP());

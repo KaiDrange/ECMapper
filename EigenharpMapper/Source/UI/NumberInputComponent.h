@@ -3,7 +3,7 @@
 
 class NumberInputComponent  : public juce::Component {
 public:
-    NumberInputComponent(const juce::String labelText, const int maxDigits, const int minValue, const int maxValue, const int defaultValue, const bool labelAboveInput);
+    NumberInputComponent(const juce::String labelText, const int maxDigits, const int minValue, const int maxValue, const bool labelAboveInput);
     ~NumberInputComponent() override;
 
     int getValue();

@@ -16,6 +16,7 @@ public:
     static inline const juce::Identifier id_enabled { "enabled" };
     static inline const juce::Identifier id_transpose { "transpose" };
     static inline const juce::Identifier id_keyPitchbend { "keyPitchbend" };
+    static inline const juce::Identifier id_channelMaxPitchbend { "channelMaxPitchbend" };
     static inline const juce::Identifier id_midiChannelType { "midiChannelType" };
     static inline const juce::Identifier id_pressure { "pressure" };
     static inline const juce::Identifier id_roll { "roll" };
@@ -36,6 +37,8 @@ public:
     static void setTranspose(DeviceType deviceType, Zone zone, int value);
     static int getKeyPitchbend(DeviceType deviceType, Zone zone);
     static void setKeyPitchbend(DeviceType deviceType, Zone zone, int value);
+    static int getChannelMaxPitchbend(DeviceType deviceType, Zone zone);
+    static void setChannelMaxPitchbend(DeviceType deviceType, Zone zone, int value);
     static void setEnabled(DeviceType deviceType, Zone zone, bool enabled);
     static bool getEnabled(DeviceType deviceType, Zone zone);
     static void setMidiValue(DeviceType deviceType, Zone zone, juce::Identifier childId, MidiValue midiValue);
@@ -55,5 +58,6 @@ private:
     static inline const bool default_enabled = false;
     static inline const int default_transpose = 0;
     static inline const int default_keyPitchbend = 1;
+    static inline const int default_channelMaxPitchbend = 12;
     static inline const MidiChannelType default_midiChannelType = MidiChannelType::MPE_Low;
 };

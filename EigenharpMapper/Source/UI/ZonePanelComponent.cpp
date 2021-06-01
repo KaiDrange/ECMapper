@@ -1,7 +1,7 @@
 #include <JuceHeader.h>
 #include "ZonePanelComponent.h"
 
-ZonePanelComponent::ZonePanelComponent(DeviceType deviceType, Zone zone, float widthFactor, float heightFactor): PanelComponent(widthFactor, heightFactor), transposeInput("Transpose:", 3, -24, 24, 0, false), keyPitchbendRangeInput("Key pitchbend:", 2, 0, 96, 2, false) {
+ZonePanelComponent::ZonePanelComponent(DeviceType deviceType, Zone zone, float widthFactor, float heightFactor): PanelComponent(widthFactor, heightFactor), transposeInput("Transpose:", 3, -24, 24, false), keyPitchbendRangeInput("Key pitchbend:", 2, 0, 96, false), channelMaxPBInput("Channel max pb:", 2, 0, 96, false) {
     this->zone = zone;
     this->deviceType = deviceType;
     addAndMakeVisible(label);
@@ -24,6 +24,12 @@ ZonePanelComponent::ZonePanelComponent(DeviceType deviceType, Zone zone, float w
     keyPitchbendRangeInput.setValue(ZoneWrapper::getKeyPitchbend(deviceType, zone));
     keyPitchbendRangeInput.input.onTextChange = [&, deviceType, zone] {
         ZoneWrapper::setKeyPitchbend(deviceType, zone, keyPitchbendRangeInput.getValue());
+    };
+    
+    addAndMakeVisible(channelMaxPBInput);
+    channelMaxPBInput.setValue(ZoneWrapper::getChannelMaxPitchbend(deviceType, zone));
+    channelMaxPBInput.input.onTextChange = [&, deviceType, zone] {
+        ZoneWrapper::setChannelMaxPitchbend(deviceType, zone, channelMaxPBInput.getValue());
     };
 
     addAndMakeVisible(midiChannelDropdown);
@@ -98,6 +104,7 @@ void ZonePanelComponent::resized() {
     midiChannelDropdown.setBounds(col2.removeFromTop(lineHeight));
     transposeInput.setBounds(col2.removeFromTop(lineHeight));
     keyPitchbendRangeInput.setBounds(col2.removeFromTop(lineHeight));
+    channelMaxPBInput.setBounds(col2.removeFromTop(lineHeight));
 }
 
 void ZonePanelComponent::setStandardMidiDropdownParams(DropdownComponent &dropdown, juce::Identifier treeId, const ZoneWrapper::MidiValue &defaultValue) {

@@ -32,6 +32,7 @@ private:
     DropdownComponent breathDropdown;
     NumberInputComponent transposeInput;
     NumberInputComponent keyPitchbendRangeInput;
+    NumberInputComponent channelMaxPBInput;
     
     DeviceType deviceType;
     Zone zone;

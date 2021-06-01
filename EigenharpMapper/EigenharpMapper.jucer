@@ -78,8 +78,6 @@
         <FILE id="hE5PHh" name="SettingsWrapper.h" compile="0" resource="0"
               file="Source/Models/SettingsWrapper.h"/>
         <FILE id="Rw9BUS" name="Enums.h" compile="0" resource="0" file="Source/Models/Enums.h"/>
-        <FILE id="BUvX2Q" name="KeyConfig.cpp" compile="1" resource="0" file="Source/Models/KeyConfig.cpp"/>
-        <FILE id="ECTwYB" name="KeyConfig.h" compile="0" resource="0" file="Source/Models/KeyConfig.h"/>
       </GROUP>
       <FILE id="asCXop" name="PluginProcessor.cpp" compile="1" resource="0"
             file="Source/PluginProcessor.cpp"/>

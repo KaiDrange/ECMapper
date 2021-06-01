@@ -35,7 +35,7 @@ void MidiGenerator::processOSCMessage(OSC::Message &oscMsg, juce::MidiBuffer &mi
         return;
     
     switch (oscMsg.type) {
-            case OSC::MessageType::Key: {
+        case OSC::MessageType::Key: {
                 int deviceIndex = (int)oscMsg.device -1;
                 KeyState *keyState = &keyStates[deviceIndex][oscMsg.course][oscMsg.key];
                 keyState->messageCount++;
@@ -53,7 +53,7 @@ void MidiGenerator::processOSCMessage(OSC::Message &oscMsg, juce::MidiBuffer &mi
                 else if (keyState->messageCount == 4 && keyState->status == KeyStatus::Pending && oscMsg.active) {
                     createNoteOn(keyLookup, keyState, midiBuffer);
                 }
-                else if (keyState->status == KeyStatus::Active && !oscMsg.active) {
+                else if (keyState->status != KeyStatus::Off && !oscMsg.active) {
                     createNoteOff(keyLookup, keyState, midiBuffer);
                 }
                 else if (keyState->messageCount == 16 && keyState->status != KeyStatus::Pending) {
@@ -61,9 +61,26 @@ void MidiGenerator::processOSCMessage(OSC::Message &oscMsg, juce::MidiBuffer &mi
                 }
             }
             break;
+        case OSC::MessageType::Breath:
+            breathMessageCount++;
+            ehBreath = oscMsg.value;
+            if (breathMessageCount == 16) {
+                int deviceIndex = (int)oscMsg.device -1;
+                createBreath(keyConfigLookups[deviceIndex], midiBuffer);
+            }
+            break;
         default:
             break;
     }
+}
+
+void MidiGenerator::createBreath(KeyConfigLookup &keyLookup, juce::MidiBuffer &buffer) {
+
+    addMidiValueMessage(keyLookup.breath[0].channel, ehBreath, keyLookup.breath[0].midiValue, keyLookup.keys[0][0], buffer, false);
+    addMidiValueMessage(keyLookup.breath[1].channel, ehBreath, keyLookup.breath[1].midiValue, keyLookup.keys[0][0], buffer, false);
+    addMidiValueMessage(keyLookup.breath[2].channel, ehBreath, keyLookup.breath[2].midiValue, keyLookup.keys[0][0], buffer, false);
+
+    breathMessageCount = 0;
 }
 
 void MidiGenerator::createNoteOn(KeyConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer) {
@@ -94,28 +111,44 @@ void MidiGenerator::createNoteOff(KeyConfigLookup::Key &keyLookup, KeyState *sta
     }
 
     auto noteOffMsg = juce::MidiMessage::noteOff(channel, keyLookup.note, 0.0f);
-    auto pressMsg = juce::MidiMessage::aftertouchChange(channel, keyLookup.note, 0);
-
     buffer.addEvent(noteOffMsg, 0);
-    buffer.addEvent(pressMsg, 1);
+    addMidiValueMessage(channel, 0, keyLookup.pressure, keyLookup, buffer, false);
     state->status = KeyStatus::Off;
     state->messageCount = 0;
 }
 
 void MidiGenerator::createNoteHold(KeyConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer) {
     int channel = state->midiChannel;
-    auto pb = juce::MPEValue::from14BitInt((calculatePitchBendCurve(bipolar(state->ehRoll*1.7f))*keyLookup.pbRange)*0x1fff + 0x1fff);
-    auto press = juce::MPEValue::from7BitInt(unipolar(state->ehPressure)*127);
-    auto timbre = juce::MPEValue::from7BitInt(bipolar(state->ehYaw)*63+63);
-    
-    auto timbreMsg = juce::MidiMessage::controllerEvent(channel, 74, timbre.as7BitInt());
-    auto pressMsg = juce::MidiMessage::aftertouchChange(channel, keyLookup.note, press.as7BitInt());
-    auto pbMsg = juce::MidiMessage::pitchWheel(channel, pb.as14BitInt());
-
-    buffer.addEvent(timbreMsg, 0);
-    buffer.addEvent(pressMsg, 1);
-    buffer.addEvent(pbMsg, 2);
+    addMidiValueMessage(channel, state->ehRoll, keyLookup.roll, keyLookup, buffer, true);
+    addMidiValueMessage(channel, state->ehYaw, keyLookup.yaw, keyLookup, buffer, true);
+    addMidiValueMessage(channel, state->ehPressure, keyLookup.pressure, keyLookup, buffer, false);
     state->messageCount = 0;
+}
+
+void MidiGenerator::addMidiValueMessage(int channel, int ehValue, ZoneWrapper::MidiValue midiValue, KeyConfigLookup::Key &keyLookup, juce::MidiBuffer &buffer, bool isBipolar) {
+    if (midiValue.valueType != MidiValueType::Off) {
+        juce::MidiMessage msg;
+        if (midiValue.valueType == MidiValueType::Pitchbend) {
+            auto pb = isBipolar ? juce::MPEValue::from14BitInt((calculatePitchBendCurve(bipolar(ehValue*1.7f))*keyLookup.pbRange)*0x1fff + 0x1fff) : juce::MPEValue::from14BitInt((unipolar(ehValue)*keyLookup.pbRange)*0x1fff + 0x1fff);
+            msg = juce::MidiMessage::pitchWheel(channel, pb.as14BitInt());
+        }
+        else if (midiValue.valueType == MidiValueType::ChannelAftertouch) {
+            auto at = isBipolar ? juce::MPEValue::from7BitInt(bipolar(ehValue*1.7f)*63+64)
+                                : juce::MPEValue::from7BitInt(unipolar(ehValue*1.7f)*127);
+            msg = juce::MidiMessage::channelPressureChange(channel, at.as7BitInt());
+        }
+        else if (midiValue.valueType == MidiValueType::PolyAftertouch) {
+            auto at = isBipolar ? juce::MPEValue::from7BitInt(bipolar(ehValue*1.7f)*63+64)
+                                : juce::MPEValue::from7BitInt(unipolar(ehValue*1.7f)*127);
+            msg = juce::MidiMessage::aftertouchChange(channel, keyLookup.note, at.as7BitInt());
+        }
+        else if (midiValue.valueType == MidiValueType::CC) {
+            auto cc = isBipolar ? juce::MPEValue::from7BitInt(bipolar(ehValue*1.7f)*63+64)
+                                : juce::MPEValue::from7BitInt(unipolar(ehValue)*127);
+            msg = juce::MidiMessage::controllerEvent(channel, midiValue.ccNo, cc.as7BitInt());
+        }
+        buffer.addEvent(msg, buffer.getLastEventTime()+1);
+    }
 }
 
 void MidiGenerator::createLayoutRPNs(juce::MidiBuffer &buffer) {

@@ -18,6 +18,10 @@ void LayoutChangeHandler::valueTreePropertyChanged(juce::ValueTree &vTree, const
                 keyConfigLookups[getConfigIndexFromDeviceType(deviceType)].updateKey(vTree);
         }
     }
+    else if (vTree.getParent().getType().toString().startsWith(ZoneWrapper::id_zone)) {
+        int zoneIndex = vTree.getParent().getType().toString().substring(4,5).getIntValue() - 1;
+        keyConfigLookups[zoneIndex].updateAll();
+    }
 
 //    if (deviceType != DeviceType::None) {
 //        layoutMidiRPNSent = false;

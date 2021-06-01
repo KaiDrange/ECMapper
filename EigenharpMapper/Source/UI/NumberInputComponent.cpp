@@ -5,12 +5,11 @@ NumberInputComponent::NumberInputComponent(const juce::String labelText,
                                            const int maxDigits,
                                            const int minValue,
                                            const int maxValue,
-                                           const int defaultValue,
                                            const bool labelAboveInput) {
     this->labelAboveInput = labelAboveInput;
     label.setText(labelText, juce::dontSendNotification);
-//    input.setText(juce::String(defaultValue), juce::dontSendNotification);
     input.setInputFilter(new juce::TextEditor::LengthAndCharacterRestriction(maxDigits, "-0123456789"), true);
+    input.setJustification(juce::Justification::right);
     addAndMakeVisible(label);
     addAndMakeVisible(input);
 
