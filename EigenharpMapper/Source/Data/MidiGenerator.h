@@ -10,12 +10,14 @@ public:
     ~MidiGenerator();
     
     void processOSCMessage(OSC::Message &oscMsg, juce::MidiBuffer &midiBuffer);
+    void reduceBreath(juce::MidiBuffer &buffer);
     juce::MPEZoneLayout mpeZone;
     
     void createLayoutRPNs(juce::MidiBuffer &buffer);
     void start();
     void stop();
-    
+    int samplesSinceLastBreathMsg = 0;
+
 private:
     enum KeyStatus {
         Off = 0,
@@ -39,7 +41,7 @@ private:
     
     KeyState keyStates[3][3][120];
     
-    unsigned int ehBreath = 0;
+    unsigned int ehBreath[3] = { 0,0,0 };
     unsigned int ehPedal1 = 0;
     unsigned int ehPedal2 = 0;
     unsigned int ehStrip1 = 0;
@@ -58,7 +60,7 @@ private:
     void createNoteOff(KeyConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer);
     void createNoteHold(KeyConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer);
     void addMidiValueMessage(int channel, int ehValue, ZoneWrapper::MidiValue midiValue, KeyConfigLookup::Key &keyLookup, juce::MidiBuffer &buffer, bool isBipolar);
-    void createBreath(KeyConfigLookup &keyLookup, juce::MidiBuffer &buffer);
+    void createBreath(int deviceIndex, KeyConfigLookup &keyLookup, juce::MidiBuffer &buffer);
     
     inline float clamp(float v, float mn, float mx) { return (std::max(std::min(v, mx), mn)); }
     float unipolar(int val) { return std::min(float(val) / 4096.0f, 1.0f); }

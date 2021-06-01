@@ -95,6 +95,10 @@ void EigenharpMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& buffe
         osc.receiveQueue->read(&msg);
         midiGenerator->processOSCMessage(msg, midiMessages);
     }
+    
+    midiGenerator->samplesSinceLastBreathMsg += buffer.getNumSamples();
+    if (midiGenerator->samplesSinceLastBreathMsg > 1024)
+        midiGenerator->reduceBreath(midiMessages);
 }
 
 bool EigenharpMapperAudioProcessor::hasEditor() const {

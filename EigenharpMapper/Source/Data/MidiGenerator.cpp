@@ -61,12 +61,13 @@ void MidiGenerator::processOSCMessage(OSC::Message &oscMsg, juce::MidiBuffer &mi
                 }
             }
             break;
-        case OSC::MessageType::Breath:
-            breathMessageCount++;
-            ehBreath = oscMsg.value;
-            if (breathMessageCount == 16) {
+        case OSC::MessageType::Breath: {
+                breathMessageCount++;
                 int deviceIndex = (int)oscMsg.device -1;
-                createBreath(keyConfigLookups[deviceIndex], midiBuffer);
+                ehBreath[deviceIndex] = std::abs((int)(oscMsg.value - 2048))*2;
+                if (breathMessageCount == 16) {
+                    createBreath(deviceIndex, keyConfigLookups[deviceIndex], midiBuffer);
+                }
             }
             break;
         default:
@@ -74,11 +75,25 @@ void MidiGenerator::processOSCMessage(OSC::Message &oscMsg, juce::MidiBuffer &mi
     }
 }
 
-void MidiGenerator::createBreath(KeyConfigLookup &keyLookup, juce::MidiBuffer &buffer) {
+void MidiGenerator::reduceBreath(juce::MidiBuffer &buffer) {
+    samplesSinceLastBreathMsg = 0;
+    for (int i = 0; i < 3; i++) {
+        if (ehBreath[i] <= 0) {
+            ehBreath[i] = 0;
+            continue;
+        }
+        
+        ehBreath[i] -= 20;
+        ehBreath[i] = std::max<int>(ehBreath[i], 0);
+        createBreath(i, keyConfigLookups[i], buffer);
+    }
+}
 
-    addMidiValueMessage(keyLookup.breath[0].channel, ehBreath, keyLookup.breath[0].midiValue, keyLookup.keys[0][0], buffer, false);
-    addMidiValueMessage(keyLookup.breath[1].channel, ehBreath, keyLookup.breath[1].midiValue, keyLookup.keys[0][0], buffer, false);
-    addMidiValueMessage(keyLookup.breath[2].channel, ehBreath, keyLookup.breath[2].midiValue, keyLookup.keys[0][0], buffer, false);
+void MidiGenerator::createBreath(int deviceIndex, KeyConfigLookup &keyLookup, juce::MidiBuffer &buffer) {
+
+    addMidiValueMessage(keyLookup.breath[0].channel, ehBreath[deviceIndex], keyLookup.breath[0].midiValue, keyLookup.keys[0][0], buffer, false);
+    addMidiValueMessage(keyLookup.breath[1].channel, ehBreath[deviceIndex], keyLookup.breath[1].midiValue, keyLookup.keys[0][0], buffer, false);
+    addMidiValueMessage(keyLookup.breath[2].channel, ehBreath[deviceIndex], keyLookup.breath[2].midiValue, keyLookup.keys[0][0], buffer, false);
 
     breathMessageCount = 0;
 }
