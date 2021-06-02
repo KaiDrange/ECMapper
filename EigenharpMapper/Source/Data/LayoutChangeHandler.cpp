@@ -1,11 +1,13 @@
 #include "LayoutChangeHandler.h"
 
-LayoutChangeHandler::LayoutChangeHandler(OSC::OSCMessageFifo *oscSendQueue, KeyConfigLookup (&keyConfigLookups) [3]) {
-    this->keyConfigLookups = keyConfigLookups;
+LayoutChangeHandler::LayoutChangeHandler(OSC::OSCMessageFifo *oscSendQueue, EigenharpMapperAudioProcessor *processor, ConfigLookup (&configLookups) [3]) {
+    this->configLookups = configLookups;
     this->oscSendQueue = oscSendQueue;
+    this->processor = processor;
 }
 
 void LayoutChangeHandler::valueTreePropertyChanged(juce::ValueTree &vTree, const juce::Identifier &property) {
+    processor->suspendProcessing(true);
     DeviceType deviceType = DeviceType::None;
     if (vTree.getType().toString().startsWith(LayoutWrapper::id_key + "_")) {
         LayoutWrapper::LayoutKey layoutKey = LayoutWrapper::getLayoutKeyFromKeyTree(vTree);
@@ -15,17 +17,22 @@ void LayoutChangeHandler::valueTreePropertyChanged(juce::ValueTree &vTree, const
             if (property == LayoutWrapper::id_keyColour)
                 sendLEDMsg(layoutKey);
             else
-                keyConfigLookups[getConfigIndexFromDeviceType(deviceType)].updateKey(vTree);
+                configLookups[getConfigIndexFromDeviceType(deviceType)].updateKey(vTree);
         }
     }
     else if (vTree.getParent().getType().toString().startsWith(ZoneWrapper::id_zone)) {
-        int zoneIndex = vTree.getParent().getType().toString().substring(4,5).getIntValue() - 1;
-        keyConfigLookups[zoneIndex].updateAll();
+        DeviceType deviceType = ZoneWrapper::getDeviceTypeFromTree(vTree);
+        configLookups[((int)deviceType) - 1].updateAll();
+    }
+    else if (vTree.getType().toString().startsWith(ZoneWrapper::id_zone)) {
+        DeviceType deviceType = ZoneWrapper::getDeviceTypeFromTree(vTree);
+        configLookups[((int)deviceType) - 1].updateAll();
     }
 
 //    if (deviceType != DeviceType::None) {
 //        layoutMidiRPNSent = false;
 //    }
+    processor->suspendProcessing(false);
 }
 
 int LayoutChangeHandler::getConfigIndexFromDeviceType(DeviceType type) {
@@ -75,5 +82,5 @@ void LayoutChangeHandler::valueTreeParentChanged(juce::ValueTree &vTree) {}
 
 void LayoutChangeHandler::valueTreeRedirected(juce::ValueTree &vTree) {
     for (int i = 0; i < 3; i++)
-        keyConfigLookups[i].updateAll();
+        configLookups[i].updateAll();
 }
