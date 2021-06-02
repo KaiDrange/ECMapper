@@ -92,3 +92,11 @@ void ZoneWrapper::setMidiValue(DeviceType deviceType, Zone zone, juce::Identifie
     midiValChild.setProperty(id_midiValType, (int)midiValue.valueType, nullptr);
     midiValChild.setProperty(id_midiCCNo, midiValue.ccNo, nullptr);
 }
+
+DeviceType ZoneWrapper::getDeviceTypeFromTree(juce::ValueTree tree) {
+    auto parentTree = tree.getParent();
+    while (!parentTree.getType().toString().startsWith(id_device))
+        parentTree = parentTree.getParent();
+    
+    return (DeviceType)parentTree.getType().toString().substring(6).getIntValue();
+}

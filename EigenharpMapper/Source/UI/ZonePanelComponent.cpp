@@ -36,8 +36,8 @@ ZonePanelComponent::ZonePanelComponent(DeviceType deviceType, Zone zone, float w
     midiChannelDropdown.setLabelText("Midi channel:");
     for (int i = 1; i <= 16; i++)
         midiChannelDropdown.addItem(juce::String(i), i);
-    midiChannelDropdown.addItem("MPE Low", 17);
-    midiChannelDropdown.addItem("MPE High", 18);
+    midiChannelDropdown.addItem("MPE Lower", 17);
+    midiChannelDropdown.addItem("MPE Upper", 18);
 
     midiChannelDropdown.setSelectedItemId((int)ZoneWrapper::getMidiChannelType(deviceType, zone));
     midiChannelDropdown.box.onChange = [&, deviceType, zone] {

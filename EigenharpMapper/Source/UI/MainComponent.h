@@ -14,15 +14,13 @@ public:
 
     void paint (juce::Graphics&) override;
     void resized() override;
-    
-//    Layout* getLayout(DeviceType deviceType);
-
-    void addListener(juce::ValueTree::Listener *listener);
+//    void addListener(juce::ValueTree::Listener *listener);
 
 private:
-    NumberInputComponent lowMPEChannelCount;
-    NumberInputComponent lowMPEPitchbendRange;
-    NumberInputComponent highMPEPitchbendRange;
+    NumberInputComponent lowerMPEVoiceCount;
+    NumberInputComponent upperMPEVoiceCount;
+    NumberInputComponent lowerMPEPitchbendRange;
+    NumberInputComponent upperMPEPitchbendRange;
     juce::Label oscIPLabel;
     juce::TextEditor oscIPInput;
 

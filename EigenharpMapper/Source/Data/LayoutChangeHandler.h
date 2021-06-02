@@ -4,13 +4,15 @@
 #include "OSCMessageQueue.h"
 #include "../Models/Enums.h"
 #include "../Models/LayoutWrapper.h"
-#include "KeyConfigLookup.h"
+#include "ConfigLookup.h"
+
+class EigenharpMapperAudioProcessor;
 
 extern juce::ValueTree *rootState;
 
 class LayoutChangeHandler : public juce::ValueTree::Listener {
 public:
-    LayoutChangeHandler(OSC::OSCMessageFifo *oscSendQueue, KeyConfigLookup (&keyConfigLookups) [3]);
+    LayoutChangeHandler(OSC::OSCMessageFifo *oscSendQueue, EigenharpMapperAudioProcessor *processor, ConfigLookup (&configLookups) [3]);
     void sendLEDMsg(LayoutWrapper::LayoutKey layoutKey);
     void sendLEDMsgForAllKeys(DeviceType deviceType);
     bool layoutMidiRPNSent = false;
@@ -26,5 +28,8 @@ private:
     OSC::OSCMessageFifo *oscSendQueue;
     
     int getConfigIndexFromDeviceType(DeviceType type);
-    KeyConfigLookup *keyConfigLookups;
+    ConfigLookup *configLookups;
+    EigenharpMapperAudioProcessor *processor;
 };
+
+#include "../PluginProcessor.h"

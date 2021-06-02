@@ -1,12 +1,12 @@
 #pragma once
 #include <JuceHeader.h>
 #include <math.h>
-#include "KeyConfigLookup.h"
+#include "ConfigLookup.h"
 #include "OSCMessageQueue.h"
 
 class MidiGenerator {
 public:
-    MidiGenerator(KeyConfigLookup (&keyConfigLookups) [3]);
+    MidiGenerator(ConfigLookup (&configLookups) [3]);
     ~MidiGenerator();
     
     void processOSCMessage(OSC::Message &oscMsg, juce::MidiBuffer &midiBuffer);
@@ -56,18 +56,18 @@ private:
     juce::MPEChannelAssigner *lowChanAssigner;
     juce::MPEChannelAssigner *highChanAssigner;
 
-    void createNoteOn(KeyConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer);
-    void createNoteOff(KeyConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer);
-    void createNoteHold(KeyConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer);
-    void addMidiValueMessage(int channel, int ehValue, ZoneWrapper::MidiValue midiValue, KeyConfigLookup::Key &keyLookup, juce::MidiBuffer &buffer, bool isBipolar);
-    void createBreath(int deviceIndex, KeyConfigLookup &keyLookup, juce::MidiBuffer &buffer);
+    void createNoteOn(ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer);
+    void createNoteOff(ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer);
+    void createNoteHold(ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer);
+    void addMidiValueMessage(int channel, int ehValue, ZoneWrapper::MidiValue midiValue, ConfigLookup::Key &keyLookup, juce::MidiBuffer &buffer, bool isBipolar);
+    void createBreath(int deviceIndex, ConfigLookup &keyLookup, juce::MidiBuffer &buffer);
     
     inline float clamp(float v, float mn, float mx) { return (std::max(std::min(v, mx), mn)); }
     float unipolar(int val) { return std::min(float(val) / 4096.0f, 1.0f); }
     float bipolar(int val) { return clamp(float(val) / 4096.0f, -1.0f, 1.0f); }
     float calculatePitchBendCurve(float value);
 
-    KeyConfigLookup *keyConfigLookups;
+    ConfigLookup *configLookups;
     bool initialized = false;
     int breathMessageCount = 0;
 };

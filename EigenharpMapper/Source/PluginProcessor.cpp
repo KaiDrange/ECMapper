@@ -4,7 +4,7 @@
 juce::ValueTree* rootState;
 
 EigenharpMapperAudioProcessor::EigenharpMapperAudioProcessor() : AudioProcessor (BusesProperties().withOutput("Output", juce::AudioChannelSet::stereo(), true)),
-pluginState(*this, nullptr, id_state, createParameterLayout()), osc(&oscSendQueue, &oscReceiveQueue), keyConfigLookups { KeyConfigLookup(DeviceType::Alpha), KeyConfigLookup(DeviceType::Tau), KeyConfigLookup(DeviceType::Pico)}, layoutChangeHandler(&oscSendQueue, keyConfigLookups) {
+pluginState(*this, nullptr, id_state, createParameterLayout()), osc(&oscSendQueue, &oscReceiveQueue), configLookups { ConfigLookup(DeviceType::Alpha), ConfigLookup(DeviceType::Tau), ConfigLookup(DeviceType::Pico)}, midiGenerator(configLookups), layoutChangeHandler(&oscSendQueue, this, configLookups) {
     rootState = &pluginState.state;
 
     juce::StringArray ipAndPortNo;
@@ -13,14 +13,13 @@ pluginState(*this, nullptr, id_state, createParameterLayout()), osc(&oscSendQueu
         osc.connectSender(ipAndPortNo[0], ipAndPortNo[1].getIntValue());
         osc.connectReceiver(ipAndPortNo[1].getIntValue() + 1);
     }
-    midiGenerator = new MidiGenerator(keyConfigLookups);
+//    midiGenerator = new MidiGenerator(configLookups);
     pluginState.state.addListener(&layoutChangeHandler);
 }
 
 EigenharpMapperAudioProcessor::~EigenharpMapperAudioProcessor() {
     osc.disconnectSender();
     osc.disconnectReceiver();
-    delete midiGenerator;
 }
 
 const juce::String EigenharpMapperAudioProcessor::getName() const {
@@ -65,11 +64,11 @@ void EigenharpMapperAudioProcessor::prepareToPlay(double sampleRate, int samples
     if (juce::JUCEApplication::isStandaloneApp()) {
     }
     
-    midiGenerator->start();
+    midiGenerator.start();
 }
 
 void EigenharpMapperAudioProcessor::releaseResources() {
-    midiGenerator->stop();
+    midiGenerator.stop();
 }
 
 bool EigenharpMapperAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
@@ -88,17 +87,17 @@ void EigenharpMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& buffe
     midiMessages.clear();
     static OSC::Message msg;
     if (!layoutChangeHandler.layoutMidiRPNSent) {
-        midiGenerator->createLayoutRPNs(midiMessages);
+        midiGenerator.createLayoutRPNs(midiMessages);
         layoutChangeHandler.layoutMidiRPNSent = true;
     }
     while (osc.receiveQueue->getMessageCount() > 0) {
         osc.receiveQueue->read(&msg);
-        midiGenerator->processOSCMessage(msg, midiMessages);
+        midiGenerator.processOSCMessage(msg, midiMessages);
     }
     
-    midiGenerator->samplesSinceLastBreathMsg += buffer.getNumSamples();
-    if (midiGenerator->samplesSinceLastBreathMsg > 1024)
-        midiGenerator->reduceBreath(midiMessages);
+    midiGenerator.samplesSinceLastBreathMsg += buffer.getNumSamples();
+    if (midiGenerator.samplesSinceLastBreathMsg > 1024)
+        midiGenerator.reduceBreath(midiMessages);
 }
 
 bool EigenharpMapperAudioProcessor::hasEditor() const {
@@ -109,7 +108,7 @@ juce::AudioProcessorEditor* EigenharpMapperAudioProcessor::createEditor() {
     auto editor = new EigenharpMapperAudioProcessorEditor(*this);
     this->editor = editor;
 
-    editor->mainComponent->addListener(&layoutChangeHandler);
+//    editor->mainComponent->addListener(&layoutChangeHandler);
     return editor;
 }
 

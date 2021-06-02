@@ -1,7 +1,7 @@
 #include "MidiGenerator.h"
 
-MidiGenerator::MidiGenerator(KeyConfigLookup (&keyConfigLookups)[3]) {
-    this->keyConfigLookups = keyConfigLookups;
+MidiGenerator::MidiGenerator(ConfigLookup (&configLookups)[3]) {
+    this->configLookups = configLookups;
 }
 
 MidiGenerator::~MidiGenerator() {
@@ -10,15 +10,23 @@ MidiGenerator::~MidiGenerator() {
 }
 
 void MidiGenerator::start() {
-    int lowChannelCount = SettingsWrapper::getLowMPEToChannel() -1;
-    mpeZone.setLowerZone(lowChannelCount, 2, SettingsWrapper::getLowMPEPB());
+    int lowerChannelCount = SettingsWrapper::getLowerMPEVoiceCount();
+    mpeZone.setLowerZone(lowerChannelCount, 2, SettingsWrapper::getLowerMPEPB());
     lowChanAssigner = new juce::MPEChannelAssigner(mpeZone.getLowerZone());
-    if (lowChannelCount < 14) {
-        mpeZone.setUpperZone(14-lowChannelCount, 2, SettingsWrapper::getHighMPEPB());
+    if (lowerChannelCount < 14) {
+        int upperChannelCount = SettingsWrapper::getUpperMPEVoiceCount();
+        mpeZone.setUpperZone(upperChannelCount, 2, SettingsWrapper::getUpperMPEPB());
         highChanAssigner = new juce::MPEChannelAssigner(mpeZone.getUpperZone());
     }
     else
         highChanAssigner = nullptr;
+    
+    configLookups[0].updateAll();
+    configLookups[1].updateAll();
+    configLookups[2].updateAll();
+
+    samplesSinceLastBreathMsg = 0;
+    breathMessageCount = 0;
     initialized = true;
 }
 
@@ -43,7 +51,7 @@ void MidiGenerator::processOSCMessage(OSC::Message &oscMsg, juce::MidiBuffer &mi
                 keyState->ehYaw = oscMsg.yaw;
                 keyState->ehRoll = oscMsg.roll;
 
-                KeyConfigLookup::Key keyLookup = keyConfigLookups[deviceIndex].keys[oscMsg.course][oscMsg.key];
+                ConfigLookup::Key keyLookup = configLookups[deviceIndex].keys[oscMsg.course][oscMsg.key];
                 if (keyLookup.output == MidiChannelType::Undefined)
                     break;
                 
@@ -66,7 +74,7 @@ void MidiGenerator::processOSCMessage(OSC::Message &oscMsg, juce::MidiBuffer &mi
                 int deviceIndex = (int)oscMsg.device -1;
                 ehBreath[deviceIndex] = std::abs((int)(oscMsg.value - 2048))*2;
                 if (breathMessageCount == 16) {
-                    createBreath(deviceIndex, keyConfigLookups[deviceIndex], midiBuffer);
+                    createBreath(deviceIndex, configLookups[deviceIndex], midiBuffer);
                 }
             }
             break;
@@ -76,7 +84,6 @@ void MidiGenerator::processOSCMessage(OSC::Message &oscMsg, juce::MidiBuffer &mi
 }
 
 void MidiGenerator::reduceBreath(juce::MidiBuffer &buffer) {
-    samplesSinceLastBreathMsg = 0;
     for (int i = 0; i < 3; i++) {
         if (ehBreath[i] <= 0) {
             ehBreath[i] = 0;
@@ -85,20 +92,21 @@ void MidiGenerator::reduceBreath(juce::MidiBuffer &buffer) {
         
         ehBreath[i] -= 20;
         ehBreath[i] = std::max<int>(ehBreath[i], 0);
-        createBreath(i, keyConfigLookups[i], buffer);
+        createBreath(i, configLookups[i], buffer);
     }
 }
 
-void MidiGenerator::createBreath(int deviceIndex, KeyConfigLookup &keyLookup, juce::MidiBuffer &buffer) {
+void MidiGenerator::createBreath(int deviceIndex, ConfigLookup &keyLookup, juce::MidiBuffer &buffer) {
 
     addMidiValueMessage(keyLookup.breath[0].channel, ehBreath[deviceIndex], keyLookup.breath[0].midiValue, keyLookup.keys[0][0], buffer, false);
     addMidiValueMessage(keyLookup.breath[1].channel, ehBreath[deviceIndex], keyLookup.breath[1].midiValue, keyLookup.keys[0][0], buffer, false);
     addMidiValueMessage(keyLookup.breath[2].channel, ehBreath[deviceIndex], keyLookup.breath[2].midiValue, keyLookup.keys[0][0], buffer, false);
 
     breathMessageCount = 0;
+    samplesSinceLastBreathMsg = 0;
 }
 
-void MidiGenerator::createNoteOn(KeyConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer) {
+void MidiGenerator::createNoteOn(ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer) {
     if (keyLookup.output == MidiChannelType::MPE_Low)
         state->midiChannel = lowChanAssigner->findMidiChannelForNewNote(keyLookup.note);
     else if (keyLookup.output == MidiChannelType::MPE_High) {
@@ -116,7 +124,7 @@ void MidiGenerator::createNoteOn(KeyConfigLookup::Key &keyLookup, KeyState *stat
     state->status = KeyStatus::Active;
 }
 
-void MidiGenerator::createNoteOff(KeyConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer) {
+void MidiGenerator::createNoteOff(ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer) {
     int channel = state->midiChannel;
     if (keyLookup.output == MidiChannelType::MPE_Low)
         lowChanAssigner->noteOff(keyLookup.note, channel);
@@ -132,7 +140,7 @@ void MidiGenerator::createNoteOff(KeyConfigLookup::Key &keyLookup, KeyState *sta
     state->messageCount = 0;
 }
 
-void MidiGenerator::createNoteHold(KeyConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer) {
+void MidiGenerator::createNoteHold(ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer) {
     int channel = state->midiChannel;
     addMidiValueMessage(channel, state->ehRoll, keyLookup.roll, keyLookup, buffer, true);
     addMidiValueMessage(channel, state->ehYaw, keyLookup.yaw, keyLookup, buffer, true);
@@ -140,7 +148,7 @@ void MidiGenerator::createNoteHold(KeyConfigLookup::Key &keyLookup, KeyState *st
     state->messageCount = 0;
 }
 
-void MidiGenerator::addMidiValueMessage(int channel, int ehValue, ZoneWrapper::MidiValue midiValue, KeyConfigLookup::Key &keyLookup, juce::MidiBuffer &buffer, bool isBipolar) {
+void MidiGenerator::addMidiValueMessage(int channel, int ehValue, ZoneWrapper::MidiValue midiValue, ConfigLookup::Key &keyLookup, juce::MidiBuffer &buffer, bool isBipolar) {
     if (midiValue.valueType != MidiValueType::Off) {
         juce::MidiMessage msg;
         if (midiValue.valueType == MidiValueType::Pitchbend) {

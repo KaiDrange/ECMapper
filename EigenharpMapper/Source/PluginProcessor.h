@@ -9,6 +9,7 @@
 #include "Models/SettingsWrapper.h"
 #include "UI/Utility.h"
 
+
 class EigenharpMapperAudioProcessor  : public juce::AudioProcessor
 {
 public:
@@ -49,10 +50,10 @@ private:
     OSCCommunication osc;
     OSC::OSCMessageFifo oscSendQueue;
     OSC::OSCMessageFifo oscReceiveQueue;
-    MidiGenerator *midiGenerator;
+    ConfigLookup configLookups[3];
+    MidiGenerator midiGenerator;
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     juce::AudioProcessorEditor *editor = nullptr;
-    KeyConfigLookup keyConfigLookups[3];
     LayoutChangeHandler layoutChangeHandler;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (EigenharpMapperAudioProcessor)

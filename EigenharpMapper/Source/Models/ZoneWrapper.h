@@ -42,6 +42,8 @@ public:
     static void setEnabled(DeviceType deviceType, Zone zone, bool enabled);
     static bool getEnabled(DeviceType deviceType, Zone zone);
     static void setMidiValue(DeviceType deviceType, Zone zone, juce::Identifier childId, MidiValue midiValue);
+    static DeviceType getDeviceTypeFromTree(juce::ValueTree tree);
+
     static void addListener(DeviceType deviceType, juce::ValueTree::Listener *listener);
 
     static inline const MidiValue default_pressure = { MidiValue { .valueType = MidiValueType::ChannelAftertouch, .ccNo = 0}};
@@ -55,7 +57,7 @@ public:
 
 private:
     static juce::ValueTree getZoneTree(DeviceType deviceType, Zone zone);
-    static inline const bool default_enabled = false;
+    static inline const bool default_enabled = true;
     static inline const int default_transpose = 0;
     static inline const int default_keyPitchbend = 1;
     static inline const int default_channelMaxPitchbend = 12;

@@ -1,6 +1,6 @@
 #include "MainComponent.h"
 
-MainComponent::MainComponent(): lowMPEChannelCount("Low MPE chan to:", 2, 0, 16, true), lowMPEPitchbendRange("Low MPE pb:", 2, 0, 96, true), highMPEPitchbendRange("High MPE pb:", 2, 0, 96, true), tabs(juce::TabbedButtonBar::TabsAtTop) {
+MainComponent::MainComponent(): lowerMPEVoiceCount("Lower MPE voices:", 2, 0, 15, true), upperMPEVoiceCount("Upper MPE voices:", 2, 0, 15, true),  lowerMPEPitchbendRange("Lower MPE pb:", 2, 0, 96, true), upperMPEPitchbendRange("Upper MPE pb:", 2, 0, 96, true), tabs(juce::TabbedButtonBar::TabsAtTop) {
     
     SettingsWrapper::addListener(this);
     oscIPInput.setText(SettingsWrapper::getIP());
@@ -8,19 +8,24 @@ MainComponent::MainComponent(): lowMPEChannelCount("Low MPE chan to:", 2, 0, 16,
         SettingsWrapper::setIP(oscIPInput.getText());
     };
     
-    lowMPEChannelCount.setValue(SettingsWrapper::getLowMPEToChannel());
-    lowMPEChannelCount.input.onFocusLost = [&] {
-        SettingsWrapper::setLowMPEToChannel(lowMPEChannelCount.getValue());
-    };
-    
-    lowMPEPitchbendRange.setValue(SettingsWrapper::getLowMPEPB());
-    lowMPEPitchbendRange.input.onFocusLost = [&] {
-        SettingsWrapper::setLowMPEPB(lowMPEPitchbendRange.getValue());
+    lowerMPEVoiceCount.setValue(SettingsWrapper::getLowerMPEVoiceCount());
+    lowerMPEVoiceCount.input.onFocusLost = [&] {
+        SettingsWrapper::setLowerMPEVoiceCount(lowerMPEVoiceCount.getValue());
     };
 
-    highMPEPitchbendRange.setValue(SettingsWrapper::getHighMPEPB());
-    highMPEPitchbendRange.input.onFocusLost = [&] {
-        SettingsWrapper::setHighMPEPB(highMPEPitchbendRange.getValue());
+    upperMPEVoiceCount.setValue(SettingsWrapper::getUpperMPEVoiceCount());
+    upperMPEVoiceCount.input.onFocusLost = [&] {
+        SettingsWrapper::setUpperMPEVoiceCount(upperMPEVoiceCount.getValue());
+    };
+    
+    lowerMPEPitchbendRange.setValue(SettingsWrapper::getLowerMPEPB());
+    lowerMPEPitchbendRange.input.onFocusLost = [&] {
+        SettingsWrapper::setLowerMPEPB(lowerMPEPitchbendRange.getValue());
+    };
+
+    upperMPEPitchbendRange.setValue(SettingsWrapper::getUpperMPEPB());
+    upperMPEPitchbendRange.input.onFocusLost = [&] {
+        SettingsWrapper::setUpperMPEPB(upperMPEPitchbendRange.getValue());
     };
     
     tabPages[0] = new TabPage(0, DeviceType::Alpha);
@@ -36,9 +41,10 @@ MainComponent::MainComponent(): lowMPEChannelCount("Low MPE chan to:", 2, 0, 16,
     addAndMakeVisible(tabs);
     addAndMakeVisible(oscIPLabel);
     addAndMakeVisible(oscIPInput);
-    addAndMakeVisible(lowMPEChannelCount);
-    addAndMakeVisible(lowMPEPitchbendRange);
-    addAndMakeVisible(highMPEPitchbendRange);
+    addAndMakeVisible(lowerMPEVoiceCount);
+    addAndMakeVisible(upperMPEVoiceCount);
+    addAndMakeVisible(lowerMPEPitchbendRange);
+    addAndMakeVisible(upperMPEPitchbendRange);
     
     resized();
 }
@@ -64,22 +70,19 @@ void MainComponent::resized() {
     oscIPLabel.setBounds(ipArea.removeFromTop(ipArea.getHeight()*0.5));
     oscIPInput.setBounds(ipArea);
     header.removeFromRight(area.getWidth()*0.02);
-    highMPEPitchbendRange.setBounds(header.removeFromRight(area.getWidth()*0.12));
+    upperMPEPitchbendRange.setBounds(header.removeFromRight(area.getWidth()*0.12));
     header.removeFromRight(area.getWidth()*0.02);
-    lowMPEPitchbendRange.setBounds(header.removeFromRight(area.getWidth()*0.12));
+    lowerMPEPitchbendRange.setBounds(header.removeFromRight(area.getWidth()*0.12));
     header.removeFromRight(area.getWidth()*0.02);
-    lowMPEChannelCount.setBounds(header.removeFromRight(area.getWidth()*0.12));
+    upperMPEVoiceCount.setBounds(header.removeFromRight(area.getWidth()*0.12));
+    header.removeFromRight(area.getWidth()*0.02);
+    lowerMPEVoiceCount.setBounds(header.removeFromRight(area.getWidth()*0.12));
     tabs.setBounds(area);
     
 }
 
-//Layout* MainComponent::getLayout(DeviceType deviceType) {
-//        return tabPages[(int)deviceType-1]->getLayout();
+//void MainComponent::addListener(juce::ValueTree::Listener *listener) {
 //}
-
-void MainComponent::addListener(juce::ValueTree::Listener *listener) {
-//    uiSettings.addListener(listener);
-}
 
 void MainComponent::valueTreePropertyChanged(juce::ValueTree &vTree, const juce::Identifier &property) {
 }

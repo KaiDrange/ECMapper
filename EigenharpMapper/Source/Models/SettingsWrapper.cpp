@@ -19,32 +19,42 @@ juce::ValueTree SettingsWrapper::getSettingsTree() {
     return rootState->getOrCreateChildWithName(id_globalSettings, nullptr);
 }
 
-void SettingsWrapper::setLowMPEToChannel(int channel) {
+void SettingsWrapper::setLowerMPEVoiceCount(int channel) {
     auto vTree = getSettingsTree();
-    vTree.setProperty(id_lowMPEToChannel, channel, nullptr);
+    vTree.setProperty(id_lowerMPEVoiceCount, channel, nullptr);
 }
 
-int SettingsWrapper::getLowMPEToChannel() {
+int SettingsWrapper::getLowerMPEVoiceCount() {
     auto vTree = getSettingsTree();
-    return vTree.getProperty(id_lowMPEToChannel, default_lowMPEToChannel);
+    return vTree.getProperty(id_lowerMPEVoiceCount, default_lowerMPEVoiceCount);
 }
 
-void SettingsWrapper::setLowMPEPB(int pbValue) {
+void SettingsWrapper::setUpperMPEVoiceCount(int channel) {
     auto vTree = getSettingsTree();
-    vTree.setProperty(id_lowMPEPB, pbValue, nullptr);
+    vTree.setProperty(id_upperMPEVoiceCount, channel, nullptr);
 }
 
-int SettingsWrapper::getLowMPEPB() {
+int SettingsWrapper::getUpperMPEVoiceCount() {
     auto vTree = getSettingsTree();
-    return vTree.getProperty(id_lowMPEPB, default_lowMPEPB);
+    return vTree.getProperty(id_upperMPEVoiceCount, default_upperMPEVoiceCount);
 }
 
-void SettingsWrapper::setHighMPEPB(int pbValue) {
+void SettingsWrapper::setLowerMPEPB(int pbValue) {
     auto vTree = getSettingsTree();
-    vTree.setProperty(id_highMPEPB, pbValue, nullptr);
+    vTree.setProperty(id_lowerMPEPB, pbValue, nullptr);
 }
 
-int SettingsWrapper::getHighMPEPB() {
+int SettingsWrapper::getLowerMPEPB() {
     auto vTree = getSettingsTree();
-    return vTree.getProperty(id_highMPEPB, default_highMPEPB);
+    return vTree.getProperty(id_lowerMPEPB, default_lowerMPEPB);
+}
+
+void SettingsWrapper::setUpperMPEPB(int pbValue) {
+    auto vTree = getSettingsTree();
+    vTree.setProperty(id_upperMPEPB, pbValue, nullptr);
+}
+
+int SettingsWrapper::getUpperMPEPB() {
+    auto vTree = getSettingsTree();
+    return vTree.getProperty(id_upperMPEPB, default_upperMPEPB);
 }
