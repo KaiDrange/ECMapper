@@ -5,21 +5,21 @@ MidiGenerator::MidiGenerator(ConfigLookup (&configLookups)[3]) {
 }
 
 MidiGenerator::~MidiGenerator() {
-    delete lowChanAssigner;
-    delete highChanAssigner;
+    delete lowerChanAssigner;
+    delete upperChanAssigner;
 }
 
 void MidiGenerator::start() {
     int lowerChannelCount = SettingsWrapper::getLowerMPEVoiceCount();
     mpeZone.setLowerZone(lowerChannelCount, 2, SettingsWrapper::getLowerMPEPB());
-    lowChanAssigner = new juce::MPEChannelAssigner(mpeZone.getLowerZone());
+    lowerChanAssigner = new juce::MPEChannelAssigner(mpeZone.getLowerZone());
     if (lowerChannelCount < 14) {
         int upperChannelCount = SettingsWrapper::getUpperMPEVoiceCount();
         mpeZone.setUpperZone(upperChannelCount, 2, SettingsWrapper::getUpperMPEPB());
-        highChanAssigner = new juce::MPEChannelAssigner(mpeZone.getUpperZone());
+        upperChanAssigner = new juce::MPEChannelAssigner(mpeZone.getUpperZone());
     }
     else
-        highChanAssigner = nullptr;
+        upperChanAssigner = nullptr;
     
     configLookups[0].updateAll();
     configLookups[1].updateAll();
@@ -27,15 +27,17 @@ void MidiGenerator::start() {
 
     samplesSinceLastBreathMsg = 0;
     breathMessageCount = 0;
+    stripMessageCount[0] = 0;
+    stripMessageCount[1] = 0;
     initialized = true;
 }
 
 void MidiGenerator::stop() {
     initialized = false;
-    delete lowChanAssigner;
-    delete highChanAssigner;
-    lowChanAssigner = nullptr;
-    highChanAssigner = nullptr;
+    delete lowerChanAssigner;
+    delete upperChanAssigner;
+    lowerChanAssigner = nullptr;
+    upperChanAssigner = nullptr;
 }
 
 void MidiGenerator::processOSCMessage(OSC::Message &oscMsg, juce::MidiBuffer &midiBuffer) {
@@ -78,6 +80,16 @@ void MidiGenerator::processOSCMessage(OSC::Message &oscMsg, juce::MidiBuffer &mi
                 }
             }
             break;
+        case OSC::MessageType::Strip: {
+                stripMessageCount[oscMsg.strip]++;
+                int deviceIndex = (int)oscMsg.device -1;
+                ehStrip1[deviceIndex] = std::abs((int)(oscMsg.value - 2048))*2;
+                if (stripMessageCount[oscMsg.strip] == 16) {
+                    createStripAbsolute(deviceIndex, oscMsg.strip, configLookups[deviceIndex], midiBuffer);
+                    createStripRelative(deviceIndex, oscMsg.strip, configLookups[deviceIndex], midiBuffer);
+                }
+            }
+            break;
         default:
             break;
     }
@@ -106,12 +118,20 @@ void MidiGenerator::createBreath(int deviceIndex, ConfigLookup &keyLookup, juce:
     samplesSinceLastBreathMsg = 0;
 }
 
+void MidiGenerator::createStripAbsolute(int deviceIndex, int stripNo, ConfigLookup &keyLookup, juce::MidiBuffer &buffer) {
+    
+}
+
+void MidiGenerator::createStripRelative(int deviceIndex, int stripNo, ConfigLookup &keyLookup, juce::MidiBuffer &buffer) {
+    
+}
+
 void MidiGenerator::createNoteOn(ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer) {
     if (keyLookup.output == MidiChannelType::MPE_Low)
-        state->midiChannel = lowChanAssigner->findMidiChannelForNewNote(keyLookup.note);
+        state->midiChannel = lowerChanAssigner->findMidiChannelForNewNote(keyLookup.note);
     else if (keyLookup.output == MidiChannelType::MPE_High) {
-        if (highChanAssigner != nullptr)
-            state->midiChannel = highChanAssigner->findMidiChannelForNewNote(keyLookup.note);
+        if (upperChanAssigner != nullptr)
+            state->midiChannel = upperChanAssigner->findMidiChannelForNewNote(keyLookup.note);
     }
     else
         state->midiChannel = (int)keyLookup.output;
@@ -127,10 +147,10 @@ void MidiGenerator::createNoteOn(ConfigLookup::Key &keyLookup, KeyState *state, 
 void MidiGenerator::createNoteOff(ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer) {
     int channel = state->midiChannel;
     if (keyLookup.output == MidiChannelType::MPE_Low)
-        lowChanAssigner->noteOff(keyLookup.note, channel);
+        lowerChanAssigner->noteOff(keyLookup.note, channel);
     else if (keyLookup.output == MidiChannelType::MPE_High) {
-        if (highChanAssigner != nullptr)
-            highChanAssigner->noteOff(keyLookup.note, channel);
+        if (upperChanAssigner != nullptr)
+            upperChanAssigner->noteOff(keyLookup.note, channel);
     }
 
     auto noteOffMsg = juce::MidiMessage::noteOff(channel, keyLookup.note, 0.0f);

@@ -44,24 +44,20 @@ private:
     unsigned int ehBreath[3] = { 0,0,0 };
     unsigned int ehPedal1 = 0;
     unsigned int ehPedal2 = 0;
-    unsigned int ehStrip1 = 0;
-    unsigned int ehStrip2 = 0;
-
-    unsigned int midiBreath = 0;
-    unsigned int midiStrip1 = 0;
-    unsigned int midiStrip2 = 0;
-    unsigned int midiPedal1 = 0;
-    unsigned int midiPedal2 = 0;
+    unsigned int ehStrip1[3] = { 0, 0, 0 };
+    unsigned int ehStrip2[3] = { 0, 0, 0 };
     
-    juce::MPEChannelAssigner *lowChanAssigner;
-    juce::MPEChannelAssigner *highChanAssigner;
+    juce::MPEChannelAssigner *lowerChanAssigner;
+    juce::MPEChannelAssigner *upperChanAssigner;
 
     void createNoteOn(ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer);
     void createNoteOff(ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer);
     void createNoteHold(ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer);
     void addMidiValueMessage(int channel, int ehValue, ZoneWrapper::MidiValue midiValue, ConfigLookup::Key &keyLookup, juce::MidiBuffer &buffer, bool isBipolar);
     void createBreath(int deviceIndex, ConfigLookup &keyLookup, juce::MidiBuffer &buffer);
-    
+    void createStripAbsolute(int deviceIndex, int stripNo, ConfigLookup &keyLookup, juce::MidiBuffer &buffer);
+    void createStripRelative(int deviceIndex, int stripNo, ConfigLookup &keyLookup, juce::MidiBuffer &buffer);
+
     inline float clamp(float v, float mn, float mx) { return (std::max(std::min(v, mx), mn)); }
     float unipolar(int val) { return std::min(float(val) / 4096.0f, 1.0f); }
     float bipolar(int val) { return clamp(float(val) / 4096.0f, -1.0f, 1.0f); }
@@ -70,4 +66,5 @@ private:
     ConfigLookup *configLookups;
     bool initialized = false;
     int breathMessageCount = 0;
+    int stripMessageCount[2] = { 0, 0 };
 };
