@@ -81,13 +81,22 @@ void MidiGenerator::processOSCMessage(OSC::Message &oscMsg, juce::MidiBuffer &mi
             }
             break;
         case OSC::MessageType::Strip: {
-                stripMessageCount[oscMsg.strip]++;
+                int stripIndex = oscMsg.strip - 1;
+                stripMessageCount[stripIndex]++;
                 int deviceIndex = (int)oscMsg.device -1;
-                ehStrip1[deviceIndex] = std::abs((int)(oscMsg.value - 2048))*2;
-                if (stripMessageCount[oscMsg.strip] == 16) {
-                    createStripAbsolute(deviceIndex, oscMsg.strip, configLookups[deviceIndex], midiBuffer);
-                    createStripRelative(deviceIndex, oscMsg.strip, configLookups[deviceIndex], midiBuffer);
+                bool stripOff = oscMsg.value == 2048;
+                ehStrips[stripIndex][deviceIndex] = stripOff ? 0.0f : std::max((((int)oscMsg.value) - 150) * 1.5f, 0.0f);
+                if (stripOff)
+                    relStart_ehStrips[stripIndex][deviceIndex] = -1;
+                else if (relStart_ehStrips[stripIndex][deviceIndex] < 0)
+                    relStart_ehStrips[stripIndex][deviceIndex] = ehStrips[stripIndex][deviceIndex];
+                for (int i = 0; i < 3; i++) {
+                    if (!stripOff) {
+                        createStripAbsolute(deviceIndex, stripIndex, i, configLookups[deviceIndex], midiBuffer);
+                    }
+                    createStripRelative(deviceIndex, stripIndex, i, configLookups[deviceIndex], midiBuffer);
                 }
+                stripMessageCount[stripIndex] = 0;
             }
             break;
         default:
@@ -118,12 +127,22 @@ void MidiGenerator::createBreath(int deviceIndex, ConfigLookup &keyLookup, juce:
     samplesSinceLastBreathMsg = 0;
 }
 
-void MidiGenerator::createStripAbsolute(int deviceIndex, int stripNo, ConfigLookup &keyLookup, juce::MidiBuffer &buffer) {
+void MidiGenerator::createStripAbsolute(int deviceIndex, int stripIndex, int zoneIndex, ConfigLookup &keyLookup, juce::MidiBuffer &buffer) {
     
+    stripIndex == 0
+        ? addMidiValueMessage(keyLookup.strip1[zoneIndex].channel, ehStrips[stripIndex][deviceIndex], keyLookup.strip1[zoneIndex].absMidiValue, keyLookup.keys[0][0], buffer, false)
+        : addMidiValueMessage(keyLookup.strip2[zoneIndex].channel, ehStrips[stripIndex][deviceIndex], keyLookup.strip2[zoneIndex].absMidiValue, keyLookup.keys[0][0], buffer, false);
 }
 
-void MidiGenerator::createStripRelative(int deviceIndex, int stripNo, ConfigLookup &keyLookup, juce::MidiBuffer &buffer) {
+void MidiGenerator::createStripRelative(int deviceIndex, int stripIndex, int zoneIndex, ConfigLookup &keyLookup, juce::MidiBuffer &buffer) {
+    if (relStart_ehStrips[stripIndex][deviceIndex] < 0)
+        return;
     
+    int relValue = ehStrips[stripIndex][deviceIndex] - relStart_ehStrips[stripIndex][deviceIndex];
+    stripIndex == 0
+        ? addMidiValueMessage(keyLookup.strip1[zoneIndex].channel, relValue, keyLookup.strip1[zoneIndex].relMidiValue, keyLookup.keys[0][0], buffer, true)
+        : addMidiValueMessage(keyLookup.strip2[zoneIndex].channel, relValue, keyLookup.strip2[zoneIndex].relMidiValue, keyLookup.keys[0][0], buffer, true);
+
 }
 
 void MidiGenerator::createNoteOn(ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer) {

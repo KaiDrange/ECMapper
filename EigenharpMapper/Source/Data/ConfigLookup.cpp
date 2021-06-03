@@ -56,6 +56,12 @@ void ConfigLookup::updateKey(juce::ValueTree keytree) {
 }
 
 void ConfigLookup::updateBreath(Zone zone) {
+    if (!ZoneWrapper::getEnabled(deviceType, zone)) {
+        breath[((int)zone)-1].channel = 0;
+        breath[((int)zone)-1].midiValue.valueType = MidiValueType::Off;
+        return;
+    }
+    
     auto midiChannelType = ZoneWrapper::getMidiChannelType(deviceType, zone);
     if (midiChannelType == MidiChannelType::MPE_Low)
         breath[((int)zone)-1].channel = 1;
@@ -68,6 +74,16 @@ void ConfigLookup::updateBreath(Zone zone) {
 }
 
 void ConfigLookup::updateStrips(Zone zone) {
+    if (!ZoneWrapper::getEnabled(deviceType, zone)) {
+        strip1[((int)zone)-1].channel = 0;
+        strip2[((int)zone)-1].channel = 0;
+        strip1[((int)zone)-1].absMidiValue.valueType = MidiValueType::Off;
+        strip1[((int)zone)-1].relMidiValue.valueType = MidiValueType::Off;
+        strip2[((int)zone)-1].absMidiValue.valueType = MidiValueType::Off;
+        strip2[((int)zone)-1].relMidiValue.valueType = MidiValueType::Off;
+        return;
+    }
+    
     auto midiChannelType = ZoneWrapper::getMidiChannelType(deviceType, zone);
     if (midiChannelType == MidiChannelType::MPE_Low) {
         strip1[((int)zone)-1].channel = 1;
