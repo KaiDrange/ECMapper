@@ -12,8 +12,11 @@
 struct ConnectedDevice {
     const char *dev;
     EHDeviceType type = EHDeviceType::None;
+    int assignedLEDColours[3][120]; // course, key
+    bool activeKeys[3][120]; // course, key
 };
 extern std::list<ConnectedDevice> connectedDevices;
+
 
 class APICallback: public EigenApi::Callback {
 public:

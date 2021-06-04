@@ -64,12 +64,21 @@ void EigenharpCore::turnOffAllLEDs(EigenApi::Eigenharp *api) {
                 break;
         }
 
-        for (int i = 0; i < course0Length; i++)
+        for (int i = 0; i < course0Length; i++) {
             api->setLED(device.dev, 0, i, 0);
-        for (int i = 0; i < course1Length; i++)
+            device.assignedLEDColours[0][i] = 0;
+            device.activeKeys[0][i] = false;
+        }
+        for (int i = 0; i < course1Length; i++) {
             api->setLED(device.dev, 1, i, 0);
-        for (int i = 0; i < course2Length; i++)
+            device.assignedLEDColours[1][i] = 0;
+            device.activeKeys[1][i] = false;
+        }
+        for (int i = 0; i < course2Length; i++) {
             api->setLED(device.dev, 2, i, 0);
+            device.assignedLEDColours[2][i] = 0;
+            device.activeKeys[2][i] = false;
+        }
     }
 }
 
@@ -94,9 +103,13 @@ void* EigenharpCore::eigenharpProcess(OSC::OSCMessageFifo *msgQueue, void* arg) 
             if (msgQueue->getMessageCount() > 0) {
                 msgQueue->read(&msg);
                 if (msg.type == OSC::MessageType::LED) {
-                    auto dev = getDevFromType(msg.device);
-                    if (dev != nullptr)
-                        pE->setLED(dev, msg.course, msg.key, msg.value);
+                    for (auto i = begin(connectedDevices); i != end(connectedDevices); i++) {
+                        if (msg.device == i->type) {
+                            i->assignedLEDColours[msg.course][msg.key] = msg.value;
+                            pE->setLED(i->dev, msg.course, msg.key, msg.value);
+                            break;
+                        }
+                    }
                 }
             }
         }
@@ -110,14 +123,6 @@ void* EigenharpCore::eigenharpProcess(OSC::OSCMessageFifo *msgQueue, void* arg) 
 #endif
         
         std::this_thread::sleep_for(std::chrono::microseconds(PROCESS_MICROSEC_SLEEP + 100000*!mapperConnected));
-    }
-    return nullptr;
-}
-
-const char* EigenharpCore::getDevFromType(const EHDeviceType type) {
-    for (auto device : connectedDevices) {
-        if (device.type == type)
-            return device.dev;
     }
     return nullptr;
 }

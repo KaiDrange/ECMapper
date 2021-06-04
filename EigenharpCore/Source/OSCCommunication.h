@@ -8,8 +8,11 @@
 #define MSGPROCESS_MICROSEC_SLEEP 100
 //#define MEASURE_OSCSENDPROCESSTIME
 
+struct ConnectedDevice;
+
 extern volatile std::atomic<bool> exitThreads;
 extern std::atomic<bool> mapperConnected;
+extern std::list<ConnectedDevice> connectedDevices;
 
 class OSCCommunication : private juce::OSCReceiver::Listener<juce::OSCReceiver::MessageLoopCallback>, juce::Timer {
 public:
@@ -48,3 +51,5 @@ private:
     void* sendProcess();
     std::thread sendProcessThread;
 };
+
+#include "APICallback.h"

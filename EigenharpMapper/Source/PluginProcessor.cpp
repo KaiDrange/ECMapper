@@ -92,7 +92,10 @@ void EigenharpMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& buffe
     }
     while (osc.receiveQueue->getMessageCount() > 0) {
         osc.receiveQueue->read(&msg);
-        midiGenerator.processOSCMessage(msg, midiMessages);
+        if (msg.type == OSC::MessageType::Device)
+            layoutChangeHandler.sendLEDMsgForAllKeys(msg.device);
+        else
+            midiGenerator.processOSCMessage(msg, midiMessages);
     }
     
     midiGenerator.samplesSinceLastBreathMsg += buffer.getNumSamples();

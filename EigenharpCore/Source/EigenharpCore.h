@@ -37,8 +37,6 @@ private:
     APICallback *apiCallback;
     OSC::OSCMessageFifo oscSendQueue;
     OSC::OSCMessageFifo oscReceiveQueue;
-    
-    static const char* getDevFromType(const EHDeviceType type);
 };
 
 static EigenharpCore *coreInstance = nullptr;

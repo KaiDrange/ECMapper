@@ -65,6 +65,9 @@ void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
         if (pingCounter == -1) {
             mapperConnected = true;
             std::cout << "Mapper connected" << std::endl;
+            for (auto i = begin(connectedDevices); i != end(connectedDevices); i++) {
+                sendDevice(i->type);
+            }
         }
         pingCounter = 0;
     }

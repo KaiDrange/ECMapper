@@ -70,7 +70,22 @@ void APICallback::key(const char* dev, unsigned long long t, unsigned course, un
         .device = getTypeFromDev(dev)
     };
     sendQueue->add(&msg);
+    
+    for (auto i = begin(connectedDevices); i != end(connectedDevices); i++) {
+        if (i->dev == dev) {
+            if (a && !i->activeKeys[course][key]) {
+                i->activeKeys[course][key] = true;
+                eh_.setLED(dev, course, key, 3);
+            }
+            else if (!a) {
+                i->activeKeys[course][key] = false;
+                eh_.setLED(dev, course, key, i->assignedLEDColours[course][key]);
+            }
+            break;
+        }
+    }
 }
+
 void APICallback::breath(const char* dev, unsigned long long t, unsigned val) {
 //    std::cout  << "breath " << dev << " @ " << t << " - "  << val << std::endl;
     OSC::Message msg {

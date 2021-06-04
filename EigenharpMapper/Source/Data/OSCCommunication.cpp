@@ -43,6 +43,8 @@ void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
         if (pingCounter == -1)
             std::cout << "Core connected" << std::endl;
         pingCounter = 0;
+        receiveQueue->add(&msg);
+
     }
     else if (message.getAddressPattern() == "/EigenharpCore/key" && message.size() == 7) {
         msg = {
@@ -111,6 +113,21 @@ void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
         };
 
         receiveQueue->add(&msg);
+    }
+    else if (message.getAddressPattern() == "/EigenharpCore/device" && message.size() == 1) {
+        msg = {
+            .type = OSC::MessageType::Device,
+            .course = 0,
+            .key = 0,
+            .active = 0,
+            .pressure = 0,
+            .roll = 0,
+            .yaw = 0,
+            .strip = 0,
+            .pedal = 0,
+            .value = 0,
+            .device = (DeviceType)message[0].getInt32()
+        };
     }
 }
 
