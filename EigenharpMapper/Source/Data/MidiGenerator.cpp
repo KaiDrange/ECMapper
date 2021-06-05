@@ -29,6 +29,11 @@ void MidiGenerator::start() {
     breathMessageCount = 0;
     stripMessageCount[0] = 0;
     stripMessageCount[1] = 0;
+    for (int i = 0; i < 16; i++) {
+        currentStripPBperChannel[i] = 0;
+        currentKeyPBperChannel[i] = 0;
+    }
+    
     initialized = true;
 }
 
@@ -131,24 +136,24 @@ void MidiGenerator::createBreath(int deviceIndex, ConfigLookup &keyLookup, juce:
 void MidiGenerator::createStripAbsolute(int deviceIndex, int stripIndex, int zoneIndex, ConfigLookup &keyLookup, juce::MidiBuffer &buffer) {
     
     stripIndex == 0
-        ? addMidiValueMessage(keyLookup.strip1[zoneIndex].channel, ehStrips[stripIndex][deviceIndex], keyLookup.strip1[zoneIndex].absMidiValue, 1.0f, 0, buffer, false)
-        : addMidiValueMessage(keyLookup.strip2[zoneIndex].channel, ehStrips[stripIndex][deviceIndex], keyLookup.strip2[zoneIndex].absMidiValue, 1.0f, 0, buffer, false);
+        ? addStripValueMessage(keyLookup.strip1[zoneIndex].channel, ehStrips[stripIndex][deviceIndex], keyLookup.strip1[zoneIndex].absMidiValue, buffer, false)
+        : addStripValueMessage(keyLookup.strip2[zoneIndex].channel, ehStrips[stripIndex][deviceIndex], keyLookup.strip2[zoneIndex].absMidiValue, buffer, false);
 }
 
 void MidiGenerator::createStripRelative(int deviceIndex, int stripIndex, int zoneIndex, ConfigLookup &keyLookup,
     juce::MidiBuffer &buffer) {
     int relValue;
 
-    if (relStart_ehStrips[stripIndex][deviceIndex] < 0)
+    if (relStart_ehStrips[stripIndex][deviceIndex] < 0) {
         relValue = 1;
-    else {
-        relValue = relStart_ehStrips[stripIndex][deviceIndex] - ehStrips[stripIndex][deviceIndex];
-        std::cout << relValue << std::endl;
+        currentStripPBperChannel[keyLookup.strip1[zoneIndex].channel] = 0;
     }
-    stripIndex == 0
-        ? addMidiValueMessage(keyLookup.strip1[zoneIndex].channel, relValue, keyLookup.strip1[zoneIndex].relMidiValue, 1.0f, 0, buffer, true)
-        : addMidiValueMessage(keyLookup.strip2[zoneIndex].channel, relValue, keyLookup.strip2[zoneIndex].relMidiValue, 1.0f, 0, buffer, true);
+    else
+        relValue = relStart_ehStrips[stripIndex][deviceIndex] - ehStrips[stripIndex][deviceIndex];
 
+    stripIndex == 0
+        ? addStripValueMessage(keyLookup.strip1[zoneIndex].channel, relValue, keyLookup.strip1[zoneIndex].relMidiValue, buffer, true)
+        : addStripValueMessage(keyLookup.strip2[zoneIndex].channel, relValue, keyLookup.strip2[zoneIndex].relMidiValue, buffer, true);
 }
 
 void MidiGenerator::createNoteOn(ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer) {
@@ -178,9 +183,12 @@ void MidiGenerator::createNoteOff(ConfigLookup::Key &keyLookup, KeyState *state,
             upperChanAssigner->noteOff(keyLookup.note, channel);
     }
 
+    
     auto noteOffMsg = juce::MidiMessage::noteOff(channel, keyLookup.note, 0.0f);
     buffer.addEvent(noteOffMsg, buffer.getLastEventTime()+1);
     addMidiValueMessage(channel, 0, keyLookup.pressure, keyLookup.pbRange, keyLookup.note, buffer, false);
+    addMidiValueMessage(channel, 0, keyLookup.roll, keyLookup.pbRange, keyLookup.note, buffer, true);
+    addMidiValueMessage(channel, 0, keyLookup.yaw, keyLookup.pbRange, keyLookup.note, buffer, true);
     state->status = KeyStatus::Off;
     state->messageCount = 0;
 }
@@ -197,7 +205,8 @@ void MidiGenerator::addMidiValueMessage(int channel, int ehValue, ZoneWrapper::M
     if (midiValue.valueType != MidiValueType::Off) {
         juce::MidiMessage msg;
         if (midiValue.valueType == MidiValueType::Pitchbend) {
-            auto pb = isBipolar ? juce::MPEValue::from14BitInt((calculatePitchBendCurve(bipolar(ehValue*1.7f))*pbRange)*0x1fff + 0x1fff) : juce::MPEValue::from14BitInt((unipolar(ehValue)*pbRange)*0x1fff + 0x1fff);
+            currentKeyPBperChannel[channel-1] = (calculatePitchBendCurve(bipolar(ehValue*1.7f))*pbRange)*0x1fff;
+            auto pb = juce::MPEValue::from14BitInt(std::max(std::min(currentKeyPBperChannel[channel-1] + currentStripPBperChannel[channel-1] + 0x1fff, 16383), 0));
             msg = juce::MidiMessage::pitchWheel(channel, pb.as14BitInt());
         }
         else if (midiValue.valueType == MidiValueType::ChannelAftertouch) {
@@ -218,6 +227,29 @@ void MidiGenerator::addMidiValueMessage(int channel, int ehValue, ZoneWrapper::M
         buffer.addEvent(msg, buffer.getLastEventTime()+1);
     }
 }
+
+void MidiGenerator::addStripValueMessage(int channel, int ehValue, ZoneWrapper::MidiValue midiValue, juce::MidiBuffer &buffer, bool isBipolar) {
+    if (midiValue.valueType != MidiValueType::Off) {
+        juce::MidiMessage msg;
+        if (midiValue.valueType == MidiValueType::Pitchbend) {
+            currentStripPBperChannel[channel-1] = isBipolar ? (calculatePitchBendCurve(bipolar(ehValue*1.7f)))*0x1fff : (unipolar(ehValue))*0x1fff;
+            auto pb = juce::MPEValue::from14BitInt(std::max(std::min(currentKeyPBperChannel[channel-1] + currentStripPBperChannel[channel-1] + 0x1fff, 16383), 0));
+            msg = juce::MidiMessage::pitchWheel(channel, pb.as14BitInt());
+        }
+        else if (midiValue.valueType == MidiValueType::ChannelAftertouch) {
+            auto at = isBipolar ? juce::MPEValue::from7BitInt(bipolar(ehValue*1.7f)*63+64)
+                                : juce::MPEValue::from7BitInt(unipolar(ehValue*1.7f)*127);
+            msg = juce::MidiMessage::channelPressureChange(channel, at.as7BitInt());
+        }
+        else if (midiValue.valueType == MidiValueType::CC) {
+            auto cc = isBipolar ? juce::MPEValue::from7BitInt(bipolar(ehValue*1.7f)*63+64)
+                                : juce::MPEValue::from7BitInt(unipolar(ehValue)*127);
+            msg = juce::MidiMessage::controllerEvent(channel, midiValue.ccNo, cc.as7BitInt());
+        }
+        buffer.addEvent(msg, buffer.getLastEventTime()+1);
+    }
+}
+
 
 void MidiGenerator::createLayoutRPNs(juce::MidiBuffer &buffer) {
     buffer.clear();

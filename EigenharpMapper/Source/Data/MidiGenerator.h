@@ -46,6 +46,8 @@ private:
     unsigned int ehPedal2 = 0;
     int ehStrips[2][3] = {{ 0, 0, 0 }, { 0, 0, 0 }};
     int relStart_ehStrips[2][3] = {{ -1, -1, -1 }, { -1, -1, -1 }};
+    int currentKeyPBperChannel[16];
+    int currentStripPBperChannel[16];
 
     juce::MPEChannelAssigner *lowerChanAssigner;
     juce::MPEChannelAssigner *upperChanAssigner;
@@ -54,6 +56,7 @@ private:
     void createNoteOff(ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer);
     void createNoteHold(ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer);
     void addMidiValueMessage(int channel, int ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, int noteNo, juce::MidiBuffer &buffer, bool isBipolar);
+    void addStripValueMessage(int channel, int ehValue, ZoneWrapper::MidiValue midiValue, juce::MidiBuffer &buffer, bool isBipolar);
     void createBreath(int deviceIndex, ConfigLookup &keyLookup, juce::MidiBuffer &buffer);
     void createStripAbsolute(int deviceIndex, int stripIndex, int zoneIndex, ConfigLookup &keyLookup, juce::MidiBuffer &buffer);
     void createStripRelative(int deviceIndex, int stripIndex, int zoneIndex, ConfigLookup &keyLookup, juce::MidiBuffer &buffer);
