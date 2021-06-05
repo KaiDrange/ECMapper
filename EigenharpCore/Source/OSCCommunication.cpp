@@ -145,6 +145,9 @@ void* OSCCommunication::sendProcess() {
                 case OSC::MessageType::Pedal:
                     sendStrip(msg.pedal, msg.value, msg.device);
                     break;
+                case OSC::MessageType::Device:
+                    sendDevice(msg.device);
+                    break;
                 default:
                     break;
             }

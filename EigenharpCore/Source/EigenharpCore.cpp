@@ -30,7 +30,7 @@ void EigenharpCore::initialise(const juce::String &) {
         else
             showHelpTextAndQuit();
     }
-
+    
     if (!exitThreads) {
         eigenApi.setPollTime(EIGENAPI_POLLTIME);
         apiCallback = new APICallback(eigenApi, &oscSendQueue);

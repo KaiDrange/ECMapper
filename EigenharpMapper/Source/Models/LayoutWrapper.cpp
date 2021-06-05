@@ -17,14 +17,15 @@ void LayoutWrapper::addListener(DeviceType deviceType, juce::ValueTree::Listener
 
 LayoutWrapper::LayoutKey LayoutWrapper::getLayoutKey(KeyId keyId) {
     auto keyTree = getKeyTree(keyId);
+    auto defaultKeyType = getCorrectDefaultKeyType(keyId.deviceType, keyId.course);
     
     return LayoutKey {
         .keyId = keyId,
-        .keyType = (EigenharpKeyType)int(keyTree.getProperty(id_keyType, (int)default_key.keyType)),
+        .keyType = (EigenharpKeyType)int(keyTree.getProperty(id_keyType,(int)defaultKeyType)),
         .keyColour = (KeyColour)int(keyTree.getProperty(id_keyColour, (int)default_key.keyColour)),
         .zone = (Zone)int(keyTree.getProperty(id_zone, (int)default_key.zone)),
-        .keyMappingType = (KeyMappingType)int(keyTree.getProperty(id_keyMappingType, (int)default_key.keyMappingType)),
-        .mappingValue = keyTree.getProperty(id_mappingValue, default_key.mappingValue)
+        .keyMappingType = (KeyMappingType)int(keyTree.getProperty(id_keyMappingType, (int)getDefaultMappingTypeFromKeyType(defaultKeyType))),
+        .mappingValue = keyTree.getProperty(id_mappingValue, defaultKeyType == EigenharpKeyType::Normal ? "0" : "")
     };
 }
 
@@ -88,4 +89,26 @@ DeviceType LayoutWrapper::getDeviceTypeFromLayoutTree(juce::ValueTree layoutTree
         return DeviceType::None;
 
     return (DeviceType)layoutTree.getParent().getType().toString().substring(6, 7).getIntValue();
+}
+
+EigenharpKeyType LayoutWrapper::getCorrectDefaultKeyType(DeviceType deviceType, int course) {
+    switch (deviceType) {
+        case DeviceType::Alpha:
+            return course == 0 ? EigenharpKeyType::Normal : EigenharpKeyType::Perc;
+            break;
+        case DeviceType::Tau:
+            if (course == 0) return EigenharpKeyType::Normal;
+            else if (course == 1) return EigenharpKeyType::Perc;
+            else return EigenharpKeyType::Button;
+            break;
+        case DeviceType::Pico:
+            return course == 0 ? EigenharpKeyType::Normal : EigenharpKeyType::Button;
+            break;
+        default:
+            return EigenharpKeyType::Normal;
+    }
+}
+
+KeyMappingType LayoutWrapper::getDefaultMappingTypeFromKeyType(EigenharpKeyType keyType) {
+    return keyType == EigenharpKeyType::Normal ? KeyMappingType::Note : KeyMappingType::None;
 }

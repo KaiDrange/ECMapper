@@ -51,15 +51,17 @@ public:
     static void addListener(DeviceType deviceType, juce::ValueTree::Listener *listener);
 private:
     static juce::ValueTree getKeyTree(KeyId keyId);
+    static EigenharpKeyType getCorrectDefaultKeyType(DeviceType deviceType, int course);
+    static KeyMappingType getDefaultMappingTypeFromKeyType(EigenharpKeyType keyType);
 
     static inline const LayoutKey default_key = {
         LayoutKey {
             .keyId = { .deviceType = DeviceType::None, .course = 0, .keyNo = 0 },
             .keyColour = KeyColour::Off,
             .keyType = EigenharpKeyType::Normal,
-            .zone = Zone::NoZone,
-            .keyMappingType = KeyMappingType::None,
-            .mappingValue = ""
+            .zone = Zone::Zone1,
+            .keyMappingType = KeyMappingType::Note,
+            .mappingValue = "0"
         }
     };
 

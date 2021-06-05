@@ -55,22 +55,7 @@ void APICallback::key(const char* dev, unsigned long long t, unsigned course, un
     counter++;
     if (counter%1024 == 0)
         std::cout  << "key " << dev << " @ " << t << " - " << course << ":" << key << ' ' << a << ' ' << p << ' ' << r << ' ' << y << std::endl;
-    
-    OSC::Message msg {
-        .type = OSC::MessageType::Key,
-        .key = key,
-        .course = course,
-        .active = a,
-        .pressure = p,
-        .roll = r,
-        .yaw = y,
-        .value = 0,
-        .pedal = 0,
-        .strip = 0,
-        .device = getTypeFromDev(dev)
-    };
-    sendQueue->add(&msg);
-    
+
     for (auto i = begin(connectedDevices); i != end(connectedDevices); i++) {
         if (i->dev == dev) {
             if (a && !i->activeKeys[course][key]) {
@@ -81,6 +66,23 @@ void APICallback::key(const char* dev, unsigned long long t, unsigned course, un
                 i->activeKeys[course][key] = false;
                 eh_.setLED(dev, course, key, i->assignedLEDColours[course][key]);
             }
+            
+            OSC::Message msg {
+                .type = OSC::MessageType::Key,
+                .key = key,
+                .course = course,
+                .active = a,
+                .pressure = p,
+                .roll = i->type == EHDeviceType::Alpha ? -r : r,
+                .yaw = i->type == EHDeviceType::Alpha ? -y : y,
+                .value = 0,
+                .pedal = 0,
+                .strip = 0,
+                .device = i->type
+            };
+            sendQueue->add(&msg);
+            
+            
             break;
         }
     }
