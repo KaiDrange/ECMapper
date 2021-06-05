@@ -140,9 +140,11 @@ void MidiGenerator::createStripRelative(int deviceIndex, int stripIndex, int zon
     int relValue;
 
     if (relStart_ehStrips[stripIndex][deviceIndex] < 0)
-        relValue = 0;
-    else
+        relValue = 1;
+    else {
         relValue = relStart_ehStrips[stripIndex][deviceIndex] - ehStrips[stripIndex][deviceIndex];
+        std::cout << relValue << std::endl;
+    }
     stripIndex == 0
         ? addMidiValueMessage(keyLookup.strip1[zoneIndex].channel, relValue, keyLookup.strip1[zoneIndex].relMidiValue, 1.0f, 0, buffer, true)
         : addMidiValueMessage(keyLookup.strip2[zoneIndex].channel, relValue, keyLookup.strip2[zoneIndex].relMidiValue, 1.0f, 0, buffer, true);

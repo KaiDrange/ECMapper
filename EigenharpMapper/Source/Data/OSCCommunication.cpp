@@ -43,7 +43,7 @@ void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
         if (pingCounter == -1)
             std::cout << "Core connected" << std::endl;
         pingCounter = 0;
-        receiveQueue->add(&msg);
+//        receiveQueue->add(&msg);
 
     }
     else if (message.getAddressPattern() == "/EigenharpCore/key" && message.size() == 7) {
@@ -99,7 +99,7 @@ void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
     }
     else if (message.getAddressPattern() == "/EigenharpCore/pedal" && message.size() == 3) {
         msg = {
-            .type = OSC::MessageType::Strip,
+            .type = OSC::MessageType::Pedal,
             .course = 0,
             .key = 0,
             .active = 0,
