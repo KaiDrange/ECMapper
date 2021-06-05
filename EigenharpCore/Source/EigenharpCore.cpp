@@ -9,25 +9,47 @@ EigenharpCore::EigenharpCore() : eigenApi("./"), osc(&oscSendQueue, &oscReceiveQ
 void EigenharpCore::initialise(const juce::String &) {
     exitThreads = false;
     signal(SIGINT, EigenharpCore::intHandler);
-    osc.connectSender("127.0.0.1", senderPort);
-    osc.connectReceiver(receiverPort);
 
-    eigenApi.setPollTime(EIGENAPI_POLLTIME);
-    apiCallback = new APICallback(eigenApi, &oscSendQueue);
-    eigenApi.addCallback(apiCallback);
-    if(!eigenApi.start()) {
-        std::cout  << "unable to start EigenLite" << std::endl;
+    auto params = getCommandLineParameterArray();
+    juce::String ipString = defaultIP;
+    for (int i = 0; i < params.size(); i++) {
+        if ((params[i] == "-ip" || params[i] == "--ip") && params.size() > i+1)
+            ipString = params[i+1];
+        
+        else if (params[i] == "-h" || params[i] == "--help")
+            showHelpTextAndQuit();
     }
     
-    eigenApiProcessThread = std::thread(coreInstance->eigenharpProcess, &oscReceiveQueue, &eigenApi);
+    if (!exitThreads) {
+        juce::StringArray ipAndPortNo;
+        splitString(ipString, ":", ipAndPortNo);
+        if (ipAndPortNo.size() == 2) {
+            osc.connectSender(ipAndPortNo[0], ipAndPortNo[1].getIntValue());
+            osc.connectReceiver(ipAndPortNo[1].getIntValue() - 1);
+        }
+        else
+            showHelpTextAndQuit();
+    }
+
+    if (!exitThreads) {
+        eigenApi.setPollTime(EIGENAPI_POLLTIME);
+        apiCallback = new APICallback(eigenApi, &oscSendQueue);
+        eigenApi.addCallback(apiCallback);
+        if(!eigenApi.start()) {
+            std::cout  << "Unable to start EigenLite" << std::endl;
+        }
+        
+        eigenApiProcessThread = std::thread(coreInstance->eigenharpProcess, &oscReceiveQueue, &eigenApi);
+    }
 }
 
 void EigenharpCore::shutdown() {
-    std::cout << "Trying to quit gracefully..." << std::endl;
+    std::cout << "Shutting down..." << std::endl;
     turnOffAllLEDs(&eigenApi);
     exitThreads = true;
     sleep(1);
-    eigenApiProcessThread.join();
+    if (eigenApiProcessThread.joinable())
+        eigenApiProcessThread.join();
     eigenApi.stop();
     osc.disconnectReceiver();
     osc.disconnectSender();
@@ -36,7 +58,6 @@ void EigenharpCore::shutdown() {
 }
 
 void EigenharpCore::intHandler(int dummy) {
-    std::cerr  << "int handler called" << std::endl;
     coreInstance->systemRequestedQuit();
 }
 
@@ -127,6 +148,11 @@ void* EigenharpCore::eigenharpProcess(OSC::OSCMessageFifo *msgQueue, void* arg) 
     return nullptr;
 }
 
+void EigenharpCore::splitString(const juce::String &text, const juce::String &separator, juce::StringArray &tokens) {
+    tokens.addTokens (text, separator, "\"");
+}
+
+
 //void EigenharpCore::makeThreadRealtime(std::thread& thread) {
 //
 //    int policy;
@@ -137,3 +163,14 @@ void* EigenharpCore::eigenharpProcess(OSC::OSCMessageFifo *msgQueue, void* arg) 
 //    pthread_setschedparam(thread.native_handle(), SCHED_FIFO, &param);
 //
 //}
+
+void EigenharpCore::showHelpTextAndQuit() {
+    std::cout << std::endl << std::endl;
+    std::cout << getApplicationName() << " version " << getApplicationVersion() << std::endl << std::endl;
+    std::cout << "Usage:" << std::endl;
+    std::cout << "--help|-h" << std::endl << "     Prints this help text." << std::endl;
+    std::cout << "--ip|-ip ip-address:port" << std::endl << "     Sets ip address for OSC communication with Mapper. Port number will be used for transmitting. Receiving port will be the one directly below. If argument is omitted, this will default to: " << defaultIP << std::endl;
+    std::cout << std::endl;
+    exitThreads = true;
+    JUCEApplicationBase::quit();
+}

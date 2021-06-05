@@ -34,10 +34,12 @@ private:
     juce::OSCSender sender;
     juce::String senderIP;
     int senderPort = -1;
+    bool senderConnected = false;
     
     juce::OSCReceiver receiver;
     juce::String receiverIP;
     int receiverPort = -1;
+    bool receiverConnected = false;
     
     void oscMessageReceived(const juce::OSCMessage& message) override;
     void timerCallback() override;

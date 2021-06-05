@@ -27,7 +27,7 @@ public:
 
     
 private:
-    static inline const juce::String default_IP { "127.0.0.1:7000" };
+    static inline const juce::String default_IP { "127.0.0.1:12120" };
     static inline const int default_lowerMPEVoiceCount = 15;
     static inline const int default_upperMPEVoiceCount = 0;
     static inline const int default_lowerMPEPB = 48;

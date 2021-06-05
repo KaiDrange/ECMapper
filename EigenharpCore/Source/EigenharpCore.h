@@ -17,7 +17,7 @@ class EigenharpCore : public juce::JUCEApplication {
 public:
     EigenharpCore();
     const juce::String getApplicationName() override { return "EigenharpCore"; }
-    const juce::String getApplicationVersion() override { return "0.0.1"; }
+    const juce::String getApplicationVersion() override { return "0.9.1"; }
     void initialise(const juce::String &) override;
     void shutdown() override;
     
@@ -29,19 +29,23 @@ private:
     std::thread eigenApiProcessThread;
     static void intHandler(int dummy);
     static void* eigenharpProcess(OSC::OSCMessageFifo *msgQueue, void* arg);
+    void splitString(const juce::String &text, const juce::String &separator, juce::StringArray &tokens);
 //    void makeThreadRealtime(std::thread& thread);
     
-    const int senderPort = 7001;
-    const int receiverPort = 7000;
+    const juce::String defaultIP = "127.0.0.1:12121";
     
     APICallback *apiCallback;
     OSC::OSCMessageFifo oscSendQueue;
     OSC::OSCMessageFifo oscReceiveQueue;
+    
+    void showHelpTextAndQuit();
 };
 
 static EigenharpCore *coreInstance = nullptr;
 volatile std::atomic<bool> exitThreads;
 std::atomic<bool> mapperConnected;
 std::list<ConnectedDevice> connectedDevices;
+
+
 
 START_JUCE_APPLICATION (EigenharpCore)

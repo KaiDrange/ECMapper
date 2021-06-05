@@ -25,22 +25,29 @@ OSCCommunication::~OSCCommunication() {
 bool OSCCommunication::connectSender(juce::String ip, int port)  {
     this->senderIP = ip;
     this->senderPort = port;
+    std::cout << "Connecting to: " << senderIP << std::endl;
+    std::cout << "Transmitting on port: " << senderPort << std::endl;
+    senderConnected = true;
     return sender.connect(senderIP, senderPort);
 }
 
 void OSCCommunication::disconnectSender() {
     sender.disconnect();
+    senderConnected = false;
     senderPort = -1;
 }
 
 bool OSCCommunication::connectReceiver(int port)  {
     this->receiverPort = port;
+    receiverConnected = true;
+    std::cout << "Receiving on port: " << receiverPort << std::endl;
     return receiver.connect(receiverPort);
 }
 
 void OSCCommunication::disconnectReceiver() {
     receiver.disconnect();
     receiverPort = -1;
+    receiverConnected = false;
 }
 
 void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
@@ -99,6 +106,9 @@ void OSCCommunication::sendPedal(unsigned pedal, unsigned val, EHDeviceType devi
 }
 
 void OSCCommunication::timerCallback() {
+    if (!senderConnected)
+        return;
+    
     sender.send("/EigenharpCore/ping");
     if (pingCounter > -1)
         pingCounter++;
@@ -119,6 +129,9 @@ void* OSCCommunication::sendProcess() {
         static OSC::Message msg;
         while (sendQueue->getMessageCount() > 0) {
             sendQueue->read(&msg);
+            if (!senderConnected)
+                continue;
+
             switch (msg.type) {
                 case OSC::MessageType::Key:
                     sendKey(msg.course, msg.key, msg.active, msg.pressure, msg.roll, msg.yaw, msg.device);
