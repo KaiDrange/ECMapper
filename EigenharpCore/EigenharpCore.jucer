@@ -5,11 +5,21 @@
               headerPath="../../EigenLite" companyName="Tic Tic" companyWebsite="ticticelectro.com">
   <MAINGROUP id="dvyoE3" name="EigenharpCore">
     <GROUP id="{1C19C29A-4545-EE67-D771-08FEDC080667}" name="EigenLite">
+      <GROUP id="{65C910C9-0B03-449A-37BE-933D68C6BA4F}" name="resources">
+        <FILE id="YL2ZZs" name="69-eigenharp.rules" compile="0" resource="1"
+              file="EigenLite/resources/69-eigenharp.rules" xcodeResource="1"/>
+        <FILE id="HjwBus" name="bs_mm_fw_0103.ihx" compile="0" resource="1"
+              file="EigenLite/resources/bs_mm_fw_0103.ihx" xcodeResource="1"/>
+        <FILE id="dgm58B" name="libeigenapi.dylib" compile="0" resource="1"
+              file="EigenLite/resources/libeigenapi.dylib" xcodeResource="1"/>
+        <FILE id="mQwFTc" name="libpicodecoder.dylib" compile="0" resource="1"
+              file="EigenLite/resources/libpicodecoder.dylib" xcodeResource="1"/>
+        <FILE id="p2r0YO" name="pico.ihx" compile="0" resource="1" file="EigenLite/resources/pico.ihx"
+              xcodeResource="1"/>
+        <FILE id="aMePRh" name="psu_mm_fw_0102.ihx" compile="0" resource="1"
+              file="EigenLite/resources/psu_mm_fw_0102.ihx" xcodeResource="1"/>
+      </GROUP>
       <FILE id="Yf4A7d" name="eigenapi.h" compile="0" resource="0" file="EigenLite/eigenapi.h"/>
-      <FILE id="TOyIVD" name="libeigenapi.dylib" compile="0" resource="1"
-            file="EigenLite/libeigenapi.dylib" xcodeResource="1"/>
-      <FILE id="XJiRtD" name="libpicodecoder.dylib" compile="0" resource="1"
-            file="EigenLite/libpicodecoder.dylib" xcodeResource="1"/>
     </GROUP>
     <GROUP id="{623A5C0B-6BB3-A687-77EA-9782D6F18EA2}" name="Source">
       <FILE id="AxQKSM" name="APICallback.cpp" compile="1" resource="0" file="Source/APICallback.cpp"/>
@@ -31,12 +41,12 @@
   <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1"/>
   <EXPORTFORMATS>
     <XCODE_MAC targetFolder="Builds/MacOSX" externalLibraries="eigenapi&#10;picodecoder"
-               xcodeValidArchs="x86_64">
+               xcodeValidArchs="x86_64" postbuildCommand="install_name_tool -add_rpath @executable_path/resources build/Debug/EigenharpCore || true&#10;install_name_tool -add_rpath @executable_path/resources build/Release/EigenharpCore || true">
       <CONFIGURATIONS>
-        <CONFIGURATION isDebug="1" name="Debug" targetName="EigenharpCore" libraryPath="${PROJECT_DIR}/../../EigenLite"
-                       osxCompatibility="11.1 SDK" userNotes="Temp fix before starting executable:&#10;&#10;install_name_tool -add_rpath @executable_path ./EigenharpCore"/>
-        <CONFIGURATION isDebug="0" name="Release" targetName="EigenharpCore" headerPath="${PROJECT_DIR}/../../EigenLite"
+        <CONFIGURATION isDebug="1" name="Debug" targetName="EigenharpCore" libraryPath="${PROJECT_DIR}/../../EigenLite/resources&#10;"
                        osxCompatibility="11.1 SDK"/>
+        <CONFIGURATION isDebug="0" name="Release" targetName="EigenharpCore" osxCompatibility="11.1 SDK"
+                       libraryPath="${PROJECT_DIR}/../../EigenLite/resources"/>
       </CONFIGURATIONS>
       <MODULEPATHS>
         <MODULEPATH id="juce_core" path="../../../../JUCE/modules"/>

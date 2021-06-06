@@ -1,6 +1,6 @@
 #include "EigenharpCore.h"
 
-EigenharpCore::EigenharpCore() : eigenApi("./"), osc(&oscSendQueue, &oscReceiveQueue) {
+EigenharpCore::EigenharpCore() : eigenApi("/resources/"), osc(&oscSendQueue, &oscReceiveQueue) {
     jassert(coreInstance == nullptr);
     coreInstance = this;
     mapperConnected = false;

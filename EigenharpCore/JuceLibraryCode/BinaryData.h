@@ -8,14 +8,26 @@
 
 namespace BinaryData
 {
+    extern const char*   _69eigenharp_rules;
+    const int            _69eigenharp_rulesSize = 767;
+
+    extern const char*   bs_mm_fw_0103_ihx;
+    const int            bs_mm_fw_0103_ihxSize = 20326;
+
     extern const char*   libeigenapi_dylib;
     const int            libeigenapi_dylibSize = 331344;
 
     extern const char*   libpicodecoder_dylib;
-    const int            libpicodecoder_dylibSize = 68320;
+    const int            libpicodecoder_dylibSize = 60216;
+
+    extern const char*   pico_ihx;
+    const int            pico_ihxSize = 24114;
+
+    extern const char*   psu_mm_fw_0102_ihx;
+    const int            psu_mm_fw_0102_ihxSize = 17752;
 
     // Number of elements in the namedResourceList and originalFileNames arrays.
-    const int namedResourceListSize = 2;
+    const int namedResourceListSize = 6;
 
     // Points to the start of a list of resource names.
     extern const char* namedResourceList[];
