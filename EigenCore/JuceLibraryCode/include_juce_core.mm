@@ -5,4 +5,4 @@
 
 */
 
-#include <juce_core/juce_core.cpp>
+#include <juce_core/juce_core.mm>
