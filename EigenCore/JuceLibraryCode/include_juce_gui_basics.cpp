@@ -5,4 +5,4 @@
 
 */
 
-#include <juce_graphics/juce_graphics.mm>
+#include <juce_gui_basics/juce_gui_basics.cpp>
