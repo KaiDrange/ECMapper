@@ -5,6 +5,12 @@
               headerPath="../../EigenLite" companyName="Tic Tech" companyWebsite="ticticelectro.com"
               version="0.9.1" companyEmail="kaimdrange@hotmail.com">
   <MAINGROUP id="dvyoE3" name="EigenCore">
+    <GROUP id="{2146EA0C-D6B2-CA61-B714-EEFE8465DFB0}" name="Gfx">
+      <FILE id="egLTOC" name="EigenCore_Icon512x512.png" compile="0" resource="1"
+            file="../Gfx/EigenCore_Icon512x512.png" xcodeResource="1"/>
+      <FILE id="vxRPDF" name="EigenCore_Icon1024x1024.png" compile="0" resource="1"
+            file="../Gfx/EigenCore_Icon1024x1024.png" xcodeResource="1"/>
+    </GROUP>
     <GROUP id="{1C19C29A-4545-EE67-D771-08FEDC080667}" name="EigenLite">
       <GROUP id="{65C910C9-0B03-449A-37BE-933D68C6BA4F}" name="resources">
         <FILE id="YL2ZZs" name="69-eigenharp.rules" compile="0" resource="1"
@@ -41,11 +47,12 @@
   <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1"/>
   <EXPORTFORMATS>
     <XCODE_MAC targetFolder="Builds/MacOSX" externalLibraries="eigenapi&#10;picodecoder"
-               xcodeValidArchs="x86_64" postbuildCommand="install_name_tool -add_rpath @executable_path/resources build/Debug/EigenCore || true&#10;install_name_tool -add_rpath @executable_path/resources build/Release/EigenCore || true">
+               xcodeValidArchs="x86_64" postbuildCommand="install_name_tool -add_rpath @executable_path/resources build/Debug/EigenCore || true&#10;install_name_tool -add_rpath @executable_path/resources build/Release/EigenCore || true"
+               smallIcon="egLTOC" bigIcon="vxRPDF">
       <CONFIGURATIONS>
         <CONFIGURATION isDebug="1" name="Debug" targetName="EigenCore" libraryPath="${PROJECT_DIR}/../../EigenLite/resources&#10;"
-                       osxCompatibility="11.1 SDK"/>
-        <CONFIGURATION isDebug="0" name="Release" targetName="EigenCore" osxCompatibility="11.1 SDK"
+                       osxCompatibility="10.12 SDK"/>
+        <CONFIGURATION isDebug="0" name="Release" targetName="EigenCore" osxCompatibility="10.12 SDK"
                        libraryPath="${PROJECT_DIR}/../../EigenLite/resources"/>
       </CONFIGURATIONS>
       <MODULEPATHS>

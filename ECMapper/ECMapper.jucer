@@ -7,6 +7,12 @@
               aaxIdentifier="ECMapper" cppLanguageStandard="17" version="0.9.1"
               companyName="Tic Tech" companyWebsite="ticticelectro.com" companyEmail="kaimdrange@hotmail.com">
   <MAINGROUP id="vhB8QE" name="ECMapper">
+    <GROUP id="{C08E6E0F-711F-5656-DD30-D523FCECDD9A}" name="Gfx">
+      <FILE id="pM0slc" name="ECMapper_Icon512x512.png" compile="0" resource="1"
+            file="../Gfx/ECMapper_Icon512x512.png" xcodeResource="1"/>
+      <FILE id="ShaqyE" name="ECMapper_Icon1024x1024.png" compile="0" resource="1"
+            file="../Gfx/ECMapper_Icon1024x1024.png" xcodeResource="1"/>
+    </GROUP>
     <GROUP id="{5DC590AE-B94A-F53F-3A94-BEFDDBFEA6DC}" name="Source">
       <GROUP id="{0966D1C5-EBFE-2204-5620-C352A5F938AA}" name="UI">
         <FILE id="U4cBIU" name="DropdownComponent.cpp" compile="1" resource="0"
@@ -111,7 +117,7 @@
         <MODULEPATH id="juce_osc" path="../../../../JUCE/modules"/>
       </MODULEPATHS>
     </VS2019>
-    <XCODE_MAC targetFolder="Builds/MacOSX">
+    <XCODE_MAC targetFolder="Builds/MacOSX" smallIcon="pM0slc" bigIcon="ShaqyE">
       <CONFIGURATIONS>
         <CONFIGURATION isDebug="1" name="Debug" targetName="ECMapper"/>
         <CONFIGURATION isDebug="0" name="Release" targetName="ECMapper"/>
