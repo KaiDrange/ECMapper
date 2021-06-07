@@ -19,7 +19,7 @@ LayoutComponent::LayoutComponent(DeviceType deviceType, float widthFactor, float
         menu.addItem("None", [&] { LayoutWrapper::setKeyMappingType(activeKeyId, KeyMappingType::None); showHidePanels(); repaint();});
         menu.addItem("Note", [&] { LayoutWrapper::setKeyMappingType(activeKeyId, KeyMappingType::Note); showHidePanels(); repaint();});
         menu.addItem("Midi msg", [&] { LayoutWrapper::setKeyMappingType(activeKeyId, KeyMappingType::MidiMsg); showHidePanels(); repaint();});
-        menu.addItem("Internal ctrl", [&] { LayoutWrapper::setKeyMappingType(activeKeyId, KeyMappingType::Internal); showHidePanels(); repaint();});
+//        menu.addItem("Internal ctrl", [&] { LayoutWrapper::setKeyMappingType(activeKeyId, KeyMappingType::Internal); showHidePanels(); repaint();});
         menu.showMenuAsync (juce::PopupMenu::Options{}.withTargetComponent(mapTypeMenuButton));
     };
 
@@ -83,13 +83,13 @@ void LayoutComponent::resized()
     zoneMenuButton.setBounds(menuArea.removeFromTop(area.getHeight()*0.04));
     
     menuArea.removeFromTop(15);
-    midiMessageSectionComponent.setBounds(menuArea.removeFromTop(area.getHeight()*0.5));
+    midiMessageSectionComponent.setBounds(menuArea.removeFromTop(area.getHeight()));
     
     auto keyWidth = area.getWidth()/8.0;
     auto keyHeight = area.getHeight()/24.0;
     auto percKeyWidth = area.getWidth()/4.0;
     auto percKeyHeight = area.getHeight()/16.0;
-    auto buttonDiameter = area.getHeight()/32.0;
+    auto buttonDiameter = area.getHeight()/28.0;
     
     auto currentKeyIndex = 0;
     for (int j = 0; j < getKeyRowCount(); j++) {
@@ -328,6 +328,8 @@ int LayoutComponent::getRowNumber(int keyIndex) {
 
 void LayoutComponent::valuesChanged(MidiMessageSectionComponent*) {
     LayoutWrapper::setKeyMappingValue(activeKeyId, midiMessageSectionComponent.getMessageString());
+    midiMessageSectionComponent.updatePanelFromMessageString(LayoutWrapper::getLayoutKey(activeKeyId).mappingValue);
+    repaint();
 }
 
 int LayoutComponent::getNormalkeyCount() const {

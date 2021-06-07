@@ -4,7 +4,7 @@
 juce::String FileUtil::openMapping(DeviceType instrumentType) {
     juce::File pathFile("~/Documents/ECMapperLayouts/");
     
-    juce::FileChooser fileChooser("Open mapping", pathFile, getFileExtension(instrumentType));
+    juce::FileChooser fileChooser("Open layout", pathFile, getFileExtension(instrumentType));
     if (fileChooser.browseForFileToOpen()) {
         auto file = fileChooser.getResult();
         if (!file.existsAsFile())
@@ -17,8 +17,8 @@ juce::String FileUtil::openMapping(DeviceType instrumentType) {
 
 bool FileUtil::saveMapping(juce::ValueTree valueTree, DeviceType instrumentType) {
     auto success = false;
-    juce::File pathFile("./Mappings/");
-    juce::FileChooser fileChooser("Save mapping", pathFile, getFileExtension(instrumentType));
+    juce::File pathFile("~/Documents/ECMapperLayouts/");
+    juce::FileChooser fileChooser("Save layout", pathFile, getFileExtension(instrumentType));
     if (fileChooser.browseForFileToSave(true)) {
         auto file = fileChooser.getResult();
         valueTree.createXml()->writeTo(file);

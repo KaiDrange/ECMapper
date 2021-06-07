@@ -20,6 +20,18 @@ void KeyConfigComponent::paint(juce::Graphics& g) {
     if (layoutKey.keyMappingType == KeyMappingType::Note) {
         keyText = juce::MidiMessage::getMidiNoteName(keyText.getIntValue(), true, true, 3);
     }
+    else if (layoutKey.keyMappingType == KeyMappingType::MidiMsg) {
+        juce::StringArray midiMsgParts;
+        Utility::splitString(keyText, ";", midiMsgParts);
+        if (midiMsgParts.size() > 1) {
+            if (midiMsgParts[1] == "Realtime")
+                keyText = "RT";
+            else if (midiMsgParts[1] == "AllNotesOff")
+                keyText = "!";
+            else
+                keyText = midiMsgParts[1];
+        }
+    }
         
     g.drawFittedText(keyText, getLocalBounds(),
                 juce::Justification::centred, true);
