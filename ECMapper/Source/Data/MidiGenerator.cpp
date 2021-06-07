@@ -39,8 +39,10 @@ void MidiGenerator::start() {
 
 void MidiGenerator::stop() {
     initialized = false;
-    delete lowerChanAssigner;
-    delete upperChanAssigner;
+    if (lowerChanAssigner != nullptr)
+        delete lowerChanAssigner;
+    if (upperChanAssigner != nullptr)
+        delete upperChanAssigner;
     lowerChanAssigner = nullptr;
     upperChanAssigner = nullptr;
 }

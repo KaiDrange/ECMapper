@@ -49,8 +49,8 @@ private:
     int currentKeyPBperChannel[16];
     int currentStripPBperChannel[16];
 
-    juce::MPEChannelAssigner *lowerChanAssigner;
-    juce::MPEChannelAssigner *upperChanAssigner;
+    juce::MPEChannelAssigner *lowerChanAssigner = nullptr;
+    juce::MPEChannelAssigner *upperChanAssigner = nullptr;
 
     void createNoteOn(ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer);
     void createNoteOff(ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer);

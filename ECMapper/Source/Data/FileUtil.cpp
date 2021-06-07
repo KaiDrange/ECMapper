@@ -2,7 +2,7 @@
 
 
 juce::String FileUtil::openMapping(DeviceType instrumentType) {
-    juce::File pathFile("./Mappings/");
+    juce::File pathFile("~/Documents/ECMapperLayouts/");
     
     juce::FileChooser fileChooser("Open mapping", pathFile, getFileExtension(instrumentType));
     if (fileChooser.browseForFileToOpen()) {
