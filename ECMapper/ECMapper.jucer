@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<JUCERPROJECT id="USfU6k" name="EigenharpMapper" projectType="audioplug" useAppConfig="0"
+              addUsingNamespaceToJuceHeader="0" displaySplashScreen="1" jucerFormatVersion="1"
+              pluginCharacteristicsValue="pluginIsMidiEffectPlugin,pluginProducesMidiOut"
+              pluginManufacturer="KaiDrange" pluginManufacturerCode="KD" pluginCode="5632"
+              aaxIdentifier="EigenharpMapper" cppLanguageStandard="17">
+  <MAINGROUP id="vhB8QE" name="EigenharpMapper">
+    <GROUP id="{5DC590AE-B94A-F53F-3A94-BEFDDBFEA6DC}" name="Source">
+      <GROUP id="{0966D1C5-EBFE-2204-5620-C352A5F938AA}" name="UI">
+        <FILE id="U4cBIU" name="DropdownComponent.cpp" compile="1" resource="0"
+              file="Source/UI/DropdownComponent.cpp"/>
+        <FILE id="ADVnJq" name="DropdownComponent.h" compile="0" resource="0"
+              file="Source/UI/DropdownComponent.h"/>
+        <FILE id="JQKobt" name="KeyConfigComponent.cpp" compile="1" resource="0"
+              file="Source/UI/KeyConfigComponent.cpp"/>
+        <FILE id="KIKt9U" name="KeyConfigComponent.h" compile="0" resource="0"
+              file="Source/UI/KeyConfigComponent.h"/>
+        <FILE id="WLAg59" name="LayoutComponent.cpp" compile="1" resource="0"
+              file="Source/UI/LayoutComponent.cpp"/>
+        <FILE id="FKKTKW" name="LayoutComponent.h" compile="0" resource="0"
+              file="Source/UI/LayoutComponent.h"/>
+        <FILE id="K2916l" name="MainComponent.cpp" compile="1" resource="0"
+              file="Source/UI/MainComponent.cpp"/>
+        <FILE id="ZKUs69" name="MainComponent.h" compile="0" resource="0" file="Source/UI/MainComponent.h"/>
+        <FILE id="zJvNQT" name="MidiMessageSectionComponent.cpp" compile="1"
+              resource="0" file="Source/UI/MidiMessageSectionComponent.cpp"/>
+        <FILE id="xwq2Ij" name="MidiMessageSectionComponent.h" compile="0"
+              resource="0" file="Source/UI/MidiMessageSectionComponent.h"/>
+        <FILE id="tvcwIL" name="NumberInputComponent.cpp" compile="1" resource="0"
+              file="Source/UI/NumberInputComponent.cpp"/>
+        <FILE id="scLzNR" name="NumberInputComponent.h" compile="0" resource="0"
+              file="Source/UI/NumberInputComponent.h"/>
+        <FILE id="sPMn30" name="PanelComponent.cpp" compile="1" resource="0"
+              file="Source/UI/PanelComponent.cpp"/>
+        <FILE id="G7cSIz" name="PanelComponent.h" compile="0" resource="0"
+              file="Source/UI/PanelComponent.h"/>
+        <FILE id="VwWU95" name="TabPage.cpp" compile="1" resource="0" file="Source/UI/TabPage.cpp"/>
+        <FILE id="UmRC50" name="TabPage.h" compile="0" resource="0" file="Source/UI/TabPage.h"/>
+        <FILE id="s5Jt40" name="Utility.cpp" compile="1" resource="0" file="Source/UI/Utility.cpp"/>
+        <FILE id="IOELac" name="Utility.h" compile="0" resource="0" file="Source/UI/Utility.h"/>
+        <FILE id="vVj47m" name="ZonePanelComponent.cpp" compile="1" resource="0"
+              file="Source/UI/ZonePanelComponent.cpp"/>
+        <FILE id="EE6VcX" name="ZonePanelComponent.h" compile="0" resource="0"
+              file="Source/UI/ZonePanelComponent.h"/>
+      </GROUP>
+      <GROUP id="{F44D70E0-70D2-134A-9C7E-2A351C2CC9E3}" name="Data">
+        <FILE id="fqeuvW" name="ConfigLookup.cpp" compile="1" resource="0"
+              file="Source/Data/ConfigLookup.cpp"/>
+        <FILE id="jZCz9J" name="ConfigLookup.h" compile="0" resource="0" file="Source/Data/ConfigLookup.h"/>
+        <FILE id="r4bh2b" name="FileUtil.cpp" compile="1" resource="0" file="Source/Data/FileUtil.cpp"/>
+        <FILE id="xuCVfs" name="FileUtil.h" compile="0" resource="0" file="Source/Data/FileUtil.h"/>
+        <FILE id="hCQ4E4" name="LayoutChangeHandler.cpp" compile="1" resource="0"
+              file="Source/Data/LayoutChangeHandler.cpp"/>
+        <FILE id="x3Kc4K" name="LayoutChangeHandler.h" compile="0" resource="0"
+              file="Source/Data/LayoutChangeHandler.h"/>
+        <FILE id="ilGGMF" name="MidiGenerator.cpp" compile="1" resource="0"
+              file="Source/Data/MidiGenerator.cpp"/>
+        <FILE id="l6QPzR" name="MidiGenerator.h" compile="0" resource="0" file="Source/Data/MidiGenerator.h"/>
+        <FILE id="oxg6Rl" name="OSCCommunication.cpp" compile="1" resource="0"
+              file="Source/Data/OSCCommunication.cpp"/>
+        <FILE id="PQbhVl" name="OSCCommunication.h" compile="0" resource="0"
+              file="Source/Data/OSCCommunication.h"/>
+        <FILE id="BgZaBB" name="OSCMessageQueue.cpp" compile="1" resource="0"
+              file="Source/Data/OSCMessageQueue.cpp"/>
+        <FILE id="aFXFP9" name="OSCMessageQueue.h" compile="0" resource="0"
+              file="Source/Data/OSCMessageQueue.h"/>
+      </GROUP>
+      <GROUP id="{1F899284-5C01-F5F1-6C8F-EEA46D8DDFB9}" name="Models">
+        <FILE id="v7VyLw" name="LayoutWrapper.cpp" compile="1" resource="0"
+              file="Source/Models/LayoutWrapper.cpp"/>
+        <FILE id="eYoUQ2" name="LayoutWrapper.h" compile="0" resource="0" file="Source/Models/LayoutWrapper.h"/>
+        <FILE id="smoUqc" name="ZoneWrapper.cpp" compile="1" resource="0" file="Source/Models/ZoneWrapper.cpp"/>
+        <FILE id="APYXid" name="ZoneWrapper.h" compile="0" resource="0" file="Source/Models/ZoneWrapper.h"/>
+        <FILE id="rvKtk2" name="SettingsWrapper.cpp" compile="1" resource="0"
+              file="Source/Models/SettingsWrapper.cpp"/>
+        <FILE id="hE5PHh" name="SettingsWrapper.h" compile="0" resource="0"
+              file="Source/Models/SettingsWrapper.h"/>
+        <FILE id="Rw9BUS" name="Enums.h" compile="0" resource="0" file="Source/Models/Enums.h"/>
+      </GROUP>
+      <FILE id="asCXop" name="PluginProcessor.cpp" compile="1" resource="0"
+            file="Source/PluginProcessor.cpp"/>
+      <FILE id="ZzYCa7" name="PluginProcessor.h" compile="0" resource="0"
+            file="Source/PluginProcessor.h"/>
+      <FILE id="yL6wl8" name="PluginEditor.cpp" compile="1" resource="0"
+            file="Source/PluginEditor.cpp"/>
+      <FILE id="tbNpom" name="PluginEditor.h" compile="0" resource="0" file="Source/PluginEditor.h"/>
+    </GROUP>
+  </MAINGROUP>
+  <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1" JUCE_VST3_CAN_REPLACE_VST2="0"/>
+  <EXPORTFORMATS>
+    <VS2019 targetFolder="Builds/VisualStudio2019">
+      <CONFIGURATIONS>
+        <CONFIGURATION isDebug="1" name="Debug" targetName="EigenharpMapper"/>
+        <CONFIGURATION isDebug="0" name="Release" targetName="EigenharpMapper"/>
+      </CONFIGURATIONS>
+      <MODULEPATHS>
+        <MODULEPATH id="juce_audio_basics" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_devices" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_formats" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_plugin_client" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_processors" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_utils" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_core" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_data_structures" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_events" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_graphics" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_gui_basics" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_gui_extra" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_osc" path="../../../../JUCE/modules"/>
+      </MODULEPATHS>
+    </VS2019>
+    <XCODE_MAC targetFolder="Builds/MacOSX">
+      <CONFIGURATIONS>
+        <CONFIGURATION isDebug="1" name="Debug" targetName="EigenharpMapper"/>
+        <CONFIGURATION isDebug="0" name="Release" targetName="EigenharpMapper"/>
+      </CONFIGURATIONS>
+      <MODULEPATHS>
+        <MODULEPATH id="juce_audio_basics" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_devices" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_formats" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_plugin_client" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_processors" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_utils" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_core" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_data_structures" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_events" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_graphics" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_gui_basics" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_gui_extra" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_osc" path="../../../../JUCE/modules"/>
+      </MODULEPATHS>
+    </XCODE_MAC>
+  </EXPORTFORMATS>
+  <MODULES>
+    <MODULE id="juce_audio_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_audio_devices" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_audio_formats" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_audio_plugin_client" showAllCode="1" useLocalCopy="0"
+            useGlobalPath="1"/>
+    <MODULE id="juce_audio_processors" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_audio_utils" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_core" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_data_structures" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_events" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_graphics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_gui_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_gui_extra" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_osc" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+  </MODULES>
+  <LIVE_SETTINGS>
+    <OSX/>
+  </LIVE_SETTINGS>
+</JUCERPROJECT>
