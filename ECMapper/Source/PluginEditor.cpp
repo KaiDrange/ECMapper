@@ -1,26 +1,26 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
-EigenharpMapperAudioProcessorEditor::EigenharpMapperAudioProcessorEditor (EigenharpMapperAudioProcessor& p) : AudioProcessorEditor(&p), audioProcessor(p) {
+ECMapperAudioProcessorEditor::ECMapperAudioProcessorEditor (ECMapperAudioProcessor& p) : AudioProcessorEditor(&p), audioProcessor(p) {
     mainComponent = new MainComponent();
     setSize (800, 600);
     addAndMakeVisible(mainComponent);
     mainComponent->setBounds(getLocalBounds());
 }
 
-EigenharpMapperAudioProcessorEditor::~EigenharpMapperAudioProcessorEditor() {
+ECMapperAudioProcessorEditor::~ECMapperAudioProcessorEditor() {
     delete mainComponent;
 }
 
-void EigenharpMapperAudioProcessorEditor::resized() {
+void ECMapperAudioProcessorEditor::resized() {
     mainComponent->setBounds(getLocalBounds());
 }
 
-//Layout* EigenharpMapperAudioProcessorEditor::getLayout(DeviceType deviceType) {
+//Layout* ECMapperAudioProcessorEditor::getLayout(DeviceType deviceType) {
 //    return mainComponent->getLayout(deviceType);
 //}
 
-void EigenharpMapperAudioProcessorEditor::recreateMainComponent() {
+void ECMapperAudioProcessorEditor::recreateMainComponent() {
     delete mainComponent;
     mainComponent = new MainComponent();
     addAndMakeVisible(mainComponent);

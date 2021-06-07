@@ -1,6 +1,6 @@
 #include "LayoutChangeHandler.h"
 
-LayoutChangeHandler::LayoutChangeHandler(OSC::OSCMessageFifo *oscSendQueue, EigenharpMapperAudioProcessor *processor, ConfigLookup (&configLookups) [3]) {
+LayoutChangeHandler::LayoutChangeHandler(OSC::OSCMessageFifo *oscSendQueue, ECMapperAudioProcessor *processor, ConfigLookup (&configLookups) [3]) {
     this->configLookups = configLookups;
     this->oscSendQueue = oscSendQueue;
     this->processor = processor;

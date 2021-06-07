@@ -6,13 +6,13 @@
 #include "../Models/LayoutWrapper.h"
 #include "ConfigLookup.h"
 
-class EigenharpMapperAudioProcessor;
+class ECMapperAudioProcessor;
 
 extern juce::ValueTree *rootState;
 
 class LayoutChangeHandler : public juce::ValueTree::Listener {
 public:
-    LayoutChangeHandler(OSC::OSCMessageFifo *oscSendQueue, EigenharpMapperAudioProcessor *processor, ConfigLookup (&configLookups) [3]);
+    LayoutChangeHandler(OSC::OSCMessageFifo *oscSendQueue, ECMapperAudioProcessor *processor, ConfigLookup (&configLookups) [3]);
     void sendLEDMsg(LayoutWrapper::LayoutKey layoutKey);
     void sendLEDMsgForAllKeys(DeviceType deviceType);
     bool layoutMidiRPNSent = false;
@@ -29,7 +29,7 @@ private:
     
     int getConfigIndexFromDeviceType(DeviceType type);
     ConfigLookup *configLookups;
-    EigenharpMapperAudioProcessor *processor;
+    ECMapperAudioProcessor *processor;
 };
 
 #include "../PluginProcessor.h"

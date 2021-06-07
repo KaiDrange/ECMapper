@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<JUCERPROJECT id="USfU6k" name="EigenharpMapper" projectType="audioplug" useAppConfig="0"
+<JUCERPROJECT id="USfU6k" name="ECMapper" projectType="audioplug" useAppConfig="0"
               addUsingNamespaceToJuceHeader="0" displaySplashScreen="1" jucerFormatVersion="1"
               pluginCharacteristicsValue="pluginIsMidiEffectPlugin,pluginProducesMidiOut"
-              pluginManufacturer="KaiDrange" pluginManufacturerCode="KD" pluginCode="5632"
-              aaxIdentifier="EigenharpMapper" cppLanguageStandard="17">
-  <MAINGROUP id="vhB8QE" name="EigenharpMapper">
+              pluginManufacturer="Tic Tech" pluginManufacturerCode="TT" pluginCode="5632"
+              aaxIdentifier="ECMapper" cppLanguageStandard="17" version="0.9.1"
+              companyName="Tic Tech" companyWebsite="ticticelectro.com" companyEmail="kaimdrange@hotmail.com">
+  <MAINGROUP id="vhB8QE" name="ECMapper">
     <GROUP id="{5DC590AE-B94A-F53F-3A94-BEFDDBFEA6DC}" name="Source">
       <GROUP id="{0966D1C5-EBFE-2204-5620-C352A5F938AA}" name="UI">
         <FILE id="U4cBIU" name="DropdownComponent.cpp" compile="1" resource="0"
@@ -91,8 +92,8 @@
   <EXPORTFORMATS>
     <VS2019 targetFolder="Builds/VisualStudio2019">
       <CONFIGURATIONS>
-        <CONFIGURATION isDebug="1" name="Debug" targetName="EigenharpMapper"/>
-        <CONFIGURATION isDebug="0" name="Release" targetName="EigenharpMapper"/>
+        <CONFIGURATION isDebug="1" name="Debug" targetName="ECMapper"/>
+        <CONFIGURATION isDebug="0" name="Release" targetName="ECMapper"/>
       </CONFIGURATIONS>
       <MODULEPATHS>
         <MODULEPATH id="juce_audio_basics" path="../../../../JUCE/modules"/>
@@ -112,8 +113,8 @@
     </VS2019>
     <XCODE_MAC targetFolder="Builds/MacOSX">
       <CONFIGURATIONS>
-        <CONFIGURATION isDebug="1" name="Debug" targetName="EigenharpMapper"/>
-        <CONFIGURATION isDebug="0" name="Release" targetName="EigenharpMapper"/>
+        <CONFIGURATION isDebug="1" name="Debug" targetName="ECMapper"/>
+        <CONFIGURATION isDebug="0" name="Release" targetName="ECMapper"/>
       </CONFIGURATIONS>
       <MODULEPATHS>
         <MODULEPATH id="juce_audio_basics" path="../../../../JUCE/modules"/>

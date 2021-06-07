@@ -3,7 +3,7 @@
 
 juce::ValueTree* rootState;
 
-EigenharpMapperAudioProcessor::EigenharpMapperAudioProcessor() : AudioProcessor (BusesProperties().withOutput("Output", juce::AudioChannelSet::stereo(), true)),
+ECMapperAudioProcessor::ECMapperAudioProcessor() : AudioProcessor (BusesProperties().withOutput("Output", juce::AudioChannelSet::stereo(), true)),
 pluginState(*this, nullptr, id_state, createParameterLayout()), osc(&oscSendQueue, &oscReceiveQueue), configLookups { ConfigLookup(DeviceType::Alpha), ConfigLookup(DeviceType::Tau), ConfigLookup(DeviceType::Pico)}, midiGenerator(configLookups), layoutChangeHandler(&oscSendQueue, this, configLookups) {
     rootState = &pluginState.state;
 
@@ -17,66 +17,66 @@ pluginState(*this, nullptr, id_state, createParameterLayout()), osc(&oscSendQueu
     pluginState.state.addListener(&layoutChangeHandler);
 }
 
-EigenharpMapperAudioProcessor::~EigenharpMapperAudioProcessor() {
+ECMapperAudioProcessor::~ECMapperAudioProcessor() {
     osc.disconnectSender();
     osc.disconnectReceiver();
 }
 
-const juce::String EigenharpMapperAudioProcessor::getName() const {
+const juce::String ECMapperAudioProcessor::getName() const {
     return JucePlugin_Name;
 }
 
-bool EigenharpMapperAudioProcessor::acceptsMidi() const {
+bool ECMapperAudioProcessor::acceptsMidi() const {
     return false;
 }
 
-bool EigenharpMapperAudioProcessor::producesMidi() const {
+bool ECMapperAudioProcessor::producesMidi() const {
     return true;
 }
 
-bool EigenharpMapperAudioProcessor::isMidiEffect() const {
+bool ECMapperAudioProcessor::isMidiEffect() const {
     return true;
 }
 
-double EigenharpMapperAudioProcessor::getTailLengthSeconds() const {
+double ECMapperAudioProcessor::getTailLengthSeconds() const {
     return 0.0;
 }
 
-int EigenharpMapperAudioProcessor::getNumPrograms() {
+int ECMapperAudioProcessor::getNumPrograms() {
     return 1;
 }
 
-int EigenharpMapperAudioProcessor::getCurrentProgram() {
+int ECMapperAudioProcessor::getCurrentProgram() {
     return 0;
 }
 
-void EigenharpMapperAudioProcessor::setCurrentProgram (int index) {
+void ECMapperAudioProcessor::setCurrentProgram (int index) {
 }
 
-const juce::String EigenharpMapperAudioProcessor::getProgramName(int index) {
+const juce::String ECMapperAudioProcessor::getProgramName(int index) {
     return {};
 }
 
-void EigenharpMapperAudioProcessor::changeProgramName(int index, const juce::String& newName) {
+void ECMapperAudioProcessor::changeProgramName(int index, const juce::String& newName) {
 }
 
-void EigenharpMapperAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
+void ECMapperAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
     if (juce::JUCEApplication::isStandaloneApp()) {
     }
     
     midiGenerator.start();
 }
 
-void EigenharpMapperAudioProcessor::releaseResources() {
+void ECMapperAudioProcessor::releaseResources() {
     midiGenerator.stop();
 }
 
-bool EigenharpMapperAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
+bool ECMapperAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
     juce::ignoreUnused(layouts);
     return true;
 }
 
-void EigenharpMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages) {
+void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages) {
     juce::ScopedNoDenormals noDenormals;
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
@@ -103,25 +103,25 @@ void EigenharpMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& buffe
         midiGenerator.reduceBreath(midiMessages);
 }
 
-bool EigenharpMapperAudioProcessor::hasEditor() const {
+bool ECMapperAudioProcessor::hasEditor() const {
     return true;
 }
 
-juce::AudioProcessorEditor* EigenharpMapperAudioProcessor::createEditor() {
-    auto editor = new EigenharpMapperAudioProcessorEditor(*this);
+juce::AudioProcessorEditor* ECMapperAudioProcessor::createEditor() {
+    auto editor = new ECMapperAudioProcessorEditor(*this);
     this->editor = editor;
 
 //    editor->mainComponent->addListener(&layoutChangeHandler);
     return editor;
 }
 
-void EigenharpMapperAudioProcessor::getStateInformation(juce::MemoryBlock &destData) {
+void ECMapperAudioProcessor::getStateInformation(juce::MemoryBlock &destData) {
     auto state = pluginState.copyState();
     std::unique_ptr<juce::XmlElement> xml(state.createXml());
     copyXmlToBinary(*xml, destData);
 }
 
-void EigenharpMapperAudioProcessor::setStateInformation(const void* data, int sizeInBytes) {
+void ECMapperAudioProcessor::setStateInformation(const void* data, int sizeInBytes) {
     std::unique_ptr<juce::XmlElement>xmlState(getXmlFromBinary(data, sizeInBytes));
 
     if (xmlState.get() != nullptr) {
@@ -133,17 +133,17 @@ void EigenharpMapperAudioProcessor::setStateInformation(const void* data, int si
             layoutChangeHandler.sendLEDMsgForAllKeys(DeviceType::Pico);
 
             if (editor != nullptr) {
-                ((EigenharpMapperAudioProcessorEditor*)editor)->recreateMainComponent();
+                ((ECMapperAudioProcessorEditor*)editor)->recreateMainComponent();
             }
         }
     }
 }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() {
-    return new EigenharpMapperAudioProcessor();
+    return new ECMapperAudioProcessor();
 }
 
-juce::AudioProcessorValueTreeState::ParameterLayout EigenharpMapperAudioProcessor::createParameterLayout() {
+juce::AudioProcessorValueTreeState::ParameterLayout ECMapperAudioProcessor::createParameterLayout() {
     juce::AudioProcessorValueTreeState::ParameterLayout paramLayout;
 //    paramLayout.add(std::make_unique<juce::AudioParameterInt>("transpose", "Transpose", -48, 48, 0));
     return paramLayout;

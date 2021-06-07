@@ -133,11 +133,11 @@ void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
 
 void OSCCommunication::sendLED(int course, int key, int led, DeviceType deviceType) {
     if (pingCounter > -1)
-        sender.send("/EigenharpMapper/led", course, key, led, (int)deviceType);
+        sender.send("/ECMapper/led", course, key, led, (int)deviceType);
 }
 
 void OSCCommunication::timerCallback() {
-    sender.send("/EigenharpMapper/ping");
+    sender.send("/ECMapper/ping");
     if (pingCounter > -1)
         pingCounter++;
     

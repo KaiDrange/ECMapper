@@ -10,11 +10,11 @@
 #include "UI/Utility.h"
 
 
-class EigenharpMapperAudioProcessor  : public juce::AudioProcessor
+class ECMapperAudioProcessor  : public juce::AudioProcessor
 {
 public:
-    EigenharpMapperAudioProcessor();
-    ~EigenharpMapperAudioProcessor() override;
+    ECMapperAudioProcessor();
+    ~ECMapperAudioProcessor() override;
 
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
     void releaseResources() override;
@@ -56,5 +56,5 @@ private:
     juce::AudioProcessorEditor *editor = nullptr;
     LayoutChangeHandler layoutChangeHandler;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (EigenharpMapperAudioProcessor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ECMapperAudioProcessor)
 };

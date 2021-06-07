@@ -5,10 +5,10 @@
 #include "UI/MainComponent.h"
 #include "Models/Enums.h"
 
-class EigenharpMapperAudioProcessorEditor  : public juce::AudioProcessorEditor {
+class ECMapperAudioProcessorEditor  : public juce::AudioProcessorEditor {
 public:
-    EigenharpMapperAudioProcessorEditor(EigenharpMapperAudioProcessor&);
-    ~EigenharpMapperAudioProcessorEditor() override;
+    ECMapperAudioProcessorEditor(ECMapperAudioProcessor&);
+    ~ECMapperAudioProcessorEditor() override;
 
     void resized() override;
 //    Layout* getLayout(DeviceType deviceType);
@@ -16,7 +16,7 @@ public:
     MainComponent *mainComponent;
 
 private:
-    EigenharpMapperAudioProcessor& audioProcessor;
+    ECMapperAudioProcessor& audioProcessor;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (EigenharpMapperAudioProcessorEditor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ECMapperAudioProcessorEditor)
 };
