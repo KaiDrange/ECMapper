@@ -1,6 +1,7 @@
 #pragma once
 #include <JuceHeader.h>
 #include "NumberInputComponent.h"
+#include "DropdownComponent.h"
 
 class MidiMessageSectionComponent  : public juce::Component, NumberInputComponent::Listener
 {
@@ -23,6 +24,7 @@ public:
 private:
     void sendChangeMessage();
     void numberInputChanged(NumberInputComponent*) override;
+    void resetPanel();
     juce::GroupComponent cmdKeyTypeRadioGroup;
     juce::ToggleButton cmdKeyTypeLatch;
     juce::ToggleButton cmdKeyTypeMomentary;
@@ -38,11 +40,10 @@ private:
     NumberInputComponent offValue;
     NumberInputComponent onValue;
     
-    juce::GroupComponent realtimeMsgTypeRadioGroup;
-    juce::ToggleButton realtimeStart;
-    juce::ToggleButton realtimeStop;
-    juce::ToggleButton realtimeContinue;
-    
+    juce::GroupComponent realtimeMsgGroup;
+    DropdownComponent realtimeOff;
+    DropdownComponent realtimeOn;
+
     juce::ListenerList<Listener> listeners;
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MidiMessageSectionComponent)

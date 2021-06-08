@@ -33,7 +33,7 @@ ZonePanelComponent::ZonePanelComponent(DeviceType deviceType, Zone zone, float w
     };
 
     addAndMakeVisible(midiChannelDropdown);
-    midiChannelDropdown.setLabelText("Midi channel:");
+    midiChannelDropdown.setLabelText("Midi channel:", false);
     for (int i = 1; i <= 16; i++)
         midiChannelDropdown.addItem(juce::String(i), i);
     midiChannelDropdown.addItem("MPE Lower", 17);
@@ -44,28 +44,28 @@ ZonePanelComponent::ZonePanelComponent(DeviceType deviceType, Zone zone, float w
         ZoneWrapper::setMidiChannelType(deviceType, zone, (MidiChannelType)midiChannelDropdown.box.getSelectedId());
     };
     
-    pressureDropdown.setLabelText("Pressure:");
+    pressureDropdown.setLabelText("Pressure:", false);
     setStandardMidiDropdownParams(pressureDropdown, ZoneWrapper::id_pressure, ZoneWrapper::default_pressure);
             
-    yawDropdown.setLabelText("Yaw:");
+    yawDropdown.setLabelText("Yaw:", false);
     setStandardMidiDropdownParams(yawDropdown, ZoneWrapper::id_yaw, ZoneWrapper::default_yaw);
 
-    rollDropdown.setLabelText("Roll:");
+    rollDropdown.setLabelText("Roll:", false);
     setStandardMidiDropdownParams(rollDropdown, ZoneWrapper::id_roll, ZoneWrapper::default_roll);
 
-    strip1RelativeDropdown.setLabelText("Strip1 Rel:");
+    strip1RelativeDropdown.setLabelText("Strip1 Rel:", false);
     setStandardMidiDropdownParams(strip1RelativeDropdown, ZoneWrapper::id_strip1Rel, ZoneWrapper::default_strip1Rel);
 
-    strip1AbsoluteDropdown.setLabelText("Strip1 Abs:");
+    strip1AbsoluteDropdown.setLabelText("Strip1 Abs:", false);
     setStandardMidiDropdownParams(strip1AbsoluteDropdown, ZoneWrapper::id_strip1Abs, ZoneWrapper::default_strip1Abs);
 
-    strip2RelativeDropdown.setLabelText("Strip2 Rel:");
+    strip2RelativeDropdown.setLabelText("Strip2 Rel:", false);
     setStandardMidiDropdownParams(strip2RelativeDropdown, ZoneWrapper::id_strip2Rel, ZoneWrapper::default_strip2Rel);
 
-    strip2AbsoluteDropdown.setLabelText("Strip2 Abs:");
+    strip2AbsoluteDropdown.setLabelText("Strip2 Abs:", false);
     setStandardMidiDropdownParams(strip2AbsoluteDropdown, ZoneWrapper::id_strip2Abs, ZoneWrapper::default_strip2Abs);
 
-    breathDropdown.setLabelText("Breath:");
+    breathDropdown.setLabelText("Breath:", false);
     setStandardMidiDropdownParams(breathDropdown, ZoneWrapper::id_breath, ZoneWrapper::default_breath);
 }
 

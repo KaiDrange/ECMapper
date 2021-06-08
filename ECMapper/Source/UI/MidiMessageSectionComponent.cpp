@@ -7,7 +7,7 @@ MidiMessageSectionComponent::MidiMessageSectionComponent() :
         midiCmdValue("CC #", 3, 0, 127, false),
         offValue("Off val:", 3, 0, 127, false),
         onValue("On val:", 3, 0, 127, false),
-        realtimeMsgTypeRadioGroup("realtimeMsgTyp", "Sys Realtime") {
+        realtimeMsgGroup("realtimeMsgTyp", "Sys Realtime") {
     addAndMakeVisible(cmdKeyTypeRadioGroup);
     
     cmdKeyTypeLatch.setButtonText("Latch");
@@ -68,28 +68,23 @@ MidiMessageSectionComponent::MidiMessageSectionComponent() :
         sendChangeMessage();
     };
 
-    addAndMakeVisible(realtimeMsgTypeRadioGroup);
-    realtimeStart.setButtonText("Start");
-    realtimeStart.setRadioGroupId(3);
-    realtimeStart.setToggleState(true, juce::dontSendNotification);
-    addAndMakeVisible(realtimeStart);
-    realtimeStart.onStateChange = [this] {
+    addAndMakeVisible(realtimeMsgGroup);
+    realtimeOn.setLabelText("On value", true);
+    realtimeOff.setLabelText("Off value", true);
+    realtimeOn.addItem("None", -1);
+    realtimeOn.addItem("Start", 1);
+    realtimeOn.addItem("Stop", 2);
+    realtimeOn.addItem("Continue", 3);
+    realtimeOff.addItem("None", -1);
+    realtimeOff.addItem("Start", 1);
+    realtimeOff.addItem("Stop", 2);
+    realtimeOff.addItem("Continue", 3);
+    addAndMakeVisible(realtimeOn);
+    addAndMakeVisible(realtimeOff);
+    realtimeOn.box.onChange = [this] {
         sendChangeMessage();
     };
-
-    realtimeStop.setButtonText("Stop");
-    realtimeStop.setRadioGroupId(3);
-    realtimeStop.setToggleState(false, juce::dontSendNotification);
-    addAndMakeVisible(realtimeStop);
-    realtimeStop.onStateChange = [this] {
-        sendChangeMessage();
-    };
-
-    realtimeContinue.setButtonText("Continue");
-    realtimeContinue.setRadioGroupId(3);
-    realtimeContinue.setToggleState(false, juce::dontSendNotification);
-    addAndMakeVisible(realtimeContinue);
-    realtimeContinue.onStateChange = [this] {
+    realtimeOff.box.onChange = [this] {
         sendChangeMessage();
     };
             
@@ -134,18 +129,17 @@ void MidiMessageSectionComponent::resized() {
     area.removeFromTop(lineHeight*1);
 
     groupArea = area.removeFromTop(lineHeight*6);
-    realtimeMsgTypeRadioGroup.setBounds(groupArea);
+    realtimeMsgGroup.setBounds(groupArea);
     groupArea.reduce(groupArea.getWidth()*0.1, lineHeight);
-    groupArea.removeFromTop(lineHeight);
-    realtimeStart.setBounds(groupArea.removeFromTop(lineHeight));
-    realtimeStop.setBounds(groupArea.removeFromTop(lineHeight));
-    realtimeContinue.setBounds(groupArea.removeFromTop(lineHeight));
+    realtimeOn.setBounds(groupArea.removeFromTop(lineHeight*2));
+    realtimeOff.setBounds(groupArea.removeFromTop(lineHeight*2));
 }
 
 juce::String MidiMessageSectionComponent::getMessageString() {
     juce::String cmdType;
     juce::String msgType;
-    juce::String realtimeType;
+    juce::String onVal;
+    juce::String offVal;
 
     if (cmdKeyTypeLatch.getToggleState())
         cmdType = "Latch";
@@ -163,27 +157,30 @@ juce::String MidiMessageSectionComponent::getMessageString() {
     else if (midiMsgTypeAllNotesOff.getToggleState())
         msgType = "AllNotesOff";
     
-    if (realtimeStart.getToggleState())
-        realtimeType = "Start";
-    else if (realtimeStop.getToggleState())
-        realtimeType = "Stop";
-    else if (realtimeContinue.getToggleState())
-        realtimeType = "Continue";
+    if (msgType == "Realtime") {
+        onVal = juce::String(realtimeOn.box.getSelectedId());
+        offVal = juce::String(realtimeOff.box.getSelectedId());
+    }
+    else {
+        onVal = juce::String(onValue.getValue());
+        offVal = juce::String(offValue.getValue());
+    }
 
-    // cmdType;msgType;CC;off;on;realtime
+    // cmdType;msgType;CC;off;on
     return cmdType + ";" +
         msgType + ";" +
         juce::String(midiCmdValue.getValue()) + ";" +
-        juce::String(offValue.getValue())  + ";" +
-        juce::String(onValue.getValue()) + ";" +
-        realtimeType;
+        offVal  + ";" +
+        onVal;
 }
 
 void MidiMessageSectionComponent::updatePanelFromMessageString(juce::String msgString) {
     juce::StringArray tokens;
     tokens.addTokens(msgString, ";", "\"");
-    if (tokens.size() != 6)
+    if (tokens.size() != 5)
         return;
+    
+    resetPanel();
     
     cmdKeyTypeLatch.setToggleState(tokens[0] == "Latch", juce::dontSendNotification);
     cmdKeyTypeMomentary.setToggleState(tokens[0] == "Momentary", juce::dontSendNotification);
@@ -195,22 +192,20 @@ void MidiMessageSectionComponent::updatePanelFromMessageString(juce::String msgS
     midiMsgTypeAllNotesOff.setToggleState(tokens[1] == "AllNotesOff", juce::dontSendNotification);
     
     if (tokens[1] == "Realtime") {
-        realtimeStart.setToggleState(tokens[5] == "Start", juce::dontSendNotification);
-        realtimeStop.setToggleState(tokens[5] == "Stop", juce::dontSendNotification);
-        realtimeContinue.setToggleState(tokens[5] == "Continue", juce::dontSendNotification);
+        realtimeOn.setSelectedItemId(tokens[4].getIntValue());
+        realtimeOff.setSelectedItemId(tokens[3].getIntValue());
     }
     
     midiCmdValue.setValue(tokens[2].getIntValue());
-    offValue.setValue(tokens[3].getIntValue());
-    onValue.setValue(tokens[4].getIntValue());
+    offValue.setValue(tokens[1] == "Realtime" ? 0 : tokens[3].getIntValue());
+    onValue.setValue(tokens[1] == "Realtime" ? 0 : tokens[4].getIntValue());
     
-    offValue.setEnabled(tokens[0] != "Trigger");
+    offValue.setEnabled(tokens[0] != "Trigger" && tokens[1] != "Realtime");
     onValue.setEnabled(tokens[1] != "Realtime" && tokens[1] != "AllNotesOff");
     midiCmdValue.setEnabled(tokens[1] == "CC");
-    realtimeMsgTypeRadioGroup.setEnabled(tokens[1] == "Realtime");
-    realtimeStart.setEnabled(tokens[1] == "Realtime");
-    realtimeStop.setEnabled(tokens[1] == "Realtime");
-    realtimeContinue.setEnabled(tokens[1] == "Realtime");
+    realtimeMsgGroup.setEnabled(tokens[1] == "Realtime");
+    realtimeOn.setEnabled(tokens[1] == "Realtime");
+    realtimeOff.setEnabled(tokens[1] == "Realtime" && tokens[0] != "Trigger");
 }
 
 void MidiMessageSectionComponent::addListener(Listener* listenerToAdd) {
@@ -230,3 +225,10 @@ void MidiMessageSectionComponent::numberInputChanged(NumberInputComponent*) {
     sendChangeMessage();
 }
 
+void MidiMessageSectionComponent::resetPanel() {
+    realtimeOn.box.setSelectedId(0);
+    realtimeOff.box.setSelectedId(0);
+    midiCmdValue.setValue(0);
+    offValue.setValue(0);
+    onValue.setValue(0);
+}
