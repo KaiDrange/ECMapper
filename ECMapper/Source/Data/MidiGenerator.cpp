@@ -47,7 +47,7 @@ void MidiGenerator::stop() {
     upperChanAssigner = nullptr;
 }
 
-void MidiGenerator::processOSCMessage(OSC::Message &oscMsg, juce::MidiBuffer &midiBuffer) {
+void MidiGenerator::processOSCMessage(OSC::Message &oscMsg, OSC::Message &outgoingOscMsg, juce::MidiBuffer &midiBuffer) {
     if (!initialized)
         return;
     
@@ -55,7 +55,6 @@ void MidiGenerator::processOSCMessage(OSC::Message &oscMsg, juce::MidiBuffer &mi
         case OSC::MessageType::Key: {
                 int deviceIndex = (int)oscMsg.device -1;
                 KeyState *keyState = &keyStates[deviceIndex][oscMsg.course][oscMsg.key];
-                keyState->messageCount++;
                 keyState->ehPressure = oscMsg.pressure;
                 keyState->ehYaw = oscMsg.yaw;
                 keyState->ehRoll = oscMsg.roll;
@@ -64,18 +63,11 @@ void MidiGenerator::processOSCMessage(OSC::Message &oscMsg, juce::MidiBuffer &mi
                 if (keyLookup.output == MidiChannelType::Undefined)
                     break;
                 
-                if (!oscMsg.active) {
-                    createNoteOff(keyLookup, keyState, midiBuffer);
-                }
-                else if (keyState->status == KeyStatus::Off && oscMsg.active) {
-                    keyState->status = KeyStatus::Pending;
-                }
-                else if (keyState->messageCount == 4 && keyState->status == KeyStatus::Pending && oscMsg.active) {
-                    createNoteOn(keyLookup, keyState, midiBuffer);
-                }
-                else if (keyState->messageCount == 16 && keyState->status != KeyStatus::Pending) {
-                    createNoteHold(keyLookup, keyState, midiBuffer);
-                }
+                if (keyLookup.mapType == KeyMappingType::Note)
+                    processNoteKey(oscMsg, keyLookup, keyState, midiBuffer);
+                else if (keyLookup.mapType == KeyMappingType::MidiMsg)
+                    processCmdKey(oscMsg, outgoingOscMsg, keyLookup, keyState, midiBuffer);
+            
             }
             break;
         case OSC::MessageType::Breath: {
@@ -110,6 +102,37 @@ void MidiGenerator::processOSCMessage(OSC::Message &oscMsg, juce::MidiBuffer &mi
         default:
             break;
     }
+}
+
+void MidiGenerator::processNoteKey(OSC::Message &oscMsg, ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer) {
+    state->messageCount++;
+
+    if (!oscMsg.active) {
+        createNoteOff(keyLookup, state, buffer);
+    }
+    else if (state->status == KeyStatus::Off && oscMsg.active) {
+        state->status = KeyStatus::Pending;
+    }
+    else if (state->messageCount == 4 && state->status == KeyStatus::Pending && oscMsg.active) {
+        createNoteOn(keyLookup, state, buffer);
+    }
+    else if (state->messageCount == 16 && state->status != KeyStatus::Pending) {
+        createNoteHold(keyLookup, state, buffer);
+    }
+}
+
+void MidiGenerator::processCmdKey(OSC::Message &oscMsg, OSC::Message &outgoingOscMsg, ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer) {
+    if (!oscMsg.active) {
+        if (keyLookup.cmdType == 2) // only momentary creates off msg on release
+            createMidiMsgOff(keyLookup, state, buffer, outgoingOscMsg);
+    }
+    else if (state->status == KeyStatus::Off && oscMsg.active) {
+        if (keyLookup.cmdType == 1 && state->isLatchOn)
+            createMidiMsgOff(keyLookup, state, buffer, outgoingOscMsg);
+        else
+            createMidiMsgOn(keyLookup, state, buffer, outgoingOscMsg);
+    }
+    state->status = oscMsg.active ? KeyStatus::Active : KeyStatus::Off;
 }
 
 void MidiGenerator::reduceBreath(juce::MidiBuffer &buffer) {
@@ -193,6 +216,37 @@ void MidiGenerator::createNoteOff(ConfigLookup::Key &keyLookup, KeyState *state,
     addMidiValueMessage(channel, 0, keyLookup.yaw, keyLookup.pbRange, keyLookup.note, buffer, true);
     state->status = KeyStatus::Off;
     state->messageCount = 0;
+}
+
+void MidiGenerator::createMidiMsgOn(ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer, OSC::Message &outgoingOscMsg) {
+    state->isLatchOn = true;
+    
+    if (keyLookup.msgType == 4) {
+        for (int i = 1; i < 17; i++)
+            buffer.addEvent(juce::MidiMessage::allNotesOff(i), buffer.getLastEventTime()+1);
+    }
+    
+    state->status = KeyStatus::Active;
+
+    if (keyLookup.cmdType == 1) {
+        outgoingOscMsg.type = OSC::MessageType::LED;
+        outgoingOscMsg.value = 3;
+    }
+}
+
+void MidiGenerator::createMidiMsgOff(ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer, OSC::Message &outgoingOscMsg) {
+    if (keyLookup.cmdType != 3) { // "trigger" commands shouldn´t send anything on key off
+        if (keyLookup.msgType == 4) {
+            for (int i = 1; i < 17; i++)
+                buffer.addEvent(juce::MidiMessage::allNotesOff(i), buffer.getLastEventTime()+1);
+        }
+    }
+    state->status = KeyStatus::Off;
+    state->isLatchOn = false;
+    if (keyLookup.cmdType == 1) {
+        outgoingOscMsg.type = OSC::MessageType::LED;
+        outgoingOscMsg.value = (unsigned int)keyLookup.keyColour;
+    }
 }
 
 void MidiGenerator::createNoteHold(ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer) {

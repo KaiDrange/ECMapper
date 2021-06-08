@@ -14,7 +14,7 @@ MidiMessageSectionComponent::MidiMessageSectionComponent() :
     cmdKeyTypeLatch.setRadioGroupId(1);
     cmdKeyTypeLatch.setToggleState(true, juce::dontSendNotification);
     addAndMakeVisible(cmdKeyTypeLatch);
-    cmdKeyTypeLatch.onStateChange = [this] {
+    cmdKeyTypeLatch.onClick = [this] {
         sendChangeMessage();
     };
 
@@ -22,7 +22,7 @@ MidiMessageSectionComponent::MidiMessageSectionComponent() :
     cmdKeyTypeMomentary.setRadioGroupId(1);
     cmdKeyTypeMomentary.setToggleState(false, juce::dontSendNotification);
     addAndMakeVisible(cmdKeyTypeMomentary);
-    cmdKeyTypeMomentary.onStateChange = [this] {
+    cmdKeyTypeMomentary.onClick = [this] {
         sendChangeMessage();
     };
 
@@ -30,7 +30,7 @@ MidiMessageSectionComponent::MidiMessageSectionComponent() :
     cmdKeyTypeTrigger.setRadioGroupId(1);
     cmdKeyTypeTrigger.setToggleState(false, juce::dontSendNotification);
     addAndMakeVisible(cmdKeyTypeTrigger);
-    cmdKeyTypeTrigger.onStateChange = [this] {
+    cmdKeyTypeTrigger.onClick = [this] {
         sendChangeMessage();
     };
 
@@ -40,7 +40,7 @@ MidiMessageSectionComponent::MidiMessageSectionComponent() :
     midiMsgTypeCC.setRadioGroupId(2);
     midiMsgTypeCC.setToggleState(true, juce::dontSendNotification);
     addAndMakeVisible(midiMsgTypeCC);
-    midiMsgTypeCC.onStateChange = [this] {
+    midiMsgTypeCC.onClick = [this] {
         sendChangeMessage();
     };
 
@@ -48,7 +48,7 @@ MidiMessageSectionComponent::MidiMessageSectionComponent() :
     midiMsgTypeProgChange.setRadioGroupId(2);
     midiMsgTypeProgChange.setToggleState(false, juce::dontSendNotification);
     addAndMakeVisible(midiMsgTypeProgChange);
-    midiMsgTypeProgChange.onStateChange = [this] {
+    midiMsgTypeProgChange.onClick = [this] {
         sendChangeMessage();
     };
 
@@ -56,7 +56,7 @@ MidiMessageSectionComponent::MidiMessageSectionComponent() :
     midiMsgTypeRealtime.setRadioGroupId(2);
     midiMsgTypeRealtime.setToggleState(false, juce::dontSendNotification);
     addAndMakeVisible(midiMsgTypeRealtime);
-    midiMsgTypeRealtime.onStateChange = [this] {
+    midiMsgTypeRealtime.onClick = [this] {
         sendChangeMessage();
     };
 
@@ -64,7 +64,7 @@ MidiMessageSectionComponent::MidiMessageSectionComponent() :
     midiMsgTypeAllNotesOff.setRadioGroupId(2);
     midiMsgTypeAllNotesOff.setToggleState(false, juce::dontSendNotification);
     addAndMakeVisible(midiMsgTypeAllNotesOff);
-    midiMsgTypeAllNotesOff.onStateChange = [this] {
+    midiMsgTypeAllNotesOff.onClick = [this] {
         sendChangeMessage();
     };
 
@@ -179,9 +179,7 @@ void MidiMessageSectionComponent::updatePanelFromMessageString(juce::String msgS
     tokens.addTokens(msgString, ";", "\"");
     if (tokens.size() != 5)
         return;
-    
-    resetPanel();
-    
+
     cmdKeyTypeLatch.setToggleState(tokens[0] == "Latch", juce::dontSendNotification);
     cmdKeyTypeMomentary.setToggleState(tokens[0] == "Momentary", juce::dontSendNotification);
     cmdKeyTypeTrigger.setToggleState(tokens[0] == "Trigger", juce::dontSendNotification);
@@ -200,7 +198,7 @@ void MidiMessageSectionComponent::updatePanelFromMessageString(juce::String msgS
     offValue.setValue(tokens[1] == "Realtime" ? 0 : tokens[3].getIntValue());
     onValue.setValue(tokens[1] == "Realtime" ? 0 : tokens[4].getIntValue());
     
-    offValue.setEnabled(tokens[0] != "Trigger" && tokens[1] != "Realtime");
+    offValue.setEnabled(tokens[0] != "Trigger" && tokens[1] != "Realtime" && tokens[1] != "AllNotesOff");
     onValue.setEnabled(tokens[1] != "Realtime" && tokens[1] != "AllNotesOff");
     midiCmdValue.setEnabled(tokens[1] == "CC");
     realtimeMsgGroup.setEnabled(tokens[1] == "Realtime");
@@ -223,12 +221,4 @@ void MidiMessageSectionComponent::sendChangeMessage() {
 
 void MidiMessageSectionComponent::numberInputChanged(NumberInputComponent*) {
     sendChangeMessage();
-}
-
-void MidiMessageSectionComponent::resetPanel() {
-    realtimeOn.box.setSelectedId(0);
-    realtimeOff.box.setSelectedId(0);
-    midiCmdValue.setValue(0);
-    offValue.setValue(0);
-    onValue.setValue(0);
 }

@@ -6,6 +6,7 @@
 namespace OSC {
 
 enum MessageType {
+    Undefined = 0,
     Device = 1,
     Key = 2,
     Breath = 3,

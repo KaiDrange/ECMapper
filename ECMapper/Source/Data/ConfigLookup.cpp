@@ -36,7 +36,9 @@ void ConfigLookup::updateKey(juce::ValueTree keytree) {
     
     Key key;
     if (!setKeyToDefault) {
+        key.keyType = layoutKey.keyType;
         key.mapType = layoutKey.keyMappingType;
+        key.keyColour = layoutKey.keyColour;
         key.note = key.mapType == KeyMappingType::Note
             ? std::min(std::max(layoutKey.mappingValue.getIntValue() + ZoneWrapper::getTranspose(layoutKey.keyId.deviceType, layoutKey.zone), 0), 127)
             : 0;
@@ -51,6 +53,43 @@ void ConfigLookup::updateKey(juce::ValueTree keytree) {
             key.pbRange = std::min(((float)keyPB)/((float)SettingsWrapper::getUpperMPEPB()), 1.0f);
         else
             key.pbRange = std::min(((float)keyPB)/((float)ZoneWrapper::getChannelMaxPitchbend(layoutKey.keyId.deviceType, layoutKey.zone)), 1.0f);
+        
+        if (key.mapType != KeyMappingType::MidiMsg) {
+            key.cmdType = 0;
+            key.msgType = 0;
+            key.cmdCC = 0;
+            key.cmdOn = 0;
+            key.cmdOff = 0;
+        }
+        else {
+            juce::StringArray cmdParts;
+            Utility::splitString(layoutKey.mappingValue, ";", cmdParts);
+            if (cmdParts.size() == 5) {
+                if (cmdParts[0] == "Latch")
+                    key.cmdType = 1;
+                else if (cmdParts[0] == "Momentary")
+                    key.cmdType = 2;
+                else if (cmdParts[0] == "Trigger")
+                    key.cmdType = 3;
+                else
+                    key.cmdType = 0;
+
+                if (cmdParts[1] == "CC")
+                    key.msgType = 1;
+                else if (cmdParts[1] == "PC")
+                    key.msgType = 2;
+                else if (cmdParts[1] == "Realtime")
+                    key.msgType = 3;
+                else if (cmdParts[1] == "AllNotesOff")
+                    key.msgType = 4;
+                else
+                    key.msgType = 0;
+                
+                key.cmdCC = cmdParts[2].getIntValue();
+                key.cmdOff = cmdParts[3].getIntValue();
+                key.cmdOn = cmdParts[4].getIntValue();
+            }
+        }
     }
     keys[layoutKey.keyId.course][layoutKey.keyId.keyNo] = key;
 }

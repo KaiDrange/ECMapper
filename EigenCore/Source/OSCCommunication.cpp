@@ -51,7 +51,7 @@ void OSCCommunication::disconnectReceiver() {
 }
 
 void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
-    if (message.getAddressPattern() == "/EigenharpMapper/led" && message.size() == 4) {
+    if (message.getAddressPattern() == "/ECMapper/led" && message.size() == 4) {
         msg = {
             .type = OSC::MessageType::LED,
             .course = (unsigned int)message[0].getInt32(),
@@ -68,7 +68,7 @@ void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
 
         receiveQueue->add(&msg);
     }
-    else if (message.getAddressPattern() == "/EigenharpMapper/ping") {
+    else if (message.getAddressPattern() == "/ECMapper/ping") {
         if (pingCounter == -1) {
             mapperConnected = true;
             std::cout << "Mapper connected" << std::endl;

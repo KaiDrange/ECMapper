@@ -39,14 +39,14 @@ void OSCCommunication::disconnectReceiver() {
 }
 
 void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
-    if (message.getAddressPattern() == "/EigenharpCore/ping") {
+    if (message.getAddressPattern() == "/EigenCore/ping") {
         if (pingCounter == -1)
             std::cout << "Core connected" << std::endl;
         pingCounter = 0;
 //        receiveQueue->add(&msg);
 
     }
-    else if (message.getAddressPattern() == "/EigenharpCore/key" && message.size() == 7) {
+    else if (message.getAddressPattern() == "/EigenCore/key" && message.size() == 7) {
         msg = {
             .type = OSC::MessageType::Key,
             .course = (unsigned int)message[0].getInt32(),
@@ -63,7 +63,7 @@ void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
 
         receiveQueue->add(&msg);
     }
-    else if (message.getAddressPattern() == "/EigenharpCore/breath" && message.size() == 2) {
+    else if (message.getAddressPattern() == "/EigenCore/breath" && message.size() == 2) {
         msg = {
             .type = OSC::MessageType::Breath,
             .course = 0,
@@ -80,7 +80,7 @@ void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
 
         receiveQueue->add(&msg);
     }
-    else if (message.getAddressPattern() == "/EigenharpCore/strip" && message.size() == 3) {
+    else if (message.getAddressPattern() == "/EigenCore/strip" && message.size() == 3) {
         msg = {
             .type = OSC::MessageType::Strip,
             .course = 0,
@@ -97,7 +97,7 @@ void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
 
         receiveQueue->add(&msg);
     }
-    else if (message.getAddressPattern() == "/EigenharpCore/pedal" && message.size() == 3) {
+    else if (message.getAddressPattern() == "/EigenCore/pedal" && message.size() == 3) {
         msg = {
             .type = OSC::MessageType::Pedal,
             .course = 0,
@@ -114,7 +114,7 @@ void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
 
         receiveQueue->add(&msg);
     }
-    else if (message.getAddressPattern() == "/EigenharpCore/device" && message.size() == 1) {
+    else if (message.getAddressPattern() == "/EigenCore/device" && message.size() == 1) {
         msg = {
             .type = OSC::MessageType::Device,
             .course = 0,

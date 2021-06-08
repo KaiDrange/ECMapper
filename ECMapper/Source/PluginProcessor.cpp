@@ -86,6 +86,7 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
     
     midiMessages.clear();
     static OSC::Message msg;
+    static OSC::Message outgoingMsg;
     if (!layoutChangeHandler.layoutMidiRPNSent) {
         midiGenerator.createLayoutRPNs(midiMessages);
         layoutChangeHandler.layoutMidiRPNSent = true;
@@ -94,8 +95,16 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
         osc.receiveQueue->read(&msg);
         if (msg.type == OSC::MessageType::Device)
             layoutChangeHandler.sendLEDMsgForAllKeys(msg.device);
-        else
-            midiGenerator.processOSCMessage(msg, midiMessages);
+        else {
+            outgoingMsg.type = OSC::MessageType::Undefined;
+            midiGenerator.processOSCMessage(msg, outgoingMsg, midiMessages);
+            if (outgoingMsg.type == OSC::MessageType::LED) {
+                outgoingMsg.device = msg.device;
+                outgoingMsg.course = msg.course;
+                outgoingMsg.key = msg.key;
+                oscSendQueue.add(&outgoingMsg);
+            }
+        }
     }
     
     midiGenerator.samplesSinceLastBreathMsg += buffer.getNumSamples();

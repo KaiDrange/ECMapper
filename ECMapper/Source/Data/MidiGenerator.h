@@ -9,7 +9,7 @@ public:
     MidiGenerator(ConfigLookup (&configLookups) [3]);
     ~MidiGenerator();
     
-    void processOSCMessage(OSC::Message &oscMsg, juce::MidiBuffer &midiBuffer);
+    void processOSCMessage(OSC::Message &oscMsg, OSC::Message &outgoingOscMsg, juce::MidiBuffer &midiBuffer);
     void reduceBreath(juce::MidiBuffer &buffer);
     juce::MPEZoneLayout mpeZone;
     
@@ -31,12 +31,13 @@ private:
         int ehRoll = 0;
         int ehYaw = 0;
         
-        unsigned int midiVelocity = 0;
-        unsigned int midiPressure = 0;
-        unsigned int midiRoll = 0;
-        unsigned int midiYaw = 0;
+//        unsigned int midiVelocity = 0;
+//        unsigned int midiPressure = 0;
+//        unsigned int midiRoll = 0;
+//        unsigned int midiYaw = 0;
         int midiChannel = 1;
         int messageCount = 0;
+        bool isLatchOn = false;
     };
     
     KeyState keyStates[3][3][120];
@@ -52,8 +53,12 @@ private:
     juce::MPEChannelAssigner *lowerChanAssigner = nullptr;
     juce::MPEChannelAssigner *upperChanAssigner = nullptr;
 
+    void processNoteKey(OSC::Message &oscMsg, ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer);
+    void processCmdKey(OSC::Message &oscMsg, OSC::Message &outgoingOscMsg, ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer);
     void createNoteOn(ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer);
     void createNoteOff(ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer);
+    void createMidiMsgOn(ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer, OSC::Message &outgoingOscMsg);
+    void createMidiMsgOff(ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer, OSC::Message &outgoingOscMsg);
     void createNoteHold(ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer);
     void addMidiValueMessage(int channel, int ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, int noteNo, juce::MidiBuffer &buffer, bool isBipolar);
     void addStripValueMessage(int channel, int ehValue, ZoneWrapper::MidiValue midiValue, juce::MidiBuffer &buffer, bool isBipolar);
