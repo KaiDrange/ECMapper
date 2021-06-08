@@ -220,10 +220,36 @@ void MidiGenerator::createNoteOff(ConfigLookup::Key &keyLookup, KeyState *state,
 
 void MidiGenerator::createMidiMsgOn(ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer, OSC::Message &outgoingOscMsg) {
     state->isLatchOn = true;
-    
+    if (keyLookup.output == MidiChannelType::MPE_Low)
+        state->midiChannel = 1;
+    else if (keyLookup.output == MidiChannelType::MPE_High) {
+        state->midiChannel = 16;
+    }
+    else
+        state->midiChannel = (int)keyLookup.output;
+
     if (keyLookup.msgType == 4) {
         for (int i = 1; i < 17; i++)
             buffer.addEvent(juce::MidiMessage::allNotesOff(i), buffer.getLastEventTime()+1);
+    }
+    else if (keyLookup.msgType == 1)
+         buffer.addEvent(juce::MidiMessage::controllerEvent(state->midiChannel, keyLookup.cmdCC, keyLookup.cmdOn), buffer.getLastEventTime()+1);
+    else if (keyLookup.msgType == 2)
+        buffer.addEvent(juce::MidiMessage::programChange(state->midiChannel, keyLookup.cmdOn), buffer.getLastEventTime()+1);
+    else if (keyLookup.msgType == 3) {
+        switch (keyLookup.cmdOn) {
+            case 1:
+                buffer.addEvent(juce::MidiMessage::midiStart(), buffer.getLastEventTime()+1);
+                break;
+            case 2:
+                buffer.addEvent(juce::MidiMessage::midiStop(), buffer.getLastEventTime()+1);
+                break;
+            case 3:
+                buffer.addEvent(juce::MidiMessage::midiContinue(), buffer.getLastEventTime()+1);
+                break;
+            default:
+                break;
+        }
     }
     
     state->status = KeyStatus::Active;
@@ -240,7 +266,27 @@ void MidiGenerator::createMidiMsgOff(ConfigLookup::Key &keyLookup, KeyState *sta
             for (int i = 1; i < 17; i++)
                 buffer.addEvent(juce::MidiMessage::allNotesOff(i), buffer.getLastEventTime()+1);
         }
+        else if (keyLookup.msgType == 1)
+             buffer.addEvent(juce::MidiMessage::controllerEvent(state->midiChannel, keyLookup.cmdCC, keyLookup.cmdOff), buffer.getLastEventTime()+1);
+        else if (keyLookup.msgType == 2)
+            buffer.addEvent(juce::MidiMessage::programChange(state->midiChannel, keyLookup.cmdOff), buffer.getLastEventTime()+1);
+        else if (keyLookup.msgType == 3) {
+            switch (keyLookup.cmdOff) {
+                case 1:
+                    buffer.addEvent(juce::MidiMessage::midiStart(), buffer.getLastEventTime()+1);
+                    break;
+                case 2:
+                    buffer.addEvent(juce::MidiMessage::midiStop(), buffer.getLastEventTime()+1);
+                    break;
+                case 3:
+                    buffer.addEvent(juce::MidiMessage::midiContinue(), buffer.getLastEventTime()+1);
+                    break;
+                default:
+                    break;
+            }
+        }
     }
+    
     state->status = KeyStatus::Off;
     state->isLatchOn = false;
     if (keyLookup.cmdType == 1) {
