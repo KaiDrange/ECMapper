@@ -106,14 +106,14 @@ void APICallback::breath(const char* dev, unsigned long long t, unsigned val) {
     sendQueue->add(&msg);
 }
 
-void APICallback::strip(const char* dev, unsigned long long t, unsigned strip, unsigned val) {
-//    std::cout  << "strip " << dev << " @ " << t << " - " << strip << " = " << val << std::endl;
+void APICallback::strip(const char* dev, unsigned long long t, unsigned strip, unsigned val, bool a) {
+//    std::cout  << "strip " << dev << " @ " << t << " - " << strip << " = " << val << " " << a << std::endl;
     
     OSC::Message msg {
         .type = OSC::MessageType::Strip,
         .key = 0,
         .course = 0,
-        .active = 0,
+        .active = (int)a,
         .pressure = 0,
         .roll = 0,
         .yaw = 0,

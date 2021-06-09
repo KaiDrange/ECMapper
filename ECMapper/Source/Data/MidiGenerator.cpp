@@ -83,7 +83,7 @@ void MidiGenerator::processOSCMessage(OSC::Message &oscMsg, OSC::Message &outgoi
                 int stripIndex = oscMsg.strip - 1;
                 stripMessageCount[stripIndex]++;
                 int deviceIndex = (int)oscMsg.device -1;
-                bool stripOff = oscMsg.value == 2048;
+                bool stripOff = !oscMsg.active;
                 ehStrips[stripIndex][deviceIndex] = stripOff ? 0.0f : std::max((((int)oscMsg.value) - 150) * 1.5f, 0.0f);
                 if (stripOff)
                     relStart_ehStrips[stripIndex][deviceIndex] = -1;
@@ -116,7 +116,7 @@ void MidiGenerator::processNoteKey(OSC::Message &oscMsg, ConfigLookup::Key &keyL
     else if (state->messageCount == 4 && state->status == KeyStatus::Pending && oscMsg.active) {
         createNoteOn(keyLookup, state, buffer);
     }
-    else if (state->messageCount == 16 && state->status != KeyStatus::Pending) {
+    else if (state->messageCount == 64 && state->status != KeyStatus::Pending) {
         createNoteHold(keyLookup, state, buffer);
     }
 }

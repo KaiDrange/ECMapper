@@ -16,7 +16,7 @@ namespace EigenApi
         	
         virtual void key(const char* dev, unsigned long long t, unsigned course, unsigned key, bool a, unsigned p, int r, int y) {};
         virtual void breath(const char* dev, unsigned long long t, unsigned val) {};
-        virtual void strip(const char* dev, unsigned long long t, unsigned strip, unsigned val) {};
+        virtual void strip(const char* dev, unsigned long long t, unsigned strip, unsigned val, bool a) {};
         virtual void pedal(const char* dev, unsigned long long t, unsigned pedal, unsigned val) {};
         virtual void dead(const char* dev, unsigned reason) {};
     };

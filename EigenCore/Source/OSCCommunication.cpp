@@ -95,9 +95,9 @@ void OSCCommunication::sendBreath(unsigned val, EHDeviceType deviceType) {
         sender.send("/EigenCore/breath", (int)val, (int)deviceType);
 }
 
-void OSCCommunication::sendStrip(unsigned strip, unsigned val, EHDeviceType deviceType) {
+void OSCCommunication::sendStrip(unsigned strip, unsigned val, bool active, EHDeviceType deviceType) {
     if (pingCounter > -1)
-        sender.send("/EigenCore/strip", (int)strip, (int)val, (int)deviceType);
+        sender.send("/EigenCore/strip", (int)strip, (int)val, active, (int)deviceType);
 }
 
 void OSCCommunication::sendPedal(unsigned pedal, unsigned val, EHDeviceType deviceType) {
@@ -140,10 +140,10 @@ void* OSCCommunication::sendProcess() {
                     sendBreath(msg.value, msg.device);
                     break;
                 case OSC::MessageType::Strip:
-                    sendStrip(msg.strip, msg.value, msg.device);
+                    sendStrip(msg.strip, msg.value, msg.active, msg.device);
                     break;
                 case OSC::MessageType::Pedal:
-                    sendStrip(msg.pedal, msg.value, msg.device);
+                    sendPedal(msg.pedal, msg.value, msg.device);
                     break;
                 case OSC::MessageType::Device:
                     sendDevice(msg.device);

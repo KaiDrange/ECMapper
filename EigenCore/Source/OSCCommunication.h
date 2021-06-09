@@ -26,7 +26,7 @@ public:
     void sendKey(unsigned course, unsigned key, bool a, unsigned p, int r, int y, EHDeviceType deviceType);
     void sendDevice(EHDeviceType deviceType);
     void sendBreath(unsigned val, EHDeviceType deviceType);
-    void sendStrip(unsigned strip, unsigned val, EHDeviceType deviceType);
+    void sendStrip(unsigned strip, unsigned val, bool active, EHDeviceType deviceType);
     void sendPedal(unsigned pedal, unsigned val, EHDeviceType deviceType);
 
     OSC::OSCMessageFifo *sendQueue;

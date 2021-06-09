@@ -80,19 +80,19 @@ void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
 
         receiveQueue->add(&msg);
     }
-    else if (message.getAddressPattern() == "/EigenCore/strip" && message.size() == 3) {
+    else if (message.getAddressPattern() == "/EigenCore/strip" && message.size() == 4) {
         msg = {
             .type = OSC::MessageType::Strip,
             .course = 0,
             .key = 0,
-            .active = 0,
+            .active = message[2].getInt32(),
             .pressure = 0,
             .roll = 0,
             .yaw = 0,
             .strip = (unsigned int)message[0].getInt32(),
             .pedal = 0,
             .value = (unsigned int)message[1].getInt32(),
-            .device = (DeviceType)message[2].getInt32()
+            .device = (DeviceType)message[3].getInt32()
         };
 
         receiveQueue->add(&msg);

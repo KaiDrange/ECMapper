@@ -3,7 +3,8 @@
 
 juce::ValueTree* rootState;
 
-ECMapperAudioProcessor::ECMapperAudioProcessor() : AudioProcessor (BusesProperties().withOutput("Output", juce::AudioChannelSet::stereo(), true)),
+ECMapperAudioProcessor::ECMapperAudioProcessor() :
+AudioProcessor(BusesProperties().withOutput("Output", juce::AudioChannelSet::stereo(), true)),
 pluginState(*this, nullptr, id_state, createParameterLayout()), osc(&oscSendQueue, &oscReceiveQueue), configLookups { ConfigLookup(DeviceType::Alpha), ConfigLookup(DeviceType::Tau), ConfigLookup(DeviceType::Pico)}, midiGenerator(configLookups), layoutChangeHandler(&oscSendQueue, this, configLookups) {
     rootState = &pluginState.state;
 
@@ -110,6 +111,11 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
     midiGenerator.samplesSinceLastBreathMsg += buffer.getNumSamples();
     if (midiGenerator.samplesSinceLastBreathMsg > 1024)
         midiGenerator.reduceBreath(midiMessages);
+    
+//    static int logCounter = 0;
+//    logCounter++;
+//    if (logCounter%100 == 0)
+//        std::cout << midiMessages.getNumEvents() << std::endl;
 }
 
 bool ECMapperAudioProcessor::hasEditor() const {
@@ -118,6 +124,8 @@ bool ECMapperAudioProcessor::hasEditor() const {
 
 juce::AudioProcessorEditor* ECMapperAudioProcessor::createEditor() {
     auto editor = new ECMapperAudioProcessorEditor(*this);
+    editor->setResizable(true, true);
+    editor->setResizeLimits(800, 600, 4096, 4096);
     this->editor = editor;
 
 //    editor->mainComponent->addListener(&layoutChangeHandler);
