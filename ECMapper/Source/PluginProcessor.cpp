@@ -8,19 +8,10 @@ AudioProcessor(BusesProperties().withOutput("Output", juce::AudioChannelSet::ste
 pluginState(*this, nullptr, id_state, createParameterLayout()), osc(&oscSendQueue, &oscReceiveQueue), configLookups { ConfigLookup(DeviceType::Alpha), ConfigLookup(DeviceType::Tau), ConfigLookup(DeviceType::Pico)}, midiGenerator(configLookups), layoutChangeHandler(&oscSendQueue, this, configLookups) {
     rootState = &pluginState.state;
 
-    juce::StringArray ipAndPortNo;
-    Utility::splitString(SettingsWrapper::getIP(), ":", ipAndPortNo);
-    if (ipAndPortNo.size() == 2) {
-        osc.connectSender(ipAndPortNo[0], ipAndPortNo[1].getIntValue());
-        osc.connectReceiver(ipAndPortNo[1].getIntValue() + 1);
-    }
-//    midiGenerator = new MidiGenerator(configLookups);
     pluginState.state.addListener(&layoutChangeHandler);
 }
 
 ECMapperAudioProcessor::~ECMapperAudioProcessor() {
-    osc.disconnectSender();
-    osc.disconnectReceiver();
 }
 
 const juce::String ECMapperAudioProcessor::getName() const {
@@ -62,7 +53,14 @@ void ECMapperAudioProcessor::changeProgramName(int index, const juce::String& ne
 }
 
 void ECMapperAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
-    if (juce::JUCEApplication::isStandaloneApp()) {
+//    if (juce::JUCEApplication::isStandaloneApp()) {
+//    }
+    
+    juce::StringArray ipAndPortNo;
+    Utility::splitString(SettingsWrapper::getIP(), ":", ipAndPortNo);
+    if (ipAndPortNo.size() == 2) {
+        osc.connectSender(ipAndPortNo[0], ipAndPortNo[1].getIntValue());
+        osc.connectReceiver(ipAndPortNo[1].getIntValue() + 1);
     }
     
     midiGenerator.start();
@@ -70,12 +68,16 @@ void ECMapperAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBloc
 
 void ECMapperAudioProcessor::releaseResources() {
     midiGenerator.stop();
+    osc.disconnectSender();
+    osc.disconnectReceiver();
 }
 
+#ifndef JucePlugin_PreferredChannelConfigurations
 bool ECMapperAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
     juce::ignoreUnused(layouts);
     return true;
 }
+#endif
 
 void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages) {
     juce::ScopedNoDenormals noDenormals;

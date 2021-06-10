@@ -12,6 +12,16 @@ MidiGenerator::~MidiGenerator() {
 void MidiGenerator::start() {
     int lowerChannelCount = SettingsWrapper::getLowerMPEVoiceCount();
     mpeZone.setLowerZone(lowerChannelCount, 2, SettingsWrapper::getLowerMPEPB());
+    if (lowerChanAssigner != nullptr) {
+        delete lowerChanAssigner;
+        lowerChanAssigner = nullptr;
+    }
+
+    if (upperChanAssigner != nullptr) {
+        delete upperChanAssigner;
+        upperChanAssigner = nullptr;
+    }
+
     lowerChanAssigner = new juce::MPEChannelAssigner(mpeZone.getLowerZone());
     if (lowerChannelCount < 14) {
         int upperChannelCount = SettingsWrapper::getUpperMPEVoiceCount();
