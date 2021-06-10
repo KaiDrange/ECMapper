@@ -1,7 +1,7 @@
 #include <JuceHeader.h>
 #include "ZonePanelComponent.h"
 
-ZonePanelComponent::ZonePanelComponent(DeviceType deviceType, Zone zone, float widthFactor, float heightFactor): PanelComponent(widthFactor, heightFactor), transposeInput("Transpose:", 3, -24, 24, false), keyPitchbendRangeInput("Key pitchbend:", 2, 0, 96, false), channelMaxPBInput("Channel max pb:", 2, 0, 96, false) {
+ZonePanelComponent::ZonePanelComponent(DeviceType deviceType, Zone zone, float widthFactor, float heightFactor): PanelComponent(widthFactor, heightFactor), transposeInput("Transpose:", 3, -96, 96, false), keyPitchbendRangeInput("Key pitchbend:", 2, 0, 96, false), channelMaxPBInput("Channel max pb:", 2, 0, 96, false) {
     this->zone = zone;
     this->deviceType = deviceType;
     addAndMakeVisible(label);

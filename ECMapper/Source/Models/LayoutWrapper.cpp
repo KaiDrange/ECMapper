@@ -17,7 +17,7 @@ void LayoutWrapper::addListener(DeviceType deviceType, juce::ValueTree::Listener
 
 LayoutWrapper::LayoutKey LayoutWrapper::getLayoutKey(KeyId keyId) {
     auto keyTree = getKeyTree(keyId);
-    auto defaultKeyType = getCorrectDefaultKeyType(keyId.deviceType, keyId.course);
+    auto defaultKeyType = getCorrectDefaultKeyType(keyId.deviceType, keyId.course, keyId.keyNo);
     
     return LayoutKey {
         .keyId = keyId,
@@ -91,14 +91,14 @@ DeviceType LayoutWrapper::getDeviceTypeFromLayoutTree(juce::ValueTree layoutTree
     return (DeviceType)layoutTree.getParent().getType().toString().substring(6, 7).getIntValue();
 }
 
-EigenharpKeyType LayoutWrapper::getCorrectDefaultKeyType(DeviceType deviceType, int course) {
+EigenharpKeyType LayoutWrapper::getCorrectDefaultKeyType(DeviceType deviceType, int course, int keyNo) {
     switch (deviceType) {
         case DeviceType::Alpha:
             return course == 0 ? EigenharpKeyType::Normal : EigenharpKeyType::Perc;
             break;
         case DeviceType::Tau:
-            if (course == 0) return EigenharpKeyType::Normal;
-            else if (course == 1) return EigenharpKeyType::Perc;
+            if (course == 0 && keyNo < 72) return EigenharpKeyType::Normal;
+            else if (course == 0 && keyNo >= 72) return EigenharpKeyType::Perc;
             else return EigenharpKeyType::Button;
             break;
         case DeviceType::Pico:

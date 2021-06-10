@@ -123,8 +123,8 @@ void MidiMessageSectionComponent::resized() {
     area.removeFromTop(lineHeight*1);
 
     midiCmdValue.setBounds(area.removeFromTop(lineHeight));
-    offValue.setBounds(area.removeFromTop(lineHeight));
     onValue.setBounds(area.removeFromTop(lineHeight));
+    offValue.setBounds(area.removeFromTop(lineHeight));
 
     area.removeFromTop(lineHeight*1);
 

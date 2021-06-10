@@ -179,13 +179,23 @@ void LayoutComponent::createKeys() {
             keys.push_back(new KeyConfigComponent(id, EigenharpKeyType::Button));
         }
     }
-    else {
+    else if (deviceType == DeviceType::Alpha) {
         for (int i = 0; i < getPercKeyCount(); i++) {
             LayoutWrapper::KeyId id = { .deviceType = deviceType, .course = 1, .keyNo = i };
             keys.push_back(new KeyConfigComponent(id, EigenharpKeyType::Perc));
         }
-        for (int i = 0; i < getButtonCount(); i++) {
-            LayoutWrapper::KeyId id = { .deviceType = deviceType, .course = 2, .keyNo = i };
+    }
+    else { // Note: Tau has weird key Ids
+        for (int i = getPercKeyStartIndex(); i < getButtonStartIndex(); i++) {
+            LayoutWrapper::KeyId id = { .deviceType = deviceType, .course = 0, .keyNo = i };
+            keys.push_back(new KeyConfigComponent(id, EigenharpKeyType::Perc));
+        }
+        for (int i = 4; i < 8; i++) {
+            LayoutWrapper::KeyId id = { .deviceType = deviceType, .course = 1, .keyNo = i };
+            keys.push_back(new KeyConfigComponent(id, EigenharpKeyType::Button));
+        }
+        for (int i = 88; i < 92; i++) {
+            LayoutWrapper::KeyId id = { .deviceType = deviceType, .course = 1, .keyNo = i };
             keys.push_back(new KeyConfigComponent(id, EigenharpKeyType::Button));
         }
     }
