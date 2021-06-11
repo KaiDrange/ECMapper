@@ -84,6 +84,11 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
         buffer.clear(i, 0, buffer.getNumSamples());
     
     midiMessages.clear();
+    if (!osc.senderIsConnected)
+        osc.connectSender();
+    if (!osc.receiverIsConnected)
+        osc.connectReceiver();
+    
     static OSC::Message msg;
     static OSC::Message outgoingMsg;
     if (!layoutChangeHandler.layoutMidiRPNSent) {
@@ -115,6 +120,14 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
 //    if (logCounter%100 == 0)
 //        std::cout << midiMessages.getNumEvents() << std::endl;
 }
+
+void ECMapperAudioProcessor::processBlockBypassed(juce::AudioBuffer<float> &buffer, juce::MidiBuffer &midiMessages) {
+    if (osc.senderIsConnected)
+        osc.disconnectSender();
+    if (osc.receiverIsConnected)
+        osc.disconnectReceiver();
+}
+
 
 bool ECMapperAudioProcessor::hasEditor() const {
     return true;

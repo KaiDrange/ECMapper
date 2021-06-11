@@ -15,27 +15,39 @@ OSCCommunication::~OSCCommunication() {
     stopTimer();
     sender.disconnect();
     receiver.disconnect();
+    senderIsConnected = false;
+    receiverIsConnected = false;
 }
 
 bool OSCCommunication::connectSender(juce::String ip, int port)  {
     this->senderIP = ip;
     this->senderPort = port;
-    return sender.connect(senderIP, senderPort);
+    return connectSender();
+}
+
+bool OSCCommunication::connectSender() {
+    senderIsConnected = sender.connect(senderIP, senderPort);
+    return senderIsConnected;
 }
 
 void OSCCommunication::disconnectSender() {
     sender.disconnect();
-    senderPort = -1;
+    senderIsConnected = false;
 }
 
 bool OSCCommunication::connectReceiver(int port)  {
     this->receiverPort = port;
-    return receiver.connect(receiverPort);
+    return connectReceiver();
+}
+
+bool OSCCommunication::connectReceiver() {
+    receiverIsConnected = receiver.connect(receiverPort);
+    return receiverIsConnected;
 }
 
 void OSCCommunication::disconnectReceiver() {
     receiver.disconnect();
-    receiverPort = -1;
+    receiverIsConnected = false;
 }
 
 void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
@@ -132,11 +144,17 @@ void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
 }
 
 void OSCCommunication::sendLED(int course, int key, int led, DeviceType deviceType) {
+    if (!senderIsConnected)
+        return;
+    
     if (pingCounter > -1)
         sender.send("/ECMapper/led", course, key, led, (int)deviceType);
 }
 
 void OSCCommunication::timerCallback() {
+    if (!senderIsConnected)
+        return;
+    
     sender.send("/ECMapper/ping");
     if (pingCounter > -1)
         pingCounter++;
@@ -150,6 +168,9 @@ void OSCCommunication::timerCallback() {
 }
 
 void OSCCommunication::sendOutgoingMessages() {
+    if (!senderIsConnected)
+        return;
+    
     static OSC::Message msg;
     while (sendQueue->getMessageCount() > 0) {
         sendQueue->read(&msg);

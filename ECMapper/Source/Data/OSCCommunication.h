@@ -10,9 +10,13 @@ public:
     OSCCommunication(OSC::OSCMessageFifo *sendQueue, OSC::OSCMessageFifo *receiveQueue);
     ~OSCCommunication();
     bool connectSender(juce::String ip, int port);
+    bool connectSender();
     void disconnectSender();
     bool connectReceiver(int port);
+    bool connectReceiver();
     void disconnectReceiver();
+    bool receiverIsConnected = false;
+    bool senderIsConnected = false;
     
     void sendLED(int course, int key, int led, DeviceType deviceType);
     OSC::OSCMessageFifo *receiveQueue;
