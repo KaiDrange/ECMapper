@@ -8,8 +8,6 @@
 
 class ECMapperAudioProcessor;
 
-extern juce::ValueTree *rootState;
-
 class LayoutChangeHandler : public juce::ValueTree::Listener {
 public:
     LayoutChangeHandler(OSC::OSCMessageFifo *oscSendQueue, ECMapperAudioProcessor *processor, ConfigLookup (&configLookups) [3]);

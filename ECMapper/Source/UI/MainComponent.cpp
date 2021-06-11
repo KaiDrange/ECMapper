@@ -1,36 +1,35 @@
 #include "MainComponent.h"
 
-MainComponent::MainComponent(): lowerMPEVoiceCount("Lower MPE voices:", 2, 0, 15, true), upperMPEVoiceCount("Upper MPE voices:", 2, 0, 15, true),  lowerMPEPitchbendRange("Lower MPE pb:", 2, 0, 96, true), upperMPEPitchbendRange("Upper MPE pb:", 2, 0, 96, true), tabs(juce::TabbedButtonBar::TabsAtTop) {
-    
-    SettingsWrapper::addListener(this);
-    oscIPInput.setText(SettingsWrapper::getIP());
+MainComponent::MainComponent(juce::AudioProcessorValueTreeState &pluginState): lowerMPEVoiceCount("Lower MPE voices:", 2, 0, 15, true), upperMPEVoiceCount("Upper MPE voices:", 2, 0, 15, true),  lowerMPEPitchbendRange("Lower MPE pb:", 2, 0, 96, true), upperMPEPitchbendRange("Upper MPE pb:", 2, 0, 96, true), tabs(juce::TabbedButtonBar::TabsAtTop) {
+    SettingsWrapper::addListener(this, pluginState.state);
+    oscIPInput.setText(SettingsWrapper::getIP(pluginState.state));
     oscIPInput.onFocusLost = [&] {
-        SettingsWrapper::setIP(oscIPInput.getText());
+        SettingsWrapper::setIP(oscIPInput.getText(), pluginState.state);
     };
     
-    lowerMPEVoiceCount.setValue(SettingsWrapper::getLowerMPEVoiceCount());
+    lowerMPEVoiceCount.setValue(SettingsWrapper::getLowerMPEVoiceCount(pluginState.state));
     lowerMPEVoiceCount.input.onFocusLost = [&] {
-        SettingsWrapper::setLowerMPEVoiceCount(lowerMPEVoiceCount.getValue());
+        SettingsWrapper::setLowerMPEVoiceCount(lowerMPEVoiceCount.getValue(), pluginState.state);
     };
 
-    upperMPEVoiceCount.setValue(SettingsWrapper::getUpperMPEVoiceCount());
+    upperMPEVoiceCount.setValue(SettingsWrapper::getUpperMPEVoiceCount(pluginState.state));
     upperMPEVoiceCount.input.onFocusLost = [&] {
-        SettingsWrapper::setUpperMPEVoiceCount(upperMPEVoiceCount.getValue());
+        SettingsWrapper::setUpperMPEVoiceCount(upperMPEVoiceCount.getValue(), pluginState.state);
     };
     
-    lowerMPEPitchbendRange.setValue(SettingsWrapper::getLowerMPEPB());
+    lowerMPEPitchbendRange.setValue(SettingsWrapper::getLowerMPEPB(pluginState.state));
     lowerMPEPitchbendRange.input.onFocusLost = [&] {
-        SettingsWrapper::setLowerMPEPB(lowerMPEPitchbendRange.getValue());
+        SettingsWrapper::setLowerMPEPB(lowerMPEPitchbendRange.getValue(), pluginState.state);
     };
 
-    upperMPEPitchbendRange.setValue(SettingsWrapper::getUpperMPEPB());
+    upperMPEPitchbendRange.setValue(SettingsWrapper::getUpperMPEPB(pluginState.state));
     upperMPEPitchbendRange.input.onFocusLost = [&] {
-        SettingsWrapper::setUpperMPEPB(upperMPEPitchbendRange.getValue());
+        SettingsWrapper::setUpperMPEPB(upperMPEPitchbendRange.getValue(), pluginState.state);
     };
     
-    tabPages[0] = new TabPage(0, DeviceType::Alpha);
-    tabPages[1] = new TabPage(1, DeviceType::Tau);
-    tabPages[2] = new TabPage(2, DeviceType::Pico);
+    tabPages[0] = new TabPage(0, DeviceType::Alpha, pluginState);
+    tabPages[1] = new TabPage(1, DeviceType::Tau, pluginState);
+    tabPages[2] = new TabPage(2, DeviceType::Pico, pluginState);
     auto bgColour = getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId);
     tabs.addTab("Alpha", bgColour, tabPages[0], false);
     tabs.addTab("Tau", bgColour, tabPages[1], false);

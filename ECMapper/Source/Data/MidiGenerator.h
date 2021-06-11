@@ -14,7 +14,7 @@ public:
     juce::MPEZoneLayout mpeZone;
     
     void createLayoutRPNs(juce::MidiBuffer &buffer);
-    void start();
+    void start(juce::AudioProcessorValueTreeState &pluginState);
     void stop();
     int samplesSinceLastBreathMsg = 0;
 

@@ -2,7 +2,7 @@
 #include "PluginEditor.h"
 
 ECMapperAudioProcessorEditor::ECMapperAudioProcessorEditor (ECMapperAudioProcessor& p) : AudioProcessorEditor(&p), audioProcessor(p) {
-    mainComponent = new MainComponent();
+    mainComponent = new MainComponent(p.pluginState);
     setSize (800, 600);
     addAndMakeVisible(mainComponent);
     mainComponent->setBounds(getLocalBounds());
@@ -22,7 +22,7 @@ void ECMapperAudioProcessorEditor::resized() {
 
 void ECMapperAudioProcessorEditor::recreateMainComponent() {
     delete mainComponent;
-    mainComponent = new MainComponent();
+    mainComponent = new MainComponent(audioProcessor.pluginState);
     addAndMakeVisible(mainComponent);
     mainComponent->setBounds(getLocalBounds());
 //    mainComponent->addListener(&audioProcessor.getLayoutChangeHandler());

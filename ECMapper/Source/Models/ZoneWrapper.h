@@ -2,8 +2,6 @@
 #include <JuceHeader.h>
 #include "Enums.h"
 
-extern juce::ValueTree *rootState;
-
 class ZoneWrapper {
 public:
     struct MidiValue {
@@ -30,21 +28,21 @@ public:
     static inline const juce::Identifier id_midiCCNo { "midiCCNo" };
     static inline const juce::Identifier id_midiVal { "midiVal" };
 
-    static MidiChannelType getMidiChannelType(DeviceType deviceType, Zone zone);
-    static void setMidiChannelType(DeviceType deviceType, Zone zone, MidiChannelType midiChannelType);
-    static ZoneWrapper::MidiValue getMidiValue(DeviceType deviceType, Zone zone, juce::Identifier childId, ZoneWrapper::MidiValue defaultValue);
-    static int getTranspose(DeviceType deviceType, Zone zone);
-    static void setTranspose(DeviceType deviceType, Zone zone, int value);
-    static int getKeyPitchbend(DeviceType deviceType, Zone zone);
-    static void setKeyPitchbend(DeviceType deviceType, Zone zone, int value);
-    static int getChannelMaxPitchbend(DeviceType deviceType, Zone zone);
-    static void setChannelMaxPitchbend(DeviceType deviceType, Zone zone, int value);
-    static void setEnabled(DeviceType deviceType, Zone zone, bool enabled);
-    static bool getEnabled(DeviceType deviceType, Zone zone);
-    static void setMidiValue(DeviceType deviceType, Zone zone, juce::Identifier childId, MidiValue midiValue);
+    static MidiChannelType getMidiChannelType(DeviceType deviceType, Zone zone, juce::ValueTree &rootState);
+    static void setMidiChannelType(DeviceType deviceType, Zone zone, MidiChannelType midiChannelType, juce::ValueTree &rootState);
+    static ZoneWrapper::MidiValue getMidiValue(DeviceType deviceType, Zone zone, juce::Identifier childId, ZoneWrapper::MidiValue defaultValue, juce::ValueTree &rootState);
+    static int getTranspose(DeviceType deviceType, Zone zone, juce::ValueTree &rootState);
+    static void setTranspose(DeviceType deviceType, Zone zone, int value, juce::ValueTree &rootState);
+    static int getKeyPitchbend(DeviceType deviceType, Zone zone, juce::ValueTree &rootState);
+    static void setKeyPitchbend(DeviceType deviceType, Zone zone, int value, juce::ValueTree &rootState);
+    static int getChannelMaxPitchbend(DeviceType deviceType, Zone zone, juce::ValueTree &rootState);
+    static void setChannelMaxPitchbend(DeviceType deviceType, Zone zone, int value, juce::ValueTree &rootState);
+    static void setEnabled(DeviceType deviceType, Zone zone, bool enabled, juce::ValueTree &rootState);
+    static bool getEnabled(DeviceType deviceType, Zone zone, juce::ValueTree &rootState);
+    static void setMidiValue(DeviceType deviceType, Zone zone, juce::Identifier childId, MidiValue midiValue, juce::ValueTree &rootState);
     static DeviceType getDeviceTypeFromTree(juce::ValueTree tree);
 
-    static void addListener(DeviceType deviceType, juce::ValueTree::Listener *listener);
+    static void addListener(DeviceType deviceType, juce::ValueTree::Listener *listener, juce::ValueTree &rootState);
 
     static inline const MidiValue default_pressure = { MidiValue { .valueType = MidiValueType::ChannelAftertouch, .ccNo = 0}};
     static inline const MidiValue default_roll = { MidiValue { .valueType = MidiValueType::Pitchbend, .ccNo = 0}};
@@ -56,7 +54,7 @@ public:
     static inline const MidiValue default_breath = { MidiValue { .valueType = MidiValueType::CC, .ccNo = 2}};
 
 private:
-    static juce::ValueTree getZoneTree(DeviceType deviceType, Zone zone);
+    static juce::ValueTree getZoneTree(DeviceType deviceType, Zone zone, juce::ValueTree &rootState);
     static inline const bool default_enabled = true;
     static inline const int default_transpose = 0;
     static inline const int default_keyPitchbend = 1;

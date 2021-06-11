@@ -10,7 +10,7 @@
 
 class LayoutComponent : public PanelComponent, public juce::MidiKeyboardStateListener, public juce::KeyListener, public MidiMessageSectionComponent::Listener {
 public:
-    LayoutComponent(DeviceType model, float widthFactor, float heightFactor);
+    LayoutComponent(DeviceType model, float widthFactor, float heightFactor, juce::AudioProcessorValueTreeState &pluginState);
     ~LayoutComponent() override;
     void handleNoteOn(juce::MidiKeyboardState*, int midiChannel, int midiNoteNumber, float velocity) override;
     void handleNoteOff(juce::MidiKeyboardState*, int midiChannel, int midiNoteNumber, float velocity) override;
@@ -59,6 +59,7 @@ private:
     int keyRowCount;
     int keyRowLengths[5];
     DeviceType deviceType;
+    juce::AudioProcessorValueTreeState &pluginState;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LayoutComponent)
 };

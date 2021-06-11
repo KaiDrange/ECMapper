@@ -8,7 +8,7 @@
 
 class TabPage : public juce::Component {
 public:
-    TabPage(int tabIndex, DeviceType deviceType);
+    TabPage(int tabIndex, DeviceType deviceType, juce::AudioProcessorValueTreeState &pluginState);
     ~TabPage() override;
 
     void paint (juce::Graphics&) override;

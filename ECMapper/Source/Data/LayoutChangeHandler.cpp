@@ -60,7 +60,7 @@ void LayoutChangeHandler::sendLEDMsg(LayoutWrapper::LayoutKey layoutKey) {
 }
 
 void LayoutChangeHandler::sendLEDMsgForAllKeys(DeviceType deviceType) {
-    auto layoutTree = LayoutWrapper::getLayoutTree(deviceType);
+    auto layoutTree = LayoutWrapper::getLayoutTree(deviceType, processor->pluginState.state);
     for (int i = 0; i < layoutTree.getNumChildren(); i++) {
         LayoutWrapper::LayoutKey layoutKey = LayoutWrapper::getLayoutKeyFromKeyTree(layoutTree.getChild(i));
         sendLEDMsg(layoutKey);

@@ -1,22 +1,22 @@
 #include "LayoutWrapper.h"
 
-juce::ValueTree LayoutWrapper::getLayoutTree(DeviceType deviceType) {
-    auto deviceChild = rootState->getOrCreateChildWithName(id_device + juce::String((int)deviceType), nullptr);
+juce::ValueTree LayoutWrapper::getLayoutTree(DeviceType deviceType, juce::ValueTree &rootState) {
+    auto deviceChild = rootState.getOrCreateChildWithName(id_device + juce::String((int)deviceType), nullptr);
     return deviceChild.getOrCreateChildWithName(id_layout, nullptr);
 }
 
-juce::ValueTree LayoutWrapper::getKeyTree(KeyId keyId) {
-    auto layoutTree = getLayoutTree(keyId.deviceType);
+juce::ValueTree LayoutWrapper::getKeyTree(KeyId keyId, juce::ValueTree &rootState) {
+    auto layoutTree = getLayoutTree(keyId.deviceType, rootState);
     return layoutTree.getOrCreateChildWithName(id_key + "_" + juce::String(keyId.course) + "_" + juce::String(keyId.keyNo), nullptr);
 }
 
-void LayoutWrapper::addListener(DeviceType deviceType, juce::ValueTree::Listener *listener) {
-    auto vTree = getLayoutTree(deviceType);
+void LayoutWrapper::addListener(DeviceType deviceType, juce::ValueTree::Listener *listener, juce::ValueTree &rootState) {
+    auto vTree = getLayoutTree(deviceType, rootState);
     vTree.addListener(listener);
 }
 
-LayoutWrapper::LayoutKey LayoutWrapper::getLayoutKey(KeyId keyId) {
-    auto keyTree = getKeyTree(keyId);
+LayoutWrapper::LayoutKey LayoutWrapper::getLayoutKey(KeyId keyId, juce::ValueTree &rootState) {
+    auto keyTree = getKeyTree(keyId, rootState);
     auto defaultKeyType = getCorrectDefaultKeyType(keyId.deviceType, keyId.course, keyId.keyNo);
     
     return LayoutKey {
@@ -29,36 +29,36 @@ LayoutWrapper::LayoutKey LayoutWrapper::getLayoutKey(KeyId keyId) {
     };
 }
 
-void LayoutWrapper::setLayoutKey(LayoutKey &key) {
-    setKeyColour(key.keyId, key.keyColour);
-    setKeyType(key.keyId, key.keyType);
-    setKeyZone(key.keyId, key.zone);
-    setKeyMappingType(key.keyId, key.keyMappingType);
-    setKeyMappingValue(key.keyId, key.mappingValue);
+void LayoutWrapper::setLayoutKey(LayoutKey &key, juce::ValueTree &rootState) {
+    setKeyColour(key.keyId, key.keyColour, rootState);
+    setKeyType(key.keyId, key.keyType, rootState);
+    setKeyZone(key.keyId, key.zone, rootState);
+    setKeyMappingType(key.keyId, key.keyMappingType, rootState);
+    setKeyMappingValue(key.keyId, key.mappingValue, rootState);
 }
 
-void LayoutWrapper::setKeyColour(KeyId &keyId, KeyColour keyColour) {
-    auto keyTree = getKeyTree(keyId);
+void LayoutWrapper::setKeyColour(KeyId &keyId, KeyColour keyColour, juce::ValueTree &rootState) {
+    auto keyTree = getKeyTree(keyId, rootState);
     keyTree.setProperty(id_keyColour, (int)keyColour, nullptr);
 }
 
-void LayoutWrapper::setKeyType(KeyId &keyId, EigenharpKeyType keyType) {
-    auto keyTree = getKeyTree(keyId);
+void LayoutWrapper::setKeyType(KeyId &keyId, EigenharpKeyType keyType, juce::ValueTree &rootState) {
+    auto keyTree = getKeyTree(keyId, rootState);
     keyTree.setProperty(id_keyType, (int)keyType, nullptr);
 }
 
-void LayoutWrapper::setKeyZone(KeyId &keyId, Zone zone) {
-    auto keyTree = getKeyTree(keyId);
+void LayoutWrapper::setKeyZone(KeyId &keyId, Zone zone, juce::ValueTree &rootState) {
+    auto keyTree = getKeyTree(keyId, rootState);
     keyTree.setProperty(id_zone, (int)zone, nullptr);
 }
 
-void LayoutWrapper::setKeyMappingType(KeyId &keyId, KeyMappingType keyMappingType) {
-    auto keyTree = getKeyTree(keyId);
+void LayoutWrapper::setKeyMappingType(KeyId &keyId, KeyMappingType keyMappingType, juce::ValueTree &rootState) {
+    auto keyTree = getKeyTree(keyId, rootState);
     keyTree.setProperty(id_keyMappingType, (int)keyMappingType, nullptr);
 }
 
-void LayoutWrapper::setKeyMappingValue(KeyId &keyId, juce::String keyMappingValue) {
-    auto keyTree = getKeyTree(keyId);
+void LayoutWrapper::setKeyMappingValue(KeyId &keyId, juce::String keyMappingValue, juce::ValueTree &rootState) {
+    auto keyTree = getKeyTree(keyId, rootState);
     keyTree.setProperty(id_mappingValue, keyMappingValue, nullptr);
 }
 
@@ -74,7 +74,8 @@ LayoutWrapper::LayoutKey LayoutWrapper::getLayoutKeyFromKeyTree(juce::ValueTree 
         .keyNo = keyNo
     };
     
-    return getLayoutKey(keyId);
+    auto rootState = keyTree.getRoot();
+    return getLayoutKey(keyId, rootState);
 }
 
 DeviceType LayoutWrapper::getDeviceTypeFromKeyTree(juce::ValueTree keyTree) {

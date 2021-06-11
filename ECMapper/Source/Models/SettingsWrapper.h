@@ -1,8 +1,6 @@
 #pragma once
 #include <JuceHeader.h>
 
-extern juce::ValueTree *rootState;
-
 class SettingsWrapper {
 public:
     static inline const juce::Identifier id_globalSettings { "globalsettings" };
@@ -12,18 +10,18 @@ public:
     static inline const juce::Identifier id_lowerMPEPB {"lowermpepb"};
     static inline const juce::Identifier id_upperMPEPB {"uppermpepb"};
 
-    static void addListener(juce::ValueTree::Listener *listener);
+    static void addListener(juce::ValueTree::Listener *listener, juce::ValueTree &rootState);
 
-    static juce::String getIP();
-    static void setIP(juce::String ip);
-    static int getLowerMPEVoiceCount();
-    static void setLowerMPEVoiceCount(int channel);
-    static int getUpperMPEVoiceCount();
-    static void setUpperMPEVoiceCount(int channel);
-    static void setLowerMPEPB(int pbValue);
-    static int getLowerMPEPB();
-    static void setUpperMPEPB(int pbValue);
-    static int getUpperMPEPB();
+    static juce::String getIP(juce::ValueTree &rootState);
+    static void setIP(juce::String ip, juce::ValueTree &rootState);
+    static int getLowerMPEVoiceCount(juce::ValueTree &rootState);
+    static void setLowerMPEVoiceCount(int channel, juce::ValueTree &rootState);
+    static int getUpperMPEVoiceCount(juce::ValueTree &rootState);
+    static void setUpperMPEVoiceCount(int channel, juce::ValueTree &rootState);
+    static void setLowerMPEPB(int pbValue, juce::ValueTree &rootState);
+    static int getLowerMPEPB(juce::ValueTree &rootState);
+    static void setUpperMPEPB(int pbValue, juce::ValueTree &rootState);
+    static int getUpperMPEPB(juce::ValueTree &rootState);
 
     
 private:
@@ -33,6 +31,6 @@ private:
     static inline const int default_lowerMPEPB = 48;
     static inline const int default_upperMPEPB = 48;
 
-    static juce::ValueTree getSettingsTree();
+    static juce::ValueTree getSettingsTree(juce::ValueTree &rootState);
     
 };

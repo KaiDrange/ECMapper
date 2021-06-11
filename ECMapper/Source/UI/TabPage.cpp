@@ -1,10 +1,10 @@
 #include "TabPage.h"
 
-TabPage::TabPage(int tabIndex, DeviceType deviceType) : keyboard(keyboardState, juce::MidiKeyboardComponent::Orientation::verticalKeyboardFacingRight) {
-    layoutPanel = new LayoutComponent(deviceType, 0.4, 1);
+TabPage::TabPage(int tabIndex, DeviceType deviceType, juce::AudioProcessorValueTreeState &pluginState) : keyboard(keyboardState, juce::MidiKeyboardComponent::Orientation::verticalKeyboardFacingRight) {
+    layoutPanel = new LayoutComponent(deviceType, 0.4, 1, pluginState);
     addAndMakeVisible(layoutPanel);
     for (int i = 0; i < 3; i++) {
-        zonePanels[i] = new ZonePanelComponent(deviceType, (Zone)(i+1), 1, 1.0/3.0);
+        zonePanels[i] = new ZonePanelComponent(deviceType, (Zone)(i+1), 1, 1.0/3.0, pluginState);
         addAndMakeVisible(zonePanels[i]);
     }
     
@@ -14,14 +14,14 @@ TabPage::TabPage(int tabIndex, DeviceType deviceType) : keyboard(keyboardState, 
     addAndMakeVisible(saveMappingButton);
     saveMappingButton.setButtonText("Save");
     saveMappingButton.onClick = [&, deviceType] {
-        FileUtil::saveMapping(LayoutWrapper::getLayoutTree(deviceType), deviceType);
+        FileUtil::saveMapping(LayoutWrapper::getLayoutTree(deviceType, pluginState.state), deviceType);
     };
     addAndMakeVisible(loadMappingButton);
     loadMappingButton.setButtonText("load");
     loadMappingButton.onClick = [&, deviceType] {
         auto xml = FileUtil::openMapping(deviceType);
         auto loadedMap = juce::ValueTree::fromXml(xml);
-        auto oldTree = LayoutWrapper::getLayoutTree(deviceType);
+        auto oldTree = LayoutWrapper::getLayoutTree(deviceType, pluginState.state);
         oldTree.copyPropertiesFrom(loadedMap, nullptr);
         for (int i = 0; i < oldTree.getNumChildren(); i++) {
             oldTree.getChild(i).copyPropertiesFrom(loadedMap.getChild(i), nullptr);

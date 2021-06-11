@@ -1,6 +1,6 @@
 #include "KeyConfigComponent.h"
 
-KeyConfigComponent::KeyConfigComponent(LayoutWrapper::KeyId id, EigenharpKeyType keyType) : juce::DrawableButton("btn", juce::DrawableButton::ImageStretched) {
+KeyConfigComponent::KeyConfigComponent(LayoutWrapper::KeyId id, EigenharpKeyType keyType, juce::AudioProcessorValueTreeState &pluginState) : juce::DrawableButton("btn", juce::DrawableButton::ImageStretched), pluginState(pluginState) {
     this->keyType = keyType;
     this->keyId = id;
     setClickingTogglesState(true);
@@ -10,7 +10,7 @@ KeyConfigComponent::~KeyConfigComponent() {
 }
 
 void KeyConfigComponent::paint(juce::Graphics& g) {
-    auto layoutKey = LayoutWrapper::getLayoutKey(keyId);
+    auto layoutKey = LayoutWrapper::getLayoutKey(keyId, pluginState.state);
     auto area = getLocalBounds();
     g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
 

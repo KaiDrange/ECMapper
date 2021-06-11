@@ -1,11 +1,11 @@
 #include "ConfigLookup.h"
 
-ConfigLookup::ConfigLookup(DeviceType deviceType) {
+ConfigLookup::ConfigLookup(DeviceType deviceType, juce::AudioProcessorValueTreeState &pluginState) : pluginState(pluginState) {
     this->deviceType = deviceType;
 }
 
 void ConfigLookup::updateAll() {
-    juce::ValueTree layoutTree = LayoutWrapper::getLayoutTree(deviceType);
+    juce::ValueTree layoutTree = LayoutWrapper::getLayoutTree(deviceType, pluginState.state);
     for (int i = 0; i < layoutTree.getNumChildren(); i++) {
         updateKey(layoutTree.getChild(i));
     }
@@ -31,7 +31,7 @@ void ConfigLookup::updateKey(juce::ValueTree keytree) {
         setKeyToDefault = true;
     if (layoutKey.zone == Zone::NoZone)
         setKeyToDefault = true;
-    if (!ZoneWrapper::getEnabled(layoutKey.keyId.deviceType, layoutKey.zone))
+    if (!ZoneWrapper::getEnabled(layoutKey.keyId.deviceType, layoutKey.zone, pluginState.state))
         setKeyToDefault = true;
     
     Key key;
@@ -40,19 +40,19 @@ void ConfigLookup::updateKey(juce::ValueTree keytree) {
         key.mapType = layoutKey.keyMappingType;
         key.keyColour = layoutKey.keyColour;
         key.note = key.mapType == KeyMappingType::Note
-            ? std::min(std::max(layoutKey.mappingValue.getIntValue() + ZoneWrapper::getTranspose(layoutKey.keyId.deviceType, layoutKey.zone), 0), 127)
+            ? std::min(std::max(layoutKey.mappingValue.getIntValue() + ZoneWrapper::getTranspose(layoutKey.keyId.deviceType, layoutKey.zone, pluginState.state), 0), 127)
             : 0;
-        key.pressure = ZoneWrapper::getMidiValue(layoutKey.keyId.deviceType, layoutKey.zone, ZoneWrapper::id_pressure, ZoneWrapper::default_pressure);
-        key.roll = ZoneWrapper::getMidiValue(layoutKey.keyId.deviceType, layoutKey.zone, ZoneWrapper::id_roll, ZoneWrapper::default_roll);
-        key.yaw = ZoneWrapper::getMidiValue(layoutKey.keyId.deviceType, layoutKey.zone, ZoneWrapper::id_yaw, ZoneWrapper::default_yaw);
-        key.output = ZoneWrapper::getMidiChannelType(layoutKey.keyId.deviceType, layoutKey.zone);
-        auto keyPB = ZoneWrapper::getKeyPitchbend(layoutKey.keyId.deviceType, layoutKey.zone);
+        key.pressure = ZoneWrapper::getMidiValue(layoutKey.keyId.deviceType, layoutKey.zone, ZoneWrapper::id_pressure, ZoneWrapper::default_pressure, pluginState.state);
+        key.roll = ZoneWrapper::getMidiValue(layoutKey.keyId.deviceType, layoutKey.zone, ZoneWrapper::id_roll, ZoneWrapper::default_roll, pluginState.state);
+        key.yaw = ZoneWrapper::getMidiValue(layoutKey.keyId.deviceType, layoutKey.zone, ZoneWrapper::id_yaw, ZoneWrapper::default_yaw, pluginState.state);
+        key.output = ZoneWrapper::getMidiChannelType(layoutKey.keyId.deviceType, layoutKey.zone, pluginState.state);
+        auto keyPB = ZoneWrapper::getKeyPitchbend(layoutKey.keyId.deviceType, layoutKey.zone, pluginState.state);
         if (key.output == MidiChannelType::MPE_Low)
-            key.pbRange = std::min(((float)keyPB)/((float)SettingsWrapper::getLowerMPEPB()), 1.0f);
+            key.pbRange = std::min(((float)keyPB)/((float)SettingsWrapper::getLowerMPEPB(pluginState.state)), 1.0f);
         else if (key.output == MidiChannelType::MPE_High)
-            key.pbRange = std::min(((float)keyPB)/((float)SettingsWrapper::getUpperMPEPB()), 1.0f);
+            key.pbRange = std::min(((float)keyPB)/((float)SettingsWrapper::getUpperMPEPB(pluginState.state)), 1.0f);
         else
-            key.pbRange = std::min(((float)keyPB)/((float)ZoneWrapper::getChannelMaxPitchbend(layoutKey.keyId.deviceType, layoutKey.zone)), 1.0f);
+            key.pbRange = std::min(((float)keyPB)/((float)ZoneWrapper::getChannelMaxPitchbend(layoutKey.keyId.deviceType, layoutKey.zone, pluginState.state)), 1.0f);
         
         if (key.mapType != KeyMappingType::MidiMsg) {
             key.cmdType = 0;
@@ -95,13 +95,13 @@ void ConfigLookup::updateKey(juce::ValueTree keytree) {
 }
 
 void ConfigLookup::updateBreath(Zone zone) {
-    if (!ZoneWrapper::getEnabled(deviceType, zone)) {
+    if (!ZoneWrapper::getEnabled(deviceType, zone, pluginState.state)) {
         breath[((int)zone)-1].channel = 0;
         breath[((int)zone)-1].midiValue.valueType = MidiValueType::Off;
         return;
     }
     
-    auto midiChannelType = ZoneWrapper::getMidiChannelType(deviceType, zone);
+    auto midiChannelType = ZoneWrapper::getMidiChannelType(deviceType, zone, pluginState.state);
     if (midiChannelType == MidiChannelType::MPE_Low)
         breath[((int)zone)-1].channel = 1;
     else if (midiChannelType == MidiChannelType::MPE_High)
@@ -109,11 +109,11 @@ void ConfigLookup::updateBreath(Zone zone) {
     else
         breath[((int)zone)-1].channel = (int)midiChannelType;
     
-    breath[((int)zone)-1].midiValue = ZoneWrapper::getMidiValue(deviceType, zone, ZoneWrapper::id_breath, ZoneWrapper::default_breath);
+    breath[((int)zone)-1].midiValue = ZoneWrapper::getMidiValue(deviceType, zone, ZoneWrapper::id_breath, ZoneWrapper::default_breath, pluginState.state);
 }
 
 void ConfigLookup::updateStrips(Zone zone) {
-    if (!ZoneWrapper::getEnabled(deviceType, zone)) {
+    if (!ZoneWrapper::getEnabled(deviceType, zone, pluginState.state)) {
         strip1[((int)zone)-1].channel = 0;
         strip2[((int)zone)-1].channel = 0;
         strip1[((int)zone)-1].absMidiValue.valueType = MidiValueType::Off;
@@ -123,7 +123,7 @@ void ConfigLookup::updateStrips(Zone zone) {
         return;
     }
     
-    auto midiChannelType = ZoneWrapper::getMidiChannelType(deviceType, zone);
+    auto midiChannelType = ZoneWrapper::getMidiChannelType(deviceType, zone, pluginState.state);
     if (midiChannelType == MidiChannelType::MPE_Low) {
         strip1[((int)zone)-1].channel = 1;
         strip2[((int)zone)-1].channel = 1;
@@ -137,8 +137,8 @@ void ConfigLookup::updateStrips(Zone zone) {
         strip2[((int)zone)-1].channel = (int)midiChannelType;
     }
 
-    strip1[((int)zone)-1].absMidiValue = ZoneWrapper::getMidiValue(deviceType, zone, ZoneWrapper::id_strip1Abs, ZoneWrapper::default_strip1Abs);
-    strip1[((int)zone)-1].relMidiValue = ZoneWrapper::getMidiValue(deviceType, zone, ZoneWrapper::id_strip1Rel, ZoneWrapper::default_strip1Rel);
-    strip2[((int)zone)-1].absMidiValue = ZoneWrapper::getMidiValue(deviceType, zone, ZoneWrapper::id_strip2Abs, ZoneWrapper::default_strip2Abs);
-    strip2[((int)zone)-1].relMidiValue = ZoneWrapper::getMidiValue(deviceType, zone, ZoneWrapper::id_strip2Rel, ZoneWrapper::default_strip2Rel);
+    strip1[((int)zone)-1].absMidiValue = ZoneWrapper::getMidiValue(deviceType, zone, ZoneWrapper::id_strip1Abs, ZoneWrapper::default_strip1Abs, pluginState.state);
+    strip1[((int)zone)-1].relMidiValue = ZoneWrapper::getMidiValue(deviceType, zone, ZoneWrapper::id_strip1Rel, ZoneWrapper::default_strip1Rel, pluginState.state);
+    strip2[((int)zone)-1].absMidiValue = ZoneWrapper::getMidiValue(deviceType, zone, ZoneWrapper::id_strip2Abs, ZoneWrapper::default_strip2Abs, pluginState.state);
+    strip2[((int)zone)-1].relMidiValue = ZoneWrapper::getMidiValue(deviceType, zone, ZoneWrapper::id_strip2Rel, ZoneWrapper::default_strip2Rel, pluginState.state);
 }

@@ -1,7 +1,7 @@
 #include <JuceHeader.h>
 #include "ZonePanelComponent.h"
 
-ZonePanelComponent::ZonePanelComponent(DeviceType deviceType, Zone zone, float widthFactor, float heightFactor): PanelComponent(widthFactor, heightFactor), transposeInput("Transpose:", 3, -96, 96, false), keyPitchbendRangeInput("Key pitchbend:", 2, 0, 96, false), channelMaxPBInput("Channel max pb:", 2, 0, 96, false) {
+ZonePanelComponent::ZonePanelComponent(DeviceType deviceType, Zone zone, float widthFactor, float heightFactor, juce::AudioProcessorValueTreeState &pluginState): PanelComponent(widthFactor, heightFactor), transposeInput("Transpose:", 3, -96, 96, false), keyPitchbendRangeInput("Key pitchbend:", 2, 0, 96, false), channelMaxPBInput("Channel max pb:", 2, 0, 96, false), pluginState(pluginState) {
     this->zone = zone;
     this->deviceType = deviceType;
     addAndMakeVisible(label);
@@ -9,27 +9,27 @@ ZonePanelComponent::ZonePanelComponent(DeviceType deviceType, Zone zone, float w
 
     addAndMakeVisible(enableZoneButton);
     enableZoneButton.setButtonText("On");
-    enableZoneButton.setToggleState(ZoneWrapper::getEnabled(deviceType, zone), juce::dontSendNotification);
+    enableZoneButton.setToggleState(ZoneWrapper::getEnabled(deviceType, zone, pluginState.state), juce::dontSendNotification);
     enableZoneButton.onClick = [&, deviceType, zone] {
-        ZoneWrapper::setEnabled(deviceType, zone, enableZoneButton.getToggleState());
+        ZoneWrapper::setEnabled(deviceType, zone, enableZoneButton.getToggleState(), pluginState.state);
     };
     
     addAndMakeVisible(transposeInput);
-    transposeInput.setValue(ZoneWrapper::getTranspose(deviceType, zone));
+    transposeInput.setValue(ZoneWrapper::getTranspose(deviceType, zone, pluginState.state));
     transposeInput.input.onFocusLost = [&, deviceType, zone] {
-        ZoneWrapper::setTranspose(deviceType, zone, transposeInput.getValue());
+        ZoneWrapper::setTranspose(deviceType, zone, transposeInput.getValue(), pluginState.state);
     };
 
     addAndMakeVisible(keyPitchbendRangeInput);
-    keyPitchbendRangeInput.setValue(ZoneWrapper::getKeyPitchbend(deviceType, zone));
+    keyPitchbendRangeInput.setValue(ZoneWrapper::getKeyPitchbend(deviceType, zone, pluginState.state));
     keyPitchbendRangeInput.input.onTextChange = [&, deviceType, zone] {
-        ZoneWrapper::setKeyPitchbend(deviceType, zone, keyPitchbendRangeInput.getValue());
+        ZoneWrapper::setKeyPitchbend(deviceType, zone, keyPitchbendRangeInput.getValue(), pluginState.state);
     };
     
     addAndMakeVisible(channelMaxPBInput);
-    channelMaxPBInput.setValue(ZoneWrapper::getChannelMaxPitchbend(deviceType, zone));
+    channelMaxPBInput.setValue(ZoneWrapper::getChannelMaxPitchbend(deviceType, zone, pluginState.state));
     channelMaxPBInput.input.onTextChange = [&, deviceType, zone] {
-        ZoneWrapper::setChannelMaxPitchbend(deviceType, zone, channelMaxPBInput.getValue());
+        ZoneWrapper::setChannelMaxPitchbend(deviceType, zone, channelMaxPBInput.getValue(), pluginState.state);
     };
 
     addAndMakeVisible(midiChannelDropdown);
@@ -39,9 +39,9 @@ ZonePanelComponent::ZonePanelComponent(DeviceType deviceType, Zone zone, float w
     midiChannelDropdown.addItem("MPE Lower", 17);
     midiChannelDropdown.addItem("MPE Upper", 18);
 
-    midiChannelDropdown.setSelectedItemId((int)ZoneWrapper::getMidiChannelType(deviceType, zone));
+    midiChannelDropdown.setSelectedItemId((int)ZoneWrapper::getMidiChannelType(deviceType, zone, pluginState.state));
     midiChannelDropdown.box.onChange = [&, deviceType, zone] {
-        ZoneWrapper::setMidiChannelType(deviceType, zone, (MidiChannelType)midiChannelDropdown.box.getSelectedId());
+        ZoneWrapper::setMidiChannelType(deviceType, zone, (MidiChannelType)midiChannelDropdown.box.getSelectedId(), pluginState.state);
     };
     
     pressureDropdown.setLabelText("Pressure:", false);
@@ -115,7 +115,7 @@ void ZonePanelComponent::setStandardMidiDropdownParams(DropdownComponent &dropdo
     dropdown.addItem("Poly aftertouch", 131);
     dropdown.addItem("Off", 132);
 
-    ZoneWrapper::MidiValue midiValue = ZoneWrapper::getMidiValue(deviceType, zone, treeId, defaultValue);
+    ZoneWrapper::MidiValue midiValue = ZoneWrapper::getMidiValue(deviceType, zone, treeId, defaultValue, pluginState.state);
     if (midiValue.valueType == MidiValueType::CC)
         dropdown.box.setSelectedItemIndex(midiValue.ccNo);
     else
@@ -133,7 +133,7 @@ void ZonePanelComponent::setStandardMidiDropdownParams(DropdownComponent &dropdo
             midiValue.ccNo = 0;
         }
         
-        ZoneWrapper::setMidiValue(deviceType, zone, treeId, midiValue);
+        ZoneWrapper::setMidiValue(deviceType, zone, treeId, midiValue, pluginState.state);
     };
     
     addAndMakeVisible(dropdown);

@@ -16,7 +16,7 @@ public:
     MainComponent *mainComponent;
 
 private:
-    ECMapperAudioProcessor& audioProcessor;
+    ECMapperAudioProcessor &audioProcessor;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ECMapperAudioProcessorEditor)
 };

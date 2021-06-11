@@ -9,9 +9,9 @@ MidiGenerator::~MidiGenerator() {
     delete upperChanAssigner;
 }
 
-void MidiGenerator::start() {
-    int lowerChannelCount = SettingsWrapper::getLowerMPEVoiceCount();
-    mpeZone.setLowerZone(lowerChannelCount, 2, SettingsWrapper::getLowerMPEPB());
+void MidiGenerator::start(juce::AudioProcessorValueTreeState &pluginState) {
+    int lowerChannelCount = SettingsWrapper::getLowerMPEVoiceCount(pluginState.state);
+    mpeZone.setLowerZone(lowerChannelCount, 2, SettingsWrapper::getLowerMPEPB(pluginState.state));
     if (lowerChanAssigner != nullptr) {
         delete lowerChanAssigner;
         lowerChanAssigner = nullptr;
@@ -24,8 +24,8 @@ void MidiGenerator::start() {
 
     lowerChanAssigner = new juce::MPEChannelAssigner(mpeZone.getLowerZone());
     if (lowerChannelCount < 14) {
-        int upperChannelCount = SettingsWrapper::getUpperMPEVoiceCount();
-        mpeZone.setUpperZone(upperChannelCount, 2, SettingsWrapper::getUpperMPEPB());
+        int upperChannelCount = SettingsWrapper::getUpperMPEVoiceCount(pluginState.state);
+        mpeZone.setUpperZone(upperChannelCount, 2, SettingsWrapper::getUpperMPEPB(pluginState.state));
         upperChanAssigner = new juce::MPEChannelAssigner(mpeZone.getUpperZone());
     }
     else

@@ -9,7 +9,7 @@
 
 class ConfigLookup {
 public:
-    ConfigLookup(DeviceType deviceType);
+    ConfigLookup(DeviceType deviceType, juce::AudioProcessorValueTreeState &pluginState);
     void updateAll();
     void updateKey(juce::ValueTree keytree);
     void updateBreath(Zone zone);
@@ -50,4 +50,5 @@ public:
 
 private:
     DeviceType deviceType;
+    juce::AudioProcessorValueTreeState &pluginState;
 };

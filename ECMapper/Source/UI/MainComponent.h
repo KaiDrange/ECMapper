@@ -9,7 +9,7 @@
 
 class MainComponent : public juce::Component, public juce::ValueTree::Listener {
 public:
-    MainComponent();
+    MainComponent(juce::AudioProcessorValueTreeState &pluginState);
     ~MainComponent() override;
 
     void paint (juce::Graphics&) override;

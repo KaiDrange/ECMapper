@@ -10,7 +10,7 @@
 
 #define PROCESS_MICROSEC_SLEEP 100
 //#define MEASURE_EIGENAPIPROCESSTIME
-#define EIGENAPI_POLLTIME 100
+#define EIGENAPI_POLLTIME 20
 
 
 class EigenCore : public juce::JUCEApplication {

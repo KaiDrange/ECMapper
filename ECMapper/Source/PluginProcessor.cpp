@@ -1,13 +1,9 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
-juce::ValueTree* rootState;
-
 ECMapperAudioProcessor::ECMapperAudioProcessor() :
 AudioProcessor(BusesProperties().withOutput("Output", juce::AudioChannelSet::stereo(), true)),
-pluginState(*this, nullptr, id_state, createParameterLayout()), osc(&oscSendQueue, &oscReceiveQueue), configLookups { ConfigLookup(DeviceType::Alpha), ConfigLookup(DeviceType::Tau), ConfigLookup(DeviceType::Pico)}, midiGenerator(configLookups), layoutChangeHandler(&oscSendQueue, this, configLookups) {
-    rootState = &pluginState.state;
-
+pluginState(*this, nullptr, id_state, createParameterLayout()), osc(&oscSendQueue, &oscReceiveQueue), configLookups { ConfigLookup(DeviceType::Alpha, pluginState), ConfigLookup(DeviceType::Tau, pluginState), ConfigLookup(DeviceType::Pico, pluginState)}, midiGenerator(configLookups), layoutChangeHandler(&oscSendQueue, this, configLookups) {
     pluginState.state.addListener(&layoutChangeHandler);
 }
 
@@ -57,13 +53,13 @@ void ECMapperAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBloc
 //    }
     
     juce::StringArray ipAndPortNo;
-    Utility::splitString(SettingsWrapper::getIP(), ":", ipAndPortNo);
+    Utility::splitString(SettingsWrapper::getIP(pluginState.state), ":", ipAndPortNo);
     if (ipAndPortNo.size() == 2) {
         osc.connectSender(ipAndPortNo[0], ipAndPortNo[1].getIntValue());
         osc.connectReceiver(ipAndPortNo[1].getIntValue() + 1);
     }
     
-    midiGenerator.start();
+    midiGenerator.start(pluginState);
 }
 
 void ECMapperAudioProcessor::releaseResources() {
@@ -146,7 +142,6 @@ void ECMapperAudioProcessor::setStateInformation(const void* data, int sizeInByt
     if (xmlState.get() != nullptr) {
         if (xmlState->hasTagName(pluginState.state.getType())) {
             pluginState.replaceState(juce::ValueTree::fromXml(*xmlState));
-            rootState = &pluginState.state;
             layoutChangeHandler.sendLEDMsgForAllKeys(DeviceType::Alpha);
             layoutChangeHandler.sendLEDMsgForAllKeys(DeviceType::Tau);
             layoutChangeHandler.sendLEDMsgForAllKeys(DeviceType::Pico);

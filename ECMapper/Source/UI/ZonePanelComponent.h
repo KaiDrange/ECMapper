@@ -9,7 +9,7 @@
 
 class ZonePanelComponent  : public PanelComponent, public juce::ValueTree::Listener {
 public:
-    ZonePanelComponent(DeviceType deviceType, Zone zone, float widthFactor, float heightFactor);
+    ZonePanelComponent(DeviceType deviceType, Zone zone, float widthFactor, float heightFactor, juce::AudioProcessorValueTreeState &pluginState);
     ~ZonePanelComponent() override;
 
     void paint(juce::Graphics&) override;
@@ -36,6 +36,8 @@ private:
     
     DeviceType deviceType;
     Zone zone;
+    
+    juce::AudioProcessorValueTreeState &pluginState;
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ZonePanelComponent)
 };

@@ -3,8 +3,6 @@
 #include <JuceHeader.h>
 #include "Enums.h"
 
-extern juce::ValueTree *rootState;
-
 class LayoutWrapper {
 public:
     struct KeyId {
@@ -35,22 +33,22 @@ public:
     static inline const juce::Identifier id_mappingValue { "mappingValue" };
     static inline const juce::Identifier id_zone { "zone" };
 
-    static LayoutKey getLayoutKey(KeyId keyId);
-    static void setLayoutKey(LayoutKey &key);
-    static void setKeyColour(KeyId &keyId, KeyColour keyColour);
-    static void setKeyType(KeyId &keyId, EigenharpKeyType keyType);
-    static void setKeyZone(KeyId &keyId, Zone zone);
-    static void setKeyMappingType(KeyId &keyId, KeyMappingType keyMappingType);
-    static void setKeyMappingValue(KeyId &keyId, juce::String keyMappingValue);
+    static LayoutKey getLayoutKey(KeyId keyId, juce::ValueTree &rootState);
+    static void setLayoutKey(LayoutKey &key, juce::ValueTree &rootState);
+    static void setKeyColour(KeyId &keyId, KeyColour keyColour, juce::ValueTree &rootState);
+    static void setKeyType(KeyId &keyId, EigenharpKeyType keyType, juce::ValueTree &rootState);
+    static void setKeyZone(KeyId &keyId, Zone zone, juce::ValueTree &rootState);
+    static void setKeyMappingType(KeyId &keyId, KeyMappingType keyMappingType, juce::ValueTree &rootState);
+    static void setKeyMappingValue(KeyId &keyId, juce::String keyMappingValue, juce::ValueTree &rootState);
     
-    static juce::ValueTree getLayoutTree(DeviceType deviceType);
+    static juce::ValueTree getLayoutTree(DeviceType deviceType, juce::ValueTree &rootState);
     static LayoutKey getLayoutKeyFromKeyTree(juce::ValueTree keyTree);
     static DeviceType getDeviceTypeFromKeyTree(juce::ValueTree keyTree);
     static DeviceType getDeviceTypeFromLayoutTree(juce::ValueTree layoutTree);
 
-    static void addListener(DeviceType deviceType, juce::ValueTree::Listener *listener);
+    static void addListener(DeviceType deviceType, juce::ValueTree::Listener *listener, juce::ValueTree &rootState);
 private:
-    static juce::ValueTree getKeyTree(KeyId keyId);
+    static juce::ValueTree getKeyTree(KeyId keyId, juce::ValueTree &rootState);
     static EigenharpKeyType getCorrectDefaultKeyType(DeviceType deviceType, int course, int keyNo);
     static KeyMappingType getDefaultMappingTypeFromKeyType(EigenharpKeyType keyType);
 
