@@ -22,6 +22,7 @@ public:
     void shutdown() override;
     
     static void turnOffAllLEDs(EigenApi::Eigenharp *api);
+    static void turnOffAllLEDsForDevice(ConnectedDevice &device, EigenApi::Eigenharp *api);
     
 private:
     EigenApi::Eigenharp eigenApi;

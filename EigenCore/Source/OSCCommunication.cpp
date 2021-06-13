@@ -68,6 +68,23 @@ void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
 
         receiveQueue->add(&msg);
     }
+    else if (message.getAddressPattern() == "/ECMapper/reset" && message.size() == 1) {
+        msg = {
+            .type = OSC::MessageType::Reset,
+            .course = 0,
+            .key = 0,
+            .value = 0,
+            .active = 0,
+            .pressure = 0,
+            .roll = 0,
+            .yaw = 0,
+            .strip = 0,
+            .pedal = 0,
+            .device = (EHDeviceType)message[0].getInt32()
+        };
+
+        receiveQueue->add(&msg);
+    }
     else if (message.getAddressPattern() == "/ECMapper/ping") {
         if (pingCounter == -1) {
             mapperConnected = true;

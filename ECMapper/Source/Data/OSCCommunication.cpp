@@ -19,12 +19,6 @@ OSCCommunication::~OSCCommunication() {
     receiverIsConnected = false;
 }
 
-bool OSCCommunication::connectSender(juce::String ip, int port)  {
-    this->senderIP = ip;
-    this->senderPort = port;
-    return connectSender();
-}
-
 bool OSCCommunication::connectSender() {
     senderIsConnected = sender.connect(senderIP, senderPort);
     return senderIsConnected;
@@ -33,11 +27,6 @@ bool OSCCommunication::connectSender() {
 void OSCCommunication::disconnectSender() {
     sender.disconnect();
     senderIsConnected = false;
-}
-
-bool OSCCommunication::connectReceiver(int port)  {
-    this->receiverPort = port;
-    return connectReceiver();
 }
 
 bool OSCCommunication::connectReceiver() {
@@ -147,8 +136,14 @@ void OSCCommunication::sendLED(int course, int key, int led, DeviceType deviceTy
     if (!senderIsConnected)
         return;
     
-    if (pingCounter > -1)
-        sender.send("/ECMapper/led", course, key, led, (int)deviceType);
+    sender.send("/ECMapper/led", course, key, led, (int)deviceType);
+}
+
+void OSCCommunication::sendReset(DeviceType deviceType) {
+    if (!senderIsConnected)
+        return;
+    
+    sender.send("/ECMapper/reset",(int)deviceType);
 }
 
 void OSCCommunication::timerCallback() {
@@ -177,6 +172,9 @@ void OSCCommunication::sendOutgoingMessages() {
         switch (msg.type) {
             case OSC::MessageType::LED:
                 sendLED(msg.course, msg.key, msg.value, msg.device);
+                break;
+            case OSC::MessageType::Reset:
+                sendReset(msg.device);
                 break;
             default:
                 break;

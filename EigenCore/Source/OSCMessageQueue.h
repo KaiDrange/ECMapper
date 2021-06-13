@@ -12,7 +12,8 @@ enum MessageType {
     Strip = 4,
     Pedal = 5,
     LED = 6,
-    Ping = 7
+    Ping = 7,
+    Reset = 8
 };
 
 struct Message {

@@ -62,46 +62,55 @@ void EigenCore::intHandler(int dummy) {
 }
 
 void EigenCore::turnOffAllLEDs(EigenApi::Eigenharp *api) {
+    for (auto device : connectedDevices) {
+        turnOffAllLEDsForDevice(device, api);
+    }
+}
+
+void EigenCore::turnOffAllLEDsForDevice(ConnectedDevice &device, EigenApi::Eigenharp *api) {
     int course0Length = 0;
     int course1Length = 0;
-    int course2Length = 0;
-    for (auto device : connectedDevices) {
-        switch (device.type) {
-            case EHDeviceType::Pico:
-                course0Length = 18;
-                course1Length = 4;
-                break;
-            case EHDeviceType::Tau:
-                course0Length = 72;
-                course1Length = 12;
-                course2Length = 4; //TODO: Check if Tau has 2x4 or 8
-                break;
-            case EHDeviceType::Alpha:
-                course0Length = 120;
-                course1Length = 12;
-                course2Length = 0;
-                break;
-            default:
-                break;
-        }
+    switch (device.type) {
+        case EHDeviceType::Pico:
+            course0Length = 18;
+            course1Length = 4;
+            break;
+        case EHDeviceType::Tau:
+            course0Length = 72 + 12;
+            break;
+        case EHDeviceType::Alpha:
+            course0Length = 120;
+            course1Length = 12;
+            break;
+        default:
+            break;
+    }
 
-        for (int i = 0; i < course0Length; i++) {
-            api->setLED(device.dev, 0, i, 0);
-            device.assignedLEDColours[0][i] = 0;
-            device.activeKeys[0][i] = false;
-        }
-        for (int i = 0; i < course1Length; i++) {
+    for (int i = 0; i < course0Length; i++) {
+        api->setLED(device.dev, 0, i, 0);
+        device.assignedLEDColours[0][i] = 0;
+        device.activeKeys[0][i] = false;
+    }
+    for (int i = 0; i < course1Length; i++) {
+        api->setLED(device.dev, 1, i, 0);
+        device.assignedLEDColours[1][i] = 0;
+        device.activeKeys[1][i] = false;
+    }
+    
+    if (device.type == EHDeviceType::Tau) {
+        for (int i = 4; i < 8; i++) {
             api->setLED(device.dev, 1, i, 0);
             device.assignedLEDColours[1][i] = 0;
             device.activeKeys[1][i] = false;
         }
-        for (int i = 0; i < course2Length; i++) {
-            api->setLED(device.dev, 2, i, 0);
-            device.assignedLEDColours[2][i] = 0;
-            device.activeKeys[2][i] = false;
+        for (int i = 88; i < 92; i++) {
+            api->setLED(device.dev, 1, i, 0);
+            device.assignedLEDColours[1][i] = 0;
+            device.activeKeys[1][i] = false;
         }
     }
 }
+
 
 void* EigenCore::eigenharpProcess(OSC::OSCMessageFifo *msgQueue, void* arg) {
     EigenApi::Eigenharp *pE = static_cast<EigenApi::Eigenharp*>(arg);
@@ -128,6 +137,14 @@ void* EigenCore::eigenharpProcess(OSC::OSCMessageFifo *msgQueue, void* arg) {
                         if (msg.device == i->type) {
                             i->assignedLEDColours[msg.course][msg.key] = msg.value;
                             pE->setLED(i->dev, msg.course, msg.key, msg.value);
+                            break;
+                        }
+                    }
+                }
+                else if (msg.type == OSC::MessageType::Reset) {
+                    for (auto i = begin(connectedDevices); i != end(connectedDevices); i++) {
+                        if (msg.device == i->type) {
+                            turnOffAllLEDsForDevice(*i, pE);
                             break;
                         }
                     }

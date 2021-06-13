@@ -55,10 +55,11 @@ void ECMapperAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBloc
     juce::StringArray ipAndPortNo;
     Utility::splitString(SettingsWrapper::getIP(pluginState.state), ":", ipAndPortNo);
     if (ipAndPortNo.size() == 2) {
-        osc.connectSender(ipAndPortNo[0], ipAndPortNo[1].getIntValue());
-        osc.connectReceiver(ipAndPortNo[1].getIntValue() + 1);
+        osc.senderIP = ipAndPortNo[0];
+        osc.senderPort = ipAndPortNo[1].getIntValue();
+        osc.receiverPort = osc.senderPort+1;
     }
-    
+
     midiGenerator.start(pluginState);
 }
 
@@ -84,8 +85,14 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
         buffer.clear(i, 0, buffer.getNumSamples());
     
     midiMessages.clear();
-    if (!osc.senderIsConnected)
-        osc.connectSender();
+    if (!osc.senderIsConnected) {
+        auto success = osc.connectSender();
+        if (success) {
+            layoutChangeHandler.sendLEDMsgForAllKeys(DeviceType::Pico);
+            layoutChangeHandler.sendLEDMsgForAllKeys(DeviceType::Tau);
+            layoutChangeHandler.sendLEDMsgForAllKeys(DeviceType::Alpha);
+        }
+    }
     if (!osc.receiverIsConnected)
         osc.connectReceiver();
     

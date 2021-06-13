@@ -60,10 +60,27 @@ void LayoutChangeHandler::sendLEDMsg(LayoutWrapper::LayoutKey layoutKey) {
 }
 
 void LayoutChangeHandler::sendLEDMsgForAllKeys(DeviceType deviceType) {
+    OSC::Message msg {
+        .type = OSC::MessageType::Reset,
+        .key = 0,
+        .course = 0,
+        .active = 0,
+        .pressure = 0,
+        .roll = 0,
+        .yaw = 0,
+        .value = 0,
+        .pedal = 0,
+        .strip = 0,
+        .device = deviceType
+    };
+    oscSendQueue->add(&msg);
+
+
     auto layoutTree = LayoutWrapper::getLayoutTree(deviceType, processor->pluginState.state);
     for (int i = 0; i < layoutTree.getNumChildren(); i++) {
         LayoutWrapper::LayoutKey layoutKey = LayoutWrapper::getLayoutKeyFromKeyTree(layoutTree.getChild(i));
-        sendLEDMsg(layoutKey);
+        if (layoutKey.keyColour != KeyColour::Off)
+            sendLEDMsg(layoutKey);
     }
 }
 
