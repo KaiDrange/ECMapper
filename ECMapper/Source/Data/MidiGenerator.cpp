@@ -42,6 +42,7 @@ void MidiGenerator::start(juce::AudioProcessorValueTreeState &pluginState) {
     for (int i = 0; i < 16; i++) {
         currentStripPBperChannel[i] = 0;
         currentKeyPBperChannel[i] = 0;
+        chanNotePri[i].clear();
     }
     
     initialized = true;
@@ -200,7 +201,9 @@ void MidiGenerator::createNoteOn(ConfigLookup::Key &keyLookup, KeyState *state, 
     }
     else
         state->midiChannel = (int)keyLookup.output;
-    
+    if (state->midiChannel > 0)
+        chanNotePri[state->midiChannel-1].push_front(keyLookup.keyId);
+
     createNoteHold(keyLookup, state, buffer);
     auto vel = juce::MPEValue::from7BitInt(unipolar(state->ehPressure*4)*126+1);
     auto noteOnMsg = juce::MidiMessage::noteOn(state->midiChannel, keyLookup.note, vel.asUnsignedFloat());
@@ -218,12 +221,22 @@ void MidiGenerator::createNoteOff(ConfigLookup::Key &keyLookup, KeyState *state,
             upperChanAssigner->noteOff(keyLookup.note, channel);
     }
 
-    
+    if (state->midiChannel > 0) {
+        for (auto it = chanNotePri[state->midiChannel-1].begin(); it != chanNotePri[state->midiChannel-1].end(); it++) {
+            if (it->equals(keyLookup.keyId)) {
+                chanNotePri[state->midiChannel-1].erase(it);
+                break;
+            }
+        }
+    }
+
     auto noteOffMsg = juce::MidiMessage::noteOff(channel, keyLookup.note, 0.0f);
     buffer.addEvent(noteOffMsg, buffer.getLastEventTime()+1);
-    addMidiValueMessage(channel, 0, keyLookup.pressure, keyLookup.pbRange, keyLookup.note, buffer, false);
-    addMidiValueMessage(channel, 0, keyLookup.roll, keyLookup.pbRange, keyLookup.note, buffer, true);
-    addMidiValueMessage(channel, 0, keyLookup.yaw, keyLookup.pbRange, keyLookup.note, buffer, true);
+    if (chanNotePri[state->midiChannel-1].empty()) {
+        addMidiValueMessage(channel, 0, keyLookup.pressure, keyLookup.pbRange, keyLookup.note, buffer, false);
+        addMidiValueMessage(channel, 0, keyLookup.roll, keyLookup.pbRange, keyLookup.note, buffer, true);
+        addMidiValueMessage(channel, 0, keyLookup.yaw, keyLookup.pbRange, keyLookup.note, buffer, true);
+    }
     state->status = KeyStatus::Off;
     state->messageCount = 0;
 }
@@ -239,8 +252,10 @@ void MidiGenerator::createMidiMsgOn(ConfigLookup::Key &keyLookup, KeyState *stat
         state->midiChannel = (int)keyLookup.output;
 
     if (keyLookup.msgType == 4) {
-        for (int i = 1; i < 17; i++)
+        for (int i = 1; i < 17; i++) {
             buffer.addEvent(juce::MidiMessage::allNotesOff(i), buffer.getLastEventTime()+1);
+            chanNotePri[i-1].clear();
+        }
     }
     else if (keyLookup.msgType == 1)
          buffer.addEvent(juce::MidiMessage::controllerEvent(state->midiChannel, keyLookup.cmdCC, keyLookup.cmdOn), buffer.getLastEventTime()+1);
@@ -307,9 +322,11 @@ void MidiGenerator::createMidiMsgOff(ConfigLookup::Key &keyLookup, KeyState *sta
 
 void MidiGenerator::createNoteHold(ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer) {
     int channel = state->midiChannel;
-    addMidiValueMessage(channel, state->ehRoll, keyLookup.roll, keyLookup.pbRange, keyLookup.note, buffer, true);
-    addMidiValueMessage(channel, state->ehYaw, keyLookup.yaw, keyLookup.pbRange, keyLookup.note, buffer, true);
-    addMidiValueMessage(channel, state->ehPressure, keyLookup.pressure, keyLookup.pbRange, keyLookup.note, buffer, false);
+    if (state->midiChannel > 0 && (chanNotePri[state->midiChannel-1].empty() || chanNotePri[state->midiChannel-1].front().equals(keyLookup.keyId))) {
+        addMidiValueMessage(channel, state->ehRoll, keyLookup.roll, keyLookup.pbRange, keyLookup.note, buffer, true);
+        addMidiValueMessage(channel, state->ehYaw, keyLookup.yaw, keyLookup.pbRange, keyLookup.note, buffer, true);
+        addMidiValueMessage(channel, state->ehPressure, keyLookup.pressure, keyLookup.pbRange, keyLookup.note, buffer, false);
+    }
     state->messageCount = 0;
 }
 

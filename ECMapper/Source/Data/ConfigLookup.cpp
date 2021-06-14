@@ -35,6 +35,8 @@ void ConfigLookup::updateKey(juce::ValueTree keytree) {
         setKeyToDefault = true;
     
     Key key;
+    key.keyId = layoutKey.keyId;
+
     if (!setKeyToDefault) {
         key.keyType = layoutKey.keyType;
         key.mapType = layoutKey.keyMappingType;

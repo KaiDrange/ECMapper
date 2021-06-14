@@ -3,6 +3,7 @@
 
 ECMapperAudioProcessor::ECMapperAudioProcessor() :
 AudioProcessor(BusesProperties().withOutput("Output", juce::AudioChannelSet::stereo(), true)),
+//AudioProcessor(BusesProperties()),
 pluginState(*this, nullptr, id_state, createParameterLayout()), osc(&oscSendQueue, &oscReceiveQueue), configLookups { ConfigLookup(DeviceType::Alpha, pluginState), ConfigLookup(DeviceType::Tau, pluginState), ConfigLookup(DeviceType::Pico, pluginState)}, midiGenerator(configLookups), layoutChangeHandler(&oscSendQueue, this, configLookups) {
     pluginState.state.addListener(&layoutChangeHandler);
 }
@@ -77,14 +78,9 @@ bool ECMapperAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) 
 #endif
 
 void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages) {
-    juce::ScopedNoDenormals noDenormals;
-    auto totalNumInputChannels  = getTotalNumInputChannels();
-    auto totalNumOutputChannels = getTotalNumOutputChannels();
-
-    for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
-        buffer.clear(i, 0, buffer.getNumSamples());
-    
+    buffer.clear();
     midiMessages.clear();
+
     if (!osc.senderIsConnected) {
         auto success = osc.connectSender();
         if (success) {

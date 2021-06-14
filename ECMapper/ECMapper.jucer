@@ -6,7 +6,7 @@
               pluginManufacturer="Tic Tech" pluginManufacturerCode="TT" pluginCode="5632"
               aaxIdentifier="ECMapper" cppLanguageStandard="17" version="0.9.1"
               companyName="Tic Tech" companyWebsite="ticticelectro.com" companyEmail="kaimdrange@hotmail.com"
-              pluginFormats="buildAU,buildStandalone,buildVST3" pluginAUMainType="'augn'"
+              pluginFormats="buildAU,buildStandalone,buildVST3" pluginAUMainType="'aumf'"
               pluginChannelConfigs="{0,2}">
   <MAINGROUP id="vhB8QE" name="ECMapper">
     <GROUP id="{C08E6E0F-711F-5656-DD30-D523FCECDD9A}" name="Gfx">

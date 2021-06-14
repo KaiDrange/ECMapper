@@ -16,6 +16,7 @@ public:
     void updateStrips(Zone zone);
 
     struct Key {
+        LayoutWrapper::KeyId keyId;
         EigenharpKeyType keyType = EigenharpKeyType::Normal;
         KeyMappingType mapType = KeyMappingType::None;
         int note = 0;

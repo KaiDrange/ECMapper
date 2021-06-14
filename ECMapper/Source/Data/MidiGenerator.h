@@ -75,4 +75,6 @@ private:
     bool initialized = false;
     int breathMessageCount = 0;
     int stripMessageCount[2] = { 0, 0 };
+    
+    std::list<LayoutWrapper::KeyId> chanNotePri[16];
 };
