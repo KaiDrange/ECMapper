@@ -41,6 +41,8 @@ void EigenCore::initialise(const juce::String &) {
         }
         
         eigenApiProcessThread = std::thread(coreInstance->eigenharpProcess, &oscReceiveQueue, &eigenApi);
+        
+        std::cout << std::endl << "Use Control+C to quit" << std::endl;
     }
 }
 
