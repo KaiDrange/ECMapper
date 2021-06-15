@@ -51,7 +51,7 @@ LayoutComponent::LayoutComponent(DeviceType deviceType, float widthFactor, float
         menu.addItem(zone1Item);
         menu.addItem(zone2Item);
         menu.addItem(zone3Item);
-        menu.addItem("All", [&] { LayoutWrapper::setKeyZone(activeKeyId, Zone::AllZones, pluginState.state); repaint();});
+//        menu.addItem("All", [&] { LayoutWrapper::setKeyZone(activeKeyId, Zone::AllZones, pluginState.state); repaint();});
         menu.showMenuAsync(juce::PopupMenu::Options{}.withTargetComponent(zoneMenuButton));
     };
     

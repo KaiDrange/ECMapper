@@ -4,10 +4,10 @@
               addUsingNamespaceToJuceHeader="0" displaySplashScreen="1" jucerFormatVersion="1"
               pluginCharacteristicsValue="pluginIsMidiEffectPlugin,pluginProducesMidiOut"
               pluginManufacturer="Tic Tech" pluginManufacturerCode="TT" pluginCode="5632"
-              aaxIdentifier="ECMapper" cppLanguageStandard="17" version="0.9.1"
+              aaxIdentifier="ECMapper" cppLanguageStandard="17" version="1.0.0"
               companyName="Tic Tech" companyWebsite="ticticelectro.com" companyEmail="kaimdrange@hotmail.com"
               pluginFormats="buildAU,buildStandalone,buildVST3" pluginAUMainType="'aumf'"
-              pluginChannelConfigs="{0,2}">
+              pluginChannelConfigs="{0,2}" pluginName="ECMapper v1.0.0" pluginAUExportPrefix="ECMapperAU">
   <MAINGROUP id="vhB8QE" name="ECMapper">
     <GROUP id="{C08E6E0F-711F-5656-DD30-D523FCECDD9A}" name="Gfx">
       <FILE id="pM0slc" name="ECMapper_Icon512x512.png" compile="0" resource="1"
@@ -44,6 +44,8 @@
               file="Source/UI/PanelComponent.cpp"/>
         <FILE id="G7cSIz" name="PanelComponent.h" compile="0" resource="0"
               file="Source/UI/PanelComponent.h"/>
+        <FILE id="rnV1qI" name="TabButtonBarComponent.h" compile="0" resource="0"
+              file="Source/UI/TabButtonBarComponent.h"/>
         <FILE id="VwWU95" name="TabPage.cpp" compile="1" resource="0" file="Source/UI/TabPage.cpp"/>
         <FILE id="UmRC50" name="TabPage.h" compile="0" resource="0" file="Source/UI/TabPage.h"/>
         <FILE id="s5Jt40" name="Utility.cpp" compile="1" resource="0" file="Source/UI/Utility.cpp"/>

@@ -2,7 +2,7 @@
 
 
 juce::String FileUtil::openMapping(DeviceType instrumentType) {
-    juce::File pathFile("~/Documents/ECMapperLayouts/");
+    juce::File pathFile("~/Documents/ECMapperLayouts/" + getDeviceFolder(instrumentType) + "/");
     
     juce::FileChooser fileChooser("Open layout", pathFile, getFileExtension(instrumentType));
     if (fileChooser.browseForFileToOpen()) {
@@ -17,7 +17,7 @@ juce::String FileUtil::openMapping(DeviceType instrumentType) {
 
 bool FileUtil::saveMapping(juce::ValueTree valueTree, DeviceType instrumentType) {
     auto success = false;
-    juce::File pathFile("~/Documents/ECMapperLayouts/");
+    juce::File pathFile("~/Documents/ECMapperLayouts/" + getDeviceFolder(instrumentType) + "/");
     juce::FileChooser fileChooser("Save layout", pathFile, getFileExtension(instrumentType));
     if (fileChooser.browseForFileToSave(true)) {
         auto file = fileChooser.getResult();
@@ -42,5 +42,23 @@ juce::String FileUtil::getFileExtension(DeviceType instrumentType) {
             break;
     }
     return fileExtension;
+}
+
+juce::String FileUtil::getDeviceFolder(DeviceType instrumentType) {
+    juce::String folderName;
+    switch (instrumentType) {
+        case DeviceType::Alpha:
+            folderName = "Alpha";
+            break;
+        case DeviceType::Tau:
+            folderName = "Tau";
+            break;
+        case DeviceType::Pico:
+            folderName = "Pico";
+            break;
+        default:
+            break;
+    }
+    return folderName;
 }
     

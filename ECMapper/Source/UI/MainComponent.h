@@ -6,6 +6,7 @@
 #include "NumberInputComponent.h"
 #include "DropdownComponent.h"
 #include "../Models/SettingsWrapper.h"
+#include "TabButtonBarComponent.h"
 
 class MainComponent : public juce::Component, public juce::ValueTree::Listener {
 public:
@@ -24,7 +25,7 @@ private:
     juce::Label oscIPLabel;
     juce::TextEditor oscIPInput;
 
-    juce::TabbedComponent tabs;
+    TabButtonBarComponent tabs;
     TabPage *tabPages[3];
 
     void valueTreePropertyChanged(juce::ValueTree &vTree, const juce::Identifier &property) override;

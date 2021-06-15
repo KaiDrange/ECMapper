@@ -58,3 +58,13 @@ int SettingsWrapper::getUpperMPEPB(juce::ValueTree &rootState) {
     auto vTree = getSettingsTree(rootState);
     return vTree.getProperty(id_upperMPEPB, default_upperMPEPB);
 }
+
+void SettingsWrapper::setCurrentTabIndex(int index, juce::ValueTree &rootState) {
+    auto vTree = getSettingsTree(rootState);
+    vTree.setProperty(id_activeTab, index, nullptr);
+}
+
+int SettingsWrapper::getCurrentTabIndex(juce::ValueTree &rootState) {
+    auto vTree = getSettingsTree(rootState);
+    return vTree.getProperty(id_activeTab, default_activeTab);
+}

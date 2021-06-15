@@ -10,4 +10,5 @@ public:
 
 private:
     static juce::String getFileExtension(DeviceType instrumentType);
+    static juce::String getDeviceFolder(DeviceType instrumentType);
 };

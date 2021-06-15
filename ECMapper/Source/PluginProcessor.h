@@ -10,7 +10,7 @@
 #include "UI/Utility.h"
 
 
-class ECMapperAudioProcessor  : public juce::AudioProcessor
+class ECMapperAudioProcessor  : public juce::AudioProcessor, public juce::ValueTree::Listener
 {
 public:
     ECMapperAudioProcessor();
@@ -48,6 +48,7 @@ public:
     juce::Identifier id_state = "pluginState";
     juce::AudioProcessorValueTreeState pluginState;
 private:
+    void updateIPandPorts();
     OSCCommunication osc;
     OSC::OSCMessageFifo oscSendQueue;
     OSC::OSCMessageFifo oscReceiveQueue;
@@ -56,6 +57,8 @@ private:
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     juce::AudioProcessorEditor *editor = nullptr;
     LayoutChangeHandler layoutChangeHandler;
+    
+    void valueTreePropertyChanged(juce::ValueTree &vTree, const juce::Identifier &property) override;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ECMapperAudioProcessor)
 };

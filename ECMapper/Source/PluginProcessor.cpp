@@ -6,6 +6,7 @@ AudioProcessor(BusesProperties().withOutput("Output", juce::AudioChannelSet::ste
 //AudioProcessor(BusesProperties()),
 pluginState(*this, nullptr, id_state, createParameterLayout()), osc(&oscSendQueue, &oscReceiveQueue), configLookups { ConfigLookup(DeviceType::Alpha, pluginState), ConfigLookup(DeviceType::Tau, pluginState), ConfigLookup(DeviceType::Pico, pluginState)}, midiGenerator(configLookups), layoutChangeHandler(&oscSendQueue, this, configLookups) {
     pluginState.state.addListener(&layoutChangeHandler);
+    pluginState.state.addListener(this);
 }
 
 ECMapperAudioProcessor::~ECMapperAudioProcessor() {
@@ -53,6 +54,11 @@ void ECMapperAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBloc
 //    if (juce::JUCEApplication::isStandaloneApp()) {
 //    }
     
+    updateIPandPorts();
+    midiGenerator.start(pluginState);
+}
+
+void ECMapperAudioProcessor::updateIPandPorts() {
     juce::StringArray ipAndPortNo;
     Utility::splitString(SettingsWrapper::getIP(pluginState.state), ":", ipAndPortNo);
     if (ipAndPortNo.size() == 2) {
@@ -60,8 +66,6 @@ void ECMapperAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBloc
         osc.senderPort = ipAndPortNo[1].getIntValue();
         osc.receiverPort = osc.senderPort+1;
     }
-
-    midiGenerator.start(pluginState);
 }
 
 void ECMapperAudioProcessor::releaseResources() {
@@ -117,11 +121,6 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
     midiGenerator.samplesSinceLastBreathMsg += buffer.getNumSamples();
     if (midiGenerator.samplesSinceLastBreathMsg > 1024)
         midiGenerator.reduceBreath(midiMessages);
-    
-//    static int logCounter = 0;
-//    logCounter++;
-//    if (logCounter%100 == 0)
-//        std::cout << midiMessages.getNumEvents() << std::endl;
 }
 
 void ECMapperAudioProcessor::processBlockBypassed(juce::AudioBuffer<float> &buffer, juce::MidiBuffer &midiMessages) {
@@ -179,3 +178,19 @@ juce::AudioProcessorValueTreeState::ParameterLayout ECMapperAudioProcessor::crea
     return paramLayout;
 }
 
+void ECMapperAudioProcessor::valueTreePropertyChanged(juce::ValueTree &vTree, const juce::Identifier &property) {
+    if (vTree.getType() != SettingsWrapper::id_globalSettings)
+        return;
+    
+    if (property == SettingsWrapper::id_IP) {
+        osc.disconnectSender();
+        osc.disconnectReceiver();
+        updateIPandPorts();
+        osc.connectSender();
+        osc.disconnectReceiver();
+    }
+    else if (property != SettingsWrapper::id_activeTab) {
+        midiGenerator.stop();
+        midiGenerator.start(pluginState);
+    }
+}

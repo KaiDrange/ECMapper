@@ -207,7 +207,7 @@ void MidiGenerator::createNoteOn(ConfigLookup::Key &keyLookup, KeyState *state, 
     createNoteHold(keyLookup, state, buffer);
     auto vel = juce::MPEValue::from7BitInt(unipolar(state->ehPressure*4)*126+1);
     auto noteOnMsg = juce::MidiMessage::noteOn(state->midiChannel, keyLookup.note, vel.asUnsignedFloat());
-    buffer.addEvent(noteOnMsg, buffer.getLastEventTime()+1);
+    buffer.addEvent(noteOnMsg, buffer.getLastEventTime()+8);
     
     state->status = KeyStatus::Active;
 }
@@ -231,7 +231,7 @@ void MidiGenerator::createNoteOff(ConfigLookup::Key &keyLookup, KeyState *state,
     }
 
     auto noteOffMsg = juce::MidiMessage::noteOff(channel, keyLookup.note, 0.0f);
-    buffer.addEvent(noteOffMsg, buffer.getLastEventTime()+1);
+    buffer.addEvent(noteOffMsg, buffer.getLastEventTime()+8);
     if (chanNotePri[state->midiChannel-1].empty()) {
         addMidiValueMessage(channel, 0, keyLookup.pressure, keyLookup.pbRange, keyLookup.note, buffer, false);
         addMidiValueMessage(channel, 0, keyLookup.roll, keyLookup.pbRange, keyLookup.note, buffer, true);
@@ -253,24 +253,24 @@ void MidiGenerator::createMidiMsgOn(ConfigLookup::Key &keyLookup, KeyState *stat
 
     if (keyLookup.msgType == 4) {
         for (int i = 1; i < 17; i++) {
-            buffer.addEvent(juce::MidiMessage::allNotesOff(i), buffer.getLastEventTime()+1);
+            buffer.addEvent(juce::MidiMessage::allNotesOff(i), buffer.getLastEventTime()+8);
             chanNotePri[i-1].clear();
         }
     }
     else if (keyLookup.msgType == 1)
-         buffer.addEvent(juce::MidiMessage::controllerEvent(state->midiChannel, keyLookup.cmdCC, keyLookup.cmdOn), buffer.getLastEventTime()+1);
+         buffer.addEvent(juce::MidiMessage::controllerEvent(state->midiChannel, keyLookup.cmdCC, keyLookup.cmdOn), buffer.getLastEventTime()+8);
     else if (keyLookup.msgType == 2)
-        buffer.addEvent(juce::MidiMessage::programChange(state->midiChannel, keyLookup.cmdOn), buffer.getLastEventTime()+1);
+        buffer.addEvent(juce::MidiMessage::programChange(state->midiChannel, keyLookup.cmdOn), buffer.getLastEventTime()+8);
     else if (keyLookup.msgType == 3) {
         switch (keyLookup.cmdOn) {
             case 1:
-                buffer.addEvent(juce::MidiMessage::midiStart(), buffer.getLastEventTime()+1);
+                buffer.addEvent(juce::MidiMessage::midiStart(), buffer.getLastEventTime()+8);
                 break;
             case 2:
-                buffer.addEvent(juce::MidiMessage::midiStop(), buffer.getLastEventTime()+1);
+                buffer.addEvent(juce::MidiMessage::midiStop(), buffer.getLastEventTime()+8);
                 break;
             case 3:
-                buffer.addEvent(juce::MidiMessage::midiContinue(), buffer.getLastEventTime()+1);
+                buffer.addEvent(juce::MidiMessage::midiContinue(), buffer.getLastEventTime()+8);
                 break;
             default:
                 break;
@@ -289,22 +289,22 @@ void MidiGenerator::createMidiMsgOff(ConfigLookup::Key &keyLookup, KeyState *sta
     if (keyLookup.cmdType != 3) { // "trigger" commands shouldn´t send anything on key off
         if (keyLookup.msgType == 4) {
             for (int i = 1; i < 17; i++)
-                buffer.addEvent(juce::MidiMessage::allNotesOff(i), buffer.getLastEventTime()+1);
+                buffer.addEvent(juce::MidiMessage::allNotesOff(i), buffer.getLastEventTime()+8);
         }
         else if (keyLookup.msgType == 1)
-             buffer.addEvent(juce::MidiMessage::controllerEvent(state->midiChannel, keyLookup.cmdCC, keyLookup.cmdOff), buffer.getLastEventTime()+1);
+             buffer.addEvent(juce::MidiMessage::controllerEvent(state->midiChannel, keyLookup.cmdCC, keyLookup.cmdOff), buffer.getLastEventTime()+8);
         else if (keyLookup.msgType == 2)
-            buffer.addEvent(juce::MidiMessage::programChange(state->midiChannel, keyLookup.cmdOff), buffer.getLastEventTime()+1);
+            buffer.addEvent(juce::MidiMessage::programChange(state->midiChannel, keyLookup.cmdOff), buffer.getLastEventTime()+8);
         else if (keyLookup.msgType == 3) {
             switch (keyLookup.cmdOff) {
                 case 1:
-                    buffer.addEvent(juce::MidiMessage::midiStart(), buffer.getLastEventTime()+1);
+                    buffer.addEvent(juce::MidiMessage::midiStart(), buffer.getLastEventTime()+8);
                     break;
                 case 2:
-                    buffer.addEvent(juce::MidiMessage::midiStop(), buffer.getLastEventTime()+1);
+                    buffer.addEvent(juce::MidiMessage::midiStop(), buffer.getLastEventTime()+8);
                     break;
                 case 3:
-                    buffer.addEvent(juce::MidiMessage::midiContinue(), buffer.getLastEventTime()+1);
+                    buffer.addEvent(juce::MidiMessage::midiContinue(), buffer.getLastEventTime()+8);
                     break;
                 default:
                     break;
@@ -353,7 +353,7 @@ void MidiGenerator::addMidiValueMessage(int channel, int ehValue, ZoneWrapper::M
                                 : juce::MPEValue::from7BitInt(unipolar(ehValue)*127);
             msg = juce::MidiMessage::controllerEvent(channel, midiValue.ccNo, cc.as7BitInt());
         }
-        buffer.addEvent(msg, buffer.getLastEventTime()+1);
+        buffer.addEvent(msg, buffer.getLastEventTime()+8);
     }
 }
 
@@ -375,7 +375,7 @@ void MidiGenerator::addStripValueMessage(int channel, int ehValue, ZoneWrapper::
                                 : juce::MPEValue::from7BitInt(unipolar(ehValue)*127);
             msg = juce::MidiMessage::controllerEvent(channel, midiValue.ccNo, cc.as7BitInt());
         }
-        buffer.addEvent(msg, buffer.getLastEventTime()+1);
+        buffer.addEvent(msg, buffer.getLastEventTime()+8);
     }
 }
 

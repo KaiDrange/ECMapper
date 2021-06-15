@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<layout>
+  <key_0_0 mappingValue="60" keyColour="1"/>
+  <key_0_1 mappingValue="61"/>
+  <key_0_2 mappingValue="62"/>
+  <key_0_3 mappingValue="63"/>
+  <key_0_4 mappingValue="64"/>
+  <key_0_5 mappingValue="65"/>
+  <key_0_6 mappingValue="66"/>
+  <key_0_7 mappingValue="67"/>
+  <key_0_8 mappingValue="68"/>
+  <key_0_9 mappingValue="64"/>
+  <key_0_10 mappingValue="65"/>
+  <key_0_11 mappingValue="66"/>
+  <key_0_12 mappingValue="67"/>
+  <key_0_13 mappingValue="68"/>
+  <key_0_14 mappingValue="69"/>
+  <key_0_15 mappingValue="70"/>
+  <key_0_16 mappingValue="71"/>
+  <key_0_17 mappingValue="72" keyColour="1"/>
+  <key_1_0/>
+  <key_1_1/>
+  <key_1_2/>
+  <key_1_3 keyMappingType="20" mappingValue="Trigger;AllNotesOff;0;0;0"
+           keyColour="2"/>
+</layout>

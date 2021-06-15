@@ -9,6 +9,7 @@ public:
     static inline const juce::Identifier id_upperMPEVoiceCount {"uppermpevoicecount"};
     static inline const juce::Identifier id_lowerMPEPB {"lowermpepb"};
     static inline const juce::Identifier id_upperMPEPB {"uppermpepb"};
+    static inline const juce::Identifier id_activeTab {"activetab"};
 
     static void addListener(juce::ValueTree::Listener *listener, juce::ValueTree &rootState);
 
@@ -22,7 +23,8 @@ public:
     static int getLowerMPEPB(juce::ValueTree &rootState);
     static void setUpperMPEPB(int pbValue, juce::ValueTree &rootState);
     static int getUpperMPEPB(juce::ValueTree &rootState);
-
+    static void setCurrentTabIndex(int index, juce::ValueTree &rootState);
+    static int getCurrentTabIndex(juce::ValueTree &rootState);
     
 private:
     static inline const juce::String default_IP { "127.0.0.1:12120" };
@@ -30,6 +32,7 @@ private:
     static inline const int default_upperMPEVoiceCount = 0;
     static inline const int default_lowerMPEPB = 48;
     static inline const int default_upperMPEPB = 48;
+    static inline const int default_activeTab = 0;
 
     static juce::ValueTree getSettingsTree(juce::ValueTree &rootState);
     

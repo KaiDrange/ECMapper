@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<layout>
+  <key_0_0 mappingValue="48" keyColour="1" zone="1"/>
+  <key_0_1 mappingValue="49" zone="1"/>
+  <key_0_2 mappingValue="50" zone="1"/>
+  <key_0_3 mappingValue="51" zone="1"/>
+  <key_0_4 mappingValue="52" zone="1"/>
+  <key_0_5 mappingValue="53" zone="1"/>
+  <key_0_6 mappingValue="54" zone="1"/>
+  <key_0_7 mappingValue="55" zone="1"/>
+  <key_0_8 mappingValue="56" zone="1"/>
+  <key_0_9 mappingValue="57" zone="1"/>
+  <key_0_10 mappingValue="58" zone="1"/>
+  <key_0_11 mappingValue="59" zone="1"/>
+  <key_0_12 mappingValue="60" zone="1" keyColour="1"/>
+  <key_0_13 mappingValue="61" zone="1"/>
+  <key_0_14 mappingValue="62" zone="1"/>
+  <key_0_15 mappingValue="63" zone="1"/>
+  <key_0_16 mappingValue="52" zone="1"/>
+  <key_0_17 mappingValue="53" zone="1"/>
+  <key_0_18 mappingValue="54" zone="1"/>
+  <key_0_19 mappingValue="55" zone="1"/>
+  <key_0_20 mappingValue="56" zone="1"/>
+  <key_0_21 mappingValue="57" zone="1"/>
+  <key_0_22 mappingValue="58" zone="1"/>
+  <key_0_23 mappingValue="59" zone="1"/>
+  <key_0_24 mappingValue="60" zone="1" keyColour="1"/>
+  <key_0_25 mappingValue="61" zone="1"/>
+  <key_0_26 mappingValue="62" zone="1"/>
+  <key_0_27 mappingValue="63" zone="1"/>
+  <key_0_28 mappingValue="64" zone="1"/>
+  <key_0_29 mappingValue="65" zone="1"/>
+  <key_0_30 mappingValue="66" zone="1"/>
+  <key_0_31 mappingValue="67" zone="1"/>
+  <key_0_32 mappingValue="56" zone="1"/>
+  <key_0_33 mappingValue="57" zone="1"/>
+  <key_0_34 mappingValue="58" zone="1"/>
+  <key_0_35 mappingValue="59" zone="1"/>
+  <key_0_36 mappingValue="60" zone="1" keyColour="1"/>
+  <key_0_37 mappingValue="61" zone="1"/>
+  <key_0_38 mappingValue="62" zone="1"/>
+  <key_0_39 mappingValue="63" zone="1"/>
+  <key_0_40 mappingValue="64" zone="1"/>
+  <key_0_41 mappingValue="65" zone="1"/>
+  <key_0_42 mappingValue="66" zone="1"/>
+  <key_0_43 mappingValue="67" zone="1"/>
+  <key_0_44 mappingValue="68" zone="1"/>
+  <key_0_45 mappingValue="69" zone="1"/>
+  <key_0_46 mappingValue="70" zone="1"/>
+  <key_0_47 mappingValue="71" zone="1"/>
+  <key_0_48 mappingValue="72" zone="1" keyColour="1"/>
+  <key_0_49 mappingValue="73" zone="1"/>
+  <key_0_50 mappingValue="74" zone="1"/>
+  <key_0_51 mappingValue="75" zone="1"/>
+  <key_0_52 mappingValue="60" keyColour="1" zone="1"/>
+  <key_0_53 mappingValue="61" zone="1"/>
+  <key_0_54 mappingValue="62" zone="1"/>
+  <key_0_55 mappingValue="63" zone="1"/>
+  <key_0_56 mappingValue="64" zone="1"/>
+  <key_0_57 mappingValue="65" zone="1"/>
+  <key_0_58 mappingValue="66" zone="1"/>
+  <key_0_59 mappingValue="67" zone="1"/>
+  <key_0_60 mappingValue="68" zone="1"/>
+  <key_0_61 mappingValue="69" zone="1"/>
+  <key_0_62 mappingValue="70" zone="1"/>
+  <key_0_63 mappingValue="71" zone="1"/>
+  <key_0_64 mappingValue="72" zone="1" keyColour="1"/>
+  <key_0_65 mappingValue="73" zone="1"/>
+  <key_0_66 mappingValue="74" zone="1"/>
+  <key_0_67 mappingValue="75" zone="1"/>
+  <key_0_68 mappingValue="76" zone="1"/>
+  <key_0_69 mappingValue="77" zone="1"/>
+  <key_0_70 mappingValue="78" zone="1"/>
+  <key_0_71 mappingValue="79" zone="1"/>
+  <key_0_72 zone="3" keyMappingType="10" mappingValue="48"/>
+  <key_0_73 zone="3" keyMappingType="10" mappingValue="49"/>
+  <key_0_74 zone="3" keyMappingType="10" mappingValue="50"/>
+  <key_0_75 zone="3" keyMappingType="10" keyColour="1" mappingValue="51"/>
+  <key_0_76 zone="3" keyMappingType="10" mappingValue="52"/>
+  <key_0_77 zone="3" keyMappingType="10" mappingValue="53"/>
+  <key_0_78 zone="3" keyMappingType="10" mappingValue="54"/>
+  <key_0_79 zone="3" keyMappingType="10" keyColour="1" mappingValue="55"/>
+  <key_0_80 zone="3" keyMappingType="10" mappingValue="56"/>
+  <key_0_81 zone="3" keyMappingType="10" mappingValue="57"/>
+  <key_0_82 zone="3" keyMappingType="10" mappingValue="58"/>
+  <key_0_83 zone="3" keyMappingType="10" mappingValue="59" keyColour="0"/>
+  <key_1_4/>
+  <key_1_5/>
+  <key_1_6/>
+  <key_1_7/>
+  <key_1_88/>
+  <key_1_89/>
+  <key_1_90/>
+  <key_1_91 keyMappingType="20" mappingValue="Trigger;AllNotesOff;0;0;0"
+            keyColour="2"/>
+</layout>

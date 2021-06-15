@@ -1,6 +1,6 @@
 #include "MainComponent.h"
 
-MainComponent::MainComponent(juce::AudioProcessorValueTreeState &pluginState): lowerMPEVoiceCount("Lower MPE voices:", 2, 0, 15, true), upperMPEVoiceCount("Upper MPE voices:", 2, 0, 15, true),  lowerMPEPitchbendRange("Lower MPE pb:", 2, 0, 96, true), upperMPEPitchbendRange("Upper MPE pb:", 2, 0, 96, true), tabs(juce::TabbedButtonBar::TabsAtTop) {
+MainComponent::MainComponent(juce::AudioProcessorValueTreeState &pluginState): lowerMPEVoiceCount("Lower MPE voices:", 2, 0, 15, true), upperMPEVoiceCount("Upper MPE voices:", 2, 0, 15, true),  lowerMPEPitchbendRange("Lower MPE pb:", 2, 0, 96, true), upperMPEPitchbendRange("Upper MPE pb:", 2, 0, 96, true) {
     SettingsWrapper::addListener(this, pluginState.state);
     oscIPInput.setText(SettingsWrapper::getIP(pluginState.state));
     oscIPInput.onFocusLost = [&] {
@@ -34,7 +34,10 @@ MainComponent::MainComponent(juce::AudioProcessorValueTreeState &pluginState): l
     tabs.addTab("Alpha", bgColour, tabPages[0], false);
     tabs.addTab("Tau", bgColour, tabPages[1], false);
     tabs.addTab("Pico", bgColour, tabPages[2], false);
-    tabs.setCurrentTabIndex(2);
+    tabs.setCurrentTabIndex(SettingsWrapper::getCurrentTabIndex(pluginState.state));
+    tabs.onTabChanged = [&](int index){
+        SettingsWrapper::setCurrentTabIndex(index, pluginState.state);
+    };
     
     oscIPLabel.setText("Core IP:", juce::dontSendNotification);
     addAndMakeVisible(tabs);

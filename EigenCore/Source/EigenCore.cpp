@@ -4,6 +4,7 @@ EigenCore::EigenCore() : eigenApi("/resources/"), osc(&oscSendQueue, &oscReceive
     jassert(coreInstance == nullptr);
     coreInstance = this;
     mapperConnected = false;
+    std::cout << "EigenCore v1.0.0" << std::endl;
 }
 
 void EigenCore::initialise(const juce::String &) {

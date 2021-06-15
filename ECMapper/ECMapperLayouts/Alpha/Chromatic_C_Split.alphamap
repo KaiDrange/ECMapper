@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<layout>
+  <key_0_0 keyMappingType="10" mappingValue="48" keyColour="3" zone="2"/>
+  <key_0_1 keyMappingType="10" mappingValue="49" zone="2"/>
+  <key_0_2 keyMappingType="10" mappingValue="50" zone="2"/>
+  <key_0_3 keyMappingType="10" mappingValue="51" zone="2"/>
+  <key_0_4 keyMappingType="10" mappingValue="52" keyColour="0" zone="1"/>
+  <key_0_5 keyMappingType="10" mappingValue="53" zone="1"/>
+  <key_0_6 keyMappingType="10" mappingValue="54" zone="1"/>
+  <key_0_7 keyMappingType="10" mappingValue="55" zone="1"/>
+  <key_0_8 keyMappingType="10" mappingValue="56" zone="1"/>
+  <key_0_9 keyMappingType="10" mappingValue="57" zone="1"/>
+  <key_0_10 keyMappingType="10" mappingValue="58" zone="1"/>
+  <key_0_11 keyMappingType="10" mappingValue="59" zone="1"/>
+  <key_0_12 keyMappingType="10" mappingValue="60" zone="1" keyColour="1"/>
+  <key_0_13 keyMappingType="10" mappingValue="61" zone="1"/>
+  <key_0_14 keyMappingType="10" mappingValue="62" zone="1"/>
+  <key_0_15 keyMappingType="10" mappingValue="63" zone="1"/>
+  <key_0_16 keyMappingType="10" mappingValue="64" keyColour="0" zone="1"/>
+  <key_0_17 keyMappingType="10" mappingValue="65" zone="1"/>
+  <key_0_18 keyMappingType="10" mappingValue="66" zone="1"/>
+  <key_0_19 keyMappingType="10" mappingValue="67" zone="1"/>
+  <key_0_20 keyMappingType="10" mappingValue="68" zone="1"/>
+  <key_0_21 keyMappingType="10" mappingValue="69" zone="1"/>
+  <key_0_22 keyMappingType="10" mappingValue="70" zone="1"/>
+  <key_0_23 keyMappingType="10" mappingValue="71" zone="1"/>
+  <key_0_24 keyMappingType="10" mappingValue="52" zone="2"/>
+  <key_0_25 keyMappingType="10" mappingValue="53" zone="2"/>
+  <key_0_26 keyMappingType="10" mappingValue="54" zone="2"/>
+  <key_0_27 keyMappingType="10" mappingValue="55" zone="2"/>
+  <key_0_28 keyMappingType="10" mappingValue="56" zone="1"/>
+  <key_0_29 keyMappingType="10" mappingValue="57" zone="1"/>
+  <key_0_30 keyMappingType="10" mappingValue="58" zone="1"/>
+  <key_0_31 keyMappingType="10" mappingValue="59" zone="1"/>
+  <key_0_32 keyMappingType="10" mappingValue="60" zone="1" keyColour="1"/>
+  <key_0_33 keyMappingType="10" mappingValue="61" zone="1"/>
+  <key_0_34 keyMappingType="10" mappingValue="62" zone="1"/>
+  <key_0_35 keyMappingType="10" mappingValue="63" zone="1"/>
+  <key_0_36 keyMappingType="10" mappingValue="64" keyColour="0" zone="1"/>
+  <key_0_37 keyMappingType="10" mappingValue="65" zone="1"/>
+  <key_0_38 keyMappingType="10" mappingValue="66" zone="1"/>
+  <key_0_39 keyMappingType="10" mappingValue="67" zone="1"/>
+  <key_0_40 keyMappingType="10" mappingValue="68" zone="1"/>
+  <key_0_41 keyMappingType="10" mappingValue="69" zone="1"/>
+  <key_0_42 keyMappingType="10" mappingValue="70" zone="1"/>
+  <key_0_43 keyMappingType="10" mappingValue="71" zone="1"/>
+  <key_0_44 keyMappingType="10" mappingValue="72" zone="1" keyColour="1"/>
+  <key_0_45 keyMappingType="10" mappingValue="73" zone="1"/>
+  <key_0_46 keyMappingType="10" mappingValue="74" zone="1"/>
+  <key_0_47 keyMappingType="10" mappingValue="75" zone="1"/>
+  <key_0_48 keyMappingType="10" mappingValue="56" zone="2"/>
+  <key_0_49 keyMappingType="10" mappingValue="57" zone="2"/>
+  <key_0_50 keyMappingType="10" mappingValue="58" zone="2"/>
+  <key_0_51 keyMappingType="10" mappingValue="59" zone="2"/>
+  <key_0_52 keyMappingType="10" mappingValue="60" zone="1" keyColour="1"/>
+  <key_0_53 keyMappingType="10" mappingValue="61" zone="1"/>
+  <key_0_54 keyMappingType="10" mappingValue="62" zone="1"/>
+  <key_0_55 keyMappingType="10" mappingValue="63" zone="1"/>
+  <key_0_56 keyMappingType="10" mappingValue="64" keyColour="0" zone="1"/>
+  <key_0_57 keyMappingType="10" mappingValue="65" zone="1"/>
+  <key_0_58 keyMappingType="10" mappingValue="66" zone="1"/>
+  <key_0_59 keyMappingType="10" mappingValue="67" zone="1"/>
+  <key_0_60 keyMappingType="10" mappingValue="68" zone="1"/>
+  <key_0_61 keyMappingType="10" mappingValue="69" zone="1"/>
+  <key_0_62 keyMappingType="10" mappingValue="70" zone="1"/>
+  <key_0_63 keyMappingType="10" mappingValue="71" zone="1"/>
+  <key_0_64 keyMappingType="10" mappingValue="72" zone="1" keyColour="1"/>
+  <key_0_65 keyMappingType="10" mappingValue="73" zone="1"/>
+  <key_0_66 keyMappingType="10" mappingValue="74" zone="1"/>
+  <key_0_67 keyMappingType="10" mappingValue="75" zone="1"/>
+  <key_0_68 keyMappingType="10" mappingValue="76" keyColour="0" zone="1"/>
+  <key_0_69 keyMappingType="10" mappingValue="77" zone="1"/>
+  <key_0_70 keyMappingType="10" mappingValue="78" zone="1"/>
+  <key_0_71 keyMappingType="10" mappingValue="79" zone="1"/>
+  <key_0_72 keyMappingType="10" mappingValue="60" keyColour="3" zone="2"/>
+  <key_0_73 keyMappingType="10" mappingValue="61" zone="2"/>
+  <key_0_74 keyMappingType="10" mappingValue="62" zone="2"/>
+  <key_0_75 keyMappingType="10" mappingValue="63" zone="2"/>
+  <key_0_76 keyMappingType="10" mappingValue="64" keyColour="0" zone="1"/>
+  <key_0_77 keyMappingType="10" mappingValue="65" zone="1"/>
+  <key_0_78 keyMappingType="10" mappingValue="66" zone="1"/>
+  <key_0_79 keyMappingType="10" mappingValue="67" zone="1"/>
+  <key_0_80 keyMappingType="10" mappingValue="68" zone="1"/>
+  <key_0_81 keyMappingType="10" mappingValue="69" zone="1"/>
+  <key_0_82 keyMappingType="10" mappingValue="70" zone="1"/>
+  <key_0_83 keyMappingType="10" mappingValue="71" zone="1"/>
+  <key_0_84 keyMappingType="10" mappingValue="72" zone="1" keyColour="1"/>
+  <key_0_85 keyMappingType="10" mappingValue="73" zone="1"/>
+  <key_0_86 keyMappingType="10" mappingValue="74" zone="1"/>
+  <key_0_87 keyMappingType="10" mappingValue="75" zone="1"/>
+  <key_0_88 keyMappingType="10" mappingValue="76" keyColour="0" zone="1"/>
+  <key_0_89 keyMappingType="10" mappingValue="77" zone="1"/>
+  <key_0_90 keyMappingType="10" mappingValue="78" zone="1"/>
+  <key_0_91 keyMappingType="10" mappingValue="79" zone="1"/>
+  <key_0_92 keyMappingType="10" mappingValue="80" zone="1"/>
+  <key_0_93 keyMappingType="10" mappingValue="81" zone="1"/>
+  <key_0_94 keyMappingType="10" mappingValue="82" zone="1"/>
+  <key_0_95 keyMappingType="10" mappingValue="83" zone="1"/>
+  <key_0_96 keyMappingType="10" mappingValue="64" zone="2"/>
+  <key_0_97 keyMappingType="10" mappingValue="65" zone="2"/>
+  <key_0_98 keyMappingType="10" mappingValue="66" zone="2"/>
+  <key_0_99 keyMappingType="10" mappingValue="67" zone="2"/>
+  <key_0_100 keyMappingType="10" mappingValue="68" zone="1"/>
+  <key_0_101 keyMappingType="10" mappingValue="69" zone="1"/>
+  <key_0_102 keyMappingType="10" mappingValue="70" zone="1"/>
+  <key_0_103 keyMappingType="10" mappingValue="71" zone="1"/>
+  <key_0_104 keyMappingType="10" mappingValue="72" zone="1" keyColour="1"/>
+  <key_0_105 keyMappingType="10" mappingValue="73" zone="1"/>
+  <key_0_106 keyMappingType="10" mappingValue="74" zone="1"/>
+  <key_0_107 keyMappingType="10" mappingValue="75" zone="1"/>
+  <key_0_108 keyMappingType="10" mappingValue="76" keyColour="0" zone="1"/>
+  <key_0_109 keyMappingType="10" mappingValue="77" zone="1"/>
+  <key_0_110 keyMappingType="10" mappingValue="78" zone="1"/>
+  <key_0_111 keyMappingType="10" mappingValue="79" zone="1"/>
+  <key_0_112 keyMappingType="10" mappingValue="80" zone="1"/>
+  <key_0_113 keyMappingType="10" mappingValue="81" zone="1"/>
+  <key_0_114 keyMappingType="10" mappingValue="82" zone="1"/>
+  <key_0_115 keyMappingType="10" mappingValue="83" zone="1"/>
+  <key_0_116 keyMappingType="10" mappingValue="84" zone="1" keyColour="1"/>
+  <key_0_117 keyMappingType="10" mappingValue="85" zone="1"/>
+  <key_0_118 keyMappingType="10" mappingValue="86" zone="1"/>
+  <key_0_119 keyMappingType="10" mappingValue="87" zone="1"/>
+  <key_1_0 zone="3" keyMappingType="10" mappingValue="48"/>
+  <key_1_1 zone="3" keyMappingType="10" mappingValue="49"/>
+  <key_1_2 zone="3" keyMappingType="10" mappingValue="50"/>
+  <key_1_3 zone="3" keyColour="1" keyMappingType="10" mappingValue="51"/>
+  <key_1_4 zone="3" keyMappingType="10" mappingValue="52"/>
+  <key_1_5 zone="3" keyMappingType="10" mappingValue="53"/>
+  <key_1_6 zone="3" keyMappingType="10" mappingValue="54"/>
+  <key_1_7 zone="3" keyColour="1" keyMappingType="10" mappingValue="55"/>
+  <key_1_8 zone="3" keyMappingType="10" mappingValue="56"/>
+  <key_1_9 zone="3" keyMappingType="10" mappingValue="57"/>
+  <key_1_10 zone="3" keyMappingType="10" mappingValue="58"/>
+  <key_1_11 zone="3" keyColour="2" keyMappingType="20" mappingValue="Trigger;AllNotesOff;0;0;0"/>
+</layout>
