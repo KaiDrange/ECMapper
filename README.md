@@ -22,4 +22,4 @@ Open jucer files for both projects  in Juce Projucer, click the "Save and Open i
 
 Note: EigenCore needs files from the /EigenCore/EigenLite/resources to start and expects the folder to be in the same location as the executable. So copy that entire resources folder over to where your EigenCore executable is.
 
-EigenLite is included as a prebuilt dynamic library build for Intel macs. For other builds, you will have to first build EigenLite and then replace the eigenapi and picodecoder dylibs in EigenCore/EigenLite/resources with the newly built ones.
+EigenLite is included as a prebuilt dynamic library build for Intel macs. For other builds, you will have to first build EigenLite and then replace the eigenapi dylib in EigenCore/EigenLite/resources with the newly built one. You will also need to download the appropriate libpicodecoder from somewhere. You can find them in MEC resources (https://github.com/TheTechnobear/MEC).
