@@ -84,17 +84,7 @@ bool ECMapperAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) 
 void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages) {
     buffer.clear();
     midiMessages.clear();
-
-    if (!osc.senderIsConnected) {
-        auto success = osc.connectSender();
-        if (success) {
-            layoutChangeHandler.sendLEDMsgForAllKeys(DeviceType::Pico);
-            layoutChangeHandler.sendLEDMsgForAllKeys(DeviceType::Tau);
-            layoutChangeHandler.sendLEDMsgForAllKeys(DeviceType::Alpha);
-        }
-    }
-    if (!osc.receiverIsConnected)
-        osc.connectReceiver();
+    checkConnectionChanges();
     
     static OSC::Message msg;
     static OSC::Message outgoingMsg;
@@ -193,4 +183,24 @@ void ECMapperAudioProcessor::valueTreePropertyChanged(juce::ValueTree &vTree, co
         midiGenerator.stop();
         midiGenerator.start(pluginState);
     }
+}
+
+void ECMapperAudioProcessor::checkConnectionChanges() {
+    if (!osc.senderIsConnected) {
+        auto success = osc.connectSender();
+        if (success) {
+            layoutChangeHandler.sendLEDMsgForAllKeys(DeviceType::Pico);
+            layoutChangeHandler.sendLEDMsgForAllKeys(DeviceType::Tau);
+            layoutChangeHandler.sendLEDMsgForAllKeys(DeviceType::Alpha);
+        }
+    }
+    if (!osc.receiverIsConnected)
+        osc.connectReceiver();
+    
+    if (!prevEigenCoreConnectedState && osc.eigenCoreConnected) {
+        layoutChangeHandler.sendLEDMsgForAllKeys(DeviceType::Pico);
+        layoutChangeHandler.sendLEDMsgForAllKeys(DeviceType::Tau);
+        layoutChangeHandler.sendLEDMsgForAllKeys(DeviceType::Alpha);
+    }
+    prevEigenCoreConnectedState = osc.eigenCoreConnected;
 }

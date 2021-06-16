@@ -41,8 +41,10 @@ void OSCCommunication::disconnectReceiver() {
 
 void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
     if (message.getAddressPattern() == "/EigenCore/ping") {
-        if (pingCounter == -1)
+        if (pingCounter == -1) {
             std::cout << "Core connected" << std::endl;
+            eigenCoreConnected = true;
+        }
         pingCounter = 0;
 //        receiveQueue->add(&msg);
 
@@ -157,6 +159,7 @@ void OSCCommunication::timerCallback() {
     if (pingCounter > 10) {
         std::cout << "Connection to Core timed out" << std::endl;
         pingCounter = -1;
+        eigenCoreConnected = false;
     }
     
     sendOutgoingMessages();

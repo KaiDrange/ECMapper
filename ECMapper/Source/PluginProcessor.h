@@ -49,6 +49,7 @@ public:
     juce::AudioProcessorValueTreeState pluginState;
 private:
     void updateIPandPorts();
+    void checkConnectionChanges();
     OSCCommunication osc;
     OSC::OSCMessageFifo oscSendQueue;
     OSC::OSCMessageFifo oscReceiveQueue;
@@ -57,6 +58,7 @@ private:
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     juce::AudioProcessorEditor *editor = nullptr;
     LayoutChangeHandler layoutChangeHandler;
+    bool prevEigenCoreConnectedState = false;
     
     void valueTreePropertyChanged(juce::ValueTree &vTree, const juce::Identifier &property) override;
 

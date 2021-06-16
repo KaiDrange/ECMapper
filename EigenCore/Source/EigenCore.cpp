@@ -131,7 +131,12 @@ void* EigenCore::eigenharpProcess(OSC::OSCMessageFifo *msgQueue, void* arg) {
         }
         
         if (mapperConnected) {
-            pE->process();
+            try {
+                pE->process();
+            }
+            catch (...) {
+                std::cout << "EigenAPI Process threw an exception." << std::endl;
+            }
             static OSC::Message msg;
             if (msgQueue->getMessageCount() > 0) {
                 msgQueue->read(&msg);

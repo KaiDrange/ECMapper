@@ -13,8 +13,6 @@
     </GROUP>
     <GROUP id="{1C19C29A-4545-EE67-D771-08FEDC080667}" name="EigenLite">
       <GROUP id="{65C910C9-0B03-449A-37BE-933D68C6BA4F}" name="resources">
-        <FILE id="YL2ZZs" name="69-eigenharp.rules" compile="0" resource="1"
-              file="EigenLite/resources/69-eigenharp.rules" xcodeResource="1"/>
         <FILE id="HjwBus" name="bs_mm_fw_0103.ihx" compile="0" resource="1"
               file="EigenLite/resources/bs_mm_fw_0103.ihx" xcodeResource="1"/>
         <FILE id="dgm58B" name="libeigenapi.dylib" compile="0" resource="1"

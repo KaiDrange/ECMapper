@@ -15,6 +15,7 @@ public:
     void disconnectReceiver();
     bool receiverIsConnected = false;
     bool senderIsConnected = false;
+    bool eigenCoreConnected = false;
     
     void sendLED(int course, int key, int led, DeviceType deviceType);
     void sendReset(DeviceType deviceType);
