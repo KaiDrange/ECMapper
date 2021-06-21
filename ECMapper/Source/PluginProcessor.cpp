@@ -98,7 +98,8 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
             layoutChangeHandler.sendLEDMsgForAllKeys(msg.device);
         else {
             outgoingMsg.type = OSC::MessageType::Undefined;
-            midiGenerator.processOSCMessage(msg, outgoingMsg, midiMessages);
+            if (midiGenerator.initialized)
+                midiGenerator.processOSCMessage(msg, outgoingMsg, midiMessages);
             if (outgoingMsg.type == OSC::MessageType::LED) {
                 outgoingMsg.device = msg.device;
                 outgoingMsg.course = msg.course;
@@ -108,9 +109,11 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
         }
     }
     
-    midiGenerator.samplesSinceLastBreathMsg += buffer.getNumSamples();
-    if (midiGenerator.samplesSinceLastBreathMsg > 1024)
-        midiGenerator.reduceBreath(midiMessages);
+    if (midiGenerator.initialized) {
+        midiGenerator.samplesSinceLastBreathMsg += buffer.getNumSamples();
+        if (midiGenerator.samplesSinceLastBreathMsg > 1024)
+            midiGenerator.reduceBreath(midiMessages);
+    }
 }
 
 void ECMapperAudioProcessor::processBlockBypassed(juce::AudioBuffer<float> &buffer, juce::MidiBuffer &midiMessages) {

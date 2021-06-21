@@ -17,6 +17,7 @@ public:
     void start(juce::AudioProcessorValueTreeState &pluginState);
     void stop();
     int samplesSinceLastBreathMsg = 0;
+    bool initialized = false;
 
 private:
     enum KeyStatus {
@@ -72,7 +73,6 @@ private:
     float calculatePitchBendCurve(float value);
 
     ConfigLookup *configLookups;
-    bool initialized = false;
     int breathMessageCount = 0;
     int stripMessageCount[2] = { 0, 0 };
     
