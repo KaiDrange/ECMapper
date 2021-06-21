@@ -190,7 +190,7 @@ void LayoutComponent::createKeys() {
             LayoutWrapper::KeyId id = { .deviceType = deviceType, .course = 0, .keyNo = i };
             keys.push_back(new KeyConfigComponent(id, EigenharpKeyType::Perc, pluginState));
         }
-        for (int i = 4; i < 8; i++) {
+        for (int i = 84; i < 88; i++) {
             LayoutWrapper::KeyId id = { .deviceType = deviceType, .course = 1, .keyNo = i };
             keys.push_back(new KeyConfigComponent(id, EigenharpKeyType::Button, pluginState));
         }

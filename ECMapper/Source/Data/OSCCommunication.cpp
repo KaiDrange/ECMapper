@@ -138,6 +138,10 @@ void OSCCommunication::sendLED(int course, int key, int led, DeviceType deviceTy
     if (!senderIsConnected)
         return;
     
+    //TEMP: don´t send for Tau cmd keys (needs fix in EigenLite)
+    if (deviceType == DeviceType::Tau && course > 0)
+        return;
+    
     sender.send("/ECMapper/led", course, key, led, (int)deviceType);
 }
 

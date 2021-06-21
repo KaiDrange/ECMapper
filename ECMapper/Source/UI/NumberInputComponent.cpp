@@ -25,6 +25,10 @@ NumberInputComponent::NumberInputComponent(const juce::String labelText,
             input.setText(juce::String(maxValue));
         }
     };
+    
+    input.onFocusLost = [&] {
+        sendChangeMessage();
+    };
 }
 
 NumberInputComponent::~NumberInputComponent() {

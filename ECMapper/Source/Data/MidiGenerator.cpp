@@ -193,12 +193,10 @@ void MidiGenerator::createStripRelative(int deviceIndex, int stripIndex, int zon
 }
 
 void MidiGenerator::createNoteOn(ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer) {
-    if (keyLookup.output == MidiChannelType::MPE_Low)
+    if (keyLookup.output == MidiChannelType::MPE_Low && lowerChanAssigner != nullptr)
         state->midiChannel = lowerChanAssigner->findMidiChannelForNewNote(keyLookup.note);
-    else if (keyLookup.output == MidiChannelType::MPE_High) {
-        if (upperChanAssigner != nullptr)
-            state->midiChannel = upperChanAssigner->findMidiChannelForNewNote(keyLookup.note);
-    }
+    else if (keyLookup.output == MidiChannelType::MPE_High && upperChanAssigner != nullptr)
+        state->midiChannel = upperChanAssigner->findMidiChannelForNewNote(keyLookup.note);
     else
         state->midiChannel = (int)keyLookup.output;
     if (state->midiChannel > 0)
@@ -214,12 +212,10 @@ void MidiGenerator::createNoteOn(ConfigLookup::Key &keyLookup, KeyState *state, 
 
 void MidiGenerator::createNoteOff(ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer) {
     int channel = state->midiChannel;
-    if (keyLookup.output == MidiChannelType::MPE_Low)
+    if (keyLookup.output == MidiChannelType::MPE_Low && lowerChanAssigner != nullptr)
         lowerChanAssigner->noteOff(keyLookup.note, channel);
-    else if (keyLookup.output == MidiChannelType::MPE_High) {
-        if (upperChanAssigner != nullptr)
-            upperChanAssigner->noteOff(keyLookup.note, channel);
-    }
+    else if (keyLookup.output == MidiChannelType::MPE_High && upperChanAssigner != nullptr)
+        upperChanAssigner->noteOff(keyLookup.note, channel);
 
     if (state->midiChannel > 0) {
         for (auto it = chanNotePri[state->midiChannel-1].begin(); it != chanNotePri[state->midiChannel-1].end(); it++) {
