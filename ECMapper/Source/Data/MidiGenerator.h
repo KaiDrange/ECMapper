@@ -66,6 +66,7 @@ private:
     void createBreath(int deviceIndex, ConfigLookup &keyLookup, juce::MidiBuffer &buffer);
     void createStripAbsolute(int deviceIndex, int stripIndex, int zoneIndex, ConfigLookup &keyLookup, juce::MidiBuffer &buffer);
     void createStripRelative(int deviceIndex, int stripIndex, int zoneIndex, ConfigLookup &keyLookup, juce::MidiBuffer &buffer);
+    void createAllNotesOff(ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer, OSC::Message &outgoingOscMsg);
 
     inline float clamp(float v, float mn, float mx) { return (std::max(std::min(v, mx), mn)); }
     float unipolar(int val) { return std::min(float(val) / 4096.0f, 1.0f); }

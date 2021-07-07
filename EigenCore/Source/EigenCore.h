@@ -17,7 +17,7 @@ class EigenCore : public juce::JUCEApplication {
 public:
     EigenCore();
     const juce::String getApplicationName() override { return "EigenCore"; }
-    const juce::String getApplicationVersion() override { return "0.9.1"; }
+    const juce::String getApplicationVersion() override { return "1.0.1"; }
     void initialise(const juce::String &) override;
     void shutdown() override;
     

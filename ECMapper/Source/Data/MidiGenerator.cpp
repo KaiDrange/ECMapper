@@ -247,12 +247,8 @@ void MidiGenerator::createMidiMsgOn(ConfigLookup::Key &keyLookup, KeyState *stat
     else
         state->midiChannel = (int)keyLookup.output;
 
-    if (keyLookup.msgType == 4) {
-        for (int i = 1; i < 17; i++) {
-            buffer.addEvent(juce::MidiMessage::allNotesOff(i), buffer.getLastEventTime()+8);
-            chanNotePri[i-1].clear();
-        }
-    }
+    if (keyLookup.msgType == 4)
+        createAllNotesOff(keyLookup, state, buffer, outgoingOscMsg);
     else if (keyLookup.msgType == 1)
          buffer.addEvent(juce::MidiMessage::controllerEvent(state->midiChannel, keyLookup.cmdCC, keyLookup.cmdOn), buffer.getLastEventTime()+8);
     else if (keyLookup.msgType == 2)
@@ -279,6 +275,17 @@ void MidiGenerator::createMidiMsgOn(ConfigLookup::Key &keyLookup, KeyState *stat
         outgoingOscMsg.type = OSC::MessageType::LED;
         outgoingOscMsg.value = 3;
     }
+}
+
+void MidiGenerator::createAllNotesOff(ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer, OSC::Message &outgoingOscMsg) {
+    for (int i = 1; i < 17; i++) {
+        buffer.addEvent(juce::MidiMessage::allNotesOff(i), buffer.getLastEventTime()+8);
+        chanNotePri[i-1].clear();
+    }
+    if (lowerChanAssigner != nullptr)
+        lowerChanAssigner->allNotesOff();
+    if (upperChanAssigner != nullptr)
+        upperChanAssigner->allNotesOff();
 }
 
 void MidiGenerator::createMidiMsgOff(ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer, OSC::Message &outgoingOscMsg) {
