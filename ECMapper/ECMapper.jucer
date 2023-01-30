@@ -7,7 +7,7 @@
               aaxIdentifier="ECMapper" cppLanguageStandard="17" version="1.0.2"
               companyName="Tic Tech" companyWebsite="ticticelectro.com" companyEmail="kaimdrange@hotmail.com"
               pluginFormats="buildStandalone,buildVST3" pluginAUMainType="'aumf'"
-              pluginChannelConfigs="{0,2}" pluginName="ECMapper v1.0.1" pluginAUExportPrefix="ECMapperAU">
+              pluginChannelConfigs="{0,2}" pluginName="ECMapper v1.0.2" pluginAUExportPrefix="ECMapperAU">
   <MAINGROUP id="vhB8QE" name="ECMapper">
     <GROUP id="{C08E6E0F-711F-5656-DD30-D523FCECDD9A}" name="Gfx">
       <FILE id="pM0slc" name="ECMapper_Icon512x512.png" compile="0" resource="1"
