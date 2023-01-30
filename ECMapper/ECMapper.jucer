@@ -4,9 +4,9 @@
               addUsingNamespaceToJuceHeader="0" displaySplashScreen="1" jucerFormatVersion="1"
               pluginCharacteristicsValue="pluginIsMidiEffectPlugin,pluginProducesMidiOut"
               pluginManufacturer="Tic Tech" pluginManufacturerCode="TT" pluginCode="5632"
-              aaxIdentifier="ECMapper" cppLanguageStandard="17" version="1.0.1"
+              aaxIdentifier="ECMapper" cppLanguageStandard="17" version="1.0.2"
               companyName="Tic Tech" companyWebsite="ticticelectro.com" companyEmail="kaimdrange@hotmail.com"
-              pluginFormats="buildAU,buildStandalone,buildVST3" pluginAUMainType="'aumf'"
+              pluginFormats="buildStandalone,buildVST3" pluginAUMainType="'aumf'"
               pluginChannelConfigs="{0,2}" pluginName="ECMapper v1.0.1" pluginAUExportPrefix="ECMapperAU">
   <MAINGROUP id="vhB8QE" name="ECMapper">
     <GROUP id="{C08E6E0F-711F-5656-DD30-D523FCECDD9A}" name="Gfx">
@@ -123,8 +123,8 @@
     </VS2019>
     <XCODE_MAC targetFolder="Builds/MacOSX" smallIcon="pM0slc" bigIcon="ShaqyE">
       <CONFIGURATIONS>
-        <CONFIGURATION isDebug="1" name="Debug" targetName="ECMapper"/>
-        <CONFIGURATION isDebug="0" name="Release" targetName="ECMapper"/>
+        <CONFIGURATION isDebug="1" name="Debug" targetName="ECMapper" defines="JUCE_MODAL_LOOPS_PERMITTED=1"/>
+        <CONFIGURATION isDebug="0" name="Release" targetName="ECMapper" defines="JUCE_MODAL_LOOPS_PERMITTED=1"/>
       </CONFIGURATIONS>
       <MODULEPATHS>
         <MODULEPATH id="juce_audio_basics" path="../../../../JUCE/modules"/>
