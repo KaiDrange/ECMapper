@@ -180,6 +180,15 @@ void LayoutComponent::deselectAllOtherKeys(const KeyConfigComponent *key) {
     }
 }
 
+void LayoutComponent::deselectAllKeys() {
+    for (int i = 0; i < getTotalKeyCount(); i++) {
+        keys[i]->setToggleState(false, juce::NotificationType::dontSendNotification);
+        keys[i]->setState(juce::Button::buttonNormal);
+    }
+    midiMessageSectionComponent.setVisible(false);
+    chordSectionComponent.setVisible(false);
+}
+
 void LayoutComponent::createKeys() {
     
     for (int i = 0; i < getNormalkeyCount(); i++) {

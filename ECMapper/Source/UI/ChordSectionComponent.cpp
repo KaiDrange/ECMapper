@@ -14,6 +14,11 @@ ChordSectionComponent::ChordSectionComponent() : chordNameInput("Name:", 0, 5, "
         addAndMakeVisible(chordNotes[i].setButton);
         addAndMakeVisible(chordNotes[i].clearButton);
     }
+    
+    chordNotes[0].clearButton.onClick = [&] { chordNotes[0].midiNoteNumber = -1; setNoteLabelText(0); sendChangeMessage(); };
+    chordNotes[1].clearButton.onClick = [&] { chordNotes[1].midiNoteNumber = -1; setNoteLabelText(1); sendChangeMessage(); };
+    chordNotes[2].clearButton.onClick = [&] { chordNotes[2].midiNoteNumber = -1; setNoteLabelText(2); sendChangeMessage(); };
+    chordNotes[3].clearButton.onClick = [&] { chordNotes[3].midiNoteNumber = -1; setNoteLabelText(3); sendChangeMessage(); };
 }
 
 ChordSectionComponent::~ChordSectionComponent() {

@@ -20,6 +20,7 @@ TabPage::TabPage(int tabIndex, DeviceType deviceType, juce::AudioProcessorValueT
     addAndMakeVisible(loadMappingButton);
     loadMappingButton.setButtonText("load");
     loadMappingButton.onClick = [&, deviceType] {
+        layoutPanel->deselectAllKeys();
         auto xml = FileUtil::openMapping(deviceType);
         auto loadedMap = juce::ValueTree::fromXml(xml);
         auto oldTree = LayoutWrapper::getLayoutTree(deviceType, pluginState.state);

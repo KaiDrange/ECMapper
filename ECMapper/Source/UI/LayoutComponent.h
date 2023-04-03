@@ -29,6 +29,7 @@ public:
     int getTotalKeyCount() const;
     int getPercKeyStartIndex() const;
     int getButtonStartIndex() const;
+    void deselectAllKeys();
     
     ChordSectionComponent chordSectionComponent;
     
