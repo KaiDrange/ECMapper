@@ -1,14 +1,14 @@
-#include <JuceHeader.h>
 #include "ChordSectionComponent.h"
 
-ChordSectionComponent::ChordSectionComponent() : chordNameInput("Name:", 0, 5, "", false)
-{
+ChordSectionComponent::ChordSectionComponent() : chordNameInput("Name:", 0, 5, "", false) {
     addAndMakeVisible(chordNameInput);
     chordNameInput.addListener(this);
-    for (int i = 0; i < 4; i++)
-    {
-        chordNotes[i].label.setText("Note " + juce::String(i+1) + ":", juce::NotificationType::dontSendNotification);
+    for (int i = 0; i < 4; i++) {
+        setNoteLabelText(i);
         chordNotes[i].setButton.setButtonText("Set");
+        chordNotes[i].setButton.setToggleable(true);
+        chordNotes[i].setButton.setToggleState(false, juce::NotificationType::dontSendNotification);
+        chordNotes[i].setButton.setClickingTogglesState(true);
         chordNotes[i].clearButton.setButtonText("Clear");
         addAndMakeVisible(chordNotes[i].label);
         addAndMakeVisible(chordNotes[i].setButton);
@@ -23,8 +23,7 @@ void ChordSectionComponent::resized() {
     auto area = getLocalBounds();
     float lineHeight = area.getHeight()*0.04;
     chordNameInput.setBounds(area.removeFromTop(lineHeight));
-    for (int i = 0; i < 4; i++)
-    {
+    for (int i = 0; i < 4; i++) {
         area.removeFromTop(lineHeight);
         chordNotes[i].label.setBounds(area.removeFromTop(lineHeight));
         auto line = area.removeFromTop(lineHeight);
@@ -33,22 +32,23 @@ void ChordSectionComponent::resized() {
     }
 }
 
-juce::String ChordSectionComponent::getMessageString() {
-    juce::String note1;
-    juce::String note2;
-    juce::String note3;
-    juce::String note4;
+void ChordSectionComponent::setNoteLabelText(int noteIndex) {
+    chordNotes[noteIndex].label.setText("Note "
+            + juce::String(noteIndex+1)
+            + ": "
+            + (chordNotes[noteIndex].midiNoteNumber > -1
+                        ? juce::MidiMessage::getMidiNoteName(chordNotes[noteIndex].midiNoteNumber, true, true, 3)
+                        : "None")
+        , juce::NotificationType::dontSendNotification);
+}
 
-    note1 = "10";
-    note2 = "12";
-    note3 = "14";
-    note4 = "16";
+juce::String ChordSectionComponent::getMessageString() {
     // chordName;note1;note2;note3;note4
     return chordNameInput.getValue() + ";" +
-        note1 + ";" +
-        note2 + ";" +
-        note3 + ";" +
-        note4;
+        juce::String(chordNotes[0].midiNoteNumber) + ";" +
+        juce::String(chordNotes[1].midiNoteNumber) + ";" +
+        juce::String(chordNotes[2].midiNoteNumber) + ";" +
+        juce::String(chordNotes[3].midiNoteNumber);
 }
 
 void ChordSectionComponent::updatePanelFromMessageString(juce::String msgString) {
@@ -56,6 +56,12 @@ void ChordSectionComponent::updatePanelFromMessageString(juce::String msgString)
     tokens.addTokens(msgString, ";", "\"");
     if (tokens.size() != 5)
         return;
+    
+    chordNameInput.setValue(tokens[0]);
+    for (int i = 0; i < 4; i++) {
+        chordNotes[i].midiNoteNumber = tokens[i+1].getIntValue();
+        setNoteLabelText(i);
+    }
 }
 
 void ChordSectionComponent::addListener(Listener* listenerToAdd) {
@@ -73,4 +79,21 @@ void ChordSectionComponent::sendChangeMessage() {
 
 void ChordSectionComponent::textInputChanged(TextInputComponent*) {
     sendChangeMessage();
+}
+
+void ChordSectionComponent::handleNoteOn(juce::MidiKeyboardState*, int midiChannel, int midiNoteNumber, float velocity) {
+    for (int i = 0; i < 4; i++) {
+        if (chordNotes[i].setButton.getToggleState()) {
+            chordNotes[i].midiNoteNumber = midiNoteNumber;
+            setNoteLabelText(i);
+            sendChangeMessage();
+            break;
+        }
+    }
+}
+
+void ChordSectionComponent::handleNoteOff(juce::MidiKeyboardState*, int midiChannel, int midiNoteNumber, float velocity) {
+    for (int i = 0; i < 4; i++) {
+        chordNotes[i].setButton.setToggleState(false, juce::NotificationType::dontSendNotification);
+    }
 }

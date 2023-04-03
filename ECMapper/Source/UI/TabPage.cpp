@@ -10,6 +10,7 @@ TabPage::TabPage(int tabIndex, DeviceType deviceType, juce::AudioProcessorValueT
     
     addAndMakeVisible(keyboard);
     keyboardState.addListener(layoutPanel);
+    keyboardState.addListener(&layoutPanel->chordSectionComponent);
 
     addAndMakeVisible(saveMappingButton);
     saveMappingButton.setButtonText("Save");

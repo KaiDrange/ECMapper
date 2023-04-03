@@ -30,6 +30,8 @@ public:
     int getPercKeyStartIndex() const;
     int getButtonStartIndex() const;
     
+    ChordSectionComponent chordSectionComponent;
+    
 private:
     LayoutWrapper::KeyId activeKeyId;
     std::vector<KeyConfigComponent*> keys;
@@ -38,7 +40,6 @@ private:
     juce::TextButton zoneMenuButton;
     juce::TextButton mapTypeMenuButton;
     MidiMessageSectionComponent midiMessageSectionComponent;
-    ChordSectionComponent chordSectionComponent;
     void valuesChanged(MidiMessageSectionComponent*) override;
     void valuesChanged(ChordSectionComponent*) override;
 

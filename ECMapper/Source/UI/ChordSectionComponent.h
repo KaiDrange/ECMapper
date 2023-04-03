@@ -2,8 +2,7 @@
 #include <JuceHeader.h>
 #include "TextInputComponent.h"
 
-class ChordSectionComponent : public juce::Component, TextInputComponent::Listener
-{
+class ChordSectionComponent : public juce::Component, TextInputComponent::Listener, public juce::MidiKeyboardStateListener {
 public:
     ChordSectionComponent();
     ~ChordSectionComponent() override;
@@ -12,6 +11,9 @@ public:
     juce::String getMessageString();
     void updatePanelFromMessageString(juce::String msgString);
 
+    void handleNoteOn(juce::MidiKeyboardState*, int midiChannel, int midiNoteNumber, float velocity) override;
+    void handleNoteOff(juce::MidiKeyboardState*, int midiChannel, int midiNoteNumber, float velocity) override;
+    
     class Listener {
     public:
         virtual ~Listener() = default;
@@ -24,9 +26,11 @@ public:
         juce::Label label;
         juce::TextButton setButton;
         juce::TextButton clearButton;
+        int midiNoteNumber = -1;
     };
 
 private:
+    void setNoteLabelText(int noteIndex);
     void sendChangeMessage();
     void textInputChanged(TextInputComponent*) override;
     void resetPanel();

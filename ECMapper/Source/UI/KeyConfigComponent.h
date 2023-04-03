@@ -5,7 +5,7 @@
 #include "../Models/LayoutWrapper.h"
 #include "Utility.h"
 
-class KeyConfigComponent  : public juce::DrawableButton {
+class KeyConfigComponent : public juce::DrawableButton {
 public:
     KeyConfigComponent(LayoutWrapper::KeyId id, EigenharpKeyType keyType, juce::AudioProcessorValueTreeState &pluginState);
     ~KeyConfigComponent() override;

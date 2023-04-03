@@ -160,7 +160,7 @@ void LayoutComponent::showHidePanels() {
         chordSectionComponent.setVisible(false);
     }
     else if (LayoutWrapper::getLayoutKey(activeKeyId, pluginState.state).keyMappingType == KeyMappingType::Chord) {
-        midiMessageSectionComponent.updatePanelFromMessageString(LayoutWrapper::getLayoutKey(activeKeyId, pluginState.state).mappingValue);
+        chordSectionComponent.updatePanelFromMessageString(LayoutWrapper::getLayoutKey(activeKeyId, pluginState.state).mappingValue);
         midiMessageSectionComponent.setVisible(false);
         chordSectionComponent.setVisible(true);
     }
