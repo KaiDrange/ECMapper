@@ -20,6 +20,13 @@ void KeyConfigComponent::paint(juce::Graphics& g) {
     if (layoutKey.keyMappingType == KeyMappingType::Note) {
         keyText = juce::MidiMessage::getMidiNoteName(keyText.getIntValue(), true, true, 3);
     }
+    else if (layoutKey.keyMappingType == KeyMappingType::Chord) {
+        juce::StringArray chordParts;
+        Utility::splitString(keyText, ";", chordParts);
+        if (chordParts.size() > 0) {
+            keyText = chordParts[0];
+        }
+    }
     else if (layoutKey.keyMappingType == KeyMappingType::MidiMsg) {
         juce::StringArray midiMsgParts;
         Utility::splitString(keyText, ";", midiMsgParts);

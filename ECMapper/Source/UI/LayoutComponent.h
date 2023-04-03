@@ -5,10 +5,11 @@
 #include "../Models/LayoutWrapper.h"
 #include "KeyConfigComponent.h"
 #include "MidiMessageSectionComponent.h"
+#include "ChordSectionComponent.h"
 #include "Utility.h"
 #include "LayoutComponent.h"
 
-class LayoutComponent : public PanelComponent, public juce::MidiKeyboardStateListener, public juce::KeyListener, public MidiMessageSectionComponent::Listener {
+class LayoutComponent : public PanelComponent, public juce::MidiKeyboardStateListener, public juce::KeyListener, public MidiMessageSectionComponent::Listener, public ChordSectionComponent::Listener {
 public:
     LayoutComponent(DeviceType model, float widthFactor, float heightFactor, juce::AudioProcessorValueTreeState &pluginState);
     ~LayoutComponent() override;
@@ -37,7 +38,9 @@ private:
     juce::TextButton zoneMenuButton;
     juce::TextButton mapTypeMenuButton;
     MidiMessageSectionComponent midiMessageSectionComponent;
+    ChordSectionComponent chordSectionComponent;
     void valuesChanged(MidiMessageSectionComponent*) override;
+    void valuesChanged(ChordSectionComponent*) override;
 
 
     juce::DrawablePath* createBtnImage(juce::Colour colour);

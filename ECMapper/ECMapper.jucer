@@ -17,6 +17,10 @@
     </GROUP>
     <GROUP id="{5DC590AE-B94A-F53F-3A94-BEFDDBFEA6DC}" name="Source">
       <GROUP id="{0966D1C5-EBFE-2204-5620-C352A5F938AA}" name="UI">
+        <FILE id="jr8WHx" name="ChordSectionComponent.cpp" compile="1" resource="0"
+              file="Source/UI/ChordSectionComponent.cpp"/>
+        <FILE id="gdHOW9" name="ChordSectionComponent.h" compile="0" resource="0"
+              file="Source/UI/ChordSectionComponent.h"/>
         <FILE id="U4cBIU" name="DropdownComponent.cpp" compile="1" resource="0"
               file="Source/UI/DropdownComponent.cpp"/>
         <FILE id="ADVnJq" name="DropdownComponent.h" compile="0" resource="0"
@@ -48,6 +52,10 @@
               file="Source/UI/TabButtonBarComponent.h"/>
         <FILE id="VwWU95" name="TabPage.cpp" compile="1" resource="0" file="Source/UI/TabPage.cpp"/>
         <FILE id="UmRC50" name="TabPage.h" compile="0" resource="0" file="Source/UI/TabPage.h"/>
+        <FILE id="EkBdYG" name="TextInputComponent.cpp" compile="1" resource="0"
+              file="Source/UI/TextInputComponent.cpp"/>
+        <FILE id="RRgBCM" name="TextInputComponent.h" compile="0" resource="0"
+              file="Source/UI/TextInputComponent.h"/>
         <FILE id="s5Jt40" name="Utility.cpp" compile="1" resource="0" file="Source/UI/Utility.cpp"/>
         <FILE id="IOELac" name="Utility.h" compile="0" resource="0" file="Source/UI/Utility.h"/>
         <FILE id="vVj47m" name="ZonePanelComponent.cpp" compile="1" resource="0"
