@@ -41,9 +41,26 @@ void ConfigLookup::updateKey(juce::ValueTree keytree) {
         key.keyType = layoutKey.keyType;
         key.mapType = layoutKey.keyMappingType;
         key.keyColour = layoutKey.keyColour;
-        key.note = key.mapType == KeyMappingType::Note
-            ? std::min(std::max(layoutKey.mappingValue.getIntValue() + ZoneWrapper::getTranspose(layoutKey.keyId.deviceType, layoutKey.zone, pluginState.state), 0), 127)
-            : 0;
+        for (int i = 0; i < 4; i++)
+            key.notes[i] = -1;
+        if (key.mapType == KeyMappingType::Chord) {
+            juce::StringArray chordParts;
+            Utility::splitString(layoutKey.mappingValue, ";", chordParts);
+            if (chordParts.size() == 5) {
+                for (int i = 0; i < 4; i++) {
+                    int noteNumber = chordParts[i+1].getIntValue();
+                    key.notes[i] = noteNumber < 0
+                       ? -1
+                       : std::min(std::max(noteNumber + ZoneWrapper::getTranspose(layoutKey.keyId.deviceType, layoutKey.zone, pluginState.state), 0), 127);
+                }
+            }
+        }
+        else {
+            key.notes[0] = key.mapType == KeyMappingType::Note
+                ? std::min(std::max(layoutKey.mappingValue.getIntValue() + ZoneWrapper::getTranspose(layoutKey.keyId.deviceType, layoutKey.zone, pluginState.state), 0), 127)
+                : -1;
+        }
+        
         key.pressure = ZoneWrapper::getMidiValue(layoutKey.keyId.deviceType, layoutKey.zone, ZoneWrapper::id_pressure, ZoneWrapper::default_pressure, pluginState.state);
         key.roll = ZoneWrapper::getMidiValue(layoutKey.keyId.deviceType, layoutKey.zone, ZoneWrapper::id_roll, ZoneWrapper::default_roll, pluginState.state);
         key.yaw = ZoneWrapper::getMidiValue(layoutKey.keyId.deviceType, layoutKey.zone, ZoneWrapper::id_yaw, ZoneWrapper::default_yaw, pluginState.state);

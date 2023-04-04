@@ -19,7 +19,7 @@ public:
         LayoutWrapper::KeyId keyId;
         EigenharpKeyType keyType = EigenharpKeyType::Normal;
         KeyMappingType mapType = KeyMappingType::None;
-        int note = 0;
+        int notes[4] = { -1, -1, -1, -1 };
         MidiChannelType output = MidiChannelType::Undefined;
         ZoneWrapper::MidiValue pressure;
         ZoneWrapper::MidiValue roll;
