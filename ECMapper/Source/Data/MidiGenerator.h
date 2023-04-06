@@ -3,11 +3,14 @@
 #include <math.h>
 #include "ConfigLookup.h"
 #include "OSCMessageQueue.h"
+#include "BezierCurve.h"
 
 class MidiGenerator {
 public:
     MidiGenerator(ConfigLookup (&configLookups) [3]);
     ~MidiGenerator();
+    
+    static const int PRESSURE_HISTORY_LENGTH = 6;
     
     void processOSCMessage(OSC::Message &oscMsg, OSC::Message &outgoingOscMsg, juce::MidiBuffer &midiBuffer);
     void reduceBreath(juce::MidiBuffer &buffer);
@@ -28,14 +31,10 @@ private:
 
     struct KeyState {
         KeyStatus status = KeyStatus::Off;
-        unsigned int ehPressure = 0;
+        std::list<unsigned int> ehPressureHistory;
         int ehRoll = 0;
         int ehYaw = 0;
         
-//        unsigned int midiVelocity = 0;
-//        unsigned int midiPressure = 0;
-//        unsigned int midiRoll = 0;
-//        unsigned int midiYaw = 0;
         int midiChannel = 1;
         int messageCount = 0;
         bool isLatchOn = false;
@@ -72,10 +71,14 @@ private:
     float unipolar(int val) { return std::min(float(val) / 4096.0f, 1.0f); }
     float bipolar(int val) { return clamp(float(val) / 4096.0f, -1.0f, 1.0f); }
     float calculatePitchBendCurve(float value);
-
+    juce::MPEValue calculateNoteOnVelocity(KeyState *state);
+    juce::MPEValue calculateNoteOffVelocity(KeyState *state);
+    
     ConfigLookup *configLookups;
     int breathMessageCount = 0;
     int stripMessageCount[2] = { 0, 0 };
+    
+    BezierCurve velocityCurve;
     
     std::list<LayoutWrapper::KeyId> chanNotePri[16];
 };

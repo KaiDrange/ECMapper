@@ -64,6 +64,8 @@
               file="Source/UI/ZonePanelComponent.h"/>
       </GROUP>
       <GROUP id="{F44D70E0-70D2-134A-9C7E-2A351C2CC9E3}" name="Data">
+        <FILE id="E4FNkC" name="BezierCurve.cpp" compile="1" resource="0" file="Source/Data/BezierCurve.cpp"/>
+        <FILE id="eFUXJJ" name="BezierCurve.h" compile="0" resource="0" file="Source/Data/BezierCurve.h"/>
         <FILE id="fqeuvW" name="ConfigLookup.cpp" compile="1" resource="0"
               file="Source/Data/ConfigLookup.cpp"/>
         <FILE id="jZCz9J" name="ConfigLookup.h" compile="0" resource="0" file="Source/Data/ConfigLookup.h"/>

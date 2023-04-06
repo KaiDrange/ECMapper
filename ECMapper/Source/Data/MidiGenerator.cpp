@@ -1,6 +1,6 @@
 #include "MidiGenerator.h"
 
-MidiGenerator::MidiGenerator(ConfigLookup (&configLookups)[3]) {
+MidiGenerator::MidiGenerator(ConfigLookup (&configLookups)[3]) : velocityCurve(0.0, 0.0, 0.0, 1.0, 0.5, 0.6, 1.0, 1.0) {
     this->configLookups = configLookups;
 }
 
@@ -66,9 +66,11 @@ void MidiGenerator::processOSCMessage(OSC::Message &oscMsg, OSC::Message &outgoi
         case OSC::MessageType::Key: {
                 int deviceIndex = (int)oscMsg.device -1;
                 KeyState *keyState = &keyStates[deviceIndex][oscMsg.course][oscMsg.key];
-                keyState->ehPressure = oscMsg.pressure;
                 keyState->ehYaw = oscMsg.yaw;
                 keyState->ehRoll = oscMsg.roll;
+                keyState->ehPressureHistory.push_back(oscMsg.pressure);
+                while (keyState->ehPressureHistory.size() > PRESSURE_HISTORY_LENGTH)
+                    keyState->ehPressureHistory.pop_front();
 
                 ConfigLookup::Key keyLookup = configLookups[deviceIndex].keys[oscMsg.course][oscMsg.key];
                 if (keyLookup.output == MidiChannelType::Undefined)
@@ -123,7 +125,7 @@ void MidiGenerator::processNoteKey(OSC::Message &oscMsg, ConfigLookup::Key &keyL
     else if (state->status == KeyStatus::Off && oscMsg.active) {
         state->status = KeyStatus::Pending;
     }
-    else if (state->messageCount == 4 && state->status == KeyStatus::Pending && oscMsg.active) {
+    else if (state->messageCount == PRESSURE_HISTORY_LENGTH && state->status == KeyStatus::Pending && oscMsg.active) {
         createNoteOn(keyLookup, state, buffer);
     }
     else if (state->messageCount == 64 && state->status != KeyStatus::Pending) {
@@ -202,7 +204,7 @@ void MidiGenerator::createNoteOn(ConfigLookup::Key &keyLookup, KeyState *state, 
         chanNotePri[state->midiChannel-1].push_front(keyLookup.keyId);
 
     createNoteHold(keyLookup, state, buffer);
-    auto vel = juce::MPEValue::from7BitInt(unipolar(state->ehPressure*4)*126+1);
+    auto vel = calculateNoteOnVelocity(state);
     int eventTime = buffer.getLastEventTime()+8;
     for (int i = 0; i < 4; i++) {
         if (keyLookup.notes[i] > -1) {
@@ -233,7 +235,7 @@ void MidiGenerator::createNoteOff(ConfigLookup::Key &keyLookup, KeyState *state,
     int eventTime = buffer.getLastEventTime()+8;
     for (int i = 0; i < 4; i++) {
         if (keyLookup.notes[i] > -1) {
-            auto noteOffMsg = juce::MidiMessage::noteOff(channel, keyLookup.notes[i], 0.0f);
+            auto noteOffMsg = juce::MidiMessage::noteOff(channel, keyLookup.notes[i], calculateNoteOffVelocity(state).asUnsignedFloat());
             buffer.addEvent(noteOffMsg, eventTime);
         }
     }
@@ -338,7 +340,7 @@ void MidiGenerator::createNoteHold(ConfigLookup::Key &keyLookup, KeyState *state
     if (state->midiChannel > 0 && (chanNotePri[state->midiChannel-1].empty() || chanNotePri[state->midiChannel-1].front().equals(keyLookup.keyId))) {
         addMidiValueMessage(channel, state->ehRoll, keyLookup.roll, keyLookup.pbRange, keyLookup.notes[0], buffer, true);
         addMidiValueMessage(channel, state->ehYaw, keyLookup.yaw, keyLookup.pbRange, keyLookup.notes[0], buffer, true);
-        addMidiValueMessage(channel, state->ehPressure, keyLookup.pressure, keyLookup.pbRange, keyLookup.notes[0], buffer, false);
+        addMidiValueMessage(channel, state->ehPressureHistory.back(), keyLookup.pressure, keyLookup.pbRange, keyLookup.notes[0], buffer, false);
     }
     state->messageCount = 0;
 }
@@ -401,4 +403,31 @@ void MidiGenerator::createLayoutRPNs(juce::MidiBuffer &buffer) {
 
 float MidiGenerator::calculatePitchBendCurve(float value) {
     return clamp((tan(value)/3.14159265f) * 2.0f, -1.0, 1.0);
+}
+
+juce::MPEValue MidiGenerator::calculateNoteOnVelocity(KeyState *state) {
+    if (state->ehPressureHistory.size() < PRESSURE_HISTORY_LENGTH)
+        return juce::MPEValue::from7BitInt(1);
+    
+    auto listPos = state->ehPressureHistory.begin();
+    std::advance(listPos, 1);
+    unsigned int val1 = (*listPos)*0.5;
+    std::advance(listPos, 1);
+    val1 += (*listPos)*0.5;
+    std::advance(listPos, 2);
+    unsigned int val2 = (*listPos)*0.5;
+    std::advance(listPos, 1);
+    val2 += (*listPos)*0.5;
+    int tableIndex = (val2 - val1);
+    tableIndex = std::max(0, std::min(velocityCurve.TABLE_LENGTH-1, tableIndex));
+    std::cout << val2-val1 << " - " << tableIndex << " - " << velocityCurve.getTableValue(tableIndex) << "\n";
+    return juce::MPEValue::from7BitInt(velocityCurve.getTableValue(tableIndex)*126+1);
+}
+
+juce::MPEValue MidiGenerator::calculateNoteOffVelocity(KeyState *state) {
+    if (state->ehPressureHistory.size() < PRESSURE_HISTORY_LENGTH)
+        return juce::MPEValue::from7BitInt(0);
+    
+    unsigned int pressure = state->ehPressureHistory.front();
+    return juce::MPEValue::from7BitInt(unipolar(pressure*10.0f)*127);
 }
