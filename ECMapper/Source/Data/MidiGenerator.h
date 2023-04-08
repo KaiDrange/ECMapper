@@ -11,6 +11,7 @@ public:
     ~MidiGenerator();
     
     static const int PRESSURE_HISTORY_LENGTH = 6;
+    static const int BREATH_ZERO_THRESHOLD = 128;
     
     void processOSCMessage(OSC::Message &oscMsg, OSC::Message &outgoingOscMsg, juce::MidiBuffer &midiBuffer);
     void reduceBreath(juce::MidiBuffer &buffer);

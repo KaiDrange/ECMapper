@@ -87,6 +87,7 @@ void MidiGenerator::processOSCMessage(OSC::Message &oscMsg, OSC::Message &outgoi
                 int deviceIndex = (int)oscMsg.device -1;
                 ehBreath[deviceIndex] = std::abs((int)(oscMsg.value - 2048))*2;
                 if (breathMessageCount == 16) {
+                    std::cout << ehBreath[deviceIndex] << "\n";
                     createBreath(deviceIndex, configLookups[deviceIndex], midiBuffer);
                 }
             }
@@ -149,22 +150,22 @@ void MidiGenerator::processCmdKey(OSC::Message &oscMsg, OSC::Message &outgoingOs
 
 void MidiGenerator::reduceBreath(juce::MidiBuffer &buffer) {
     for (int i = 0; i < 3; i++) {
-        if (ehBreath[i] <= 0) {
-            ehBreath[i] = 0;
+        if (ehBreath[i] == 0)
             continue;
-        }
         
-        ehBreath[i] -= 20;
-        ehBreath[i] = std::max<int>(ehBreath[i], 0);
+        ehBreath[i] = ehBreath[i] > BREATH_ZERO_THRESHOLD ? ehBreath[i] - 20 : 0;
         createBreath(i, configLookups[i], buffer);
     }
 }
 
 void MidiGenerator::createBreath(int deviceIndex, ConfigLookup &keyLookup, juce::MidiBuffer &buffer) {
-
-    addMidiValueMessage(keyLookup.breath[0].channel, ehBreath[deviceIndex], keyLookup.breath[0].midiValue, 1.0f, 0, buffer, false);
-    addMidiValueMessage(keyLookup.breath[1].channel, ehBreath[deviceIndex], keyLookup.breath[1].midiValue, 1.0f, 0, buffer, false);
-    addMidiValueMessage(keyLookup.breath[2].channel, ehBreath[deviceIndex], keyLookup.breath[2].midiValue, 1.0f, 0, buffer, false);
+    unsigned int adjustedBreath = ehBreath[deviceIndex] < BREATH_ZERO_THRESHOLD ? 0 : ehBreath[deviceIndex] - BREATH_ZERO_THRESHOLD;
+    adjustedBreath *= 3;
+    
+    
+    addMidiValueMessage(keyLookup.breath[0].channel, adjustedBreath, keyLookup.breath[0].midiValue, 1.0f, 0, buffer, false);
+    addMidiValueMessage(keyLookup.breath[1].channel, adjustedBreath, keyLookup.breath[1].midiValue, 1.0f, 0, buffer, false);
+    addMidiValueMessage(keyLookup.breath[2].channel, adjustedBreath, keyLookup.breath[2].midiValue, 1.0f, 0, buffer, false);
 
     breathMessageCount = 0;
     samplesSinceLastBreathMsg = 0;
