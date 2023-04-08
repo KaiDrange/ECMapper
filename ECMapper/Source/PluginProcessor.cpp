@@ -108,12 +108,6 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
             }
         }
     }
-    
-    if (midiGenerator.initialized) {
-        midiGenerator.samplesSinceLastBreathMsg += buffer.getNumSamples();
-        if (midiGenerator.samplesSinceLastBreathMsg > 1024)
-            midiGenerator.reduceBreath(midiMessages);
-    }
 }
 
 void ECMapperAudioProcessor::processBlockBypassed(juce::AudioBuffer<float> &buffer, juce::MidiBuffer &midiMessages) {

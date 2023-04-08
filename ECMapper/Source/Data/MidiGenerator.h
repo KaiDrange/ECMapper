@@ -11,7 +11,7 @@ public:
     ~MidiGenerator();
     
     static const int PRESSURE_HISTORY_LENGTH = 6;
-    static const int BREATH_ZERO_THRESHOLD = 128;
+    static const int BREATH_ZERO_THRESHOLD = 512;
     
     void processOSCMessage(OSC::Message &oscMsg, OSC::Message &outgoingOscMsg, juce::MidiBuffer &midiBuffer);
     void reduceBreath(juce::MidiBuffer &buffer);
@@ -20,7 +20,6 @@ public:
     void createLayoutRPNs(juce::MidiBuffer &buffer);
     void start(juce::AudioProcessorValueTreeState &pluginState);
     void stop();
-    int samplesSinceLastBreathMsg = 0;
     bool initialized = false;
 
 private:
@@ -76,7 +75,6 @@ private:
     juce::MPEValue calculateNoteOffVelocity(KeyState *state);
     
     ConfigLookup *configLookups;
-    int breathMessageCount = 0;
     int stripMessageCount[2] = { 0, 0 };
     
     BezierCurve velocityCurve;

@@ -35,8 +35,6 @@ void MidiGenerator::start(juce::AudioProcessorValueTreeState &pluginState) {
     configLookups[1].updateAll();
     configLookups[2].updateAll();
 
-    samplesSinceLastBreathMsg = 0;
-    breathMessageCount = 0;
     stripMessageCount[0] = 0;
     stripMessageCount[1] = 0;
     for (int i = 0; i < 16; i++) {
@@ -83,11 +81,10 @@ void MidiGenerator::processOSCMessage(OSC::Message &oscMsg, OSC::Message &outgoi
             }
             break;
         case OSC::MessageType::Breath: {
-                breathMessageCount++;
                 int deviceIndex = (int)oscMsg.device -1;
+                unsigned int prevBreathValue = ehBreath[deviceIndex];
                 ehBreath[deviceIndex] = std::abs((int)(oscMsg.value - 2048))*2;
-                if (breathMessageCount == 16) {
-                    std::cout << ehBreath[deviceIndex] << "\n";
+                if ((ehBreath[deviceIndex] > BREATH_ZERO_THRESHOLD) || (ehBreath[deviceIndex] < BREATH_ZERO_THRESHOLD && prevBreathValue > 0)) {
                     createBreath(deviceIndex, configLookups[deviceIndex], midiBuffer);
                 }
             }
@@ -159,16 +156,11 @@ void MidiGenerator::reduceBreath(juce::MidiBuffer &buffer) {
 }
 
 void MidiGenerator::createBreath(int deviceIndex, ConfigLookup &keyLookup, juce::MidiBuffer &buffer) {
-    unsigned int adjustedBreath = ehBreath[deviceIndex] < BREATH_ZERO_THRESHOLD ? 0 : ehBreath[deviceIndex] - BREATH_ZERO_THRESHOLD;
-    adjustedBreath *= 3;
+    ehBreath[deviceIndex] = ehBreath[deviceIndex] < BREATH_ZERO_THRESHOLD ? 0 : ehBreath[deviceIndex] - BREATH_ZERO_THRESHOLD;
     
-    
-    addMidiValueMessage(keyLookup.breath[0].channel, adjustedBreath, keyLookup.breath[0].midiValue, 1.0f, 0, buffer, false);
-    addMidiValueMessage(keyLookup.breath[1].channel, adjustedBreath, keyLookup.breath[1].midiValue, 1.0f, 0, buffer, false);
-    addMidiValueMessage(keyLookup.breath[2].channel, adjustedBreath, keyLookup.breath[2].midiValue, 1.0f, 0, buffer, false);
-
-    breathMessageCount = 0;
-    samplesSinceLastBreathMsg = 0;
+    addMidiValueMessage(keyLookup.breath[0].channel, ehBreath[deviceIndex]*3, keyLookup.breath[0].midiValue, 1.0f, 0, buffer, false);
+    addMidiValueMessage(keyLookup.breath[1].channel, ehBreath[deviceIndex]*3, keyLookup.breath[1].midiValue, 1.0f, 0, buffer, false);
+    addMidiValueMessage(keyLookup.breath[2].channel, ehBreath[deviceIndex]*3, keyLookup.breath[2].midiValue, 1.0f, 0, buffer, false);
 }
 
 void MidiGenerator::createStripAbsolute(int deviceIndex, int stripIndex, int zoneIndex, ConfigLookup &keyLookup, juce::MidiBuffer &buffer) {
