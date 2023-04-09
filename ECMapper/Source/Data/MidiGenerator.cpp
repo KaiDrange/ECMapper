@@ -201,8 +201,15 @@ void MidiGenerator::createNoteOn(ConfigLookup::Key &keyLookup, KeyState *state, 
     int eventTime = buffer.getLastEventTime()+8;
     for (int i = 0; i < 4; i++) {
         if (keyLookup.notes[i] > -1) {
-            auto noteOnMsg = juce::MidiMessage::noteOn(state->midiChannel, keyLookup.notes[i], vel.asUnsignedFloat());
-            buffer.addEvent(noteOnMsg, eventTime);
+            int existingSameNoteCount = countPlayingNoteMatches(state->midiChannel, keyLookup.notes[i]);
+            if (existingSameNoteCount == 0) {
+                auto noteOnMsg = juce::MidiMessage::noteOn(state->midiChannel, keyLookup.notes[i], vel.asUnsignedFloat());
+                buffer.addEvent(noteOnMsg, eventTime);
+            }
+            MidiNote midiNote;
+            midiNote.noteNumber = keyLookup.notes[i];
+            midiNote.channnel = state->midiChannel;
+            playingNotes.push_back(midiNote);
         }
     }
     
@@ -228,8 +235,13 @@ void MidiGenerator::createNoteOff(ConfigLookup::Key &keyLookup, KeyState *state,
     int eventTime = buffer.getLastEventTime()+8;
     for (int i = 0; i < 4; i++) {
         if (keyLookup.notes[i] > -1) {
-            auto noteOffMsg = juce::MidiMessage::noteOff(channel, keyLookup.notes[i], calculateNoteOffVelocity(state).asUnsignedFloat());
-            buffer.addEvent(noteOffMsg, eventTime);
+            int matchingNotes = countPlayingNoteMatches(channel, keyLookup.notes[i]);
+
+            if (matchingNotes < 2) {
+                auto noteOffMsg = juce::MidiMessage::noteOff(channel, keyLookup.notes[i], calculateNoteOffVelocity(state).asUnsignedFloat());
+                buffer.addEvent(noteOffMsg, eventTime);
+            }
+            removeOneNoteMatch(channel, keyLookup.notes[i]);
         }
     }
     
@@ -240,6 +252,31 @@ void MidiGenerator::createNoteOff(ConfigLookup::Key &keyLookup, KeyState *state,
     }
     state->status = KeyStatus::Off;
     state->messageCount = 0;
+}
+
+int MidiGenerator::countPlayingNoteMatches(int channel, int noteNumber) {
+    int matchingNotes = 0;
+    std::list<MidiNote>::iterator it = playingNotes.begin();
+    
+    while (it != playingNotes.end()) {
+        if (it->channnel == channel && it->noteNumber == noteNumber) {
+            matchingNotes++;
+        }
+        it++;
+    }
+    return matchingNotes;
+}
+
+void MidiGenerator::removeOneNoteMatch(int channel, int noteNumber) {
+    std::list<MidiNote>::iterator it = playingNotes.begin();
+    
+    while (it != playingNotes.end()) {
+        if (it->channnel == channel && it->noteNumber == noteNumber) {
+            playingNotes.erase(it);
+            break;
+        }
+        it++;
+    }
 }
 
 void MidiGenerator::createMidiMsgOn(ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer, OSC::Message &outgoingOscMsg) {
@@ -413,7 +450,6 @@ juce::MPEValue MidiGenerator::calculateNoteOnVelocity(KeyState *state) {
     val2 += (*listPos)*0.5;
     int tableIndex = (val2 - val1);
     tableIndex = std::max(0, std::min(velocityCurve.TABLE_LENGTH-1, tableIndex));
-    std::cout << val2-val1 << " - " << tableIndex << " - " << velocityCurve.getTableValue(tableIndex) << "\n";
     return juce::MPEValue::from7BitInt(velocityCurve.getTableValue(tableIndex)*126+1);
 }
 

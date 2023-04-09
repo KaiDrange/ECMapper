@@ -21,14 +21,14 @@ public:
     void start(juce::AudioProcessorValueTreeState &pluginState);
     void stop();
     bool initialized = false;
-
+    
 private:
     enum KeyStatus {
         Off = 0,
         Pending = 1,
         Active = 2
     };
-
+    
     struct KeyState {
         KeyStatus status = KeyStatus::Off;
         std::list<unsigned int> ehPressureHistory;
@@ -49,10 +49,10 @@ private:
     int relStart_ehStrips[2][3] = {{ -1, -1, -1 }, { -1, -1, -1 }};
     int currentKeyPBperChannel[16];
     int currentStripPBperChannel[16];
-
+    
     juce::MPEChannelAssigner *lowerChanAssigner = nullptr;
     juce::MPEChannelAssigner *upperChanAssigner = nullptr;
-
+    
     void processNoteKey(OSC::Message &oscMsg, ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer);
     void processCmdKey(OSC::Message &oscMsg, OSC::Message &outgoingOscMsg, ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer);
     void createNoteOn(ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer);
@@ -66,7 +66,7 @@ private:
     void createStripAbsolute(int deviceIndex, int stripIndex, int zoneIndex, ConfigLookup &keyLookup, juce::MidiBuffer &buffer);
     void createStripRelative(int deviceIndex, int stripIndex, int zoneIndex, ConfigLookup &keyLookup, juce::MidiBuffer &buffer);
     void createAllNotesOff(ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer, OSC::Message &outgoingOscMsg);
-
+    
     inline float clamp(float v, float mn, float mx) { return (std::max(std::min(v, mx), mn)); }
     float unipolar(int val) { return std::min(float(val) / 4096.0f, 1.0f); }
     float bipolar(int val) { return clamp(float(val) / 4096.0f, -1.0f, 1.0f); }
@@ -80,4 +80,14 @@ private:
     BezierCurve velocityCurve;
     
     std::list<LayoutWrapper::KeyId> chanNotePri[16];
+    
+    struct MidiNote {
+        int channnel;
+        int noteNumber;
+    };
+    
+    std::list<MidiNote> playingNotes = {};
+    int countPlayingNoteMatchesAndRemoveOne(int channel, int noteNumber);
+    int countPlayingNoteMatches(int channel, int noteNumber);
+    void removeOneNoteMatch(int channel, int noteNumber);
 };
