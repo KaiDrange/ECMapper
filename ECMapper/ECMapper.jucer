@@ -4,10 +4,11 @@
               addUsingNamespaceToJuceHeader="0" displaySplashScreen="1" jucerFormatVersion="1"
               pluginCharacteristicsValue="pluginIsMidiEffectPlugin,pluginProducesMidiOut"
               pluginManufacturer="Tic Tech" pluginManufacturerCode="TT" pluginCode="5632"
-              aaxIdentifier="ECMapper" cppLanguageStandard="17" version="1.0.2"
+              aaxIdentifier="ECMapper" cppLanguageStandard="17" version="1.0.3"
               companyName="Tic Tech" companyWebsite="ticticelectro.com" companyEmail="kaimdrange@hotmail.com"
               pluginFormats="buildStandalone,buildVST3" pluginAUMainType="'aumf'"
-              pluginChannelConfigs="{0,2}" pluginName="ECMapper v1.0.2" pluginAUExportPrefix="ECMapperAU">
+              pluginChannelConfigs="{2,2}" pluginName="ECMapper v1.0.3" pluginAUExportPrefix="ECMapperAU"
+              pluginVST3Category="Tools">
   <MAINGROUP id="vhB8QE" name="ECMapper">
     <GROUP id="{C08E6E0F-711F-5656-DD30-D523FCECDD9A}" name="Gfx">
       <FILE id="pM0slc" name="ECMapper_Icon512x512.png" compile="0" resource="1"

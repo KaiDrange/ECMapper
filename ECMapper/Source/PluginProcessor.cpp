@@ -2,7 +2,9 @@
 #include "PluginEditor.h"
 
 ECMapperAudioProcessor::ECMapperAudioProcessor() :
-AudioProcessor(BusesProperties().withOutput("Output", juce::AudioChannelSet::stereo(), true)),
+AudioProcessor(BusesProperties()
+               .withInput("Input", juce::AudioChannelSet::stereo(), true)
+               .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
 //AudioProcessor(BusesProperties()),
 pluginState(*this, nullptr, id_state, createParameterLayout()), osc(&oscSendQueue, &oscReceiveQueue), configLookups { ConfigLookup(DeviceType::Alpha, pluginState), ConfigLookup(DeviceType::Tau, pluginState), ConfigLookup(DeviceType::Pico, pluginState)}, midiGenerator(configLookups), layoutChangeHandler(&oscSendQueue, this, configLookups) {
     pluginState.state.addListener(&layoutChangeHandler);
@@ -82,7 +84,9 @@ bool ECMapperAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) 
 #endif
 
 void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages) {
-    buffer.clear();
+    if (juce::JUCEApplicationBase::isStandaloneApp())
+        buffer.clear();
+
     midiMessages.clear();
     checkConnectionChanges();
     

@@ -328,6 +328,7 @@ void MidiGenerator::createAllNotesOff(ConfigLookup::Key &keyLookup, KeyState *st
         lowerChanAssigner->allNotesOff();
     if (upperChanAssigner != nullptr)
         upperChanAssigner->allNotesOff();
+    playingNotes.clear();
 }
 
 void MidiGenerator::createMidiMsgOff(ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer, OSC::Message &outgoingOscMsg) {
