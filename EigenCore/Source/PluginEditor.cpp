@@ -13,9 +13,9 @@
 EigenCoreAudioProcessorEditor::EigenCoreAudioProcessorEditor (EigenCoreAudioProcessor& p)
     : AudioProcessorEditor (&p), audioProcessor (p)
 {
-    // Make sure that before the constructor has finished, you've set the
-    // editor's size to whatever you need it to be.
-    setSize (400, 300);
+    ledGreen = juce::ImageFileFormat::loadFrom(BinaryData::GreenLight_png, BinaryData::GreenLight_pngSize);
+    ledOff = juce::ImageFileFormat::loadFrom(BinaryData::DarkLight_png, BinaryData::DarkLight_pngSize);
+    setSize (200, 50);
 }
 
 EigenCoreAudioProcessorEditor::~EigenCoreAudioProcessorEditor()
@@ -25,12 +25,19 @@ EigenCoreAudioProcessorEditor::~EigenCoreAudioProcessorEditor()
 //==============================================================================
 void EigenCoreAudioProcessorEditor::paint (juce::Graphics& g)
 {
-    // (Our component is opaque, so we must completely fill the background with a solid colour)
-    g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
+    g.fillAll(getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
+    g.drawImage(ledGreen, 10, 0, 25, 25, 0, 0, ledGreen.getWidth(), ledGreen.getHeight());
+    g.drawImage(ledOff, 10 + 50, 0, 25, 25, 0, 0, ledOff.getWidth(), ledOff.getHeight());
+    g.drawImage(ledOff, 10 + 50*2, 0, 25, 25, 0, 0, ledOff.getWidth(), ledOff.getHeight());
+    g.drawImage(ledOff, 10 + 50*3, 0, 25, 25, 0, 0, ledOff.getWidth(), ledOff.getHeight());
 
-    g.setColour (juce::Colours::white);
-    g.setFont (15.0f);
-    g.drawFittedText ("Hello World!", getLocalBounds(), juce::Justification::centred, 1);
+    g.setColour(juce::Colours::white);
+    g.setFont(12.0f);
+    g.drawFittedText("Pico", 0, 25, 45, 20, juce::Justification::centred, false);
+    g.drawFittedText("Tau", 50, 25, 45, 20, juce::Justification::centred, false);
+    g.drawFittedText("Alpha", 50*2, 25, 45, 20, juce::Justification::centred, false);
+    g.drawFittedText("Mapper", 50*3, 25, 45, 20, juce::Justification::centred, false);
+
 }
 
 void EigenCoreAudioProcessorEditor::resized()

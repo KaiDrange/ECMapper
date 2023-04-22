@@ -6,6 +6,11 @@ EigenCoreAudioProcessor::EigenCoreAudioProcessor()
                        .withInput  ("Input", juce::AudioChannelSet::stereo(), true)
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true))
 {
+    
+    addParameter(paramPicoConnected = new juce::AudioParameterBool("pico", "Pico connected", false, juce::AudioParameterBoolAttributes()));
+    addParameter(paramTauConnected = new juce::AudioParameterBool("tau", "Tau connected", false, juce::AudioParameterBoolAttributes()));
+    addParameter(paramAlphaConnected = new juce::AudioParameterBool("alpha", "Alpha connected", false, juce::AudioParameterBoolAttributes()));
+    addParameter(paramMapperConnected = new juce::AudioParameterBool("mapper", "Mapper connected", false, juce::AudioParameterBoolAttributes()));
 }
 
 EigenCoreAudioProcessor::~EigenCoreAudioProcessor()
@@ -60,7 +65,6 @@ void EigenCoreAudioProcessor::changeProgramName (int index, const juce::String& 
 {
 }
 
-//==============================================================================
 void EigenCoreAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
 }

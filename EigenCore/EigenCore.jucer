@@ -5,6 +5,14 @@
               version="1.0.3" pluginFormats="buildStandalone,buildVST3" pluginManufacturer="Tic Tech"
               pluginVST3Category="Tools" pluginName="EigenCore v1.0.3" pluginDesc="EigenCore">
   <MAINGROUP id="PvNXp1" name="EigenCore">
+    <GROUP id="{ED78BD7E-9D08-8EBA-A899-82CD47F6A34F}" name="Gfx">
+      <FILE id="pT0ckh" name="DarkLight.png" compile="0" resource="1" file="../Gfx/DarkLight.png"/>
+      <FILE id="gihxm6" name="EigenCore_Icon512x512.png" compile="0" resource="1"
+            file="../Gfx/EigenCore_Icon512x512.png"/>
+      <FILE id="sl53DT" name="EigenCore_Icon1024x1024.png" compile="0" resource="1"
+            file="../Gfx/EigenCore_Icon1024x1024.png"/>
+      <FILE id="GUOgUl" name="GreenLight.png" compile="0" resource="1" file="../Gfx/GreenLight.png"/>
+    </GROUP>
     <GROUP id="{4B048EE6-D774-B5DC-E43E-EB4AB14A1707}" name="Source">
       <FILE id="w2hIuV" name="PluginProcessor.cpp" compile="1" resource="0"
             file="Source/PluginProcessor.cpp"/>
