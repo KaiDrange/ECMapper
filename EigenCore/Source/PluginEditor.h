@@ -2,17 +2,17 @@
 
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
+#include "Core/Enums.h"
 
 class EigenCoreAudioProcessorEditor  : public juce::AudioProcessorEditor
 {
 public:
     EigenCoreAudioProcessorEditor (EigenCoreAudioProcessor&);
     ~EigenCoreAudioProcessorEditor() override;
-
-    //==============================================================================
+    
     void paint (juce::Graphics&) override;
     void resized() override;
-
+    
 private:
     juce::Image ledGreen;
     juce::Image ledOff;

@@ -1,6 +1,10 @@
 #pragma once
 #include <JuceHeader.h>
-class EigenCoreAudioProcessor  : public juce::AudioProcessor
+#include "Core/Common.h"
+#include "Core/EigenCore.h"
+
+
+class EigenCoreAudioProcessor  : public juce::AudioProcessor, private juce::Timer
 {
 public:
     EigenCoreAudioProcessor();
@@ -24,12 +28,20 @@ public:
     void changeProgramName (int index, const juce::String& newName) override;
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
+    
+    void suspended();
+    void resumed();
+    void shutdown();
 
+    juce::AudioParameterBool* params[4];
+    
 private:
-    juce::AudioParameterBool* paramPicoConnected;
-    juce::AudioParameterBool* paramTauConnected;
-    juce::AudioParameterBool* paramAlphaConnected;
-    juce::AudioParameterBool* paramMapperConnected;
+    
+    EigenCore eigenCore;
+    void timerCallback() final { updateOutputParameters(); }
+    
+    void updateOutputParameters();
+    
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (EigenCoreAudioProcessor)
 };

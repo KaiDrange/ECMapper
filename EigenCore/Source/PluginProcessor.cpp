@@ -1,20 +1,28 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
+volatile std::atomic<bool> exitThreads;
+std::atomic<bool> mapperConnected;
+std::list<ConnectedDevice> connectedDevices;
+
 EigenCoreAudioProcessor::EigenCoreAudioProcessor()
      : AudioProcessor (BusesProperties()
                        .withInput  ("Input", juce::AudioChannelSet::stereo(), true)
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true))
 {
+    addParameter(params[(int)ConnectionType::Pico] = new juce::AudioParameterBool("pico", "Pico connected", false, juce::AudioParameterBoolAttributes()));
+    addParameter(params[(int)ConnectionType::Tau] = new juce::AudioParameterBool("tau", "Tau connected", false, juce::AudioParameterBoolAttributes()));
+    addParameter(params[(int)ConnectionType::Alpha] = new juce::AudioParameterBool("alpha", "Alpha connected", false, juce::AudioParameterBoolAttributes()));
+    addParameter(params[(int)ConnectionType::Mapper] = new juce::AudioParameterBool("mapper", "Mapper connected", false, juce::AudioParameterBoolAttributes()));
     
-    addParameter(paramPicoConnected = new juce::AudioParameterBool("pico", "Pico connected", false, juce::AudioParameterBoolAttributes()));
-    addParameter(paramTauConnected = new juce::AudioParameterBool("tau", "Tau connected", false, juce::AudioParameterBoolAttributes()));
-    addParameter(paramAlphaConnected = new juce::AudioParameterBool("alpha", "Alpha connected", false, juce::AudioParameterBoolAttributes()));
-    addParameter(paramMapperConnected = new juce::AudioParameterBool("mapper", "Mapper connected", false, juce::AudioParameterBoolAttributes()));
+    eigenCore.initialiseCore(juce::StringArray());
+    
+    startTimer(1000);
 }
 
 EigenCoreAudioProcessor::~EigenCoreAudioProcessor()
 {
+    eigenCore.shutdownCore();
 }
 
 const juce::String EigenCoreAudioProcessor::getName() const
@@ -67,10 +75,12 @@ void EigenCoreAudioProcessor::changeProgramName (int index, const juce::String& 
 
 void EigenCoreAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
+    //eigenCore.initialiseCore(juce::StringArray());
 }
 
 void EigenCoreAudioProcessor::releaseResources()
 {
+    //eigenCore.shutdownCore();
 }
 
 bool EigenCoreAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -88,6 +98,7 @@ void EigenCoreAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
 {
     if (juce::JUCEApplicationBase::isStandaloneApp())
         buffer.clear();
+    //updateOutputParameters();
 }
 
 bool EigenCoreAudioProcessor::hasEditor() const
@@ -117,3 +128,51 @@ juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
     return new EigenCoreAudioProcessor();
 }
+
+void EigenCoreAudioProcessor::shutdown()
+{
+    eigenCore.shutdownCore();
+}
+
+void EigenCoreAudioProcessor::suspended()
+{
+    
+}
+
+void EigenCoreAudioProcessor::resumed()
+{
+    
+}
+
+void EigenCoreAudioProcessor::updateOutputParameters()
+{
+    bool needsRepaint = false;
+    bool currentConnections[4] = { false, false, false, false };
+    for (auto i = begin(connectedDevices); i != end(connectedDevices); i++)
+    {
+        if (i->type == EHDeviceType::Pico)
+            currentConnections[(int)ConnectionType::Pico] = true;
+        else if (i->type == EHDeviceType::Tau)
+            currentConnections[(int)ConnectionType::Tau] = true;
+        else if (i->type == EHDeviceType::Alpha)
+            currentConnections[(int)ConnectionType::Alpha] = true;
+    }
+    currentConnections[(int)ConnectionType::Mapper] = mapperConnected;
+
+    for (int i = 0; i < 4; i++)
+    {
+        if (params[i]->get() != currentConnections[i])
+        {
+            params[i]->setValueNotifyingHost(currentConnections[i]);
+            needsRepaint = true;
+        }
+    }
+    
+    if (needsRepaint)
+    {
+        auto editor = getActiveEditor();
+        if (editor != nullptr)
+            editor->repaint();
+    }
+}
+
