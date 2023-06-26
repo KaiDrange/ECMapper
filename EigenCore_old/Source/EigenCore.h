@@ -1,8 +1,8 @@
 #include <JuceHeader.h>
-#include <eigenapi.h>
 #include <unistd.h>
 #include <signal.h>
 #include <thread>
+#include <eigenapi.h>
 #include "APICallback.h"
 #include "OSCCommunication.h"
 #include "OSCMessageQueue.h"

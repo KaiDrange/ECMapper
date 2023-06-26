@@ -2,7 +2,7 @@
 #include <JuceHeader.h>
 #include "Core/Common.h"
 #include "Core/EigenCore.h"
-
+#include "Core/FirmwareReader.h"
 
 class EigenCoreAudioProcessor  : public juce::AudioProcessor, private juce::Timer
 {

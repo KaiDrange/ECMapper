@@ -1,27 +1,29 @@
 #include "EigenCore.h"
 
-EigenCore::EigenCore() : eigenApi("./resources/"), osc(&oscSendQueue, &oscReceiveQueue) {
+EigenCore::EigenCore() : eigenApi(fwReader), osc(&oscSendQueue, &oscReceiveQueue) {
     jassert(coreInstance == nullptr);
     coreInstance = this;
-//    mapperConnected = false;
-//    exitThreads = false;
-    //connectedDevices = {};
     std::cout << "EigenCore v1.0.3" << std::endl;
 }
 
-void EigenCore::initialiseCore(juce::StringArray params) {
-    exitThreads = false;
-//    signal(SIGINT, EigenCore::intHandler);
+EigenCore::~EigenCore() {
+    if (apiCallback != nullptr)
+        delete apiCallback;
+//    if (eigenApi != nullptr)
+//        delete eigenApi;
+}
 
-    //auto params = getCommandLineParameterArray();
-    juce::String ipString = defaultIP;
-    for (int i = 0; i < params.size(); i++) {
-        if ((params[i] == "-ip" || params[i] == "--ip") && params.size() > i+1)
-            ipString = params[i+1];
-        
-//        else if (params[i] == "-h" || params[i] == "--help")
-//            showHelpTextAndQuit();
+void EigenCore::initialiseCore(juce::String ipString) {
+    exitThreads = false;
+    if (!fwReader.confirmResources())
+    {
+        std::cout << "IHX files not properly configured." << std::endl;
+        return;
     }
+    
+    //eigenApi = new EigenApi::Eigenharp(fwReader);
+    if (ipString == "")
+        ipString = defaultIP;
     
     if (!exitThreads) {
         juce::StringArray ipAndPortNo;
@@ -30,8 +32,6 @@ void EigenCore::initialiseCore(juce::StringArray params) {
             osc.connectSender(ipAndPortNo[0], ipAndPortNo[1].getIntValue());
             osc.connectReceiver(ipAndPortNo[1].getIntValue() - 1);
         }
-//        else
- //           showHelpTextAndQuit();
     }
     
     if (!exitThreads) {
@@ -42,7 +42,7 @@ void EigenCore::initialiseCore(juce::StringArray params) {
             std::cout  << "Unable to start EigenLite" << std::endl;
         }
         
-        eigenApiProcessThread = std::thread(this->eigenharpProcess, &oscReceiveQueue, &eigenApi);
+        eigenApiProcessThread = std::thread(coreInstance->eigenharpProcess, &oscReceiveQueue, &eigenApi);
         
         std::cout << std::endl << "Use Control+C to quit" << std::endl;
     }
@@ -59,12 +59,11 @@ void EigenCore::shutdownCore() {
     osc.disconnectReceiver();
     osc.disconnectSender();
     
-    delete apiCallback;
+    if (apiCallback != nullptr) {
+        delete apiCallback;
+        apiCallback = nullptr;
+    }
 }
-
-//void EigenCore::intHandler(int dummy) {
-    //coreInstance->systemRequestedQuit();
-//}
 
 void EigenCore::turnOffAllLEDs(EigenApi::Eigenharp *api) {
     for (auto device : connectedDevices) {

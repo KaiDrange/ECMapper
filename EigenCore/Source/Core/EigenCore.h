@@ -3,12 +3,13 @@
 #include <unistd.h>
 //#include <signal.h>
 #include <thread>
-#include "eigenapi.h"
+#include "eigenapi_ec.h"
 #include "APICallback.h"
 #include "OSCCommunication.h"
 #include "OSCMessageQueue.h"
 #include "Enums.h"
 #include "Common.h"
+#include "FirmwareReader.h"
 
 #define PROCESS_MICROSEC_SLEEP 100
 //#define MEASURE_EIGENAPIPROCESSTIME
@@ -18,15 +19,18 @@
 class EigenCore {
 public:
     EigenCore();
+    ~EigenCore();
 //    const juce::String getApplicationName() { return "EigenCore"; }
 //    const juce::String getApplicationVersion() { return "1.0.3"; }
-    void initialiseCore(juce::StringArray params);
+    void initialiseCore(juce::String ipString = "");
     void shutdownCore();
     
     static void turnOffAllLEDs(EigenApi::Eigenharp *api);
     static void turnOffAllLEDsForDevice(ConnectedDevice &device, EigenApi::Eigenharp *api);
-    
+
 private:
+    FWR_InMem fwReader;
+//    EigenApi::FWR_Posix fwReader;
     EigenApi::Eigenharp eigenApi;
     OSCCommunication osc;
     std::thread eigenApiProcessThread;
@@ -37,7 +41,7 @@ private:
     
     const juce::String defaultIP = "127.0.0.1:12121";
     
-    APICallback *apiCallback;
+    APICallback *apiCallback = nullptr;
     OSC::OSCMessageFifo oscSendQueue;
     OSC::OSCMessageFifo oscReceiveQueue;
     

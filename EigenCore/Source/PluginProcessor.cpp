@@ -14,10 +14,15 @@ EigenCoreAudioProcessor::EigenCoreAudioProcessor()
     addParameter(params[(int)ConnectionType::Tau] = new juce::AudioParameterBool("tau", "Tau connected", false, juce::AudioParameterBoolAttributes()));
     addParameter(params[(int)ConnectionType::Alpha] = new juce::AudioParameterBool("alpha", "Alpha connected", false, juce::AudioParameterBoolAttributes()));
     addParameter(params[(int)ConnectionType::Mapper] = new juce::AudioParameterBool("mapper", "Mapper connected", false, juce::AudioParameterBoolAttributes()));
-    
-    eigenCore.initialiseCore(juce::StringArray());
-    
+        
+    eigenCore.initialiseCore("");
     startTimer(1000);
+//    if (test.confirmResources())
+//    {
+//    }
+//    else
+//        std::cout << "Couldn't find ihx files.";
+    
 }
 
 EigenCoreAudioProcessor::~EigenCoreAudioProcessor()

@@ -9,18 +9,17 @@
   <MAINGROUP id="PvNXp1" name="EigenCore">
     <GROUP id="{4A412480-F56C-11BB-EC2D-C043C3DA4754}" name="EigenLite">
       <GROUP id="{3A987921-6CDF-EC0E-FDC4-3F77E9B2D8D8}" name="resources">
-        <FILE id="q953Ng" name="bs_mm_fw_0103.ihx" compile="0" resource="1"
-              file="EigenLite/resources/bs_mm_fw_0103.ihx" xcodeResource="1"/>
-        <FILE id="nxhSyA" name="libeigenapi.dylib" compile="0" resource="1"
-              file="EigenLite/resources/libeigenapi.dylib" xcodeResource="1"/>
-        <FILE id="Yy10eY" name="libpicodecoder.dylib" compile="0" resource="1"
-              file="EigenLite/resources/libpicodecoder.dylib" xcodeResource="1"/>
-        <FILE id="rkosyQ" name="pico.ihx" compile="0" resource="1" file="EigenLite/resources/pico.ihx"
-              xcodeResource="1"/>
-        <FILE id="xsCzG5" name="psu_mm_fw_0102.ihx" compile="0" resource="1"
-              file="EigenLite/resources/psu_mm_fw_0102.ihx" xcodeResource="1"/>
+        <FILE id="A2WVQe" name="bs_mm_fw_0103.ihx" compile="0" resource="1"
+              file="EigenLite/resources/bs_mm_fw_0103.ihx"/>
+        <FILE id="JR68l9" name="pico.ihx" compile="0" resource="1" file="EigenLite/resources/pico.ihx"/>
+        <FILE id="TsZjPu" name="psu_mm_fw_0102.ihx" compile="0" resource="1"
+              file="EigenLite/resources/psu_mm_fw_0102.ihx"/>
       </GROUP>
-      <FILE id="l8NPLi" name="eigenapi.h" compile="0" resource="0" file="EigenLite/eigenapi.h"/>
+      <FILE id="l8NPLi" name="eigenapi_ec.h" compile="0" resource="0" file="EigenLite/eigenapi_ec.h"/>
+      <FILE id="WZAnJM" name="libeigenapi_ec.a" compile="0" resource="0"
+            file="EigenLite/libeigenapi_ec.a" xcodeResource="0"/>
+      <FILE id="Eel7ku" name="libpicodecoder.dylib" compile="0" resource="0"
+            file="EigenLite/libpicodecoder.dylib" xcodeResource="1"/>
     </GROUP>
     <GROUP id="{ED78BD7E-9D08-8EBA-A899-82CD47F6A34F}" name="Gfx">
       <FILE id="pT0ckh" name="DarkLight.png" compile="0" resource="1" file="../Gfx/DarkLight.png"/>
@@ -38,6 +37,10 @@
         <FILE id="pPbm1m" name="EigenCore.cpp" compile="1" resource="0" file="Source/Core/EigenCore.cpp"/>
         <FILE id="YkzHBn" name="EigenCore.h" compile="0" resource="0" file="Source/Core/EigenCore.h"/>
         <FILE id="MeOFV9" name="Enums.h" compile="0" resource="0" file="Source/Core/Enums.h"/>
+        <FILE id="WlgtU7" name="FirmwareReader.cpp" compile="1" resource="0"
+              file="Source/Core/FirmwareReader.cpp"/>
+        <FILE id="uFR4iO" name="FirmwareReader.h" compile="0" resource="0"
+              file="Source/Core/FirmwareReader.h"/>
         <FILE id="ynhGAS" name="OSCCommunication.cpp" compile="1" resource="0"
               file="Source/Core/OSCCommunication.cpp"/>
         <FILE id="qPOWmj" name="OSCCommunication.h" compile="0" resource="0"
@@ -59,11 +62,11 @@
   <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1" JUCE_VST3_CAN_REPLACE_VST2="0"/>
   <EXPORTFORMATS>
     <XCODE_MAC targetFolder="Builds/MacOSX" applicationCategory="public.app-category.utilities"
-               externalLibraries="eigenapi&#10;picodecoder" smallIcon="gihxm6"
-               bigIcon="sl53DT">
+               smallIcon="gihxm6" bigIcon="sl53DT" externalLibraries="eigenapi_ec&#10;picodecoder"
+               extraLinkerFlags="-L${PROJECT_DIR}/../../EigenLite">
       <CONFIGURATIONS>
         <CONFIGURATION isDebug="1" name="Debug" targetName="EigenCore_v103_debug" vst3BinaryLocation="$(HOME)/Library/Audio/DevPlugins"
-                       libraryPath="${PROJECT_DIR}/../../EigenLite/resources&#10;"/>
+                       libraryPath="${PROJECT_DIR}/../../EigenLite&#10;${PROJECT_DIR}/../../EigenLite/resources"/>
         <CONFIGURATION isDebug="0" name="Release" targetName="EigenCore" libraryPath="${PROJECT_DIR}/../../EigenLite/resources"/>
       </CONFIGURATIONS>
       <MODULEPATHS>
