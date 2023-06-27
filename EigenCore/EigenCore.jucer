@@ -19,7 +19,7 @@
       <FILE id="WZAnJM" name="libeigenapi_ec.a" compile="0" resource="0"
             file="EigenLite/libeigenapi_ec.a" xcodeResource="0"/>
       <FILE id="Eel7ku" name="libpicodecoder.dylib" compile="0" resource="0"
-            file="EigenLite/libpicodecoder.dylib" xcodeResource="1"/>
+            file="EigenLite/libpicodecoder.dylib" xcodeResource="0"/>
     </GROUP>
     <GROUP id="{ED78BD7E-9D08-8EBA-A899-82CD47F6A34F}" name="Gfx">
       <FILE id="pT0ckh" name="DarkLight.png" compile="0" resource="1" file="../Gfx/DarkLight.png"/>
@@ -66,7 +66,7 @@
                extraLinkerFlags="-L${PROJECT_DIR}/../../EigenLite">
       <CONFIGURATIONS>
         <CONFIGURATION isDebug="1" name="Debug" targetName="EigenCore_v103_debug" vst3BinaryLocation="$(HOME)/Library/Audio/DevPlugins"
-                       libraryPath="${PROJECT_DIR}/../../EigenLite&#10;${PROJECT_DIR}/../../EigenLite/resources"/>
+                       libraryPath="${PROJECT_DIR}/../../EigenLite"/>
         <CONFIGURATION isDebug="0" name="Release" targetName="EigenCore" libraryPath="${PROJECT_DIR}/../../EigenLite/resources"/>
       </CONFIGURATIONS>
       <MODULEPATHS>
