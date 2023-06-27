@@ -9,8 +9,6 @@ EigenCore::EigenCore() : eigenApi(fwReader), osc(&oscSendQueue, &oscReceiveQueue
 EigenCore::~EigenCore() {
     if (apiCallback != nullptr)
         delete apiCallback;
-//    if (eigenApi != nullptr)
-//        delete eigenApi;
 }
 
 void EigenCore::initialiseCore(juce::String ipString) {
@@ -21,7 +19,6 @@ void EigenCore::initialiseCore(juce::String ipString) {
         return;
     }
     
-    //eigenApi = new EigenApi::Eigenharp(fwReader);
     if (ipString == "")
         ipString = defaultIP;
     
