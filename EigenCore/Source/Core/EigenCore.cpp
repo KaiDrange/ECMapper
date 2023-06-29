@@ -12,9 +12,12 @@ EigenCore::~EigenCore() {
 }
 
 void EigenCore::initialiseCore(juce::String ipString) {
+    if (running)
+        return;
+    
+    running = true;
     exitThreads = false;
-    if (!fwReader.confirmResources())
-    {
+    if (!fwReader.confirmResources()) {
         std::cout << "IHX files not properly configured." << std::endl;
         return;
     }
@@ -36,25 +39,28 @@ void EigenCore::initialiseCore(juce::String ipString) {
         apiCallback = new APICallback(eigenApi, &oscSendQueue);
         eigenApi.addCallback(apiCallback);
         if(!eigenApi.start()) {
-            std::cout  << "Unable to start EigenLite" << std::endl;
+            std::cout << "Unable to start EigenLite" << std::endl;
         }
         
         eigenApiProcessThread = std::thread(coreInstance->eigenharpProcess, &oscReceiveQueue, &eigenApi);
-        
-        std::cout << std::endl << "Use Control+C to quit" << std::endl;
     }
 }
 
 void EigenCore::shutdownCore() {
+    if (!running)
+        return;
+    
+    running = false;
     std::cout << "Shutting down..." << std::endl;
     turnOffAllLEDs(&eigenApi);
+    osc.disconnectReceiver();
+    osc.disconnectSender();
+    sleep(1);
     exitThreads = true;
     sleep(1);
     if (eigenApiProcessThread.joinable())
         eigenApiProcessThread.join();
     eigenApi.stop();
-    osc.disconnectReceiver();
-    osc.disconnectSender();
     
     if (apiCallback != nullptr) {
         delete apiCallback;
@@ -111,7 +117,6 @@ void EigenCore::turnOffAllLEDsForDevice(ConnectedDevice &device, EigenApi::Eigen
         }
     }
 }
-
 
 void* EigenCore::eigenharpProcess(OSC::OSCMessageFifo *msgQueue, void* arg) {
     EigenApi::Eigenharp *pE = static_cast<EigenApi::Eigenharp*>(arg);
@@ -176,25 +181,6 @@ void EigenCore::splitString(const juce::String &text, const juce::String &separa
     tokens.addTokens (text, separator, "\"");
 }
 
-
-//void EigenCore::makeThreadRealtime(std::thread& thread) {
-//
-//    int policy;
-//    struct sched_param param;
-//
-//    pthread_getschedparam(thread.native_handle(), &policy, &param);
-//    param.sched_priority = 95;
-//    pthread_setschedparam(thread.native_handle(), SCHED_FIFO, &param);
-//
-//}
-
-//void EigenCore::showHelpTextAndQuit() {
-//    std::cout << std::endl << std::endl;
-//    std::cout << getApplicationName() << " version " << getApplicationVersion() << std::endl << std::endl;/
-//    std::cout << "Usage:" << std::endl;
-//    std::cout << "--help|-h" << std::endl << "     Prints this help text." << std::endl;
-//    std::cout << "--ip|-ip ip-address:port" << std::endl << "     Sets ip address for OSC communication with Mapper. Port number will be used for transmitting. Receiving port will be the one directly below. If argument is omitted, this will default to: " << defaultIP << std::endl;
-//    std::cout << std::endl;
-//    exitThreads = true;
-    //JUCEApplicationBase::quit();
-//}
+bool EigenCore::isRunning() {
+    return running;
+}

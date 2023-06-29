@@ -17,17 +17,12 @@ EigenCoreAudioProcessor::EigenCoreAudioProcessor()
         
     eigenCore.initialiseCore("");
     startTimer(1000);
-//    if (test.confirmResources())
-//    {
-//    }
-//    else
-//        std::cout << "Couldn't find ihx files.";
-    
 }
 
 EigenCoreAudioProcessor::~EigenCoreAudioProcessor()
 {
-    eigenCore.shutdownCore();
+    if (eigenCore.isRunning())
+        eigenCore.shutdownCore();
 }
 
 const juce::String EigenCoreAudioProcessor::getName() const
@@ -80,12 +75,14 @@ void EigenCoreAudioProcessor::changeProgramName (int index, const juce::String& 
 
 void EigenCoreAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    //eigenCore.initialiseCore(juce::StringArray());
+//    if (!eigenCore.isRunning())
+//        eigenCore.initialiseCore("");
 }
 
 void EigenCoreAudioProcessor::releaseResources()
 {
-    //eigenCore.shutdownCore();
+//    if (eigenCore.isRunning())
+//        eigenCore.shutdownCore();
 }
 
 bool EigenCoreAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -103,7 +100,6 @@ void EigenCoreAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
 {
     if (juce::JUCEApplicationBase::isStandaloneApp())
         buffer.clear();
-    //updateOutputParameters();
 }
 
 bool EigenCoreAudioProcessor::hasEditor() const
@@ -136,17 +132,20 @@ juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 
 void EigenCoreAudioProcessor::shutdown()
 {
-    eigenCore.shutdownCore();
+    if (eigenCore.isRunning())
+        eigenCore.shutdownCore();
 }
 
 void EigenCoreAudioProcessor::suspended()
 {
-    
+//    if (eigenCore.isRunning())
+//        eigenCore.shutdownCore();
 }
 
 void EigenCoreAudioProcessor::resumed()
 {
-    
+//    if (!eigenCore.isRunning())
+//        eigenCore.initialiseCore("");
 }
 
 void EigenCoreAudioProcessor::updateOutputParameters()

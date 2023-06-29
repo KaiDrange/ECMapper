@@ -13,5 +13,3 @@ enum class ConnectionType {
     Alpha = 2,
     Mapper = 3
 };
-
-
