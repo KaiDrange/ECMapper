@@ -2,7 +2,6 @@
 
 bool FWR_InMem::open(const std::string filename, int oFlags, void* *fd)
 {
-    std::cout << "Attempting to open " << filename << std::endl;
     if (filename.compare(PICO_FIRMWARE) == 0)
     {
         bytesRead[0] = 0;
@@ -25,14 +24,12 @@ bool FWR_InMem::open(const std::string filename, int oFlags, void* *fd)
 
 ssize_t FWR_InMem::read(void* fd, void *data, size_t byteCount)
 {
-    std::cout << "Reading from InMem" << std::endl;
     std::intptr_t fileIndex = (std::intptr_t)fd;
     if (fileIndex < 0 || fileIndex > IHX_FILE_COUNT - 1 || bytesRead[fileIndex] < 0)
         throw std::runtime_error("Invalid fd or Read() without first calling Open()");
     
     if (bytesRead[fileIndex] >= sizes[fileIndex])
     {
-        std::cout << "EOF!" << std::endl;
         for (int i = 0; i < byteCount; i++)
             ((char*)data)[i] = 0;
         return 0;

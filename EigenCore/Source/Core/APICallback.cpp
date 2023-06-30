@@ -54,18 +54,13 @@ void APICallback::device(const char* dev, DeviceType dt, int rows, int cols, int
         .device = devType
     };
     sendQueue->add(&msg);
-
-    
-    
-//    
-//    std::cout << "device " << dev << " (" << dt << ") " << rows << " x " << cols << " strips " << ribbons << " pedals " << pedals << std::endl;
 }
 
 void APICallback::key(const char* dev, unsigned long long t, unsigned course, unsigned key, bool a, unsigned p, int r, int y) {
-    static int counter = 0;
-    counter++;
-    if (counter%1024 == 0)
-        std::cout  << "key " << dev << " @ " << t << " - " << course << ":" << key << ' ' << a << ' ' << p << ' ' << r << ' ' << y << std::endl;
+    //static int counter = 0;
+    //counter++;
+    //if (counter%1024 == 0)
+    //    std::cout  << "key " << dev << " @ " << t << " - " << course << ":" << key << ' ' << a << ' ' << p << ' ' << r << ' ' << y << std::endl;
 
     for (auto i = begin(connectedDevices); i != end(connectedDevices); i++) {
         if (i->dev == dev) {
@@ -84,8 +79,8 @@ void APICallback::key(const char* dev, unsigned long long t, unsigned course, un
                 .course = course,
                 .active = a,
                 .pressure = p,
-                .roll = i->type == EHDeviceType::Pico ? r : -r,
-                .yaw = i->type == EHDeviceType::Pico ? y : -y,
+                .roll = r,
+                .yaw = y,
                 .value = 0,
                 .pedal = 0,
                 .strip = 0,
@@ -93,14 +88,12 @@ void APICallback::key(const char* dev, unsigned long long t, unsigned course, un
             };
             sendQueue->add(&msg);
             
-            
             break;
         }
     }
 }
 
 void APICallback::breath(const char* dev, unsigned long long t, unsigned val) {
-//    std::cout  << "breath " << dev << " @ " << t << " - "  << val << std::endl;
     OSC::Message msg {
         .type = OSC::MessageType::Breath,
         .key = 0,
@@ -118,8 +111,7 @@ void APICallback::breath(const char* dev, unsigned long long t, unsigned val) {
 }
 
 void APICallback::strip(const char* dev, unsigned long long t, unsigned strip, unsigned val, bool a) {
-//    std::cout  << "strip " << dev << " @ " << t << " - " << strip << " = " << val << " " << a << std::endl;
-    
+    //std::cout  << "strip " << dev << " @ " << t << " - " << strip << ":" << val << ' ' << a << std::endl;
     OSC::Message msg {
         .type = OSC::MessageType::Strip,
         .key = 0,
@@ -137,7 +129,6 @@ void APICallback::strip(const char* dev, unsigned long long t, unsigned strip, u
 }
 
 void APICallback::pedal(const char* dev, unsigned long long t, unsigned pedal, unsigned val) {
-//    std::cout  << "pedal " << dev << " @ " << t << " - " << pedal << " = " << val << std::endl;
     OSC::Message msg {
         .type = OSC::MessageType::Pedal,
         .key = 0,

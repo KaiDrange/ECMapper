@@ -15,7 +15,7 @@ EigenCoreAudioProcessor::EigenCoreAudioProcessor()
     addParameter(params[(int)ConnectionType::Alpha] = new juce::AudioParameterBool("alpha", "Alpha connected", false, juce::AudioParameterBoolAttributes()));
     addParameter(params[(int)ConnectionType::Mapper] = new juce::AudioParameterBool("mapper", "Mapper connected", false, juce::AudioParameterBoolAttributes()));
         
-    eigenCore.initialiseCore("");
+//    eigenCore.initialiseCore("");
     startTimer(1000);
 }
 
@@ -75,8 +75,8 @@ void EigenCoreAudioProcessor::changeProgramName (int index, const juce::String& 
 
 void EigenCoreAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-//    if (!eigenCore.isRunning())
-//        eigenCore.initialiseCore("");
+    if (!eigenCore.isRunning())
+        eigenCore.initialiseCore("");
 }
 
 void EigenCoreAudioProcessor::releaseResources()

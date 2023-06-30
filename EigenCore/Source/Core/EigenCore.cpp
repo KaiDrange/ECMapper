@@ -133,7 +133,7 @@ void* EigenCore::eigenharpProcess(OSC::OSCMessageFifo *msgQueue, void* arg) {
             prevMapperConnectedState = mapperConnected;
         }
         
-        if (mapperConnected) {
+//        if (mapperConnected) {
             try {
                 pE->process();
             }
@@ -161,7 +161,7 @@ void* EigenCore::eigenharpProcess(OSC::OSCMessageFifo *msgQueue, void* arg) {
                     }
                 }
             }
-        }
+//        }
         
 #ifdef MEASURE_EIGENAPIPROCESSTIME
         auto end = std::chrono::high_resolution_clock::now();
