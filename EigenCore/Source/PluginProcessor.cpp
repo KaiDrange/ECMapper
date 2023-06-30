@@ -14,7 +14,8 @@ EigenCoreAudioProcessor::EigenCoreAudioProcessor()
     addParameter(params[(int)ConnectionType::Tau] = new juce::AudioParameterBool("tau", "Tau connected", false, juce::AudioParameterBoolAttributes()));
     addParameter(params[(int)ConnectionType::Alpha] = new juce::AudioParameterBool("alpha", "Alpha connected", false, juce::AudioParameterBoolAttributes()));
     addParameter(params[(int)ConnectionType::Mapper] = new juce::AudioParameterBool("mapper", "Mapper connected", false, juce::AudioParameterBoolAttributes()));
-        
+    addParameter(manualShutdown = new juce::AudioParameterBool("manualShutdown", "Manual shutdown", false));
+
 //    eigenCore.initialiseCore("");
     startTimer(1000);
 }
@@ -75,6 +76,7 @@ void EigenCoreAudioProcessor::changeProgramName (int index, const juce::String& 
 
 void EigenCoreAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
+    //TODO: add some kind of delay, so that plugin scanning is quick
     if (!eigenCore.isRunning())
         eigenCore.initialiseCore("");
 }
@@ -109,7 +111,18 @@ bool EigenCoreAudioProcessor::hasEditor() const
 
 juce::AudioProcessorEditor* EigenCoreAudioProcessor::createEditor()
 {
-    return new EigenCoreAudioProcessorEditor (*this);
+    if (juce::JUCEApplicationBase::isStandaloneApp())
+    {
+        editor = new EigenCoreAudioProcessorEditor(*this);
+        if(juce::TopLevelWindow::getNumTopLevelWindows() == 1)
+        {
+            juce::TopLevelWindow* w = juce::TopLevelWindow::getTopLevelWindow(0);
+            w->setUsingNativeTitleBar(true);
+        }
+        return editor;
+    }
+    else
+        return new EigenCoreAudioProcessorEditor(*this);
 }
 
 void EigenCoreAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
@@ -177,6 +190,12 @@ void EigenCoreAudioProcessor::updateOutputParameters()
         auto editor = getActiveEditor();
         if (editor != nullptr)
             editor->repaint();
+    }
+    
+    bool doShutdown = *manualShutdown;
+    if (doShutdown && eigenCore.isRunning())
+    {
+        eigenCore.shutdownCore();
     }
 }
 

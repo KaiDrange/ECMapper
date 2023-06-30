@@ -34,12 +34,14 @@ public:
     void shutdown();
 
     juce::AudioParameterBool* params[4];
+    juce::AudioParameterBool* manualShutdown;
     
 private:
     
     EigenCore eigenCore;
-    void timerCallback() final { updateOutputParameters(); }
+    juce::AudioProcessorEditor* editor;
     
+    void timerCallback() final { updateOutputParameters(); }
     void updateOutputParameters();
     
 
