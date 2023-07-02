@@ -37,8 +37,7 @@ public:
     juce::AudioParameterBool* manualShutdown;
     
 private:
-    
-    EigenCore eigenCore;
+    EigenCore *eigenCore = nullptr;
     juce::AudioProcessorEditor* editor;
     
     void timerCallback() final { updateOutputParameters(); }

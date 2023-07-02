@@ -4,12 +4,16 @@
 volatile std::atomic<bool> exitThreads;
 std::atomic<bool> mapperConnected;
 std::list<ConnectedDevice> connectedDevices;
+static int instanceCount = 0;
 
 EigenCoreAudioProcessor::EigenCoreAudioProcessor()
      : AudioProcessor (BusesProperties()
                        .withInput  ("Input", juce::AudioChannelSet::stereo(), true)
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true))
 {
+    instanceCount++;
+    if (instanceCount == 1)
+        eigenCore = new EigenCore();
     addParameter(params[(int)ConnectionType::Pico] = new juce::AudioParameterBool("pico", "Pico connected", false, juce::AudioParameterBoolAttributes()));
     addParameter(params[(int)ConnectionType::Tau] = new juce::AudioParameterBool("tau", "Tau connected", false, juce::AudioParameterBoolAttributes()));
     addParameter(params[(int)ConnectionType::Alpha] = new juce::AudioParameterBool("alpha", "Alpha connected", false, juce::AudioParameterBoolAttributes()));
@@ -22,8 +26,13 @@ EigenCoreAudioProcessor::EigenCoreAudioProcessor()
 
 EigenCoreAudioProcessor::~EigenCoreAudioProcessor()
 {
-    if (eigenCore.isRunning())
-        eigenCore.shutdownCore();
+    if (eigenCore != nullptr && eigenCore->isRunning())
+    {
+        eigenCore->shutdownCore();
+        delete eigenCore;
+        eigenCore = nullptr;
+    }
+    instanceCount--;
 }
 
 const juce::String EigenCoreAudioProcessor::getName() const
@@ -76,9 +85,8 @@ void EigenCoreAudioProcessor::changeProgramName (int index, const juce::String& 
 
 void EigenCoreAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    //TODO: add some kind of delay, so that plugin scanning is quick
-    if (!eigenCore.isRunning())
-        eigenCore.initialiseCore("");
+    if (eigenCore != nullptr && !eigenCore->isRunning())
+        eigenCore->initialiseCore("");
 }
 
 void EigenCoreAudioProcessor::releaseResources()
@@ -145,8 +153,8 @@ juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 
 void EigenCoreAudioProcessor::shutdown()
 {
-    if (eigenCore.isRunning())
-        eigenCore.shutdownCore();
+    if (eigenCore != nullptr && eigenCore->isRunning())
+        eigenCore->shutdownCore();
 }
 
 void EigenCoreAudioProcessor::suspended()
@@ -193,9 +201,9 @@ void EigenCoreAudioProcessor::updateOutputParameters()
     }
     
     bool doShutdown = *manualShutdown;
-    if (doShutdown && eigenCore.isRunning())
+    if (doShutdown && eigenCore != nullptr && eigenCore->isRunning())
     {
-        eigenCore.shutdownCore();
+        eigenCore->shutdownCore();
     }
 }
 
