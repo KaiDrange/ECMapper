@@ -117,7 +117,7 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
 void ECMapperAudioProcessor::processBlockBypassed(juce::AudioBuffer<float> &buffer, juce::MidiBuffer &midiMessages) {
     if (osc.senderIsConnected)
         osc.disconnectSender();
-    if (osc.receiverIsConnected)
+    if (osc.isListeningToReceiver)
         osc.disconnectReceiver();
 }
 
@@ -195,7 +195,7 @@ void ECMapperAudioProcessor::checkConnectionChanges() {
             layoutChangeHandler.sendLEDMsgForAllKeys(DeviceType::Alpha);
         }
     }
-    if (!osc.receiverIsConnected)
+    if (!osc.isListeningToReceiver)
         osc.connectReceiver();
     
     if (!prevEigenCoreConnectedState && osc.eigenCoreConnected) {

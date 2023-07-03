@@ -13,8 +13,8 @@ public:
     void disconnectSender();
     bool connectReceiver();
     void disconnectReceiver();
-    bool receiverIsConnected = false;
     bool senderIsConnected = false;
+    bool isListeningToReceiver = false;
     bool eigenCoreConnected = false;
     
     void sendLED(int course, int key, int led, DeviceType deviceType);
@@ -26,9 +26,7 @@ public:
 
 private:
     juce::OSCSender sender;
-    
-    juce::OSCReceiver receiver;
-    
+        
     void oscMessageReceived(const juce::OSCMessage& message) override;
     void timerCallback() override;
     int pingCounter = -1;

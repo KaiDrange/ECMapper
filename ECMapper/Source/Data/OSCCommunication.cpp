@@ -1,7 +1,10 @@
 #include "OSCCommunication.h"
 
+static int receiverListenerCount = 0;
+static juce::OSCReceiver receiver;
+bool receiverIsConnected = false;
+
 OSCCommunication::OSCCommunication(OSC::OSCMessageFifo *sendQueue, OSC::OSCMessageFifo *receiveQueue) {
-    receiver.addListener(this);
     this->sendQueue = sendQueue;
     this->receiveQueue = receiveQueue;
     receiver.registerFormatErrorHandler([this](const char *data, int dataSize) {
@@ -25,12 +28,25 @@ bool OSCCommunication::connectSender() {
 }
 
 void OSCCommunication::disconnectSender() {
-    sender.disconnect();
-    senderIsConnected = false;
+    if (isListeningToReceiver) {
+        receiver.removeListener(this);
+        receiverListenerCount--;
+        isListeningToReceiver = false;
+    }
+    if (receiverListenerCount == 0) {
+        sender.disconnect();
+        senderIsConnected = false;
+    }
 }
 
 bool OSCCommunication::connectReceiver() {
-    receiverIsConnected = receiver.connect(receiverPort);
+    if (!receiverIsConnected)
+        receiverIsConnected = receiver.connect(receiverPort);
+    if (!isListeningToReceiver) {
+        receiver.addListener(this);
+        receiverListenerCount++;
+        isListeningToReceiver = true;
+    }
     return receiverIsConnected;
 }
 
