@@ -1,14 +1,16 @@
 #include "OSCCommunication.h"
 
 static int receiverListenerCount = 0;
-static juce::OSCReceiver receiver;
-bool receiverIsConnected = false;
+static juce::OSCReceiver *receiver = nullptr;
+static bool receiverIsConnected = false;
 
 OSCCommunication::OSCCommunication(OSC::OSCMessageFifo *sendQueue, OSC::OSCMessageFifo *receiveQueue, Logger *logger) {
     this->logger = logger;
+    if (receiver == nullptr)
+        receiver = new juce::OSCReceiver();
     this->sendQueue = sendQueue;
     this->receiveQueue = receiveQueue;
-    receiver.registerFormatErrorHandler([this](const char *data, int dataSize) {
+    receiver->registerFormatErrorHandler([this](const char *data, int dataSize) {
         std::cout << "invalid OSC data" << std::endl;
     });
     
@@ -17,10 +19,10 @@ OSCCommunication::OSCCommunication(OSC::OSCMessageFifo *sendQueue, OSC::OSCMessa
 
 OSCCommunication::~OSCCommunication() {
     stopTimer();
-    sender.disconnect();
-    receiver.disconnect();
-    senderIsConnected = false;
-    receiverIsConnected = false;
+    disconnectSender();
+    disconnectReceiver();
+    if (receiverListenerCount == 0)
+        delete receiver;
 }
 
 bool OSCCommunication::connectSender() {
@@ -37,9 +39,9 @@ void OSCCommunication::disconnectSender() {
 
 bool OSCCommunication::connectReceiver() {
     if (!receiverIsConnected)
-        receiverIsConnected = receiver.connect(receiverPort);
+        receiverIsConnected = receiver->connect(receiverPort);
     if (!isListeningToReceiver && receiverIsConnected) {
-        receiver.addListener(this);
+        receiver->addListener(this);
         receiverListenerCount++;
         isListeningToReceiver = true;
     }
@@ -50,12 +52,12 @@ bool OSCCommunication::connectReceiver() {
 
 void OSCCommunication::disconnectReceiver() {
     if (isListeningToReceiver) {
-        receiver.removeListener(this);
+        receiver->removeListener(this);
         receiverListenerCount--;
         isListeningToReceiver = false;
     }
     if (receiverListenerCount == 0) {
-        receiver.disconnect();
+        receiver->disconnect();
         receiverIsConnected = false;
     }
     logger->log("DisconnectReceiver called: receiverIsConnected is now: " + juce::String((int)receiverIsConnected));
