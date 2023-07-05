@@ -4,10 +4,11 @@
 #include <iostream>
 #include "OSCMessageQueue.h"
 #include "../Models/Enums.h"
+#include "Logger.h"
 
 class OSCCommunication : private juce::OSCReceiver::Listener<juce::OSCReceiver::MessageLoopCallback>, juce::Timer {
 public:
-    OSCCommunication(OSC::OSCMessageFifo *sendQueue, OSC::OSCMessageFifo *receiveQueue);
+    OSCCommunication(OSC::OSCMessageFifo *sendQueue, OSC::OSCMessageFifo *receiveQueue, Logger *logger);
     ~OSCCommunication();
     bool connectSender();
     void disconnectSender();
@@ -35,6 +36,7 @@ private:
 
     OSC::OSCMessageFifo *sendQueue;
     OSC::Message msg;
+    Logger *logger;
     
     void sendOutgoingMessages();
 };

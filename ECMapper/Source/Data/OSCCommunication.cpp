@@ -4,7 +4,8 @@ static int receiverListenerCount = 0;
 static juce::OSCReceiver receiver;
 bool receiverIsConnected = false;
 
-OSCCommunication::OSCCommunication(OSC::OSCMessageFifo *sendQueue, OSC::OSCMessageFifo *receiveQueue) {
+OSCCommunication::OSCCommunication(OSC::OSCMessageFifo *sendQueue, OSC::OSCMessageFifo *receiveQueue, Logger *logger) {
+    this->logger = logger;
     this->sendQueue = sendQueue;
     this->receiveQueue = receiveQueue;
     receiver.registerFormatErrorHandler([this](const char *data, int dataSize) {
@@ -24,41 +25,47 @@ OSCCommunication::~OSCCommunication() {
 
 bool OSCCommunication::connectSender() {
     senderIsConnected = sender.connect(senderIP, senderPort);
+    logger->log("ConnectSender called: senderIsConnected is now: " + juce::String((int)senderIsConnected));
     return senderIsConnected;
 }
 
 void OSCCommunication::disconnectSender() {
+    sender.disconnect();
+    senderIsConnected = false;
+    logger->log("disconnectSender called: senderIsConnected is now: " + juce::String((int)senderIsConnected));
+}
+
+bool OSCCommunication::connectReceiver() {
+    if (!receiverIsConnected)
+        receiverIsConnected = receiver.connect(receiverPort);
+    if (!isListeningToReceiver && receiverIsConnected) {
+        receiver.addListener(this);
+        receiverListenerCount++;
+        isListeningToReceiver = true;
+    }
+    logger->log("ConnectReceiver called: receiverIsConnected is now: " + juce::String((int)receiverIsConnected));
+    logger->log("ReceiverListening count is now: " + juce::String(receiverListenerCount));
+    return receiverIsConnected;
+}
+
+void OSCCommunication::disconnectReceiver() {
     if (isListeningToReceiver) {
         receiver.removeListener(this);
         receiverListenerCount--;
         isListeningToReceiver = false;
     }
     if (receiverListenerCount == 0) {
-        sender.disconnect();
-        senderIsConnected = false;
+        receiver.disconnect();
+        receiverIsConnected = false;
     }
-}
-
-bool OSCCommunication::connectReceiver() {
-    if (!receiverIsConnected)
-        receiverIsConnected = receiver.connect(receiverPort);
-    if (!isListeningToReceiver) {
-        receiver.addListener(this);
-        receiverListenerCount++;
-        isListeningToReceiver = true;
-    }
-    return receiverIsConnected;
-}
-
-void OSCCommunication::disconnectReceiver() {
-    receiver.disconnect();
-    receiverIsConnected = false;
+    logger->log("DisconnectReceiver called: receiverIsConnected is now: " + juce::String((int)receiverIsConnected));
+    logger->log("ReceiverListening count is now: " + juce::String(receiverListenerCount));
 }
 
 void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
     if (message.getAddressPattern() == "/EigenCore/ping") {
         if (pingCounter == -1) {
-            std::cout << "Core connected" << std::endl;
+            logger->log("Core connected.");
             eigenCoreConnected = true;
         }
         pingCounter = 0;
@@ -169,15 +176,13 @@ void OSCCommunication::sendReset(DeviceType deviceType) {
 }
 
 void OSCCommunication::timerCallback() {
-    if (!senderIsConnected)
-        return;
-    
-    sender.send("/ECMapper/ping");
+    if (senderIsConnected)
+        sender.send("/ECMapper/ping");
     if (pingCounter > -1)
         pingCounter++;
     
     if (pingCounter > 10) {
-        std::cout << "Connection to Core timed out" << std::endl;
+        logger->log("Connection to Core timed out");
         pingCounter = -1;
         eigenCoreConnected = false;
     }

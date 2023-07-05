@@ -62,6 +62,7 @@ private:
     juce::AudioProcessorEditor *editor = nullptr;
     LayoutChangeHandler layoutChangeHandler;
     bool prevEigenCoreConnectedState = false;
+    bool isBypassed = false;
     
     void valueTreePropertyChanged(juce::ValueTree &vTree, const juce::Identifier &property) override;
 

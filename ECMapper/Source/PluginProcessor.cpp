@@ -5,9 +5,9 @@ ECMapperAudioProcessor::ECMapperAudioProcessor() :
     AudioProcessor(BusesProperties()
                .withInput("Input", juce::AudioChannelSet::stereo(), true)
                .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
-    logger(true, true),
+    logger(false, true),
     pluginState(*this, nullptr, id_state, createParameterLayout()),
-    osc(&oscSendQueue, &oscReceiveQueue),
+    osc(&oscSendQueue, &oscReceiveQueue, &logger),
     configLookups { ConfigLookup(DeviceType::Alpha, pluginState), ConfigLookup(DeviceType::Tau, pluginState), ConfigLookup(DeviceType::Pico, pluginState)}, midiGenerator(configLookups), layoutChangeHandler(&oscSendQueue, this, configLookups) {
     pluginState.state.addListener(&layoutChangeHandler);
     pluginState.state.addListener(this);
@@ -73,6 +73,7 @@ void ECMapperAudioProcessor::updateIPandPorts() {
 }
 
 void ECMapperAudioProcessor::releaseResources() {
+    logger.log("ReleaseResources() called.");
     midiGenerator.stop();
     osc.disconnectSender();
     osc.disconnectReceiver();
@@ -86,6 +87,10 @@ bool ECMapperAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) 
 #endif
 
 void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages) {
+    if (isBypassed)
+        logger.log("Going out of bypass mode.");
+    isBypassed = false;
+    
     if (juce::JUCEApplicationBase::isStandaloneApp())
         buffer.clear();
 
@@ -119,6 +124,10 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
 }
 
 void ECMapperAudioProcessor::processBlockBypassed(juce::AudioBuffer<float> &buffer, juce::MidiBuffer &midiMessages) {
+    if (!isBypassed)
+        logger.log("Going into bypass mode.");
+    isBypassed = true;
+    
     if (osc.senderIsConnected)
         osc.disconnectSender();
     if (osc.isListeningToReceiver)
