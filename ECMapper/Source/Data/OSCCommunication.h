@@ -26,7 +26,8 @@ public:
 
 private:
     juce::OSCSender sender;
-        
+//    juce::OSCReceiver receiver;
+    
     void oscMessageReceived(const juce::OSCMessage& message) override;
     void timerCallback() override;
     int pingCounter = -1;

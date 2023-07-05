@@ -76,6 +76,8 @@
               file="Source/Data/LayoutChangeHandler.cpp"/>
         <FILE id="x3Kc4K" name="LayoutChangeHandler.h" compile="0" resource="0"
               file="Source/Data/LayoutChangeHandler.h"/>
+        <FILE id="tDFVOo" name="Logger.cpp" compile="1" resource="0" file="Source/Data/Logger.cpp"/>
+        <FILE id="JRK0S5" name="Logger.h" compile="0" resource="0" file="Source/Data/Logger.h"/>
         <FILE id="ilGGMF" name="MidiGenerator.cpp" compile="1" resource="0"
               file="Source/Data/MidiGenerator.cpp"/>
         <FILE id="l6QPzR" name="MidiGenerator.h" compile="0" resource="0" file="Source/Data/MidiGenerator.h"/>

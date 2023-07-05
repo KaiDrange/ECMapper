@@ -8,7 +8,7 @@
 #include "Data/MidiGenerator.h"
 #include "Models/SettingsWrapper.h"
 #include "UI/Utility.h"
-
+#include "Data/Logger.h"
 
 class ECMapperAudioProcessor  : public juce::AudioProcessor, public juce::ValueTree::Listener
 {
@@ -16,6 +16,7 @@ public:
     ECMapperAudioProcessor();
     ~ECMapperAudioProcessor() override;
 
+    Logger logger;
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
     void releaseResources() override;
 
@@ -50,6 +51,8 @@ public:
 private:
     void updateIPandPorts();
     void checkConnectionChanges();
+    void refreshLights();
+    
     OSCCommunication osc;
     OSC::OSCMessageFifo oscSendQueue;
     OSC::OSCMessageFifo oscReceiveQueue;

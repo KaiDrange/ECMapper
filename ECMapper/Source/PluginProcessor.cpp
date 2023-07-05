@@ -2,11 +2,13 @@
 #include "PluginEditor.h"
 
 ECMapperAudioProcessor::ECMapperAudioProcessor() :
-AudioProcessor(BusesProperties()
+    AudioProcessor(BusesProperties()
                .withInput("Input", juce::AudioChannelSet::stereo(), true)
                .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
-//AudioProcessor(BusesProperties()),
-pluginState(*this, nullptr, id_state, createParameterLayout()), osc(&oscSendQueue, &oscReceiveQueue), configLookups { ConfigLookup(DeviceType::Alpha, pluginState), ConfigLookup(DeviceType::Tau, pluginState), ConfigLookup(DeviceType::Pico, pluginState)}, midiGenerator(configLookups), layoutChangeHandler(&oscSendQueue, this, configLookups) {
+    logger(true, true),
+    pluginState(*this, nullptr, id_state, createParameterLayout()),
+    osc(&oscSendQueue, &oscReceiveQueue),
+    configLookups { ConfigLookup(DeviceType::Alpha, pluginState), ConfigLookup(DeviceType::Tau, pluginState), ConfigLookup(DeviceType::Pico, pluginState)}, midiGenerator(configLookups), layoutChangeHandler(&oscSendQueue, this, configLookups) {
     pluginState.state.addListener(&layoutChangeHandler);
     pluginState.state.addListener(this);
 }
@@ -98,8 +100,10 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
     }
     while (osc.receiveQueue->getMessageCount() > 0) {
         osc.receiveQueue->read(&msg);
-        if (msg.type == OSC::MessageType::Device)
+        if (msg.type == OSC::MessageType::Device) {
+            logger.log("Refresh lights because of Device message.");
             layoutChangeHandler.sendLEDMsgForAllKeys(msg.device);
+        }
         else {
             outgoingMsg.type = OSC::MessageType::Undefined;
             if (midiGenerator.initialized)
@@ -190,18 +194,22 @@ void ECMapperAudioProcessor::checkConnectionChanges() {
     if (!osc.senderIsConnected) {
         auto success = osc.connectSender();
         if (success) {
-            layoutChangeHandler.sendLEDMsgForAllKeys(DeviceType::Pico);
-            layoutChangeHandler.sendLEDMsgForAllKeys(DeviceType::Tau);
-            layoutChangeHandler.sendLEDMsgForAllKeys(DeviceType::Alpha);
+            logger.log("Refreshing lights because sender connected.");
+            refreshLights();
         }
     }
     if (!osc.isListeningToReceiver)
         osc.connectReceiver();
     
     if (!prevEigenCoreConnectedState && osc.eigenCoreConnected) {
-        layoutChangeHandler.sendLEDMsgForAllKeys(DeviceType::Pico);
-        layoutChangeHandler.sendLEDMsgForAllKeys(DeviceType::Tau);
-        layoutChangeHandler.sendLEDMsgForAllKeys(DeviceType::Alpha);
+        logger.log("Refreshing lights because EigenCore connected.");
+        refreshLights();
     }
     prevEigenCoreConnectedState = osc.eigenCoreConnected;
+}
+
+void ECMapperAudioProcessor::refreshLights() {
+    layoutChangeHandler.sendLEDMsgForAllKeys(DeviceType::Pico);
+    layoutChangeHandler.sendLEDMsgForAllKeys(DeviceType::Tau);
+    layoutChangeHandler.sendLEDMsgForAllKeys(DeviceType::Alpha);
 }
