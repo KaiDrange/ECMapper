@@ -1,5 +1,7 @@
 #pragma once
 #include <JuceHeader.h>
+#include "Enums.h"
+#include "LayoutWrapper.h"
 
 class SettingsWrapper {
 public:
@@ -10,6 +12,7 @@ public:
     static inline const juce::Identifier id_lowerMPEPB {"lowermpepb"};
     static inline const juce::Identifier id_upperMPEPB {"uppermpepb"};
     static inline const juce::Identifier id_activeTab {"activetab"};
+    static inline const juce::Identifier id_controlLights { "controlLights" };
 
     static void addListener(juce::ValueTree::Listener *listener, juce::ValueTree &rootState);
 
@@ -25,6 +28,9 @@ public:
     static int getUpperMPEPB(juce::ValueTree &rootState);
     static void setCurrentTabIndex(int index, juce::ValueTree &rootState);
     static int getCurrentTabIndex(juce::ValueTree &rootState);
+    
+    static bool getControlLights(DeviceType deviceType, juce::ValueTree &rootState);
+    static void setControlLights(bool value, DeviceType deviceType, juce::ValueTree &rootState);
     
 private:
     static inline const juce::String default_IP { "127.0.0.1:12120" };

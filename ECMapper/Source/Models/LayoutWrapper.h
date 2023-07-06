@@ -24,7 +24,7 @@ public:
     static inline const juce::Identifier id_layout { "layout" };
     static inline const juce::Identifier id_device { "device" };
     static inline const juce::Identifier id_key { "key" };
-
+        
     static inline const juce::Identifier id_keyNo { "keyNo" };
     static inline const juce::Identifier id_course { "course" };
     static inline const juce::Identifier id_keyType { "keyType" };

@@ -68,3 +68,14 @@ int SettingsWrapper::getCurrentTabIndex(juce::ValueTree &rootState) {
     auto vTree = getSettingsTree(rootState);
     return vTree.getProperty(id_activeTab, default_activeTab);
 }
+
+bool SettingsWrapper::getControlLights(DeviceType deviceType, juce::ValueTree &rootState) {
+//    auto vTree = getSettingsTree(rootState);
+    auto deviceChild = rootState.getOrCreateChildWithName(LayoutWrapper::id_device + juce::String((int)deviceType), nullptr);
+    return deviceChild.getProperty(id_controlLights, true);
+}
+
+void SettingsWrapper::setControlLights(bool value, DeviceType deviceType, juce::ValueTree &rootState) {
+    auto deviceChild = rootState.getOrCreateChildWithName(LayoutWrapper::id_device + juce::String((int)deviceType), nullptr);
+    deviceChild.setProperty(id_controlLights, value, nullptr);
+}

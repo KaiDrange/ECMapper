@@ -5,6 +5,7 @@
 #include "ZonePanelComponent.h"
 #include "../Models/Enums.h"
 #include "../Data/FileUtil.h"
+#include "../Models/SettingsWrapper.h"
 
 class TabPage : public juce::Component {
 public:
@@ -23,5 +24,6 @@ private:
     juce::MidiKeyboardComponent keyboard;
     juce::TextButton saveMappingButton;
     juce::TextButton loadMappingButton;
+    juce::ToggleButton controlLightsButton;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TabPage)
 };
