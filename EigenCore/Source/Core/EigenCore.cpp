@@ -76,6 +76,7 @@ void EigenCore::turnOffAllLEDs(EigenApi::Eigenharp *api) {
 
 void EigenCore::turnOffAllLEDsForDevice(ConnectedDevice &device, EigenApi::Eigenharp *api) {
     int course0Length = 0;
+    int course1Start = 0;
     int course1Length = 0;
     switch (device.type) {
         case EHDeviceType::Pico:
@@ -84,6 +85,8 @@ void EigenCore::turnOffAllLEDsForDevice(ConnectedDevice &device, EigenApi::Eigen
             break;
         case EHDeviceType::Tau:
             course0Length = 72 + 12;
+            course1Length = 8;
+            course1Start = 5;
             break;
         case EHDeviceType::Alpha:
             course0Length = 120;
@@ -98,23 +101,10 @@ void EigenCore::turnOffAllLEDsForDevice(ConnectedDevice &device, EigenApi::Eigen
         device.assignedLEDColours[0][i] = 0;
         device.activeKeys[0][i] = false;
     }
-    for (int i = 0; i < course1Length; i++) {
+    for (int i = course1Start; i < course1Start + course1Length; i++) {
         api->setLED(device.dev, 1, i, 0);
         device.assignedLEDColours[1][i] = 0;
         device.activeKeys[1][i] = false;
-    }
-    
-    if (device.type == EHDeviceType::Tau) {
-        for (int i = 4; i < 8; i++) {
-            api->setLED(device.dev, 1, i, 0);
-            device.assignedLEDColours[1][i] = 0;
-            device.activeKeys[1][i] = false;
-        }
-        for (int i = 88; i < 92; i++) {
-            api->setLED(device.dev, 1, i, 0);
-            device.assignedLEDColours[1][i] = 0;
-            device.activeKeys[1][i] = false;
-        }
     }
 }
 
