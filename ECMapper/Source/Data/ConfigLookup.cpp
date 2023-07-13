@@ -5,6 +5,8 @@ ConfigLookup::ConfigLookup(DeviceType deviceType, juce::AudioProcessorValueTreeS
 }
 
 void ConfigLookup::updateAll() {
+    this->controlLights = SettingsWrapper::getControlLights(deviceType, pluginState.state);
+
     juce::ValueTree layoutTree = LayoutWrapper::getLayoutTree(deviceType, pluginState.state);
     for (int i = 0; i < layoutTree.getNumChildren(); i++) {
         updateKey(layoutTree.getChild(i));

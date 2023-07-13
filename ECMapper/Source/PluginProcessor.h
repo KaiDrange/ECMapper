@@ -64,6 +64,7 @@ private:
     bool prevEigenCoreConnectedState = false;
     bool isBypassed = false;
     
+    
     void valueTreePropertyChanged(juce::ValueTree &vTree, const juce::Identifier &property) override;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ECMapperAudioProcessor)

@@ -14,10 +14,11 @@ void LayoutChangeHandler::valueTreePropertyChanged(juce::ValueTree &vTree, const
         deviceType = layoutKey.keyId.deviceType;
         
         if (deviceType != DeviceType::None) {
-            if (property == LayoutWrapper::id_keyColour)
+            int configIndex = getConfigIndexFromDeviceType(deviceType);
+            if (property == LayoutWrapper::id_keyColour && configLookups[configIndex].controlLights)
                 sendLEDMsg(layoutKey);
             else
-                configLookups[getConfigIndexFromDeviceType(deviceType)].updateKey(vTree);
+                configLookups[configIndex].updateKey(vTree);
         }
     }
     else if (vTree.getParent().getType().toString().startsWith(ZoneWrapper::id_zone)) {
@@ -28,10 +29,13 @@ void LayoutChangeHandler::valueTreePropertyChanged(juce::ValueTree &vTree, const
         DeviceType deviceType = ZoneWrapper::getDeviceTypeFromTree(vTree);
         configLookups[((int)deviceType) - 1].updateAll();
     }
+    else if (property == SettingsWrapper::id_controlLights && vTree.getType().toString().startsWith(LayoutWrapper::id_device)) {
+        DeviceType deviceType = (DeviceType)vTree.getType().toString().substring(6, 7).getIntValue();
+        juce::ValueTree root = vTree.getRoot();
+        configLookups[((int)deviceType) - 1].controlLights = SettingsWrapper::getControlLights(deviceType, root);
+        sendLEDMsgForAllKeys(deviceType);
+    }
 
-//    if (deviceType != DeviceType::None) {
-//        layoutMidiRPNSent = false;
-//    }
     processor->suspendProcessing(false);
 }
 
@@ -41,6 +45,10 @@ int LayoutChangeHandler::getConfigIndexFromDeviceType(DeviceType type) {
 
 void LayoutChangeHandler::sendLEDMsg(LayoutWrapper::LayoutKey layoutKey) {
     if (layoutKey.keyId.deviceType == DeviceType::None)
+        return;
+
+    int configIndex = getConfigIndexFromDeviceType(layoutKey.keyId.deviceType);
+    if (!configLookups[configIndex].controlLights)
         return;
     
     OSC::Message msg {
@@ -60,6 +68,14 @@ void LayoutChangeHandler::sendLEDMsg(LayoutWrapper::LayoutKey layoutKey) {
 }
 
 void LayoutChangeHandler::sendLEDMsgForAllKeys(DeviceType deviceType) {
+    if (deviceType == DeviceType::None)
+        return;
+
+    int configIndex = getConfigIndexFromDeviceType(deviceType);
+    if (!configLookups[configIndex].controlLights)
+        return;
+
+
     OSC::Message msg {
         .type = OSC::MessageType::Reset,
         .key = 0,

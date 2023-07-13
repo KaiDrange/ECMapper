@@ -48,6 +48,8 @@ public:
     Breath breath[3];
     Strip strip1[3];
     Strip strip2[3];
+    
+    bool controlLights = true;
 
 private:
     DeviceType deviceType;

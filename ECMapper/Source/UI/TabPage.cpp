@@ -33,7 +33,7 @@ TabPage::TabPage(int tabIndex, DeviceType deviceType, juce::AudioProcessorValueT
     };
     
     addAndMakeVisible(controlLightsButton);
-    controlLightsButton.setButtonText("Control lights");
+    controlLightsButton.setButtonText("Control LEDs");
     controlLightsButton.setToggleState(SettingsWrapper::getControlLights(deviceType, pluginState.state), juce::dontSendNotification);
     controlLightsButton.onClick = [&, deviceType] {
         SettingsWrapper::setControlLights(controlLightsButton.getToggleState(), deviceType, pluginState.state);
