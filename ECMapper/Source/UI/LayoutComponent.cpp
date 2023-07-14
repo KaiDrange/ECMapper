@@ -208,7 +208,7 @@ void LayoutComponent::createKeys() {
             keys.push_back(new KeyConfigComponent(id, EigenharpKeyType::Perc, pluginState));
         }
     }
-    else { // Note: Tau has weird key Ids
+    else { // Note: Tau course 1 (the 8 buttons) is numbered from 5 upwards
         for (int i = getPercKeyStartIndex(); i < getButtonStartIndex(); i++) {
             LayoutWrapper::KeyId id = { .deviceType = deviceType, .course = 0, .keyNo = i };
             keys.push_back(new KeyConfigComponent(id, EigenharpKeyType::Perc, pluginState));

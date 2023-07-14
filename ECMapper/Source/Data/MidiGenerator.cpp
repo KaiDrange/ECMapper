@@ -84,7 +84,7 @@ void MidiGenerator::processOSCMessage(OSC::Message &oscMsg, OSC::Message &outgoi
                 int deviceIndex = (int)oscMsg.device -1;
                 unsigned int prevBreathValue = ehBreath[deviceIndex];
                 ehBreath[deviceIndex] = std::abs((int)(oscMsg.value - 2048))*2;
-                if ((ehBreath[deviceIndex] > BREATH_ZERO_THRESHOLD) || (ehBreath[deviceIndex] < BREATH_ZERO_THRESHOLD && prevBreathValue > 0)) {
+                if ((ehBreath[deviceIndex] > breathZeroThreshold[deviceIndex]) || (ehBreath[deviceIndex] < breathZeroThreshold[deviceIndex] && prevBreathValue > 0)) {
                     createBreath(deviceIndex, configLookups[deviceIndex], midiBuffer);
                 }
             }
@@ -153,13 +153,13 @@ void MidiGenerator::reduceBreath(juce::MidiBuffer &buffer) {
         if (ehBreath[i] == 0)
             continue;
         
-        ehBreath[i] = ehBreath[i] > BREATH_ZERO_THRESHOLD ? ehBreath[i] - 20 : 0;
+        ehBreath[i] = ehBreath[i] > breathZeroThreshold[i] ? ehBreath[i] - 20 : 0;
         createBreath(i, configLookups[i], buffer);
     }
 }
 
 void MidiGenerator::createBreath(int deviceIndex, ConfigLookup &keyLookup, juce::MidiBuffer &buffer) {
-    ehBreath[deviceIndex] = ehBreath[deviceIndex] < BREATH_ZERO_THRESHOLD ? 0 : ehBreath[deviceIndex] - BREATH_ZERO_THRESHOLD;
+    ehBreath[deviceIndex] = ehBreath[deviceIndex] < breathZeroThreshold[deviceIndex] ? 0 : ehBreath[deviceIndex] - breathZeroThreshold[deviceIndex];
     
     addMidiValueMessage(keyLookup.breath[0].channel, ehBreath[deviceIndex]*3, keyLookup.breath[0].midiValue, 1.0f, 0, buffer, false);
     addMidiValueMessage(keyLookup.breath[1].channel, ehBreath[deviceIndex]*3, keyLookup.breath[1].midiValue, 1.0f, 0, buffer, false);

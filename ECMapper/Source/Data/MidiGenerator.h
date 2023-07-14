@@ -11,8 +11,7 @@ public:
     ~MidiGenerator();
     
     static const int PRESSURE_HISTORY_LENGTH = 6;
-    static const int BREATH_ZERO_THRESHOLD = 512;
-    
+
     void processOSCMessage(OSC::Message &oscMsg, OSC::Message &outgoingOscMsg, juce::MidiBuffer &midiBuffer);
     void reduceBreath(juce::MidiBuffer &buffer);
     juce::MPEZoneLayout mpeZone;
@@ -76,6 +75,7 @@ private:
     
     ConfigLookup *configLookups;
     int stripMessageCount[2] = { 0, 0 };
+    const int breathZeroThreshold[3] = {128, 128, 512};
     
     BezierCurve velocityCurve;
     

@@ -134,7 +134,8 @@
         <MODULEPATH id="juce_osc" path="../../../../JUCE/modules"/>
       </MODULEPATHS>
     </VS2019>
-    <XCODE_MAC targetFolder="Builds/MacOSX" smallIcon="pM0slc" bigIcon="ShaqyE">
+    <XCODE_MAC targetFolder="Builds/MacOSX" smallIcon="pM0slc" bigIcon="ShaqyE"
+               iosBluetoothPermissionNeeded="1" iosBluetoothPermissionText="This application supports MIDI over bluetooth">
       <CONFIGURATIONS>
         <CONFIGURATION isDebug="1" name="Debug" targetName="ECMapper_Debug" defines="JUCE_MODAL_LOOPS_PERMITTED=1"
                        macOSDeploymentTarget="10.15" osxCompatibility="10.15 SDK" vst3BinaryLocation="$(HOME)/Library/Audio/DevPlugins/VST3"/>
