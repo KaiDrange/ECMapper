@@ -23,6 +23,7 @@ public:
     void shutdownCore();
     bool isRunning();
     
+    void turnOffAllLEDs();
     static void turnOffAllLEDs(EigenApi::Eigenharp *api);
     static void turnOffAllLEDsForDevice(ConnectedDevice &device, EigenApi::Eigenharp *api);
 

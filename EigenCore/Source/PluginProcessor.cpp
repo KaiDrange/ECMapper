@@ -26,9 +26,10 @@ EigenCoreAudioProcessor::EigenCoreAudioProcessor()
 
 EigenCoreAudioProcessor::~EigenCoreAudioProcessor()
 {
-    if (eigenCore != nullptr && eigenCore->isRunning())
+    if (eigenCore != nullptr)
     {
-        eigenCore->shutdownCore();
+        if (eigenCore->isRunning())
+            eigenCore->shutdownCore();
         delete eigenCore;
         eigenCore = nullptr;
     }
@@ -159,8 +160,8 @@ void EigenCoreAudioProcessor::shutdown()
 
 void EigenCoreAudioProcessor::suspended()
 {
-//    if (eigenCore.isRunning())
-//        eigenCore.shutdownCore();
+//    if (eigenCore->isRunning())
+//        eigenCore->turnOffAllLEDs();
 }
 
 void EigenCoreAudioProcessor::resumed()

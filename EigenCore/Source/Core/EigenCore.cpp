@@ -68,6 +68,10 @@ void EigenCore::shutdownCore() {
     }
 }
 
+void EigenCore::turnOffAllLEDs() {
+    turnOffAllLEDs(&eigenApi);
+}
+
 void EigenCore::turnOffAllLEDs(EigenApi::Eigenharp *api) {
     for (auto i = begin(connectedDevices); i != end(connectedDevices); i++) {
         turnOffAllLEDsForDevice(*i, api);
