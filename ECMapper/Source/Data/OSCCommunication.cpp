@@ -21,8 +21,10 @@ OSCCommunication::~OSCCommunication() {
     stopTimer();
     disconnectSender();
     disconnectReceiver();
-    if (receiverListenerCount == 0)
+    if (receiverListenerCount == 0 && receiver != nullptr) {
         delete receiver;
+        receiver = nullptr;
+    }
 }
 
 bool OSCCommunication::connectSender() {

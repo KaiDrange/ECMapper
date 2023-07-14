@@ -55,11 +55,10 @@ void ECMapperAudioProcessor::changeProgramName(int index, const juce::String& ne
 }
 
 void ECMapperAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
-//    if (juce::JUCEApplication::isStandaloneApp()) {
-//    }
-    
+    logger.log("prepareToPlay() called.");
     updateIPandPorts();
     midiGenerator.start(pluginState);
+    logger.log("prepareToPlay() finished.");
 }
 
 void ECMapperAudioProcessor::updateIPandPorts() {
@@ -77,6 +76,7 @@ void ECMapperAudioProcessor::releaseResources() {
     midiGenerator.stop();
     osc.disconnectSender();
     osc.disconnectReceiver();
+    logger.log("ReleaseResources() finished.");
 }
 
 #ifndef JucePlugin_PreferredChannelConfigurations
