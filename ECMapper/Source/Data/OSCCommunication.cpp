@@ -90,7 +90,6 @@ void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
             .value = 0,
             .device = (DeviceType)message[6].getInt32()
         };
-
         receiveQueue->add(&msg);
     }
     else if (message.getAddressPattern() == "/EigenCore/breath" && message.size() == 2) {
@@ -107,7 +106,6 @@ void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
             .value = (unsigned int)message[0].getInt32(),
             .device = (DeviceType)message[1].getInt32()
         };
-
         receiveQueue->add(&msg);
     }
     else if (message.getAddressPattern() == "/EigenCore/strip" && message.size() == 4) {
@@ -124,7 +122,6 @@ void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
             .value = (unsigned int)message[1].getInt32(),
             .device = (DeviceType)message[3].getInt32()
         };
-
         receiveQueue->add(&msg);
     }
     else if (message.getAddressPattern() == "/EigenCore/pedal" && message.size() == 3) {
@@ -141,7 +138,6 @@ void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
             .value = (unsigned int)message[1].getInt32(),
             .device = (DeviceType)message[2].getInt32()
         };
-
         receiveQueue->add(&msg);
     }
     else if (message.getAddressPattern() == "/EigenCore/device" && message.size() == 1) {
@@ -158,6 +154,7 @@ void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
             .value = 0,
             .device = (DeviceType)message[0].getInt32()
         };
+        receiveQueue->add(&msg);
     }
 }
 

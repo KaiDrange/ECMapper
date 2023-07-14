@@ -106,8 +106,8 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
     while (osc.receiveQueue->getMessageCount() > 0) {
         osc.receiveQueue->read(&msg);
         if (msg.type == OSC::MessageType::Device) {
-            logger.log("Refresh lights because of Device message.");
             layoutChangeHandler.sendLEDMsgForAllKeys(msg.device);
+            logger.log("Refresh lights because of Device message.");
         }
         else {
             outgoingMsg.type = OSC::MessageType::Undefined;
@@ -210,10 +210,10 @@ void ECMapperAudioProcessor::checkConnectionChanges() {
     if (!osc.isListeningToReceiver)
         osc.connectReceiver();
     
-    if (!prevEigenCoreConnectedState && osc.eigenCoreConnected) {
-        logger.log("Refreshing lights because EigenCore connected.");
-        refreshLights();
-    }
+//    if (!prevEigenCoreConnectedState && osc.eigenCoreConnected) {
+//        logger.log("Refreshing lights because EigenCore connected.");
+//        refreshLights();
+//    }
     prevEigenCoreConnectedState = osc.eigenCoreConnected;
 }
 

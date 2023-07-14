@@ -91,7 +91,6 @@ void LayoutChangeHandler::sendLEDMsgForAllKeys(DeviceType deviceType) {
     };
     oscSendQueue->add(&msg);
 
-
     auto layoutTree = LayoutWrapper::getLayoutTree(deviceType, processor->pluginState.state);
     for (int i = 0; i < layoutTree.getNumChildren(); i++) {
         LayoutWrapper::LayoutKey layoutKey = LayoutWrapper::getLayoutKeyFromKeyTree(layoutTree.getChild(i));

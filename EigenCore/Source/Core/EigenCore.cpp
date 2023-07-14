@@ -97,12 +97,20 @@ void EigenCore::turnOffAllLEDsForDevice(ConnectedDevice &device, EigenApi::Eigen
     }
 
     for (int i = 0; i < course0Length; i++) {
-        api->setLED(device.dev, 0, i, 0);
+        try {
+            api->setLED(device.dev, 0, i, 0);
+        } catch (...) {
+            std::cout << "Set LED failed: device " << device.dev << " course 0 key " << i << std::endl;
+        }
         device.assignedLEDColours[0][i] = 0;
         device.activeKeys[0][i] = false;
     }
     for (int i = course1Start; i < course1Start + course1Length; i++) {
-        api->setLED(device.dev, 1, i, 0);
+        try {
+            api->setLED(device.dev, 1, i, 0);
+        } catch (...) {
+            std::cout << "Set LED failed: device " << device.dev << " course 1 key " << i << std::endl;
+        }
         device.assignedLEDColours[1][i] = 0;
         device.activeKeys[1][i] = false;
     }
@@ -131,13 +139,18 @@ void* EigenCore::eigenharpProcess(OSC::OSCMessageFifo *msgQueue, void* arg) {
                 std::cout << "EigenAPI Process threw an exception." << std::endl;
             }
             static OSC::Message msg;
-            if (msgQueue->getMessageCount() > 0) {
+            while (msgQueue->getMessageCount() > 0) {
                 msgQueue->read(&msg);
                 if (msg.type == OSC::MessageType::LED) {
                     for (auto i = begin(connectedDevices); i != end(connectedDevices); i++) {
                         if (msg.device == i->type) {
                             i->assignedLEDColours[msg.course][msg.key] = msg.value;
-                            pE->setLED(i->dev, msg.course, msg.key, msg.value);
+                            try {
+                                pE->setLED(i->dev, msg.course, msg.key, msg.value);
+                            }
+                            catch (...) {
+                                std::cout << "Tried to SetLED because of LED OSC msg, but got an exception." << std::endl;
+                            }
                             break;
                         }
                     }

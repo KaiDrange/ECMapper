@@ -109,6 +109,9 @@ void MidiGenerator::processOSCMessage(OSC::Message &oscMsg, OSC::Message &outgoi
                 stripMessageCount[stripIndex] = 0;
             }
             break;
+        case OSC::MessageType::Device:
+            std::cout << "Device message received and ignored." << std::endl;
+            break;
         default:
             break;
     }

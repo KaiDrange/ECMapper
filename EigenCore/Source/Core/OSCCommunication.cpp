@@ -89,6 +89,7 @@ void OSCCommunication::oscMessageReceived(const juce::OSCMessage &message) {
         if (pingCounter == -1) {
             mapperConnected = true;
             std::cout << "Mapper connected" << std::endl;
+            pingCounter = 0;
             for (auto i = begin(connectedDevices); i != end(connectedDevices); i++) {
                 sendDevice(i->type);
             }
@@ -130,7 +131,7 @@ void OSCCommunication::timerCallback() {
     if (pingCounter > -1)
         pingCounter++;
     
-    if (pingCounter > 10) {
+    if (pingCounter > 15) {
         mapperConnected = false;
         std::cout << "Connection to Mapper timed out" << std::endl;
         pingCounter = -1;
