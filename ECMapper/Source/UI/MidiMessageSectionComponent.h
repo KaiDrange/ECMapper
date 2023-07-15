@@ -24,6 +24,8 @@ public:
 private:
     void sendChangeMessage();
     void numberInputChanged(NumberInputComponent*) override;
+    void visibilityChanged() override;
+    
     void resetPanel();
     juce::GroupComponent cmdKeyTypeRadioGroup;
     juce::ToggleButton cmdKeyTypeLatch;

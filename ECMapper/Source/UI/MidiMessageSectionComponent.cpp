@@ -177,8 +177,14 @@ juce::String MidiMessageSectionComponent::getMessageString() {
 void MidiMessageSectionComponent::updatePanelFromMessageString(juce::String msgString) {
     juce::StringArray tokens;
     tokens.addTokens(msgString, ";", "\"");
-    if (tokens.size() != 5)
+    if (tokens.size() != 5) {
+        cmdKeyTypeLatch.setToggleState(true, juce::dontSendNotification);
+        midiMsgTypeCC.setToggleState(true, juce::dontSendNotification);
+        midiCmdValue.setValue(0);
+        onValue.setValue(0);
+        offValue.setValue(0);
         return;
+    }
 
     cmdKeyTypeLatch.setToggleState(tokens[0] == "Latch", juce::dontSendNotification);
     cmdKeyTypeMomentary.setToggleState(tokens[0] == "Momentary", juce::dontSendNotification);
@@ -222,3 +228,9 @@ void MidiMessageSectionComponent::sendChangeMessage() {
 void MidiMessageSectionComponent::numberInputChanged(NumberInputComponent*) {
     sendChangeMessage();
 }
+
+void MidiMessageSectionComponent::visibilityChanged() {
+    if (isVisible())
+        sendChangeMessage();
+}
+

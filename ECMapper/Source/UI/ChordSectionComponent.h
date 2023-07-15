@@ -33,6 +33,7 @@ private:
     void setNoteLabelText(int noteIndex);
     void sendChangeMessage();
     void textInputChanged(TextInputComponent*) override;
+    void visibilityChanged() override;
     void resetPanel();
     TextInputComponent chordNameInput;
     ChordNote chordNotes[4];

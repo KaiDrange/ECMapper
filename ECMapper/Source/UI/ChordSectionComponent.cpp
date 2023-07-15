@@ -80,8 +80,14 @@ juce::String ChordSectionComponent::getMessageString() {
 void ChordSectionComponent::updatePanelFromMessageString(juce::String msgString) {
     juce::StringArray tokens;
     tokens.addTokens(msgString, ";", "\"");
-    if (tokens.size() != 5)
+    if (tokens.size() != 5) {
+        chordNameInput.setValue("");
+        for (int i = 0; i < 4; i++) {
+            chordNotes[i].midiNoteNumber = 0;
+            setNoteLabelText(i);
+        }
         return;
+    }
     
     chordNameInput.setValue(tokens[0]);
     for (int i = 0; i < 4; i++) {
@@ -105,6 +111,11 @@ void ChordSectionComponent::sendChangeMessage() {
 
 void ChordSectionComponent::textInputChanged(TextInputComponent*) {
     sendChangeMessage();
+}
+
+void ChordSectionComponent::visibilityChanged() {
+    if (isVisible())
+        sendChangeMessage();
 }
 
 void ChordSectionComponent::handleNoteOn(juce::MidiKeyboardState*, int midiChannel, int midiNoteNumber, float velocity) {

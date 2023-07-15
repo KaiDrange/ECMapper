@@ -24,8 +24,10 @@ void KeyConfigComponent::paint(juce::Graphics& g) {
         juce::StringArray chordParts;
         Utility::splitString(keyText, ";", chordParts);
         if (chordParts.size() > 0) {
-            keyText = chordParts[0];
+            keyText = chordParts[0] != "" ? chordParts[0] : "Chrd";
         }
+        else
+            keyText = "Chrd";
     }
     else if (layoutKey.keyMappingType == KeyMappingType::MidiMsg) {
         juce::StringArray midiMsgParts;
@@ -39,6 +41,8 @@ void KeyConfigComponent::paint(juce::Graphics& g) {
                 keyText = midiMsgParts[1];
         }
     }
+    else
+        keyText = "";
         
     g.drawFittedText(keyText, getLocalBounds(),
                 juce::Justification::centred, true);
