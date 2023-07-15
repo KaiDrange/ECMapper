@@ -24,6 +24,7 @@ private:
     juce::MidiKeyboardComponent keyboard;
     juce::TextButton saveMappingButton;
     juce::TextButton loadMappingButton;
+    juce::TextButton clearMappingButton;
     juce::ToggleButton controlLightsButton;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TabPage)
 };

@@ -18,17 +18,31 @@ TabPage::TabPage(int tabIndex, DeviceType deviceType, juce::AudioProcessorValueT
         FileUtil::saveMapping(LayoutWrapper::getLayoutTree(deviceType, pluginState.state), deviceType);
     };
     addAndMakeVisible(loadMappingButton);
-    loadMappingButton.setButtonText("load");
+    loadMappingButton.setButtonText("Load");
     loadMappingButton.onClick = [&, deviceType] {
         layoutPanel->deselectAllKeys();
         auto xml = FileUtil::openMapping(deviceType);
+        if (xml == "")
+            return;
+        
         auto loadedMap = juce::ValueTree::fromXml(xml);
         auto oldTree = LayoutWrapper::getLayoutTree(deviceType, pluginState.state);
         oldTree.copyPropertiesFrom(loadedMap, nullptr);
         for (int i = 0; i < oldTree.getNumChildren(); i++) {
             oldTree.getChild(i).copyPropertiesFrom(loadedMap.getChild(i), nullptr);
         }
-        
+        repaint();
+    };
+    addAndMakeVisible(clearMappingButton);
+    clearMappingButton.setButtonText("Clear");
+    clearMappingButton.onClick = [&, deviceType] {
+        layoutPanel->deselectAllKeys();
+        auto loadedMap = juce::ValueTree::fromXml("");
+        auto oldTree = LayoutWrapper::getLayoutTree(deviceType, pluginState.state);
+        oldTree.copyPropertiesFrom(loadedMap, nullptr);
+        for (int i = 0; i < oldTree.getNumChildren(); i++) {
+            oldTree.getChild(i).copyPropertiesFrom(loadedMap.getChild(i), nullptr);
+        }
         repaint();
     };
     
@@ -60,6 +74,7 @@ void TabPage::resized() {
     auto btnarea = area.removeFromTop(area.getHeight()*0.03);
     loadMappingButton.setBounds(btnarea.removeFromLeft(area.getWidth()*0.1));
     saveMappingButton.setBounds(btnarea.removeFromLeft(area.getWidth()*0.1));
+    clearMappingButton.setBounds(btnarea.removeFromLeft(area.getWidth()*0.1));
     controlLightsButton.setBounds(btnarea.removeFromRight(area.getWidth()*0.15));
 
     layoutPanel->setBounds(area.removeFromLeft(area.getWidth()*layoutPanel->widthFactor));

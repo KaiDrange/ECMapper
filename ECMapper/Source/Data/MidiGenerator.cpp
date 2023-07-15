@@ -115,6 +115,11 @@ void MidiGenerator::processOSCMessage(OSC::Message &oscMsg, OSC::Message &outgoi
         default:
             break;
     }
+
+    // Don't send LED data for latch keys if Control Lights setting is unchecked
+    int deviceIndex = (int)oscMsg.device -1;
+    if (!configLookups[deviceIndex].controlLights && outgoingOscMsg.type == OSC::MessageType::LED)
+        outgoingOscMsg.type = OSC::MessageType::Undefined;
 }
 
 void MidiGenerator::processNoteKey(OSC::Message &oscMsg, ConfigLookup::Key &keyLookup, KeyState *state, juce::MidiBuffer &buffer) {
