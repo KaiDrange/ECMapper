@@ -22,3 +22,5 @@ Requirements:
 EigenCore expects picodecoder.dylib to be located in the app.bundle Frameworks folder. Whenever a new XCode project file is generated from Projucer, that means it is necessary to navigate to the build phases in EigenCore.xcodeproj and then:
 - add the dylib (in the EigenLite folder) to the "Link Binary With Libraries" section
 - add a new "Copy Files" build step and configure picodecoder to be copied to Frameworks
+
+In Standalone mode, Juce automatically shows a "Audio input is muted to avoid feedback loop" notification and an options button until options are set. EigenCore doesn't actually need any options at the moment, and muted audio input is perfectly fine. So, a quick fix for hiding this is to set JUCE Modules/juce_audio_plugin_client/Standalone/juce_StandaloneFilterWindow.h class NotificationArea height = 0 (at line 967).

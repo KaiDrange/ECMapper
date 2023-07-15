@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <JUCERPROJECT id="USfU6k" name="ECMapper" projectType="audioplug" useAppConfig="0"
-              addUsingNamespaceToJuceHeader="0" displaySplashScreen="1" jucerFormatVersion="1"
+              addUsingNamespaceToJuceHeader="0" displaySplashScreen="0" jucerFormatVersion="1"
               pluginCharacteristicsValue="pluginIsMidiEffectPlugin,pluginProducesMidiOut"
               pluginManufacturer="Tic Tech" pluginManufacturerCode="TT" pluginCode="5632"
-              aaxIdentifier="ECMapper" cppLanguageStandard="17" version="1.0.3"
+              aaxIdentifier="ECMapper" cppLanguageStandard="17" version="1.1.0"
               companyName="Tic Tech" companyWebsite="ticticelectro.com" companyEmail="kaimdrange@hotmail.com"
               pluginFormats="buildStandalone,buildVST3" pluginAUMainType="'aumf'"
-              pluginChannelConfigs="{2,2}" pluginName="ECMapper v1.0.3" pluginAUExportPrefix="ECMapperAU"
+              pluginChannelConfigs="{2,2}" pluginName="ECMapper v1.1.0" pluginAUExportPrefix="ECMapperAU"
               pluginVST3Category="Tools">
   <MAINGROUP id="vhB8QE" name="ECMapper">
     <GROUP id="{C08E6E0F-711F-5656-DD30-D523FCECDD9A}" name="Gfx">
@@ -137,10 +137,10 @@
     <XCODE_MAC targetFolder="Builds/MacOSX" smallIcon="pM0slc" bigIcon="ShaqyE"
                iosBluetoothPermissionNeeded="1" iosBluetoothPermissionText="This application supports MIDI over bluetooth">
       <CONFIGURATIONS>
-        <CONFIGURATION isDebug="1" name="Debug" targetName="ECMapper_Debug" defines="JUCE_MODAL_LOOPS_PERMITTED=1"
+        <CONFIGURATION isDebug="1" name="Debug" targetName="ECMapper" defines="JUCE_MODAL_LOOPS_PERMITTED=1"
                        macOSDeploymentTarget="10.15" osxCompatibility="10.15 SDK" vst3BinaryLocation="$(HOME)/Library/Audio/DevPlugins/VST3"/>
         <CONFIGURATION isDebug="0" name="Release" targetName="ECMapper" defines="JUCE_MODAL_LOOPS_PERMITTED=1"
-                       macOSDeploymentTarget="10.15" osxCompatibility="10.15 SDK" vst3BinaryLocation="$(HOME)/Library/Audio/DevPlugins/VST3"/>
+                       macOSDeploymentTarget="10.13" osxCompatibility="10.13 SDK" vst3BinaryLocation="$(HOME)/Library/Audio/DevPlugins/VST3"/>
       </CONFIGURATIONS>
       <MODULEPATHS>
         <MODULEPATH id="juce_audio_basics" path="../../../../JUCE/modules"/>
