@@ -30,7 +30,7 @@ EigenCoreAudioProcessor::~EigenCoreAudioProcessor()
     {
         if (eigenCore->isRunning())
             eigenCore->shutdownCore();
-        delete eigenCore;
+        //delete eigenCore;
         eigenCore = nullptr;
     }
     instanceCount--;
