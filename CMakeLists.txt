@@ -2,8 +2,17 @@ cmake_minimum_required(VERSION 3.15)
 project(ECMAPPER)
 
 
+set(CMAKE_CXX_STANDARD 11)
+
+
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     message("apple config")
+
+    if(NOT CMAKE_OSX_ARCHITECTURES)
+        set(CMAKE_OSX_ARCHITECTURES "${CMAKE_HOST_SYSTEM_PROCESSOR}")
+    endif()
+    message(STATUS "CMAKE_OSX_ARCHITECTURES ${CMAKE_OSX_ARCHITECTURES}")
+
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   if (CMAKE_CROSSCOMPILING)
     message("cross compile config")
@@ -27,6 +36,7 @@ endif ()
 
 
 
+add_subdirectory(EigenLite/eigenapi)
 add_subdirectory(ECMapper)
 add_subdirectory(EigenCore)
 

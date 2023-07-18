@@ -1,6 +1,6 @@
 #pragma once
 #include <JuceHeader.h>
-#include <eigenapi_ec.h>
+#include <eigenapi.h>
 #include <sys/fcntl.h>
 #include <unistd.h>
 

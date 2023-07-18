@@ -113,9 +113,9 @@ target_compile_definitions(ECCORE
 # juce_add_binary_data(AudioPluginData SOURCES ...)
 
 juce_add_binary_data(ECCORE_DATA SOURCES
-        "EigenLite/resources/bs_mm_fw_0103.ihx"
-        "EigenLite/resources/psu_mm_fw_0102.ihx"
-        "EigenLite/resources/pico.ihx"
+        "../EigenLite/resources/bs_mm_fw_0103.ihx"
+        "../EigenLite/resources/psu_mm_fw_0102.ihx"
+        "../EigenLite/resources/pico.ihx"
         "../GFX/GreenLight.png"
         "../GFX/DarkLight.png"
         )
@@ -130,6 +130,7 @@ target_link_libraries(ECCORE PRIVATE
         ECCORE_DATA
         juce::juce_audio_utils
         juce::juce_osc
+        eigenapi
         )
 
 
