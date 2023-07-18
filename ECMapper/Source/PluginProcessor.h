@@ -16,7 +16,7 @@ public:
     ECMapperAudioProcessor();
     ~ECMapperAudioProcessor() override;
 
-    Logger logger;
+    ECMLogger logger;
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
     void releaseResources() override;
 

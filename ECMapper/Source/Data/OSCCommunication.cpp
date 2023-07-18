@@ -4,7 +4,7 @@ static int receiverListenerCount = 0;
 static juce::OSCReceiver *receiver = nullptr;
 static bool receiverIsConnected = false;
 
-OSCCommunication::OSCCommunication(OSC::OSCMessageFifo *sendQueue, OSC::OSCMessageFifo *receiveQueue, Logger *logger) {
+OSCCommunication::OSCCommunication(OSC::OSCMessageFifo *sendQueue, OSC::OSCMessageFifo *receiveQueue, ECMLogger *logger) {
     this->logger = logger;
     if (receiver == nullptr)
         receiver = new juce::OSCReceiver();

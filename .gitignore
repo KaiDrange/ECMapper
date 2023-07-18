@@ -5,3 +5,16 @@
 /EigenCore_old/Builds
 /EigenCore_old/JuceLibraryCode
 .DS_Store
+
+
+**/build
+**/*.vst
+**/*.vst3
+**/*.au
+**/*.dylib
+**/project.xcworkspace/*
+**/*.sublime-workspace
+cmake-build*/
+
+.idea/workspace.xml
+.idea/tasks.xml

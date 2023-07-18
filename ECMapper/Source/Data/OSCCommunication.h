@@ -8,7 +8,7 @@
 
 class OSCCommunication : private juce::OSCReceiver::Listener<juce::OSCReceiver::MessageLoopCallback>, juce::Timer {
 public:
-    OSCCommunication(OSC::OSCMessageFifo *sendQueue, OSC::OSCMessageFifo *receiveQueue, Logger *logger);
+    OSCCommunication(OSC::OSCMessageFifo *sendQueue, OSC::OSCMessageFifo *receiveQueue, ECMLogger *logger);
     ~OSCCommunication();
     bool connectSender();
     void disconnectSender();
@@ -36,7 +36,7 @@ private:
 
     OSC::OSCMessageFifo *sendQueue;
     OSC::Message msg;
-    Logger *logger;
+    ECMLogger *logger;
     
     void sendOutgoingMessages();
 };
