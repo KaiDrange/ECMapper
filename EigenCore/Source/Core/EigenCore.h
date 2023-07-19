@@ -2,7 +2,7 @@
 #include <JuceHeader.h>
 #include <unistd.h>
 #include <thread>
-#include "eigenapi_ec.h"
+#include <eigenapi.h>
 #include "APICallback.h"
 #include "OSCCommunication.h"
 #include "OSCMessageQueue.h"

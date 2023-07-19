@@ -2,10 +2,10 @@
 
 #include <JuceHeader.h>
 
-class Logger {
+class ECMLogger {
 public:
-    Logger(bool logToFile, bool logToConsole);
-    ~Logger();
+    ECMLogger(bool logToFile, bool logToConsole);
+    ~ECMLogger();
     void log(juce::String text);
     
 private:

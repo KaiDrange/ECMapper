@@ -1,6 +1,6 @@
 #include "Logger.h"
 
-Logger::Logger(bool logToFile, bool logToConsole) {
+ECMLogger::ECMLogger(bool logToFile, bool logToConsole) {
     this->logToFile = logToFile;
     this->logToConsole = logToConsole;
     if (logToFile) {
@@ -8,12 +8,12 @@ Logger::Logger(bool logToFile, bool logToConsole) {
     }
 }
 
-Logger::~Logger() {
+ECMLogger::~ECMLogger() {
     if (logFile != nullptr)
         delete logFile;
 }
 
-void Logger::log(juce::String text) {
+void ECMLogger::log(juce::String text) {
     if (logToConsole)
         std::cout << text << std::endl;
     
@@ -25,7 +25,7 @@ void Logger::log(juce::String text) {
 }
 
 
-juce::String Logger::timeToLogTimeStamp(juce::Time time) {
+juce::String ECMLogger::timeToLogTimeStamp(juce::Time time) {
     return juce::String(time.getYear()) + "_"
         + juce::String(time.getMonth()+1) + "_"
         + juce::String(time.getDayOfMonth()) + "_"
@@ -34,3 +34,4 @@ juce::String Logger::timeToLogTimeStamp(juce::Time time) {
         + juce::String(time.getSeconds()) + "_"
         + juce::String(time.getMilliseconds());
 };
+

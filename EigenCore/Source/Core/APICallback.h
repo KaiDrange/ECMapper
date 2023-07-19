@@ -3,7 +3,7 @@
 #include <JuceHeader.h>
 #include <unistd.h>
 #include <signal.h>
-#include <eigenapi_ec.h>
+#include <eigenapi.h>
 #include <iostream>
 #include <thread>
 #include "OSCCommunication.h"
