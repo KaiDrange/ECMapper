@@ -29,7 +29,7 @@ add_subdirectory(JUCE)
 
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    juce_set_vst2_sdk_path("$ENV{HOME}/SDKs/Steinberg/VST3/VST3 SDK")
+	juce_set_vst2_sdk_path("${CMAKE_CURRENT_LIST_DIR}/JUCE/modules/juce_audio_processors/format_types/VST3_SDK")
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     juce_set_vst2_sdk_path("$ENV{HOME}/SDKs/vst3-sdk")
 endif ()

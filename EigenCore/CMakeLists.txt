@@ -14,7 +14,7 @@ cmake_minimum_required(VERSION 3.15)
 # `project()` command. `project()` sets up some helpful variables that describe source/binary
 # directories, and the current project version. This is a standard CMake command.
 
-project(ECCORE VERSION 1.0.0)
+project(EigenCore VERSION 1.1.1)
 
 # If you've installed JUCE somehow (via a package manager, or directly using the CMake install
 # target), you'll need to tell this project that it depends on the installed copy of JUCE. If you've
@@ -40,24 +40,25 @@ project(ECCORE VERSION 1.0.0)
 
 include_directories("${PROJECT_SOURCE_DIR}/EigenLite")
 
-juce_add_plugin(ECCORE
+juce_add_plugin(EigenCore
         # VERSION ...                               # Set this if the plugin version is different to the project version
-        # ICON_BIG ...                              # ICON_* arguments specify a path to an image file to use as an icon for the Standalone
-        # ICON_SMALL ...
-        COMPANY_NAME "ticticelectro"                   # Specify the name of the plugin's author
-        COMPANY_WEBSITE "ticticelectro.com"
-        COMPANY_EMAIL "kai@ticticelectro.com"
-        DESCRIPTION "ec core"
+        ICON_BIG "../Gfx/EigenCore_Icon1024x1024.png" # ICON_* arguments specify a path to an image file to use as an icon for the Standalone
+        ICON_SMALL "../Gfx/EigenCore_Icon512x512.png"
+        COMPANY_NAME "Tic Tech"                     # Specify the name of the plugin's author
+        COMPANY_WEBSITE "https://ticticelectro.com/2023/07/17/ecmapper/"
+        COMPANY_EMAIL "kaimdrange@hotmail.com"
+        DESCRIPTION "EigenCore VST3 and Standalone"
         # IS_SYNTH TRUE/FALSE                       # Is this a synth or an effect?
         # NEEDS_MIDI_INPUT TRUE/FALSE               # Does the plugin need midi input?
         # NEEDS_MIDI_OUTPUT TRUE/FALSE              # Does the plugin need midi output?
         # IS_MIDI_EFFECT TRUE/FALSE                 # Is this plugin a MIDI effect?
         # EDITOR_WANTS_KEYBOARD_FOCUS TRUE/FALSE    # Does the editor need keyboard focus?
+        VST3_CATEGORIES "Tools"
         COPY_PLUGIN_AFTER_BUILD TRUE                # Should the plugin be installed to a default location after building?
-        PLUGIN_MANUFACTURER_CODE TITO                 # A four-character manufacturer id with at least one upper-case character
-        PLUGIN_CODE ECCO                            # A unique four-character plugin id with at least one upper-case character
-        FORMATS VST VST3                            # The formats to build. Other valid formats are: AAX Unity VST AU AUv3
-        PRODUCT_NAME "ECCO")                        # The name of the final executable, which can differ from the target name
+        PLUGIN_MANUFACTURER_CODE Manu                 # A four-character manufacturer id with at least one upper-case character
+        PLUGIN_CODE Eyb4                            # A unique four-character plugin id with at least one upper-case character
+        FORMATS Standalone VST3                     # The formats to build. Other valid formats are: AAX Unity VST AU AUv3
+        PRODUCT_NAME "EigenCore v1.1.1b")                        # The name of the final executable, which can differ from the target name
 
 # `juce_generate_juce_header` will create a JuceHeader.h for a given target, which will be generated
 # into your build tree. This should be included with `#include <JuceHeader.h>`. The include path for
@@ -65,7 +66,7 @@ juce_add_plugin(ECCORE
 # include all your JUCE module headers; if you're happy to include module headers directly, you
 # probably don't need to call this.
 
-juce_generate_juce_header(ECCORE)
+juce_generate_juce_header(EigenCore)
 
 # `target_sources` adds source files to a target. We pass the target that needs the sources as the
 # first argument, then a visibility parameter for the sources (PRIVATE is normally best practice,
@@ -75,7 +76,7 @@ juce_generate_juce_header(ECCORE)
 
 # include(${CMAKE_CURRENT_SOURCE_DIR}/../common/CMakeLists.txt)
 
-target_sources(ECCORE PRIVATE
+target_sources(EigenCore PRIVATE
         ./Source/Core/OSCCommunication.cpp
         ./Source/Core/EigenCore.cpp
         ./Source/Core/FirmwareReader.cpp
@@ -93,7 +94,7 @@ target_sources(ECCORE PRIVATE
 # definitions will be visible both to your code, and also the JUCE module code, so for new
 # definitions, pick unique names that are unlikely to collide! This is a standard CMake command.
 
-target_compile_definitions(ECCORE
+target_compile_definitions(EigenCore
         PUBLIC
         JUCE_DISPLAY_SPLASH_SCREEN=0
         # JUCE_WEB_BROWSER and JUCE_USE_CURL would be on by default, but you might not need them.
@@ -112,7 +113,7 @@ target_compile_definitions(ECCORE
 
 # juce_add_binary_data(AudioPluginData SOURCES ...)
 
-juce_add_binary_data(ECCORE_DATA SOURCES
+juce_add_binary_data(EigenCore_DATA SOURCES
         "../EigenLite/resources/bs_mm_fw_0103.ihx"
         "../EigenLite/resources/psu_mm_fw_0102.ihx"
         "../EigenLite/resources/pico.ihx"
@@ -126,8 +127,8 @@ juce_add_binary_data(ECCORE_DATA SOURCES
 # linked automatically. If we'd generated a binary data target above, we would need to link to it
 # here too. This is a standard CMake command.
 
-target_link_libraries(ECCORE PRIVATE
-        ECCORE_DATA
+target_link_libraries(EigenCore PRIVATE
+        EigenCore_DATA
         juce::juce_audio_utils
         juce::juce_osc
         eigenapi
@@ -135,6 +136,6 @@ target_link_libraries(ECCORE PRIVATE
 
 
 
-set_target_properties(${PROJECT_NAME}_VST PROPERTIES PREFIX "")
+set_target_properties(${PROJECT_NAME}_Standalone PROPERTIES PREFIX "")
 set_target_properties(${PROJECT_NAME}_VST3 PROPERTIES PREFIX "")
 
