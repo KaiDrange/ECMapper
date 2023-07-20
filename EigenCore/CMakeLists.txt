@@ -15,6 +15,7 @@ cmake_minimum_required(VERSION 3.15)
 # directories, and the current project version. This is a standard CMake command.
 
 project(EigenCore VERSION 1.1.1)
+set(BINARY_NAME "EigenCore v1.1.1b")
 
 # If you've installed JUCE somehow (via a package manager, or directly using the CMake install
 # target), you'll need to tell this project that it depends on the installed copy of JUCE. If you've
@@ -70,11 +71,11 @@ juce_add_plugin(EigenCore
         # IS_MIDI_EFFECT TRUE/FALSE                 # Is this plugin a MIDI effect?
         # EDITOR_WANTS_KEYBOARD_FOCUS TRUE/FALSE    # Does the editor need keyboard focus?
         VST3_CATEGORIES "Tools"
-        COPY_PLUGIN_AFTER_BUILD TRUE                # Should the plugin be installed to a default location after building?
+        COPY_PLUGIN_AFTER_BUILD FALSE               # Should the plugin be installed to a default location after building?
         PLUGIN_MANUFACTURER_CODE Manu                 # A four-character manufacturer id with at least one upper-case character
         PLUGIN_CODE Eyb4                            # A unique four-character plugin id with at least one upper-case character
         FORMATS Standalone VST3                     # The formats to build. Other valid formats are: AAX Unity VST AU AUv3
-        PRODUCT_NAME "EigenCore v1.1.1b")                        # The name of the final executable, which can differ from the target name
+        PRODUCT_NAME ${BINARY_NAME})                # The name of the final executable, which can differ from the target name
 
 # `juce_generate_juce_header` will create a JuceHeader.h for a given target, which will be generated
 # into your build tree. This should be included with `#include <JuceHeader.h>`. The include path for
@@ -155,3 +156,14 @@ target_link_libraries(EigenCore PRIVATE
 set_target_properties(${PROJECT_NAME}_Standalone PROPERTIES PREFIX "")
 set_target_properties(${PROJECT_NAME}_VST3 PROPERTIES PREFIX "")
 
+message("Creating Frameworks folder and copying dylib")
+add_custom_command(TARGET EigenCore_Standalone
+  PRE_BUILD COMMAND ${CMAKE_COMMAND} -E copy
+        "../../EigenLite/resources/libpico_decoder_x86_64_1_0_0.dylib"
+        "EigenCore_artefacts/${CMAKE_BUILD_TYPE}/Standalone/${BINARY_NAME}.app/Contents/Frameworks/libpicodecoder.dylib"
+)
+add_custom_command(TARGET EigenCore_VST3
+        PRE_BUILD COMMAND ${CMAKE_COMMAND} -E copy
+        "../../EigenLite/resources/libpico_decoder_x86_64_1_0_0.dylib"
+        "EigenCore_artefacts/${CMAKE_BUILD_TYPE}/VST3/${BINARY_NAME}.vst3/Contents/Frameworks/libpicodecoder.dylib"
+)
