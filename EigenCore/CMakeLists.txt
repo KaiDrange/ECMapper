@@ -36,6 +36,22 @@ project(ECCORE VERSION 1.0.0)
 # the formats specified by the FORMATS arguments. This function accepts many optional arguments.
 # Check the readme at `docs/CMake API.md` in the JUCE repo for the full list.
 
+
+if (NOT DISABLE_RPATH_OVERRIDE)
+  ## setup rpath for linux and macos
+  if(CMAKE_SYSTEM_NAME STREQUAL "Darwin") 
+    message("adding Frameworks to rpath")
+    set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+    set(CMAKE_INSTALL_NAME_DIR "@rpath")
+    set(CMAKE_INSTALL_RPATH "@executable_path/../Frameworks;@loader_path/../Frameworks")
+    set(CMAKE_BUILD_WITH_INSTALL_NAME_DIR TRUE)
+  else()
+    set(CMAKE_INSTALL_RPATH "$ORIGIN/:$ORIGIN/../lib")
+  endif()
+endif()
+
+
+
 #include_directories("${PROJECT_SOURCE_DIR}/../common")
 
 include_directories("${PROJECT_SOURCE_DIR}/EigenLite")
