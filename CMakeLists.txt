@@ -1,5 +1,4 @@
 cmake_minimum_required(VERSION 3.15)
-set(CMAKE_OSX_ARCHITECTURES x86_64 arm64)
 project(ECMAPPER)
 
 set(CMAKE_CXX_STANDARD 11)
@@ -8,7 +7,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     message("apple config")
 
     if(NOT CMAKE_OSX_ARCHITECTURES)
-        set(CMAKE_OSX_ARCHITECTURES "${CMAKE_HOST_SYSTEM_PROCESSOR}")
+        set(CMAKE_OSX_ARCHITECTURES x86_64 arm64)
     endif()
     message(STATUS "CMAKE_OSX_ARCHITECTURES ${CMAKE_OSX_ARCHITECTURES}")
 
@@ -25,14 +24,6 @@ endif()
 
 
 add_subdirectory(JUCE)
-
-
-if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-	juce_set_vst2_sdk_path("${CMAKE_CURRENT_LIST_DIR}/JUCE/modules/juce_audio_processors/format_types/VST3_SDK")
-elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    juce_set_vst2_sdk_path("$ENV{HOME}/SDKs/vst3-sdk")
-endif ()
-
 
 
 add_subdirectory(EigenLite/eigenapi)

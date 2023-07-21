@@ -71,10 +71,10 @@ juce_add_plugin(EigenCore
         # IS_MIDI_EFFECT TRUE/FALSE                 # Is this plugin a MIDI effect?
         # EDITOR_WANTS_KEYBOARD_FOCUS TRUE/FALSE    # Does the editor need keyboard focus?
         VST3_CATEGORIES "Tools"
-        COPY_PLUGIN_AFTER_BUILD FALSE               # Should the plugin be installed to a default location after building?
+        COPY_PLUGIN_AFTER_BUILD TRUE                # Should the plugin be installed to a default location after building?
         PLUGIN_MANUFACTURER_CODE Manu                 # A four-character manufacturer id with at least one upper-case character
         PLUGIN_CODE Eyb4                            # A unique four-character plugin id with at least one upper-case character
-        FORMATS Standalone VST3                     # The formats to build. Other valid formats are: AAX Unity VST AU AUv3
+        FORMATS  VST3  Standalone                   # The formats to build. Other valid formats are: AAX Unity VST AU AUv3
         PRODUCT_NAME ${BINARY_NAME})                # The name of the final executable, which can differ from the target name
 
 # `juce_generate_juce_header` will create a JuceHeader.h for a given target, which will be generated
@@ -158,7 +158,13 @@ set_target_properties(${PROJECT_NAME}_VST3 PROPERTIES PREFIX "")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   message("Creating universal picodecoder and copying it to bundle")
-  add_custom_command(TARGET EigenCore_Standalone EigenCore_VST3
+  add_custom_command(TARGET EigenCore_Standalone 
+          PRE_BUILD COMMAND lipo -create
+                "../../EigenLite/resources/libpico_decoder_x86_64_1_0_0.dylib"
+                "../../EigenLite/resources/libpico_decoder_arm64_1_0_0.dylib"
+                -output "EigenCore_artefacts/libpicodecoder.dylib"
+  )
+  add_custom_command(TARGET EigenCore_VST3
           PRE_BUILD COMMAND lipo -create
                 "../../EigenLite/resources/libpico_decoder_x86_64_1_0_0.dylib"
                 "../../EigenLite/resources/libpico_decoder_arm64_1_0_0.dylib"
