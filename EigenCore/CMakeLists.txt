@@ -156,14 +156,22 @@ target_link_libraries(EigenCore PRIVATE
 set_target_properties(${PROJECT_NAME}_Standalone PROPERTIES PREFIX "")
 set_target_properties(${PROJECT_NAME}_VST3 PROPERTIES PREFIX "")
 
-message("Creating Frameworks folder and copying dylib")
-add_custom_command(TARGET EigenCore_Standalone
-  PRE_BUILD COMMAND ${CMAKE_COMMAND} -E copy
-        "../../EigenLite/resources/libpico_decoder_x86_64_1_0_0.dylib"
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+  message("Creating universal picodecoder and copying it to bundle")
+  add_custom_command(TARGET EigenCore_Standalone EigenCore_VST3
+          PRE_BUILD COMMAND lipo -create
+                "../../EigenLite/resources/libpico_decoder_x86_64_1_0_0.dylib"
+                "../../EigenLite/resources/libpico_decoder_arm64_1_0_0.dylib"
+                -output "EigenCore_artefacts/libpicodecoder.dylib"
+  )
+  add_custom_command(TARGET EigenCore_Standalone
+    PRE_BUILD COMMAND ${CMAKE_COMMAND} -E copy
+        "EigenCore_artefacts/libpicodecoder.dylib"
         "EigenCore_artefacts/${CMAKE_BUILD_TYPE}/Standalone/${BINARY_NAME}.app/Contents/Frameworks/libpicodecoder.dylib"
-)
-add_custom_command(TARGET EigenCore_VST3
+  )
+  add_custom_command(TARGET EigenCore_VST3
         PRE_BUILD COMMAND ${CMAKE_COMMAND} -E copy
-        "../../EigenLite/resources/libpico_decoder_x86_64_1_0_0.dylib"
-        "EigenCore_artefacts/${CMAKE_BUILD_TYPE}/VST3/${BINARY_NAME}.vst3/Contents/Frameworks/libpicodecoder.dylib"
-)
+          "EigenCore_artefacts/libpicodecoder.dylib"
+          "EigenCore_artefacts/${CMAKE_BUILD_TYPE}/VST3/${BINARY_NAME}.vst3/Contents/Frameworks/libpicodecoder.dylib"
+  )
+endif()

@@ -1,9 +1,8 @@
 cmake_minimum_required(VERSION 3.15)
+set(CMAKE_OSX_ARCHITECTURES x86_64 arm64)
 project(ECMAPPER)
 
-
 set(CMAKE_CXX_STANDARD 11)
-
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     message("apple config")
