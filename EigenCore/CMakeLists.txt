@@ -178,3 +178,33 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
           "${CMAKE_CURRENT_BINARY_DIR}/EigenCore_artefacts/${CMAKE_BUILD_TYPE}/VST3/${BINARY_NAME}.vst3/Contents/Frameworks/libpicodecoder.dylib"
   )
 endif()
+
+# Code signing
+if (CMAKE_BUILD_TYPE STREQUAL "Release" AND CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+  message("Signing code as adhoc, i.e. '-'")
+  add_custom_command(TARGET EigenCore_Standalone
+          POST_BUILD COMMAND codesign -s "-"
+          "${CMAKE_CURRENT_BINARY_DIR}/EigenCore_artefacts/${CMAKE_BUILD_TYPE}/Standalone/${BINARY_NAME}.app/Contents/Frameworks/libpicodecoder.dylib"
+  )
+  add_custom_command(TARGET EigenCore_Standalone
+          POST_BUILD COMMAND codesign -s "-"
+          "${CMAKE_CURRENT_BINARY_DIR}/EigenCore_artefacts/${CMAKE_BUILD_TYPE}/Standalone/${BINARY_NAME}.app"
+  )
+  add_custom_command(TARGET EigenCore_VST3
+          POST_BUILD COMMAND codesign -s "-"
+          "${CMAKE_CURRENT_BINARY_DIR}/EigenCore_artefacts/${CMAKE_BUILD_TYPE}/VST3/${BINARY_NAME}.vst3/Contents/Frameworks/libpicodecoder.dylib"
+  )
+  add_custom_command(TARGET EigenCore_VST3
+          POST_BUILD COMMAND codesign -s "-"
+          "${CMAKE_CURRENT_BINARY_DIR}/EigenCore_artefacts/${CMAKE_BUILD_TYPE}/VST3/${BINARY_NAME}.vst3"
+  )
+endif()
+
+# Copy AFTER signing
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+  add_custom_command(TARGET EigenCore_VST3
+          POST_BUILD COMMAND cp -R
+          "${CMAKE_CURRENT_BINARY_DIR}/EigenCore_artefacts/${CMAKE_BUILD_TYPE}/VST3/${BINARY_NAME}.vst3"
+          "$ENV{HOME}/Library/Audio/Plug-ins/VST3/"
+  )
+endif()
