@@ -71,7 +71,7 @@ juce_add_plugin(EigenCore
         # IS_MIDI_EFFECT TRUE/FALSE                 # Is this plugin a MIDI effect?
         # EDITOR_WANTS_KEYBOARD_FOCUS TRUE/FALSE    # Does the editor need keyboard focus?
         VST3_CATEGORIES "Tools"
-        COPY_PLUGIN_AFTER_BUILD FALSE               # Should the plugin be installed to a default location after building?
+        COPY_PLUGIN_AFTER_BUILD TRUE                # Should the plugin be installed to a default location after building?
         PLUGIN_MANUFACTURER_CODE Manu                 # A four-character manufacturer id with at least one upper-case character
         PLUGIN_CODE Eyb4                            # A unique four-character plugin id with at least one upper-case character
         FORMATS  VST3  Standalone                   # The formats to build. Other valid formats are: AAX Unity VST AU AUv3
