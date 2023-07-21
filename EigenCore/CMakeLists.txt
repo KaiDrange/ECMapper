@@ -72,7 +72,7 @@ juce_add_plugin(EigenCore
         # EDITOR_WANTS_KEYBOARD_FOCUS TRUE/FALSE    # Does the editor need keyboard focus?
         VST3_CATEGORIES "Tools"
         COPY_PLUGIN_AFTER_BUILD TRUE                # Should the plugin be installed to a default location after building?
-        PLUGIN_MANUFACTURER_CODE Manu                 # A four-character manufacturer id with at least one upper-case character
+        PLUGIN_MANUFACTURER_CODE TtEl                 # A four-character manufacturer id with at least one upper-case character
         PLUGIN_CODE Eyb4                            # A unique four-character plugin id with at least one upper-case character
         FORMATS  VST3  Standalone                   # The formats to build. Other valid formats are: AAX Unity VST AU AUv3
         PRODUCT_NAME ${BINARY_NAME})                # The name of the final executable, which can differ from the target name
