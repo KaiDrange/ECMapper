@@ -1,20 +1,20 @@
-/ECMapper/Builds
-/ECMapper/JuceLibraryCode
-/EigenCore/Builds
-/EigenCore/JuceLibraryCode
-/EigenCore_old/Builds
-/EigenCore_old/JuceLibraryCode
+# Common build directories
+build/
+cmake-build*/
+
+# IDEs
+.idea/
 .DS_Store
+*.swp
+*~
 
-
-**/build
+# JUCE/Build artifacts
+**/Builds/
+**/JuceLibraryCode/
 **/*.vst
 **/*.vst3
 **/*.au
 **/*.dylib
-**/project.xcworkspace/*
-**/*.sublime-workspace
-cmake-build*/
 
-.idea/workspace.xml
-.idea/tasks.xml
+# Project specific
+old/

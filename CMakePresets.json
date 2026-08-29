@@ -1,0 +1,139 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 22,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "macos-base",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/build/macos/${presetName}",
+      "cacheVariables": {
+        "CMAKE_CXX_STANDARD": "20",
+        "CMAKE_OSX_ARCHITECTURES": "arm64;x86_64"
+      }
+    },
+    {
+      "name": "macos-debug",
+      "inherits": "macos-base",
+      "displayName": "macOS Debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      }
+    },
+    {
+      "name": "macos-release",
+      "inherits": "macos-base",
+      "displayName": "macOS Release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      }
+    },
+    {
+      "name": "windows-base",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/build/windows/${presetName}",
+      "cacheVariables": {
+        "CMAKE_CXX_STANDARD": "20"
+      }
+    },
+    {
+      "name": "windows-debug",
+      "inherits": "windows-base",
+      "displayName": "Windows Debug",
+      "generator": "Visual Studio 17 2022",
+      "architecture": {
+        "value": "x64",
+        "strategy": "set"
+      },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "windows-release",
+      "inherits": "windows-base",
+      "displayName": "Windows Release",
+      "generator": "Visual Studio 17 2022",
+      "architecture": {
+        "value": "x64",
+        "strategy": "set"
+      },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "macos-debug-app",
+      "displayName": "Build Standalone App",
+      "configurePreset": "macos-debug",
+      "targets": [ "ECMapper_App" ]
+    },
+    {
+      "name": "macos-debug-plugin",
+      "displayName": "Build VST3 Plugin",
+      "configurePreset": "macos-debug",
+      "targets": [ "ECMapper_Plugin" ]
+    },
+    {
+      "name": "macos-release-app",
+      "displayName": "Build Standalone App",
+      "configurePreset": "macos-release",
+      "targets": [ "ECMapper_App" ]
+    },
+    {
+      "name": "macos-release-plugin",
+      "displayName": "Build VST3 Plugin",
+      "configurePreset": "macos-release",
+      "targets": [ "ECMapper_Plugin" ]
+    },
+    {
+      "name": "windows-debug-app",
+      "displayName": "Build Standalone App",
+      "configurePreset": "windows-debug",
+      "targets": [ "ECMapper_App" ]
+    },
+    {
+      "name": "windows-debug-plugin",
+      "displayName": "Build VST3 Plugin",
+      "configurePreset": "windows-debug",
+      "targets": [ "ECMapper_Plugin" ]
+    },
+    {
+      "name": "windows-release-app",
+      "displayName": "Build Standalone App",
+      "configurePreset": "windows-release",
+      "targets": [ "ECMapper_App" ]
+    },
+    {
+      "name": "windows-release-plugin",
+      "displayName": "Build VST3 Plugin",
+      "configurePreset": "windows-release",
+      "targets": [ "ECMapper_Plugin" ]
+    }
+  ]
+}
