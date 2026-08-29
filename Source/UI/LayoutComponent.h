@@ -1,0 +1,77 @@
+#pragma once
+#include <JuceHeader.h>
+#include "PanelComponent.h"
+#include "../Core/LayoutWrapper.h"
+#include "KeyConfigComponent.h"
+#include "MidiMessageSectionComponent.h"
+#include "ChordSectionComponent.h"
+#include "../Core/Utils.h"
+
+namespace ecm {
+
+class LayoutComponent : public PanelComponent, 
+                        public juce::MidiKeyboardStateListener, 
+                        public juce::KeyListener, 
+                        public MidiMessageSectionComponent::Listener, 
+                        public ChordSectionComponent::Listener {
+public:
+    LayoutComponent(InstrumentType model, float widthFactor, float heightFactor, juce::AudioProcessorValueTreeState& pluginState);
+    ~LayoutComponent() override;
+
+    void handleNoteOn(juce::MidiKeyboardState*, int midiChannel, int midiNoteNumber, float velocity) override;
+    void handleNoteOff(juce::MidiKeyboardState*, int midiChannel, int midiNoteNumber, float velocity) override;
+    bool keyPressed(const juce::KeyPress& key, juce::Component* originatingComponent) override;
+
+    void resized() override;
+    
+    int getNormalkeyCount() const;
+    int getPercKeyCount() const;
+    int getButtonCount() const;
+    int getStripCount() const;
+    int getKeyRowCount() const;
+    const int* getKeyRowLengths() const;
+    int getTotalKeyCount() const;
+    int getPercKeyStartIndex() const;
+    int getButtonStartIndex() const;
+    void deselectAllKeys();
+    
+    ChordSectionComponent chordSectionComponent;
+    
+private:
+    LayoutWrapper::KeyId activeKeyId;
+    std::vector<KeyConfigComponent*> keys;
+    std::unique_ptr<juce::DrawablePath> keyImgNormal, keyImgOver, keyImgDown, keyImgOn;
+    
+    juce::TextButton colourMenuButton { "Colour" };
+    juce::TextButton zoneMenuButton { "Zone" };
+    juce::TextButton mapTypeMenuButton { "Type" };
+    
+    MidiMessageSectionComponent midiMessageSectionComponent;
+    
+    void valuesChanged(MidiMessageSectionComponent*) override;
+    void valuesChanged(ChordSectionComponent*) override;
+
+    std::unique_ptr<juce::DrawablePath> createBtnImage(juce::Colour colour);
+    void enableDisableMenuButtons(bool enable);
+    void showHidePanels();
+    void deselectAllOtherKeys(const KeyConfigComponent* key);
+    void createKeys();
+    int getRowNumber(int keyIndex);
+    int navigateNormalKeys(const juce::KeyPress& key, int selectedKeyIndex);
+    int navigatePercKeys(const juce::KeyPress& key, int selectedKeyIndex);
+    int navigateButtons(const juce::KeyPress& key, int selectedKeyIndex);
+    void setKeyCounts(InstrumentType deviceType);
+    
+    int normalKeyCount = 0;
+    int percKeyCount = 0;
+    int buttonCount = 0;
+    int stripCount = 0;
+    int keyRowCount = 0;
+    int keyRowLengths[5] = {0,0,0,0,0};
+    InstrumentType deviceType;
+    juce::AudioProcessorValueTreeState& pluginState;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LayoutComponent)
+};
+
+} // namespace ecm

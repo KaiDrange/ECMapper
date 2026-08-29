@@ -1,25 +1,24 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
-ECMapperAudioProcessorEditor::ECMapperAudioProcessorEditor (ECMapperAudioProcessor& p)
-    : AudioProcessorEditor (&p), audioProcessor (p)
-{
-    setSize (400, 300);
+ECMapperAudioProcessorEditor::ECMapperAudioProcessorEditor(ECMapperAudioProcessor& p)
+    : AudioProcessorEditor(&p), audioProcessor(p) {
+    
+    mainComponent = std::make_unique<ecm::MainComponent>(p.state, p.getHardwareService());
+    addAndMakeVisible(mainComponent.get());
+    
+    setResizable(true, true);
+    setResizeLimits(800, 600, 4096, 4096);
+    setSize(1000, 700);
 }
 
-ECMapperAudioProcessorEditor::~ECMapperAudioProcessorEditor()
-{
+ECMapperAudioProcessorEditor::~ECMapperAudioProcessorEditor() {
 }
 
-void ECMapperAudioProcessorEditor::paint (juce::Graphics& g)
-{
-    g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
-
-    g.setColour (juce::Colours::white);
-    g.setFont (15.0f);
-    g.drawFittedText ("ECMapper Combined - MIDI 2.0 Ready", getLocalBounds(), juce::Justification::centred, 1);
+void ECMapperAudioProcessorEditor::paint(juce::Graphics& g) {
+    g.fillAll(getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
 }
 
-void ECMapperAudioProcessorEditor::resized()
-{
+void ECMapperAudioProcessorEditor::resized() {
+    mainComponent->setBounds(getLocalBounds());
 }
