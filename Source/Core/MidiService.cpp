@@ -1,4 +1,5 @@
 #include "MidiService.h"
+#include "HardwareService.h"
 #include <cmath>
 
 namespace ecm {
@@ -11,7 +12,8 @@ MidiService::~MidiService() {
     stop();
 }
 
-void MidiService::start(juce::AudioProcessorValueTreeState& pluginState) {
+void MidiService::start(juce::AudioProcessorValueTreeState& pluginState, HardwareService* hs) {
+    hardwareService_ = hs;
     int lowerChannelCount = SettingsWrapper::getLowerMPEVoiceCount(pluginState.state);
     mpeZone_.setLowerZone(lowerChannelCount, 2, SettingsWrapper::getLowerMPEPB(pluginState.state));
     
@@ -49,6 +51,9 @@ void MidiService::stop() {
 void MidiService::processMessage(osc::Message& oscMsg, osc::Message& outgoingOscMsg, juce::MidiBuffer& midiBuffer) {
     if (!initialized_) return;
     
+    std::strncpy(outgoingOscMsg.devId, oscMsg.devId, 63);
+    outgoingOscMsg.device = oscMsg.device;
+
     int deviceIndex = static_cast<int>(oscMsg.device) - 1;
     if (deviceIndex < 0 || deviceIndex > 2) {
         if (oscMsg.type == osc::MessageType::Key && oscMsg.active)
@@ -114,7 +119,12 @@ void MidiService::processMessage(osc::Message& oscMsg, osc::Message& outgoingOsc
         default: break;
     }
 
-    if (!configLookups_[deviceIndex].controlLights && outgoingOscMsg.type == osc::MessageType::LED)
+    bool controlLights = configLookups_[deviceIndex].controlLights;
+    if (controlLights && hardwareService_ && std::strlen(outgoingOscMsg.devId) > 0) {
+        controlLights = hardwareService_->isDeviceAuthorizedForLEDs(outgoingOscMsg.devId);
+    }
+
+    if (!controlLights && outgoingOscMsg.type == osc::MessageType::LED)
         outgoingOscMsg.type = osc::MessageType::Undefined;
 }
 
@@ -135,14 +145,60 @@ void MidiService::processNoteKey(osc::Message& oscMsg, ConfigLookup::Key& keyLoo
 void MidiService::processCmdKey(osc::Message& oscMsg, osc::Message& outgoingOscMsg, ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer) {
     if (!oscMsg.active) {
         if (keyLookup.cmdType == 2) // Momentary
-            createMidiMsgOff(keyLookup, state, buffer, outgoingOscMsg);
+            createMidiMsgOff(keyLookup, state, buffer, outgoingOscMsg, oscMsg.devId);
     } else if (state->status == KeyStatus::Off) {
         if (keyLookup.cmdType == 1 && state->isLatchOn)
-            createMidiMsgOff(keyLookup, state, buffer, outgoingOscMsg);
+            createMidiMsgOff(keyLookup, state, buffer, outgoingOscMsg, oscMsg.devId);
         else
-            createMidiMsgOn(keyLookup, state, buffer, outgoingOscMsg);
+            createMidiMsgOn(keyLookup, state, buffer, outgoingOscMsg, oscMsg.devId);
     }
     state->status = oscMsg.active ? KeyStatus::Active : KeyStatus::Off;
+}
+
+void MidiService::handleRemotePerformanceData(osc::Message& oscMsg, juce::MidiBuffer& midiBuffer) {
+    osc::Message outgoingMsg;
+    processMessage(oscMsg, outgoingMsg, midiBuffer);
+}
+
+void MidiService::resendLEDs(const char* devId, InstrumentType type, osc::MessageFifo* targetQueue, bool onlyNonOff) {
+    if (!initialized_) return;
+    int deviceIndex = static_cast<int>(type) - 1;
+    if (deviceIndex < 0 || deviceIndex > 2) return;
+    
+    osc::MessageFifo* queue = targetQueue ? targetQueue : oscBroadcastQueue_;
+    if (!queue) return;
+    
+    const juce::ScopedLock sl(configLookups_[deviceIndex].getLock());
+    for (int course = 0; course < 3; ++course) {
+        for (int keyNo = 0; keyNo < 120; ++keyNo) {
+            auto& keyLookup = configLookups_[deviceIndex].keys[course][keyNo];
+            
+            unsigned int colour = (unsigned int)KeyColour::Off;
+            
+            if (keyLookup.mapType == KeyMappingType::MidiMsg && keyLookup.cmdType == 1) {
+                // Command Latch
+                if (keyStates_[deviceIndex][course][keyNo].isLatchOn) {
+                    colour = (unsigned int)KeyColour::Yellow;
+                } else {
+                    colour = (unsigned int)keyLookup.keyColour;
+                }
+            } else if (keyLookup.mapType != KeyMappingType::None) {
+                colour = (unsigned int)keyLookup.keyColour;
+            }
+            
+            if (onlyNonOff && colour == (unsigned int)KeyColour::Off) continue;
+            
+            osc::Message outgoingMsg;
+            outgoingMsg.type = osc::MessageType::LED;
+            outgoingMsg.device = type;
+            std::strncpy(outgoingMsg.devId, devId, 63);
+            outgoingMsg.course = (unsigned int)course;
+            outgoingMsg.key = (unsigned int)keyNo;
+            outgoingMsg.value = (float)colour;
+            
+            queue->add(outgoingMsg);
+        }
+    }
 }
 
 void MidiService::reduceBreath(juce::MidiBuffer& buffer) {
@@ -242,7 +298,7 @@ void MidiService::createNoteOff(ConfigLookup::Key& keyLookup, KeyState* state, j
     state->messageCount = 0;
 }
 
-void MidiService::createMidiMsgOn(ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, osc::Message& outgoingOscMsg) {
+void MidiService::createMidiMsgOn(ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, osc::Message& outgoingOscMsg, const char* devId) {
     state->isLatchOn = true;
     state->midiChannel = (keyLookup.output == MidiChannelType::MPE_Low) ? 1 : 
                          (keyLookup.output == MidiChannelType::MPE_High) ? 16 : static_cast<int>(keyLookup.output);
@@ -264,14 +320,14 @@ void MidiService::createMidiMsgOn(ConfigLookup::Key& keyLookup, KeyState* state,
     if (keyLookup.cmdType == 1) {
         outgoingOscMsg.type = osc::MessageType::LED;
         outgoingOscMsg.device = keyLookup.keyId.deviceType;
+        std::strncpy(outgoingOscMsg.devId, devId, 63);
         outgoingOscMsg.course = keyLookup.keyId.course;
         outgoingOscMsg.key = keyLookup.keyId.keyNo;
         outgoingOscMsg.value = static_cast<unsigned int>(KeyColour::Yellow);
-        if (oscBroadcastQueue_) oscBroadcastQueue_->add(outgoingOscMsg);
     }
 }
 
-void MidiService::createMidiMsgOff(ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, osc::Message& outgoingOscMsg) {
+void MidiService::createMidiMsgOff(ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, osc::Message& outgoingOscMsg, const char* devId) {
     if (keyLookup.cmdType != 3) { // Not Trigger
         int eventTime = buffer.getLastEventTime() + 1;
         if (keyLookup.msgType == 4) {
@@ -292,10 +348,10 @@ void MidiService::createMidiMsgOff(ConfigLookup::Key& keyLookup, KeyState* state
     if (keyLookup.cmdType == 1) {
         outgoingOscMsg.type = osc::MessageType::LED;
         outgoingOscMsg.device = keyLookup.keyId.deviceType;
+        std::strncpy(outgoingOscMsg.devId, devId, 63);
         outgoingOscMsg.course = keyLookup.keyId.course;
         outgoingOscMsg.key = keyLookup.keyId.keyNo;
         outgoingOscMsg.value = static_cast<unsigned int>(keyLookup.keyColour);
-        if (oscBroadcastQueue_) oscBroadcastQueue_->add(outgoingOscMsg);
     }
 }
 

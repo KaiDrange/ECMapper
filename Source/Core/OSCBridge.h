@@ -29,6 +29,10 @@ public:
 
     bool isSenderConnected() const { return hostEnabled_; }
     bool isReceiverConnected() const { return hostEnabled_; }
+    
+    bool isDiscoveryPortBusy() const { return discoveryPortBusy_; }
+    
+    static bool isPortOccupied(int port);
 
 private:
     void oscMessageReceived(const juce::OSCMessage& message) override;
@@ -49,11 +53,13 @@ private:
     
     struct Connection {
         std::string dev;
+        std::string originalDevId;
         ecm::InstrumentType type;
         ecm::DeviceMode mode;
         juce::String ip;
         int sendPort;
         int receivePort;
+        bool receiveLEDs;
         std::unique_ptr<juce::OSCSender> sender;
         std::unique_ptr<juce::OSCReceiver> receiver;
     };
@@ -61,6 +67,7 @@ private:
     std::vector<std::unique_ptr<Connection>> connections_;
     juce::CriticalSection connectionsLock_;
     bool hostEnabled_ = false;
+    bool discoveryPortBusy_ = false;
     juce::String instanceId_;
     
     std::unique_ptr<juce::OSCReceiver> globalClientReceiver_;

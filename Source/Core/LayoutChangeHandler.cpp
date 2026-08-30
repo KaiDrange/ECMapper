@@ -39,12 +39,6 @@ void LayoutChangeHandler::valueTreePropertyChanged(juce::ValueTree& vTree, const
         if (deviceType != InstrumentType::None) {
             configLookups_[getConfigIndexFromInstrumentType(deviceType)].updateAll();
         }
-    } else if (property == SettingsWrapper::id_controlLights && typeStr.startsWith(LayoutWrapper::id_device.toString())) {
-        deviceType = static_cast<InstrumentType>(typeStr.substring(6).getIntValue());
-        if (deviceType != InstrumentType::None) {
-            configLookups_[getConfigIndexFromInstrumentType(deviceType)].controlLights = SettingsWrapper::getControlLights(deviceType, state_);
-            sendLEDMsgForAllKeys(deviceType);
-        }
     }
 
     if (suspendProcessingCallback_) suspendProcessingCallback_(false);

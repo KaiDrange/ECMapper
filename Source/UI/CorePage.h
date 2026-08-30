@@ -16,10 +16,9 @@ public:
 
     // HardwareService::Listener overrides
     void deviceListChanged() override;
+    void timerCallback() override;
 
 private:
-    void timerCallback() override { repaint(); }
-    
     void updateDeviceList();
 
     HardwareService& hardwareService_;
@@ -38,6 +37,8 @@ private:
         std::unique_ptr<juce::TextEditor> ipInput;
         std::unique_ptr<juce::Label> portLabel;
         std::unique_ptr<juce::TextEditor> portInput;
+        std::unique_ptr<juce::TextButton> ledToggle;
+        std::unique_ptr<juce::TextButton> addButton;
         std::unique_ptr<juce::TextButton> removeButton;
     };
 
@@ -47,14 +48,14 @@ private:
         std::unique_ptr<juce::Label> nameLabel;
         std::unique_ptr<juce::ComboBox> modeCombo;
         std::vector<std::unique_ptr<TargetRow>> targets;
-        std::unique_ptr<juce::TextButton> addTargetButton;
-        std::unique_ptr<juce::TextButton> disconnectButton;
+        std::unique_ptr<juce::TextButton> emptyAddButton;
     };
     
     std::vector<std::unique_ptr<DeviceRow>> deviceRows_;
 
     juce::Image ledGreen;
     juce::Image ledOff;
+    juce::Image ledRed;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (CorePage)
 };

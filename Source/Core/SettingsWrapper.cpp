@@ -7,8 +7,21 @@ void SettingsWrapper::addListener(juce::ValueTree::Listener* listener, juce::Val
     vTree.addListener(listener);
 }
 
+void SettingsWrapper::cleanupLegacyDeviceNodes(juce::ValueTree& devicesNode) {
+    if (!devicesNode.isValid()) return;
+    for (int i = devicesNode.getNumChildren(); --i >= 0;) {
+        auto child = devicesNode.getChild(i);
+        if (child.getType() != id_deviceNode) {
+            devicesNode.removeChild(i, nullptr);
+        }
+    }
+}
+
 juce::ValueTree SettingsWrapper::getSettingsTree(juce::ValueTree& rootState) {
-    return rootState.getOrCreateChildWithName(id_globalSettings, nullptr);
+    auto vTree = rootState.getOrCreateChildWithName(id_globalSettings, nullptr);
+    auto devices = vTree.getOrCreateChildWithName(id_devices, nullptr);
+    cleanupLegacyDeviceNodes(devices);
+    return vTree;
 }
 
 juce::String SettingsWrapper::getIP(juce::ValueTree& rootState) {
@@ -71,16 +84,6 @@ int SettingsWrapper::getCurrentTabIndex(juce::ValueTree& rootState) {
     return vTree.getProperty(id_activeTab, default_activeTab);
 }
 
-bool SettingsWrapper::getControlLights(InstrumentType deviceType, juce::ValueTree& rootState) {
-    auto deviceChild = rootState.getOrCreateChildWithName(LayoutWrapper::id_device + juce::String((int)deviceType), nullptr);
-    return deviceChild.getProperty(id_controlLights, true);
-}
-
-void SettingsWrapper::setControlLights(bool value, InstrumentType deviceType, juce::ValueTree& rootState) {
-    auto deviceChild = rootState.getOrCreateChildWithName(LayoutWrapper::id_device + juce::String((int)deviceType), nullptr);
-    deviceChild.setProperty(id_controlLights, value, nullptr);
-}
-
 AppRole SettingsWrapper::getAppRole(juce::ValueTree& rootState) {
     auto settings = getSettingsTree(rootState);
     return (AppRole)(int)settings.getProperty(id_appRole, (int)AppRole::Host);
@@ -134,6 +137,7 @@ void SettingsWrapper::saveDeviceSettings(const ConnectedDevice& device, juce::Va
         juce::ValueTree tNode(id_target);
         tNode.setProperty(id_IP, t.ip, nullptr);
         tNode.setProperty(id_port, t.port, nullptr);
+        tNode.setProperty(id_receiveLEDs, t.receiveLEDs, nullptr);
         targetsNode.appendChild(tNode, nullptr);
     }
 }
@@ -159,6 +163,7 @@ void SettingsWrapper::loadDeviceSettings(ConnectedDevice& device, juce::ValueTre
             OSCTarget t;
             t.ip = tNode.getProperty(id_IP, "127.0.0.1");
             t.port = tNode.getProperty(id_port, 12120);
+            t.receiveLEDs = tNode.getProperty(id_receiveLEDs, false);
             device.oscTargets.push_back(t);
         }
     }

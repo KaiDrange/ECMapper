@@ -8,7 +8,7 @@ ConfigLookup::ConfigLookup(InstrumentType deviceType, juce::AudioProcessorValueT
 
 void ConfigLookup::updateAll() {
     const juce::ScopedLock sl(lock_);
-    this->controlLights = SettingsWrapper::getControlLights(deviceType, pluginState.state);
+    this->controlLights = true;
 
     for (int course = 0; course < 3; ++course) {
         for (int keyNo = 0; keyNo < 120; ++keyNo) {

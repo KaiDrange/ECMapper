@@ -14,7 +14,6 @@ public:
     static inline const juce::Identifier id_lowerMPEPB {"lowermpepb"};
     static inline const juce::Identifier id_upperMPEPB {"uppermpepb"};
     static inline const juce::Identifier id_activeTab {"activetab"};
-    static inline const juce::Identifier id_controlLights { "controlLights" };
     
     static inline const juce::Identifier id_appRole { "appRole" };
     static inline const juce::Identifier id_clientListenIP { "clientListenIP" };
@@ -35,9 +34,6 @@ public:
     static void setCurrentTabIndex(int index, juce::ValueTree& rootState);
     static int getCurrentTabIndex(juce::ValueTree& rootState);
     
-    static bool getControlLights(InstrumentType deviceType, juce::ValueTree& rootState);
-    static void setControlLights(bool value, InstrumentType deviceType, juce::ValueTree& rootState);
-    
     static AppRole getAppRole(juce::ValueTree& rootState);
     static void setAppRole(AppRole role, juce::ValueTree& rootState);
     static juce::String getClientListenIP(juce::ValueTree& rootState);
@@ -54,6 +50,7 @@ private:
     static inline const juce::Identifier id_targets { "targets" };
     static inline const juce::Identifier id_target { "target" };
     static inline const juce::Identifier id_port { "port" };
+    static inline const juce::Identifier id_receiveLEDs { "receiveLEDs" };
     static inline const juce::Identifier id_deviceNode { "device" };
     static inline const juce::Identifier id_devId { "devId" };
     static inline const juce::String default_IP { "127.0.0.1:12120" };
@@ -63,6 +60,7 @@ private:
     static constexpr int default_upperMPEPB = 48;
     static constexpr int default_activeTab = 0;
 
+    static void cleanupLegacyDeviceNodes(juce::ValueTree& devicesNode);
     static juce::ValueTree getSettingsTree(juce::ValueTree& rootState);
 };
 

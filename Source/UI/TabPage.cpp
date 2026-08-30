@@ -39,12 +39,6 @@ TabPage::TabPage(int tabIndex, InstrumentType deviceType, juce::AudioProcessorVa
         // Reset properties to default
     };
     
-    addAndMakeVisible(controlLightsButton);
-    controlLightsButton.setToggleState(SettingsWrapper::getControlLights(deviceType, pluginState.state), juce::dontSendNotification);
-    controlLightsButton.onClick = [this] {
-        SettingsWrapper::setControlLights(controlLightsButton.getToggleState(), this->deviceType, this->pluginState.state);
-    };
-    
     addKeyListener(layoutPanel.get());
 }
 
@@ -68,7 +62,6 @@ void TabPage::resized() {
     loadMappingButton.setBounds(btnarea.removeFromLeft(area.getWidth() * 0.1f));
     saveMappingButton.setBounds(btnarea.removeFromLeft(area.getWidth() * 0.1f));
     clearMappingButton.setBounds(btnarea.removeFromLeft(area.getWidth() * 0.1f));
-    controlLightsButton.setBounds(btnarea.removeFromRight(area.getWidth() * 0.15f));
 
     layoutPanel->setBounds(area.removeFromLeft(static_cast<int>(area.getWidth() * 0.4f)));
     

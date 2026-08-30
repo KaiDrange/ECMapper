@@ -25,7 +25,6 @@ private:
     juce::TextButton saveMappingButton { "Save" };
     juce::TextButton loadMappingButton { "Load" };
     juce::TextButton clearMappingButton { "Clear" };
-    juce::ToggleButton controlLightsButton { "Control LEDs" };
     
     juce::AudioProcessorValueTreeState& pluginState;
 

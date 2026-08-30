@@ -13,7 +13,8 @@ enum class MessageType : int {
     Pedal = 5,
     LED = 6,
     Ping = 7,
-    Reset = 8
+    Reset = 8,
+    RequestLEDs = 9
 };
 
 struct Message {
@@ -35,7 +36,7 @@ struct Message {
 // though we'll use a safer approach in the implementation.
 static_assert(sizeof(Message) % sizeof(int) == 0, "Message struct size must be a multiple of sizeof(int)");
 const int MessageSize = sizeof(Message) / sizeof(int);
-const int QueueSize = 1024;
+const int QueueSize = 4096;
 
 class MessageFifo {
 public:

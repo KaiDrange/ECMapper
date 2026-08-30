@@ -17,6 +17,7 @@ ECMapperAudioProcessor::ECMapperAudioProcessor() :
     midiService(configLookups),
     oscBridge(hardwareService, hardwareToMapperQueue, mapperToHardwareQueue, outgoingOSCQueue, logger) {
     
+    hardwareService.addListener(this);
     hardwareService.setOSCBroadcastQueue(&outgoingOSCQueue);
     midiService.setOSCBroadcastQueue(&outgoingOSCQueue);
     
@@ -25,6 +26,7 @@ ECMapperAudioProcessor::ECMapperAudioProcessor() :
 }
 
 ECMapperAudioProcessor::~ECMapperAudioProcessor() {
+    hardwareService.removeListener(this);
     state.state.removeListener(layoutChangeHandler.get());
 }
 
@@ -33,7 +35,7 @@ void ECMapperAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBloc
     logger.log("prepareToPlay() called.");
     
     updateGlobalSettings();
-    midiService.start(state);
+    midiService.start(state, &hardwareService);
     hardwareService.startService(&state.state);
     oscBridge.setSenderEnabled(true);
     oscBridge.setReceiverEnabled(true);
@@ -77,7 +79,9 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& audioBuffer,
             outgoingMsg.type = ecm::osc::MessageType::Undefined;
             midiService.processMessage(msg, outgoingMsg, midiMessages);
             if (outgoingMsg.type == ecm::osc::MessageType::LED) {
-                mapperToHardwareQueue.add(outgoingMsg);
+                if (hardwareService.getDeviceMode(msg.devId) == ecm::DeviceMode::Local) {
+                    mapperToHardwareQueue.add(outgoingMsg);
+                }
             }
         }
     }
@@ -103,9 +107,47 @@ void ECMapperAudioProcessor::setStateInformation(const void* data, int sizeInByt
 }
 
 void ECMapperAudioProcessor::updateGlobalSettings() {
-    hardwareService.setAppRole(ecm::SettingsWrapper::getAppRole(state.state));
+    auto role = ecm::SettingsWrapper::getAppRole(state.state);
+    
+    if (role == ecm::AppRole::Host && ecm::OSCBridge::isPortOccupied(12121)) {
+        logger.log("Host detected on network (port 12121 busy). Auto-switching to Client mode.");
+        role = ecm::AppRole::Client;
+    }
+
+    hardwareService.setAppRole(role);
     hardwareService.setClientListenSettings(ecm::SettingsWrapper::getClientListenIP(state.state), 
                                          ecm::SettingsWrapper::getClientListenPort(state.state));
+}
+
+void ECMapperAudioProcessor::deviceListChanged() {}
+
+void ECMapperAudioProcessor::deviceNeedsLEDSync(const std::string& devId, ecm::InstrumentType type, bool isRequest) {
+    if (hardwareService.getAppRole() == ecm::AppRole::Client) {
+        // Only return if Control LEDs is on
+        if (hardwareService.isDeviceAuthorizedForLEDs(devId)) {
+            midiService.resendLEDs(devId.c_str(), type, &outgoingOSCQueue, isRequest);
+        }
+    } else if (hardwareService.getAppRole() == ecm::AppRole::Host) {
+        // If it's a local device, send to mapperToHardwareQueue
+        // We know it's a Host, so if it's not a remote device, it's local.
+        bool isRemote = false;
+        auto devices = hardwareService.getConnectedDevices();
+        for (const auto& d : devices) {
+            if (d.dev == devId) {
+                isRemote = d.isRemote;
+                break;
+            }
+        }
+        
+        if (!isRemote) {
+            if (hardwareService.getDeviceMode(devId) == ecm::DeviceMode::Local) {
+                midiService.resendLEDs(devId.c_str(), type, &mapperToHardwareQueue, isRequest);
+            }
+        } else {
+            // It's a remote device on a host (which shouldn't happen much, but still)
+            midiService.resendLEDs(devId.c_str(), type, &outgoingOSCQueue, isRequest);
+        }
+    }
 }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() {

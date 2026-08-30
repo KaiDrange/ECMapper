@@ -9,15 +9,19 @@
 
 namespace ecm {
 
+class HardwareService;
+
 class MidiService {
 public:
     MidiService(ConfigLookup (&configLookups)[3]);
     ~MidiService();
     
-    void start(juce::AudioProcessorValueTreeState& pluginState);
+    void start(juce::AudioProcessorValueTreeState& pluginState, HardwareService* hs = nullptr);
     void stop();
     
     void processMessage(osc::Message& oscMsg, osc::Message& outgoingOscMsg, juce::MidiBuffer& midiBuffer);
+    void handleRemotePerformanceData(osc::Message& oscMsg, juce::MidiBuffer& midiBuffer);
+    void resendLEDs(const char* devId, InstrumentType type, osc::MessageFifo* targetQueue = nullptr, bool onlyNonOff = false);
     void reduceBreath(juce::MidiBuffer& buffer);
     void createLayoutRPNs(juce::MidiBuffer& buffer);
 
@@ -60,6 +64,7 @@ private:
     
     ConfigLookup (&configLookups_)[3];
     osc::MessageFifo* oscBroadcastQueue_ = nullptr;
+    HardwareService* hardwareService_ = nullptr;
     BezierCurve velocityCurve_ { 0.0f, 0.0f, 0.0f, 1.0f, 0.5f, 0.6f, 1.0f, 1.0f };
     bool initialized_ = false;
 
@@ -70,8 +75,8 @@ private:
     void createNoteOff(ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer);
     void createNoteHold(ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer);
     
-    void createMidiMsgOn(ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, osc::Message& outgoingOscMsg);
-    void createMidiMsgOff(ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, osc::Message& outgoingOscMsg);
+    void createMidiMsgOn(ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, osc::Message& outgoingOscMsg, const char* devId);
+    void createMidiMsgOff(ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, osc::Message& outgoingOscMsg, const char* devId);
     void createAllNotesOff(juce::MidiBuffer& buffer);
     
     void addMidiValueMessage(int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, int noteNo, juce::MidiBuffer& buffer, bool isBipolar);

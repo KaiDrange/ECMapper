@@ -17,18 +17,26 @@ public:
     bool isServiceRunning() const { return isThreadRunning(); }
 
     void turnOffAllLEDs();
+    void turnOffDeviceLEDs(const std::string& devId);
 
     std::vector<ConnectedDevice> getConnectedDevices();
     void setDeviceMode(const std::string& dev, ecm::DeviceMode mode);
+    ecm::DeviceMode getDeviceMode(const std::string& devId) const;
     void addDeviceOSCTarget(const std::string& dev, const juce::String& ip, int port);
     void removeDeviceOSCTarget(const std::string& dev, int targetIndex);
-    void updateDeviceOSCTarget(const std::string& dev, int targetIndex, const juce::String& ip, int port);
+    void updateDeviceOSCTarget(const std::string& dev, int targetIndex, const juce::String& ip, int port, bool receiveLEDs);
     bool isDeviceTypeInReceiveOSCMode(ecm::InstrumentType type);
     bool isDeviceInReceiveOSCMode(const std::string& dev);
     void handleRemoteDeviceConnection(ecm::InstrumentType type, const juce::String& remoteIP, const juce::String& remoteDevId, int port);
+    void updateDeviceLastMessageTime(const std::string& devId);
+    void checkStaleDevices();
 
     AppRole getAppRole() const { return appRole_; }
     void setAppRole(AppRole role);
+
+    void syncLEDs(const std::string& devId);
+    void handleLEDRequest(const std::string& devId);
+    void requestRemoteLEDs(const std::string& devId);
     
     juce::String getClientListenIP() const { return clientListenIP_; }
     int getClientListenPort() const { return clientListenPort_; }
@@ -38,6 +46,7 @@ public:
     public:
         virtual ~Listener() = default;
         virtual void deviceListChanged() = 0;
+        virtual void deviceNeedsLEDSync(const std::string& devId, InstrumentType type, bool isRequest) {}
     };
 
     void addListener(Listener* listener) { listeners_.add(listener); }
@@ -45,6 +54,8 @@ public:
 
     void setOSCBroadcastQueue(osc::MessageFifo* queue) { oscBroadcastQueue_ = queue; }
 
+    bool isDeviceAuthorizedForLEDs(const std::string& devId) const;
+    
     // EigenApi::LifecycleCallback overrides
     void connected(const char* dev, EigenApi::DeviceType dt) override;
     void disconnected(const char* dev) override;

@@ -8,7 +8,8 @@
 #include "Core/LayoutChangeHandler.h"
 #include "Core/Logger.h"
 
-class ECMapperAudioProcessor : public juce::AudioProcessor
+class ECMapperAudioProcessor : public juce::AudioProcessor,
+                               public ecm::HardwareService::Listener
 {
 public:
     ECMapperAudioProcessor();
@@ -39,6 +40,10 @@ public:
 
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
+
+    // HardwareService::Listener overrides
+    void deviceListChanged() override;
+    void deviceNeedsLEDSync(const std::string& devId, ecm::InstrumentType type, bool isRequest) override;
 
     juce::AudioProcessorValueTreeState state;
     ecm::HardwareService& getHardwareService() { return hardwareService; }

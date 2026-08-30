@@ -8,6 +8,15 @@ CorePage::CorePage(HardwareService& hardwareService, juce::ValueTree& state)
     ledGreen = juce::ImageFileFormat::loadFrom(BinaryData::GreenLight_png, BinaryData::GreenLight_pngSize);
     ledOff = juce::ImageFileFormat::loadFrom(BinaryData::DarkLight_png, BinaryData::DarkLight_pngSize);
     
+    ledRed = juce::Image(juce::Image::ARGB, 32, 32, true);
+    {
+        juce::Graphics g(ledRed);
+        g.setColour(juce::Colours::red);
+        g.fillEllipse(4, 4, 24, 24);
+        g.setColour(juce::Colours::white.withAlpha(0.4f));
+        g.fillEllipse(8, 8, 10, 10);
+    }
+    
     roleLabel.setText("Role:", juce::dontSendNotification);
     addAndMakeVisible(roleLabel);
     
@@ -22,7 +31,7 @@ CorePage::CorePage(HardwareService& hardwareService, juce::ValueTree& state)
     };
     addAndMakeVisible(roleCombo);
     
-    clientIpLabel.setText("Listen IP:", juce::dontSendNotification);
+    clientIpLabel.setText("Listen Host:", juce::dontSendNotification);
     clientIpInput.setText(hardwareService_.getClientListenIP(), juce::dontSendNotification);
     clientIpInput.onReturnKey = [this] {
         hardwareService_.setClientListenSettings(clientIpInput.getText(), clientPortInput.getText().getIntValue());
@@ -56,6 +65,31 @@ void CorePage::deviceListChanged() {
     juce::MessageManager::callAsync([this] {
         updateDeviceList();
     });
+}
+
+void CorePage::timerCallback() {
+    auto devices = hardwareService_.getConnectedDevices();
+    auto currentTime = juce::Time::getMillisecondCounter();
+    
+    for (auto& row : deviceRows_) {
+        for (const auto& d : devices) {
+            if (d.dev == row->dev) {
+                if (d.isRemote) {
+                    // Green if message received in the last 2 seconds
+                    if (currentTime - d.lastMessageTime < 2000) {
+                        row->statusLed->setImage(ledGreen);
+                    } else {
+                        row->statusLed->setImage(ledRed);
+                    }
+                } else {
+                    // Local devices are green if they are in the list
+                    row->statusLed->setImage(ledGreen);
+                }
+                break;
+            }
+        }
+    }
+    repaint();
 }
 
 void CorePage::updateDeviceList() {
@@ -94,14 +128,14 @@ void CorePage::updateDeviceList() {
         
         row->modeCombo = std::make_unique<juce::ComboBox>();
         row->modeCombo->addItem("Local", 1);
-        row->modeCombo->addItem("Transmit OSC (EigenCore)", 2);
-        row->modeCombo->addItem("Receive OSC (ECMapper)", 3);
+        row->modeCombo->addItem("Transmit", 2);
+        row->modeCombo->addItem("Receive", 3);
         
         if (isHost) {
             row->modeCombo->setItemEnabled(3, false); // No Receive OSC in Host mode for local devices
+            row->modeCombo->setVisible(true);
         } else {
-            row->modeCombo->setItemEnabled(1, false); // No Local in Client mode
-            row->modeCombo->setItemEnabled(2, false); // No Transmit in Client mode
+            row->modeCombo->setVisible(false);
         }
         
         if (d.isRemote) {
@@ -118,11 +152,17 @@ void CorePage::updateDeviceList() {
         }
         row->modeCombo->setSelectedId(selectedId, juce::dontSendNotification);
         
+        row->emptyAddButton = std::make_unique<juce::TextButton>("+ Target");
+        row->emptyAddButton->onClick = [this, dev = d.dev] {
+            hardwareService_.addDeviceOSCTarget(dev, "127.0.0.1", 12130);
+        };
+        addAndMakeVisible(row->emptyAddButton.get());
+        
         for (int i = 0; i < (int)d.oscTargets.size(); ++i) {
             auto& target = d.oscTargets[i];
             auto tRow = std::make_unique<TargetRow>();
             
-            tRow->ipLabel = std::make_unique<juce::Label>("", "IP:");
+            tRow->ipLabel = std::make_unique<juce::Label>("", "Host:");
             tRow->ipLabel->setColour(juce::Label::textColourId, juce::Colours::grey);
             addAndMakeVisible(tRow->ipLabel.get());
             
@@ -130,7 +170,8 @@ void CorePage::updateDeviceList() {
             tRow->ipInput->setText(target.ip, juce::dontSendNotification);
             tRow->ipInput->onReturnKey = [this, dev = d.dev, targetIndex = i, r = row.get(), ti = i] {
                 if (ti < (int)r->targets.size()) {
-                    hardwareService_.updateDeviceOSCTarget(dev, ti, r->targets[ti]->ipInput->getText(), r->targets[ti]->portInput->getText().getIntValue());
+                    auto& t = r->targets[ti];
+                    hardwareService_.updateDeviceOSCTarget(dev, ti, t->ipInput->getText(), t->portInput->getText().getIntValue(), t->ledToggle->getToggleState());
                 }
             };
             tRow->ipInput->onFocusLost = tRow->ipInput->onReturnKey;
@@ -147,6 +188,27 @@ void CorePage::updateDeviceList() {
             tRow->portInput->onFocusLost = tRow->ipInput->onReturnKey;
             addAndMakeVisible(tRow->portInput.get());
             
+            tRow->ledToggle = std::make_unique<juce::TextButton>(isHost ? "L" : "Control LEDs");
+            tRow->ledToggle->setClickingTogglesState(true);
+            tRow->ledToggle->setToggleState(target.receiveLEDs, juce::dontSendNotification);
+            tRow->ledToggle->setColour(juce::TextButton::buttonOnColourId, juce::Colours::yellow);
+            tRow->ledToggle->setColour(juce::TextButton::textColourOnId, juce::Colours::black);
+            tRow->ledToggle->setTooltip(isHost ? "Toggle Send LEDs" : "Toggle Control LEDs");
+            tRow->ledToggle->onClick = [this, dev = d.dev, ti = i, r = row.get()] {
+                if (ti < (int)r->targets.size()) {
+                    auto& t = r->targets[ti];
+                    hardwareService_.updateDeviceOSCTarget(dev, ti, t->ipInput->getText(), t->portInput->getText().getIntValue(), t->ledToggle->getToggleState());
+                }
+            };
+            addAndMakeVisible(tRow->ledToggle.get());
+            if (isHost) tRow->ledToggle->setVisible(false); // Hide in Host mode per user request "should only be on the Client"
+            
+            tRow->addButton = std::make_unique<juce::TextButton>("+");
+            tRow->addButton->onClick = [this, dev = d.dev] {
+                hardwareService_.addDeviceOSCTarget(dev, "127.0.0.1", 12130);
+            };
+            addAndMakeVisible(tRow->addButton.get());
+            
             tRow->removeButton = std::make_unique<juce::TextButton>("X");
             tRow->removeButton->onClick = [this, dev = d.dev, ti = i] {
                 hardwareService_.removeDeviceOSCTarget(dev, ti);
@@ -156,28 +218,23 @@ void CorePage::updateDeviceList() {
             row->targets.push_back(std::move(tRow));
         }
         
-        row->addTargetButton = std::make_unique<juce::TextButton>("+ Target");
-        row->addTargetButton->onClick = [this, dev = d.dev] {
-            hardwareService_.addDeviceOSCTarget(dev, "127.0.0.1", 12130);
-        };
-        addAndMakeVisible(row->addTargetButton.get());
-        
-        row->disconnectButton = std::make_unique<juce::TextButton>("Disconnect");
-        row->disconnectButton->onClick = [this, dev = d.dev] {
-            juce::Logger::writeToLog("Disconnect requested for device: " + dev);
-        };
-        addAndMakeVisible(row->disconnectButton.get());
-        
-        auto updateVisibility = [row = row.get()]() {
+        auto updateVisibility = [row = row.get(), isHost]() {
             bool oscVisible = row->modeCombo->getSelectedId() > 1;
+            bool canAdd = row->targets.size() < 3;
+            bool canRemove = row->targets.size() > 1;
+            bool empty = row->targets.empty();
+            
             for (auto& t : row->targets) {
                 t->ipLabel->setVisible(oscVisible);
                 t->ipInput->setVisible(oscVisible);
                 t->portLabel->setVisible(oscVisible);
                 t->portInput->setVisible(oscVisible);
-                t->removeButton->setVisible(oscVisible);
+                t->ledToggle->setVisible(oscVisible && !isHost);
+                t->addButton->setVisible(oscVisible && canAdd);
+                t->removeButton->setVisible(oscVisible && canRemove);
             }
-            row->addTargetButton->setVisible(oscVisible && row->targets.size() < 3);
+            
+            row->emptyAddButton->setVisible(oscVisible && empty);
         };
         
         row->modeCombo->onChange = [this, dev = d.dev, combo = row->modeCombo.get(), updateVisibility] {
@@ -239,37 +296,67 @@ void CorePage::resized() {
     
     area.removeFromTop(10);
     
+    bool isHost = hardwareService_.getAppRole() == AppRole::Host;
+    
     for (auto& row : deviceRows_) {
-        bool oscVisible = row->modeCombo->getSelectedId() > 1;
-        int rowHeight = 40;
+        bool oscVisible = row->modeCombo->getSelectedId() > 1 || !isHost;
+        int rowHeight = 35;
         if (oscVisible) {
-            rowHeight = 35 + (int)row->targets.size() * 35;
-            if (row->targets.size() < 3) rowHeight += 35;
+            int additionalRows = std::max(0, (int)row->targets.size() - 1);
+            rowHeight += additionalRows * 35;
         }
         auto rowArea = area.removeFromTop(rowHeight);
         
         auto mainRow = rowArea.removeFromTop(35);
         row->statusLed->setBounds(mainRow.removeFromLeft(20).reduced(4));
-        row->nameLabel->setBounds(mainRow.removeFromLeft(180));
-        row->disconnectButton->setBounds(mainRow.removeFromRight(80).reduced(2));
-        row->modeCombo->setBounds(mainRow.reduced(2));
+        row->nameLabel->setBounds(mainRow.removeFromLeft(140));
+        
+        if (isHost) {
+            row->modeCombo->setBounds(mainRow.removeFromLeft(100).reduced(2));
+            mainRow.removeFromLeft(5);
+        }
+        
+        if (oscVisible && !row->targets.empty()) {
+            auto& t = row->targets[0];
+            t->ipLabel->setBounds(mainRow.removeFromLeft(40));
+            t->ipInput->setBounds(mainRow.removeFromLeft(100).reduced(2));
+            mainRow.removeFromLeft(5);
+            t->portLabel->setBounds(mainRow.removeFromLeft(35));
+            t->portInput->setBounds(mainRow.removeFromLeft(50).reduced(2));
+            mainRow.removeFromLeft(5);
+            
+            if (!isHost) {
+                t->ledToggle->setBounds(mainRow.removeFromLeft(100).reduced(2));
+            } else {
+                t->ledToggle->setBounds(mainRow.removeFromLeft(25).reduced(2));
+            }
+            
+            if (t->addButton->isVisible()) t->addButton->setBounds(mainRow.removeFromLeft(25).reduced(2));
+            if (t->removeButton->isVisible()) t->removeButton->setBounds(mainRow.removeFromLeft(25).reduced(2));
+        } else if (oscVisible && row->targets.empty()) {
+            row->emptyAddButton->setBounds(mainRow.removeFromLeft(100).reduced(2));
+        }
         
         if (oscVisible) {
-            for (auto& t : row->targets) {
+            for (int i = 1; i < (int)row->targets.size(); ++i) {
+                auto& t = row->targets[i];
                 auto oscRow = rowArea.removeFromTop(35);
-                oscRow.removeFromLeft(40); // indent
-                t->ipLabel->setBounds(oscRow.removeFromLeft(30));
-                t->ipInput->setBounds(oscRow.removeFromLeft(150).reduced(2));
-                oscRow.removeFromLeft(10);
-                t->portLabel->setBounds(oscRow.removeFromLeft(40));
-                t->portInput->setBounds(oscRow.removeFromLeft(80).reduced(2));
-                oscRow.removeFromLeft(10);
-                t->removeButton->setBounds(oscRow.removeFromLeft(30).reduced(2));
-            }
-            if (row->targets.size() < 3) {
-                auto addRow = rowArea.removeFromTop(35);
-                addRow.removeFromLeft(40);
-                row->addTargetButton->setBounds(addRow.removeFromLeft(100).reduced(2));
+                oscRow.removeFromLeft(isHost ? 265 : 160); // align with first target
+                t->ipLabel->setBounds(oscRow.removeFromLeft(40));
+                t->ipInput->setBounds(oscRow.removeFromLeft(100).reduced(2));
+                oscRow.removeFromLeft(5);
+                t->portLabel->setBounds(oscRow.removeFromLeft(35));
+                t->portInput->setBounds(oscRow.removeFromLeft(50).reduced(2));
+                oscRow.removeFromLeft(5);
+                
+                if (!isHost) {
+                    t->ledToggle->setBounds(oscRow.removeFromLeft(100).reduced(2));
+                } else {
+                    t->ledToggle->setBounds(oscRow.removeFromLeft(25).reduced(2));
+                }
+                
+                if (t->addButton->isVisible()) t->addButton->setBounds(oscRow.removeFromLeft(25).reduced(2));
+                if (t->removeButton->isVisible()) t->removeButton->setBounds(oscRow.removeFromLeft(25).reduced(2));
             }
         }
     }

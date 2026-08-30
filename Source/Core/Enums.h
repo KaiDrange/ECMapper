@@ -77,6 +77,7 @@ enum class AppRole {
 struct OSCTarget {
     juce::String ip = "127.0.0.1";
     int port = 12120;
+    bool receiveLEDs = false;
 };
 
 struct ConnectedDevice {
@@ -88,6 +89,7 @@ struct ConnectedDevice {
     std::vector<OSCTarget> oscTargets;
     int assignedLEDColours[3][120] = { {0} };
     bool activeKeys[3][120] = { {false} };
+    juce::uint32 lastMessageTime = 0;
 };
 
 } // namespace ecm
