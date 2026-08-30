@@ -23,12 +23,31 @@ option(ECMAPPER_BUILD_PLUGIN "Build the VST3 plugin" ON)
 add_subdirectory(JUCE)
 add_subdirectory(EigenLite/eigenapi)
 
+# Handle Universal Static Library for Pico Decoder on macOS
+if(APPLE)
+    set(PICO_ARM_LIB "${CMAKE_CURRENT_SOURCE_DIR}/EigenLite/resources/picodecoder/macOs/arm64/libpicodecoder_static.a")
+    set(PICO_X64_LIB "${CMAKE_CURRENT_SOURCE_DIR}/EigenLite/resources/picodecoder/macOs/x86_64/libpicodecoder_static.a")
+    set(PICO_UNIVERSAL_LIB "${CMAKE_CURRENT_BINARY_DIR}/libpicodecoder_static_universal.a")
+
+    if(EXISTS "${PICO_ARM_LIB}" AND EXISTS "${PICO_X64_LIB}")
+        add_custom_command(OUTPUT "${PICO_UNIVERSAL_LIB}"
+            COMMAND lipo -create "${PICO_ARM_LIB}" "${PICO_X64_LIB}" -output "${PICO_UNIVERSAL_LIB}"
+            DEPENDS "${PICO_ARM_LIB}" "${PICO_X64_LIB}"
+            COMMENT "Creating universal static libpicodecoder"
+        )
+        add_custom_target(PicodecoderStaticUniversal ALL DEPENDS "${PICO_UNIVERSAL_LIB}")
+        
+        # Override the imported location for the target defined in EigenLite
+        if(TARGET picodecoder_static)
+            set_target_properties(picodecoder_static PROPERTIES IMPORTED_LOCATION "${PICO_UNIVERSAL_LIB}")
+            add_dependencies(eigenapi PicodecoderStaticUniversal)
+        endif()
+    endif()
+endif()
+
 juce_add_binary_data(ECMapper_Data SOURCES
     Resources/GreenLight.png
     Resources/DarkLight.png
-    EigenLite/resources/bs_mm_fw_0103.ihx
-    EigenLite/resources/psu_mm_fw_0102.ihx
-    EigenLite/resources/pico.ihx
 )
 
 # ------------------------------------------------------------------------------
@@ -117,6 +136,7 @@ if(ECMAPPER_BUILD_PLUGIN)
     )
 
     target_link_libraries(ECMapper_Plugin PRIVATE ${COMMON_LIBS})
+    target_compile_definitions(ECMapper_Plugin PRIVATE JUCE_VST3_CAN_REPLACE_VST2=0)
     target_include_directories(ECMapper_Plugin PRIVATE Source)
     juce_generate_juce_header(ECMapper_Plugin)
 

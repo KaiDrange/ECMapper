@@ -34,23 +34,23 @@ private:
     
     struct KeyState {
         KeyStatus status = KeyStatus::Off;
-        std::deque<unsigned int> ehPressureHistory;
-        int ehRoll = 0;
-        int ehYaw = 0;
+        std::deque<float> ehPressureHistory;
+        float ehRoll = 0.0f;
+        float ehYaw = 0.0f;
         int midiChannel = 1;
         int messageCount = 0;
         bool isLatchOn = false;
     };
     
     KeyState keyStates_[3][3][120];
-    unsigned int ehBreath_[3] = { 0, 0, 0 };
-    int ehStrips_[2][3] = { {0,0,0}, {0,0,0} };
-    int relStart_ehStrips_[2][3] = { {-1,-1,-1}, {-1,-1,-1} };
+    float ehBreath_[3] = { 0.0f, 0.0f, 0.0f };
+    float ehStrips_[2][3] = { {0.0f,0.0f,0.0f}, {0.0f,0.0f,0.0f} };
+    float relStart_ehStrips_[2][3] = { {-1.0f,-1.0f,-1.0f}, {-1.0f,-1.0f,-1.0f} };
     int currentKeyPBperChannel_[16] = {0};
     int currentStripPBperChannel_[16] = {0};
     
     static constexpr int PRESSURE_HISTORY_LENGTH = 6;
-    static constexpr int breathZeroThreshold_[3] = {128, 128, 512};
+    static constexpr float breathZeroThreshold_[3] = {0.06f, 0.06f, 0.2f};
     
     std::unique_ptr<juce::MPEChannelAssigner> lowerChanAssigner_;
     std::unique_ptr<juce::MPEChannelAssigner> upperChanAssigner_;
@@ -58,7 +58,7 @@ private:
     
     ConfigLookup (&configLookups_)[3];
     osc::MessageFifo* oscBroadcastQueue_ = nullptr;
-    BezierCurve velocityCurve_ { 0.0, 0.0, 0.0, 1.0, 0.5, 0.6, 1.0, 1.0 };
+    BezierCurve velocityCurve_ { 0.0f, 0.0f, 0.0f, 1.0f, 0.5f, 0.6f, 1.0f, 1.0f };
     bool initialized_ = false;
 
     void processNoteKey(osc::Message& oscMsg, ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer);
@@ -72,8 +72,8 @@ private:
     void createMidiMsgOff(ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, osc::Message& outgoingOscMsg);
     void createAllNotesOff(juce::MidiBuffer& buffer);
     
-    void addMidiValueMessage(int channel, int ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, int noteNo, juce::MidiBuffer& buffer, bool isBipolar);
-    void addStripValueMessage(int channel, int ehValue, ZoneWrapper::MidiValue midiValue, juce::MidiBuffer& buffer, bool isBipolar);
+    void addMidiValueMessage(int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, int noteNo, juce::MidiBuffer& buffer, bool isBipolar);
+    void addStripValueMessage(int channel, float ehValue, ZoneWrapper::MidiValue midiValue, juce::MidiBuffer& buffer, bool isBipolar);
     
     void createBreath(int deviceIndex, ConfigLookup& keyLookup, juce::MidiBuffer& buffer);
     void createStripAbsolute(int deviceIndex, int stripIndex, int zoneIndex, ConfigLookup& keyLookup, juce::MidiBuffer& buffer);

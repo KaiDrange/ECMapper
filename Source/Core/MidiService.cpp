@@ -29,7 +29,7 @@ void MidiService::start(juce::AudioProcessorValueTreeState& pluginState) {
         configLookups_[i].updateAll();
     }
 
-    ehBreath_[0] = ehBreath_[1] = ehBreath_[2] = 0;
+    ehBreath_[0] = ehBreath_[1] = ehBreath_[2] = 0.0f;
     for (int i = 0; i < 16; ++i) {
         currentStripPBperChannel_[i] = 0;
         currentKeyPBperChannel_[i] = 0;
@@ -79,10 +79,10 @@ void MidiService::processMessage(osc::Message& oscMsg, osc::Message& outgoingOsc
             break;
         }
         case osc::MessageType::Breath: {
-            unsigned int prevBreathValue = ehBreath_[deviceIndex];
-            ehBreath_[deviceIndex] = std::abs(static_cast<int>(oscMsg.value) - 2048) * 2;
+            float prevBreathValue = ehBreath_[deviceIndex];
+            ehBreath_[deviceIndex] = std::abs(oscMsg.value);
             if ((ehBreath_[deviceIndex] > breathZeroThreshold_[deviceIndex]) || 
-                (ehBreath_[deviceIndex] < breathZeroThreshold_[deviceIndex] && prevBreathValue > 0)) {
+                (ehBreath_[deviceIndex] < breathZeroThreshold_[deviceIndex] && prevBreathValue > 0.0f)) {
                 createBreath(deviceIndex, configLookups_[deviceIndex], midiBuffer);
             }
             break;
@@ -92,11 +92,11 @@ void MidiService::processMessage(osc::Message& oscMsg, osc::Message& outgoingOsc
             if (stripIndex < 0 || stripIndex > 1) break;
             
             bool stripOff = !oscMsg.active;
-            ehStrips_[stripIndex][deviceIndex] = stripOff ? 0 : std::max(static_cast<int>((oscMsg.value - 150) * 1.5f), 0);
+            ehStrips_[stripIndex][deviceIndex] = stripOff ? 0.0f : oscMsg.value;
             
             if (stripOff) {
-                relStart_ehStrips_[stripIndex][deviceIndex] = -1;
-            } else if (relStart_ehStrips_[stripIndex][deviceIndex] < 0) {
+                relStart_ehStrips_[stripIndex][deviceIndex] = -1.0f;
+            } else if (relStart_ehStrips_[stripIndex][deviceIndex] < 0.0f) {
                 relStart_ehStrips_[stripIndex][deviceIndex] = ehStrips_[stripIndex][deviceIndex];
             }
 
@@ -144,18 +144,23 @@ void MidiService::processCmdKey(osc::Message& oscMsg, osc::Message& outgoingOscM
 
 void MidiService::reduceBreath(juce::MidiBuffer& buffer) {
     for (int i = 0; i < 3; i++) {
-        if (ehBreath_[i] == 0) continue;
-        ehBreath_[i] = (ehBreath_[i] > static_cast<unsigned int>(breathZeroThreshold_[i])) ? ehBreath_[i] - 20 : 0;
+        if (ehBreath_[i] <= 0.0f) continue;
+        ehBreath_[i] = (ehBreath_[i] > breathZeroThreshold_[i]) ? ehBreath_[i] - 0.01f : 0.0f;
         createBreath(i, configLookups_[i], buffer);
     }
 }
 
 void MidiService::createBreath(int deviceIndex, ConfigLookup& keyLookup, juce::MidiBuffer& buffer) {
-    unsigned int val = (ehBreath_[deviceIndex] < static_cast<unsigned int>(breathZeroThreshold_[deviceIndex])) 
-                       ? 0 : ehBreath_[deviceIndex] - breathZeroThreshold_[deviceIndex];
+    float val = (ehBreath_[deviceIndex] < breathZeroThreshold_[deviceIndex]) 
+                       ? 0.0f : ehBreath_[deviceIndex] - breathZeroThreshold_[deviceIndex];
     
+    // Scale val to [0, 1] range after threshold
+    if (val > 0.0f) {
+        val = val / (1.0f - breathZeroThreshold_[deviceIndex]);
+    }
+
     for (int z = 0; z < 3; ++z) {
-        addMidiValueMessage(keyLookup.breath[z].channel, val * 3, keyLookup.breath[z].midiValue, 1.0f, 0, buffer, false);
+        addMidiValueMessage(keyLookup.breath[z].channel, val, keyLookup.breath[z].midiValue, 1.0f, 0, buffer, false);
     }
 }
 
@@ -166,10 +171,10 @@ void MidiService::createStripAbsolute(int deviceIndex, int stripIndex, int zoneI
 
 void MidiService::createStripRelative(int deviceIndex, int stripIndex, int zoneIndex, ConfigLookup& keyLookup, juce::MidiBuffer& buffer) {
     auto& strip = (stripIndex == 0) ? keyLookup.strip1[zoneIndex] : keyLookup.strip2[zoneIndex];
-    int relValue = (relStart_ehStrips_[stripIndex][deviceIndex] < 0) 
-                   ? 0 : relStart_ehStrips_[stripIndex][deviceIndex] - ehStrips_[stripIndex][deviceIndex];
+    float relValue = (relStart_ehStrips_[stripIndex][deviceIndex] < 0.0f) 
+                   ? 0.0f : relStart_ehStrips_[stripIndex][deviceIndex] - ehStrips_[stripIndex][deviceIndex];
     
-    if (relStart_ehStrips_[stripIndex][deviceIndex] < 0) {
+    if (relStart_ehStrips_[stripIndex][deviceIndex] < 0.0f) {
         currentStripPBperChannel_[strip.channel > 0 ? strip.channel - 1 : 0] = 0;
     }
 
@@ -310,11 +315,10 @@ void MidiService::createNoteHold(ConfigLookup::Key& keyLookup, KeyState* state, 
     state->messageCount = 0;
 }
 
-void MidiService::addMidiValueMessage(int channel, int ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, int noteNo, juce::MidiBuffer& buffer, bool isBipolar) {
+void MidiService::addMidiValueMessage(int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, int noteNo, juce::MidiBuffer& buffer, bool isBipolar) {
     if (midiValue.valueType == MidiValueType::Off || channel < 1 || channel > 16) return;
     
-    float val = ehValue * 1.7f;
-    float normalized = isBipolar ? (std::clamp(val / 4096.0f, -1.0f, 1.0f)) : (std::min(val / 4096.0f, 1.0f));
+    float normalized = isBipolar ? (std::clamp(ehValue, -1.0f, 1.0f)) : (std::clamp(ehValue, 0.0f, 1.0f));
     
     juce::MidiMessage msg;
     if (midiValue.valueType == MidiValueType::Pitchbend) {
@@ -336,10 +340,10 @@ void MidiService::addMidiValueMessage(int channel, int ehValue, ZoneWrapper::Mid
         buffer.addEvent(msg, 0);
 }
 
-void MidiService::addStripValueMessage(int channel, int ehValue, ZoneWrapper::MidiValue midiValue, juce::MidiBuffer& buffer, bool isBipolar) {
+void MidiService::addStripValueMessage(int channel, float ehValue, ZoneWrapper::MidiValue midiValue, juce::MidiBuffer& buffer, bool isBipolar) {
     if (midiValue.valueType == MidiValueType::Off || channel < 1 || channel > 16) return;
     
-    float normalized = isBipolar ? (std::clamp(ehValue * 1.7f / 4096.0f, -1.0f, 1.0f)) : (std::min(static_cast<float>(ehValue) / 4096.0f, 1.0f));
+    float normalized = isBipolar ? (std::clamp(ehValue, -1.0f, 1.0f)) : (std::clamp(ehValue, 0.0f, 1.0f));
     
     juce::MidiMessage msg;
     if (midiValue.valueType == MidiValueType::Pitchbend) {
@@ -372,16 +376,17 @@ juce::MPEValue MidiService::calculateNoteOnVelocity(KeyState* state) {
     if (state->ehPressureHistory.size() < PRESSURE_HISTORY_LENGTH) return juce::MPEValue::from7BitInt(1);
     
     auto it = state->ehPressureHistory.begin();
-    unsigned int v1 = (it[1] + it[2]) / 2;
-    unsigned int v2 = (it[4] + it[5]) / 2;
-    int diff = static_cast<int>(v2) - static_cast<int>(v1);
-    int tableIndex = std::clamp(diff, 0, BezierCurve::TABLE_LENGTH - 1);
+    float v1 = (it[1] + it[2]) / 2.0f;
+    float v2 = (it[4] + it[5]) / 2.0f;
+    float diff = v2 - v1;
+    // We expect diff to be in [0, 1] range roughly. Bezier curve table is 256 entries.
+    int tableIndex = std::clamp(static_cast<int>(diff * 1000.0f), 0, BezierCurve::TABLE_LENGTH - 1);
     return juce::MPEValue::from7BitInt(static_cast<int>(velocityCurve_.getTableValue(tableIndex) * 126 + 1));
 }
 
 juce::MPEValue MidiService::calculateNoteOffVelocity(KeyState* state) {
     if (state->ehPressureHistory.empty()) return juce::MPEValue::from7BitInt(0);
-    float norm = std::min(state->ehPressureHistory.front() * 10.0f / 4096.0f, 1.0f);
+    float norm = std::min(state->ehPressureHistory.front() * 10.0f, 1.0f);
     return juce::MPEValue::from7BitInt(static_cast<int>(norm * 127));
 }
 

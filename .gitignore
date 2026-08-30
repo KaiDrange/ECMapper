@@ -15,6 +15,7 @@ cmake-build*/
 **/*.vst3
 **/*.au
 **/*.dylib
+**/*.a
 
 # Project specific
 old/

@@ -6,7 +6,6 @@ namespace ecm {
 HardwareService::HardwareService(osc::MessageFifo& hardwareToMapperQueue, 
                                  osc::MessageFifo& mapperToHardwareQueue)
     : Thread("HardwareServiceThread"),
-      eigenApi_(fwReader_),
       hardwareToMapperQueue_(hardwareToMapperQueue),
       mapperToHardwareQueue_(mapperToHardwareQueue) {
 }
@@ -18,12 +17,8 @@ HardwareService::~HardwareService() {
 void HardwareService::startService() {
     if (isThreadRunning()) return;
     
-    if (!fwReader_.confirmResources()) {
-        std::cerr << "IHX firmware files not properly configured in BinaryData." << std::endl;
-        return;
-    }
-    
     eigenApi_.addCallback(this);
+    eigenApi_.addLifecycleCallback(this);
     eigenApi_.setPollTime(100);
     
     if (!eigenApi_.start()) {
@@ -42,6 +37,7 @@ void HardwareService::stopService() {
     
     eigenApi_.stop();
     eigenApi_.removeCallback(this);
+    eigenApi_.removeLifecycleCallback(this);
 }
 
 void HardwareService::turnOffAllLEDs() {
@@ -70,12 +66,12 @@ void HardwareService::turnOffAllLEDs() {
         }
 
         for (int i = 0; i < course0Length; i++) {
-            eigenApi_.setLED(d.dev.c_str(), 0, i, 0);
+            eigenApi_.setLED(d.dev.c_str(), 0, i, EigenApi::Eigenharp::LED_OFF);
             d.assignedLEDColours[0][i] = 0;
             d.activeKeys[0][i] = false;
         }
         for (int i = course1Start; i < course1Start + course1Length; i++) {
-            eigenApi_.setLED(d.dev.c_str(), 1, i, 0);
+            eigenApi_.setLED(d.dev.c_str(), 1, i, EigenApi::Eigenharp::LED_OFF);
             d.assignedLEDColours[1][i] = 0;
             d.activeKeys[1][i] = false;
         }
@@ -103,8 +99,8 @@ void HardwareService::processOutgoingMessages() {
             const juce::ScopedLock sl(deviceListLock_);
             for (auto& d : connectedDevices_) {
                 if (d.type == msg.device) {
-                    d.assignedLEDColours[msg.course][msg.key] = msg.value;
-                    eigenApi_.setLED(d.dev.c_str(), msg.course, msg.key, msg.value);
+                    d.assignedLEDColours[msg.course][msg.key] = (int)msg.value;
+                    eigenApi_.setLED(d.dev.c_str(), msg.course, msg.key, (EigenApi::Eigenharp::LedColour)msg.value);
                 }
             }
         } else if (msg.type == osc::MessageType::Reset) {
@@ -113,10 +109,14 @@ void HardwareService::processOutgoingMessages() {
     }
 }
 
-// EigenApi::Callback implementations
-void HardwareService::device(const char* dev, EigenApi::Callback::DeviceType dt, int rows, int cols, int ribbons, int pedals) {
-    juce::ignoreUnused(dt, rows, ribbons, pedals);
-    InstrumentType devType = getInstrumentTypeFromCols(cols);
+// EigenApi::LifecycleCallback implementations
+void HardwareService::connected(const char* dev, EigenApi::DeviceType dt) {
+    InstrumentType devType = InstrumentType::None;
+    switch (dt) {
+        case EigenApi::PICO: devType = InstrumentType::Pico; break;
+        case EigenApi::TAU: devType = InstrumentType::Tau; break;
+        case EigenApi::ALPHA: devType = InstrumentType::Alpha; break;
+    }
     
     const juce::ScopedLock sl(deviceListLock_);
     connectedDevices_.erase(std::remove_if(connectedDevices_.begin(), connectedDevices_.end(),
@@ -134,24 +134,24 @@ void HardwareService::device(const char* dev, EigenApi::Callback::DeviceType dt,
     if (oscBroadcastQueue_) oscBroadcastQueue_->add(msg);
 }
 
-void HardwareService::disconnect(const char* dev, EigenApi::Callback::DeviceType dt) {
-    juce::ignoreUnused(dt);
+void HardwareService::disconnected(const char* dev) {
     const juce::ScopedLock sl(deviceListLock_);
     connectedDevices_.erase(std::remove_if(connectedDevices_.begin(), connectedDevices_.end(),
         [dev](const ConnectedDevice& d) { return d.dev == dev; }), connectedDevices_.end());
 }
 
-void HardwareService::key(const char* dev, unsigned long long t, unsigned course, unsigned key, bool a, unsigned p, int r, int y) {
+// EigenApi::Callback implementations
+void HardwareService::key(const char* dev, unsigned long long t, unsigned course, unsigned key, bool a, float p, float r, float y) {
     juce::ignoreUnused(t);
     const juce::ScopedLock sl(deviceListLock_);
     for (auto& d : connectedDevices_) {
         if (d.dev == dev) {
             if (a && !d.activeKeys[course][key]) {
                 d.activeKeys[course][key] = true;
-                eigenApi_.setLED(dev, course, key, (int)KeyColour::Yellow);
+                eigenApi_.setLED(dev, course, key, EigenApi::Eigenharp::LED_ORANGE);
             } else if (!a) {
                 d.activeKeys[course][key] = false;
-                eigenApi_.setLED(dev, course, key, d.assignedLEDColours[course][key]);
+                eigenApi_.setLED(dev, course, key, (EigenApi::Eigenharp::LedColour)d.assignedLEDColours[course][key]);
             }
             
             osc::Message msg;
@@ -175,7 +175,7 @@ void HardwareService::key(const char* dev, unsigned long long t, unsigned course
     }
 }
 
-void HardwareService::breath(const char* dev, unsigned long long t, unsigned val) {
+void HardwareService::breath(const char* dev, unsigned long long t, float val) {
     juce::ignoreUnused(t);
     osc::Message msg;
     msg.type = osc::MessageType::Breath;
@@ -185,7 +185,7 @@ void HardwareService::breath(const char* dev, unsigned long long t, unsigned val
     if (oscBroadcastQueue_) oscBroadcastQueue_->add(msg);
 }
 
-void HardwareService::strip(const char* dev, unsigned long long t, unsigned strip, unsigned val, bool a) {
+void HardwareService::strip(const char* dev, unsigned long long t, unsigned strip, float val, bool a) {
     juce::ignoreUnused(t);
     osc::Message msg;
     msg.type = osc::MessageType::Strip;
@@ -197,7 +197,7 @@ void HardwareService::strip(const char* dev, unsigned long long t, unsigned stri
     if (oscBroadcastQueue_) oscBroadcastQueue_->add(msg);
 }
 
-void HardwareService::pedal(const char* dev, unsigned long long t, unsigned pedal, unsigned val) {
+void HardwareService::pedal(const char* dev, unsigned long long t, unsigned pedal, float val) {
     juce::ignoreUnused(t);
     osc::Message msg;
     msg.type = osc::MessageType::Pedal;

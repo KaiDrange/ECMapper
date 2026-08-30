@@ -21,12 +21,12 @@ struct Message {
     unsigned int course = 0;
     unsigned int key = 0;
     int active = 0;
-    unsigned int pressure = 0;
-    int roll = 0;
-    int yaw = 0;
+    float pressure = 0.0f;
+    float roll = 0.0f;
+    float yaw = 0.0f;
     unsigned int strip = 0;
     unsigned int pedal = 0;
-    unsigned int value = 0;
+    float value = 0.0f;
     InstrumentType device = InstrumentType::None;
 };
 

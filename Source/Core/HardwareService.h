@@ -1,12 +1,11 @@
 #pragma once
 #include <JuceHeader.h>
 #include <eigenapi.h>
-#include "FirmwareReader.h"
 #include "OSCMessage.h"
 
 namespace ecm {
 
-class HardwareService : private juce::Thread, public EigenApi::Callback {
+class HardwareService : private juce::Thread, public EigenApi::Callback, public EigenApi::LifecycleCallback {
 public:
     HardwareService(osc::MessageFifo& hardwareToMapperQueue, 
                     osc::MessageFifo& mapperToHardwareQueue);
@@ -20,18 +19,19 @@ public:
 
     void setOSCBroadcastQueue(osc::MessageFifo* queue) { oscBroadcastQueue_ = queue; }
 
+    // EigenApi::LifecycleCallback overrides
+    void connected(const char* dev, EigenApi::DeviceType dt) override;
+    void disconnected(const char* dev) override;
+
     // EigenApi::Callback overrides
-    void device(const char* dev, EigenApi::Callback::DeviceType dt, int rows, int cols, int ribbons, int pedals) override;
-    void disconnect(const char* dev, EigenApi::Callback::DeviceType dt) override;
-    void key(const char* dev, unsigned long long t, unsigned course, unsigned key, bool a, unsigned p, int r, int y) override;
-    void breath(const char* dev, unsigned long long t, unsigned val) override;
-    void strip(const char* dev, unsigned long long t, unsigned strip, unsigned val, bool a) override;
-    void pedal(const char* dev, unsigned long long t, unsigned pedal, unsigned val) override;
+    void key(const char* dev, unsigned long long t, unsigned course, unsigned key, bool a, float p, float r, float y) override;
+    void breath(const char* dev, unsigned long long t, float val) override;
+    void strip(const char* dev, unsigned long long t, unsigned strip, float val, bool a) override;
+    void pedal(const char* dev, unsigned long long t, unsigned pedal, float val) override;
 
 private:
     void run() override;
     
-    FirmwareReader fwReader_;
     EigenApi::Eigenharp eigenApi_;
     
     osc::MessageFifo& hardwareToMapperQueue_;
