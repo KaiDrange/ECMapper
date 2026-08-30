@@ -7,6 +7,7 @@
 #include "Core/ConfigLookup.h"
 #include "Core/LayoutChangeHandler.h"
 #include "Core/Logger.h"
+#include <map>
 
 class ECMapperAudioProcessor : public juce::AudioProcessor,
                                public ecm::HardwareService::Listener
@@ -65,6 +66,9 @@ private:
     std::unique_ptr<ecm::LayoutChangeHandler> layoutChangeHandler;
 
     juce::AudioDeviceManager* deviceManager = nullptr;
+    double lastBlockEndUs = 0.0;
+    double localClockOffset = 0.0;
+    std::map<juce::String, double> remoteClockOffsets;
 
     void updateGlobalSettings();
 

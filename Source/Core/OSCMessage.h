@@ -1,5 +1,6 @@
 #pragma once
 #include <JuceHeader.h>
+#include <cstdint>
 #include "Enums.h"
 
 namespace ecm::osc {
@@ -28,6 +29,8 @@ struct Message {
     unsigned int strip = 0;
     unsigned int pedal = 0;
     float value = 0.0f;
+    uint64_t timestamp = 0;
+    int isRemote = 0;
     InstrumentType device = InstrumentType::None;
     char devId[64] = {0};
 };

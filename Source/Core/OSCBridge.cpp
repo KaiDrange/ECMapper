@@ -240,16 +240,16 @@ void OSCBridge::sendOutgoingMessages() {
 
                 switch (msg.type) {
                     case osc::MessageType::Key:
-                        conn->sender->send("/EigenCore/key", (int)msg.course, (int)msg.key, (int)msg.active, msg.pressure, msg.roll, msg.yaw, (int)msg.device, juce::String(conn->originalDevId), instanceId_);
+                        conn->sender->send("/EigenCore/key", (int)msg.course, (int)msg.key, (int)msg.active, msg.pressure, msg.roll, msg.yaw, (int)msg.device, (int32_t)(msg.timestamp >> 32), (int32_t)(msg.timestamp & 0xFFFFFFFF), juce::String(conn->originalDevId), instanceId_);
                         break;
                     case osc::MessageType::Breath:
-                        conn->sender->send("/EigenCore/breath", msg.value, (int)msg.device, juce::String(conn->originalDevId), instanceId_);
+                        conn->sender->send("/EigenCore/breath", msg.value, (int)msg.device, (int32_t)(msg.timestamp >> 32), (int32_t)(msg.timestamp & 0xFFFFFFFF), juce::String(conn->originalDevId), instanceId_);
                         break;
                     case osc::MessageType::Strip:
-                        conn->sender->send("/EigenCore/strip", (int)msg.strip, msg.value, (int)msg.active, (int)msg.device, juce::String(conn->originalDevId), instanceId_);
+                        conn->sender->send("/EigenCore/strip", (int)msg.strip, msg.value, (int)msg.active, (int)msg.device, (int32_t)(msg.timestamp >> 32), (int32_t)(msg.timestamp & 0xFFFFFFFF), juce::String(conn->originalDevId), instanceId_);
                         break;
                     case osc::MessageType::Pedal:
-                        conn->sender->send("/EigenCore/pedal", (int)msg.pedal, msg.value, (int)msg.device, juce::String(conn->originalDevId), instanceId_);
+                        conn->sender->send("/EigenCore/pedal", (int)msg.pedal, msg.value, (int)msg.device, (int32_t)(msg.timestamp >> 32), (int32_t)(msg.timestamp & 0xFFFFFFFF), juce::String(conn->originalDevId), instanceId_);
                         break;
                     case osc::MessageType::Device:
                         conn->sender->send("/EigenCore/device", (int)msg.device, juce::IPAddress::getLocalAddress().toString(), conn->sendPort, instanceId_, juce::String(conn->originalDevId));
@@ -276,6 +276,11 @@ void OSCBridge::oscMessageReceived(const juce::OSCMessage& message) {
     
     auto getInt = [](const juce::OSCArgument& v) { return v.isInt32() ? v.getInt32() : (int)v.getFloat32(); };
     auto getFloat = [](const juce::OSCArgument& v) { return v.isFloat32() ? v.getFloat32() : (float)v.getInt32(); };
+    auto getTimestamp = [](const juce::OSCArgument& high, const juce::OSCArgument& low) {
+        uint64_t t = (uint64_t)(uint32_t)high.getInt32() << 32;
+        t |= (uint64_t)(uint32_t)low.getInt32();
+        return t;
+    };
 
     if (pattern == "/EigenCore/device") {
         if (message.size() >= 5) {
@@ -315,7 +320,7 @@ void OSCBridge::oscMessageReceived(const juce::OSCMessage& message) {
             auto devType = (InstrumentType)getInt(message[0]);
             hardwareService_.handleRemoteDeviceConnection(devType, "127.0.0.1", "", 0);
         }
-    } else if (pattern == "/EigenCore/key" && message.size() >= 7) {
+    } else if (pattern == "/EigenCore/key" && message.size() >= 9) {
         msg.type = osc::MessageType::Key;
         msg.course = (unsigned int)getInt(message[0]);
         msg.key = (unsigned int)getInt(message[1]);
@@ -324,16 +329,16 @@ void OSCBridge::oscMessageReceived(const juce::OSCMessage& message) {
         msg.roll = getFloat(message[4]);
         msg.yaw = getFloat(message[5]);
         msg.device = (InstrumentType)getInt(message[6]);
+        msg.timestamp = getTimestamp(message[7], message[8]);
         
         juce::String senderId;
-        if (message.size() >= 8) {
-            // Check if 8th arg is devId or instanceId
-            if (message.size() >= 9) {
-                std::strncpy(msg.devId, message[7].getString().toRawUTF8(), 63);
-                senderId = message[8].getString();
+        if (message.size() >= 10) {
+            // Check if 10th arg is devId or instanceId
+            if (message.size() >= 11) {
+                std::strncpy(msg.devId, message[9].getString().toRawUTF8(), 63);
+                senderId = message[10].getString();
             } else {
-                // Could be either. If it matches our instanceId, it's definitely a senderId.
-                auto str = message[7].getString();
+                auto str = message[9].getString();
                 if (str == instanceId_) senderId = str;
                 else std::strncpy(msg.devId, str.toRawUTF8(), 63);
             }
@@ -351,38 +356,14 @@ void OSCBridge::oscMessageReceived(const juce::OSCMessage& message) {
         }
 
         if (hardwareService_.isDeviceInReceiveOSCMode(msg.devId)) {
+            msg.isRemote = 1;
             hardwareToMapperQueue_.add(msg);
         }
-    } else if (pattern == "/EigenCore/breath" && message.size() >= 2) {
+    } else if (pattern == "/EigenCore/breath" && message.size() >= 4) {
         msg.type = osc::MessageType::Breath;
         msg.value = getFloat(message[0]);
         msg.device = (InstrumentType)getInt(message[1]);
-        
-        juce::String senderId;
-        if (message.size() >= 3) {
-            if (message.size() >= 4) {
-                std::strncpy(msg.devId, message[2].getString().toRawUTF8(), 63);
-                senderId = message[3].getString();
-            } else {
-                auto str = message[2].getString();
-                if (str == instanceId_) senderId = str;
-                else std::strncpy(msg.devId, str.toRawUTF8(), 63);
-            }
-        }
-        
-        if (senderId == instanceId_) return;
-        
-        hardwareService_.updateDeviceLastMessageTime(msg.devId);
-        
-        if (hardwareService_.isDeviceInReceiveOSCMode(msg.devId)) {
-            hardwareToMapperQueue_.add(msg);
-        }
-    } else if (pattern == "/EigenCore/strip" && message.size() >= 4) {
-        msg.type = osc::MessageType::Strip;
-        msg.strip = (unsigned int)getInt(message[0]);
-        msg.value = getFloat(message[1]);
-        msg.active = getInt(message[2]);
-        msg.device = (InstrumentType)getInt(message[3]);
+        msg.timestamp = getTimestamp(message[2], message[3]);
         
         juce::String senderId;
         if (message.size() >= 5) {
@@ -401,21 +382,24 @@ void OSCBridge::oscMessageReceived(const juce::OSCMessage& message) {
         hardwareService_.updateDeviceLastMessageTime(msg.devId);
         
         if (hardwareService_.isDeviceInReceiveOSCMode(msg.devId)) {
+            msg.isRemote = 1;
             hardwareToMapperQueue_.add(msg);
         }
-    } else if (pattern == "/EigenCore/pedal" && message.size() >= 3) {
-        msg.type = osc::MessageType::Pedal;
-        msg.pedal = (unsigned int)getInt(message[0]);
+    } else if (pattern == "/EigenCore/strip" && message.size() >= 6) {
+        msg.type = osc::MessageType::Strip;
+        msg.strip = (unsigned int)getInt(message[0]);
         msg.value = getFloat(message[1]);
-        msg.device = (InstrumentType)getInt(message[2]);
+        msg.active = getInt(message[2]);
+        msg.device = (InstrumentType)getInt(message[3]);
+        msg.timestamp = getTimestamp(message[4], message[5]);
         
         juce::String senderId;
-        if (message.size() >= 4) {
-            if (message.size() >= 5) {
-                std::strncpy(msg.devId, message[3].getString().toRawUTF8(), 63);
-                senderId = message[4].getString();
+        if (message.size() >= 7) {
+            if (message.size() >= 8) {
+                std::strncpy(msg.devId, message[6].getString().toRawUTF8(), 63);
+                senderId = message[7].getString();
             } else {
-                auto str = message[3].getString();
+                auto str = message[6].getString();
                 if (str == instanceId_) senderId = str;
                 else std::strncpy(msg.devId, str.toRawUTF8(), 63);
             }
@@ -426,6 +410,34 @@ void OSCBridge::oscMessageReceived(const juce::OSCMessage& message) {
         hardwareService_.updateDeviceLastMessageTime(msg.devId);
         
         if (hardwareService_.isDeviceInReceiveOSCMode(msg.devId)) {
+            msg.isRemote = 1;
+            hardwareToMapperQueue_.add(msg);
+        }
+    } else if (pattern == "/EigenCore/pedal" && message.size() >= 5) {
+        msg.type = osc::MessageType::Pedal;
+        msg.pedal = (unsigned int)getInt(message[0]);
+        msg.value = getFloat(message[1]);
+        msg.device = (InstrumentType)getInt(message[2]);
+        msg.timestamp = getTimestamp(message[3], message[4]);
+        
+        juce::String senderId;
+        if (message.size() >= 6) {
+            if (message.size() >= 7) {
+                std::strncpy(msg.devId, message[5].getString().toRawUTF8(), 63);
+                senderId = message[6].getString();
+            } else {
+                auto str = message[5].getString();
+                if (str == instanceId_) senderId = str;
+                else std::strncpy(msg.devId, str.toRawUTF8(), 63);
+            }
+        }
+        
+        if (senderId == instanceId_) return;
+        
+        hardwareService_.updateDeviceLastMessageTime(msg.devId);
+        
+        if (hardwareService_.isDeviceInReceiveOSCMode(msg.devId)) {
+            msg.isRemote = 1;
             hardwareToMapperQueue_.add(msg);
         }
     } else if (pattern == "/ECMapper/led" && message.size() >= 4) {

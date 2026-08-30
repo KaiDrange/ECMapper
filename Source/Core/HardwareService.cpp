@@ -348,7 +348,6 @@ void HardwareService::disconnected(const char* dev) {
 
 // EigenApi::Callback implementations
 void HardwareService::key(const char* dev, unsigned long long t, unsigned course, unsigned key, bool a, float p, float r, float y) {
-    juce::ignoreUnused(t);
     if (course >= 3 || key >= 120) return;
     
     const juce::ScopedLock sl(deviceListLock_);
@@ -374,6 +373,7 @@ void HardwareService::key(const char* dev, unsigned long long t, unsigned course
             msg.pressure = p;
             msg.roll = r;
             msg.yaw = y;
+            msg.timestamp = t;
             msg.device = d.type;
             std::strncpy(msg.devId, dev, 63);
             
@@ -392,7 +392,6 @@ void HardwareService::key(const char* dev, unsigned long long t, unsigned course
 }
 
 void HardwareService::breath(const char* dev, unsigned long long t, float val) {
-    juce::ignoreUnused(t);
     const juce::ScopedLock sl(deviceListLock_);
     for (const auto& d : connectedDevices_) {
         if (d.dev == dev) {
@@ -401,6 +400,7 @@ void HardwareService::breath(const char* dev, unsigned long long t, float val) {
             osc::Message msg;
             msg.type = osc::MessageType::Breath;
             msg.value = val;
+            msg.timestamp = t;
             msg.device = d.type;
             std::strncpy(msg.devId, dev, 63);
             
@@ -415,7 +415,6 @@ void HardwareService::breath(const char* dev, unsigned long long t, float val) {
 }
 
 void HardwareService::strip(const char* dev, unsigned long long t, unsigned strip, float val, bool a) {
-    juce::ignoreUnused(t);
     const juce::ScopedLock sl(deviceListLock_);
     for (const auto& d : connectedDevices_) {
         if (d.dev == dev) {
@@ -426,6 +425,7 @@ void HardwareService::strip(const char* dev, unsigned long long t, unsigned stri
             msg.strip = strip;
             msg.value = val;
             msg.active = a;
+            msg.timestamp = t;
             msg.device = d.type;
             std::strncpy(msg.devId, dev, 63);
             
@@ -440,7 +440,6 @@ void HardwareService::strip(const char* dev, unsigned long long t, unsigned stri
 }
 
 void HardwareService::pedal(const char* dev, unsigned long long t, unsigned pedal, float val) {
-    juce::ignoreUnused(t);
     const juce::ScopedLock sl(deviceListLock_);
     for (const auto& d : connectedDevices_) {
         if (d.dev == dev) {
@@ -450,6 +449,7 @@ void HardwareService::pedal(const char* dev, unsigned long long t, unsigned peda
             msg.type = osc::MessageType::Pedal;
             msg.pedal = pedal;
             msg.value = val;
+            msg.timestamp = t;
             msg.device = d.type;
             std::strncpy(msg.devId, dev, 63);
             

@@ -40,6 +40,10 @@ void ECMapperAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBloc
     oscBridge.setSenderEnabled(true);
     oscBridge.setReceiverEnabled(true);
     
+    lastBlockEndUs = 0.0;
+    localClockOffset = 0.0;
+    remoteClockOffsets.clear();
+    
     logger.log("prepareToPlay() finished.");
 }
 
@@ -62,7 +66,23 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& audioBuffer,
 
     midiMessages.clear();
     
-    // Diagnostic Heartbeat removed.
+    int numSamples = audioBuffer.getNumSamples();
+    double sampleRate = getSampleRate();
+    double blockDurationUs = 1000000.0 * numSamples / sampleRate;
+    double nowUs = juce::Time::highResolutionTicksToSeconds(juce::Time::getHighResolutionTicks()) * 1000000.0;
+    
+    // If this is the first block, or if there's a huge gap, reset our timeline
+    if (lastBlockEndUs == 0.0 || std::abs(nowUs - lastBlockEndUs) > 500000.0) {
+        lastBlockEndUs = nowUs - blockDurationUs;
+        localClockOffset = 0.0;
+        remoteClockOffsets.clear();
+    }
+    
+    double blockStartUs = lastBlockEndUs;
+    double blockEndUs = blockStartUs + blockDurationUs;
+    
+    // Update for next time
+    lastBlockEndUs = blockEndUs;
     
     if (!layoutChangeHandler->layoutMidiRPNSent) {
         midiService.createLayoutRPNs(midiMessages);
@@ -76,8 +96,33 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& audioBuffer,
         if (msg.type == ecm::osc::MessageType::Device) {
             layoutChangeHandler->sendLEDMsgForAllKeys(msg.device);
         } else {
+            int sampleOffset = 0;
+            if (msg.timestamp > 0) {
+                double localMsgTime = static_cast<double>(msg.timestamp);
+                
+                if (msg.isRemote) {
+                    juce::String devId(msg.devId);
+                    if (remoteClockOffsets.find(devId) == remoteClockOffsets.end()) {
+                        // Initialize offset for this remote device
+                        // We assume the message just arrived, so its local time is 'now'
+                        remoteClockOffsets[devId] = nowUs - static_cast<double>(msg.timestamp);
+                    }
+                    localMsgTime += remoteClockOffsets[devId];
+                } else {
+                    if (localClockOffset == 0.0) {
+                        localClockOffset = nowUs - static_cast<double>(msg.timestamp);
+                    }
+                    localMsgTime += localClockOffset;
+                }
+
+                // Map hardware timestamp to sample offset within the block
+                double offsetUs = localMsgTime - blockStartUs;
+                sampleOffset = static_cast<int>(offsetUs * sampleRate / 1000000.0);
+                sampleOffset = std::clamp(sampleOffset, 0, numSamples - 1);
+            }
+
             outgoingMsg.type = ecm::osc::MessageType::Undefined;
-            midiService.processMessage(msg, outgoingMsg, midiMessages);
+            midiService.processMessage(msg, outgoingMsg, midiMessages, sampleOffset);
             if (outgoingMsg.type == ecm::osc::MessageType::LED) {
                 if (hardwareService.getDeviceMode(msg.devId) == ecm::DeviceMode::Local) {
                     mapperToHardwareQueue.add(outgoingMsg);
@@ -86,7 +131,7 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& audioBuffer,
         }
     }
     
-    midiService.reduceBreath(midiMessages);
+    midiService.reduceBreath(midiMessages, numSamples - 1);
 }
 
 juce::AudioProcessorEditor* ECMapperAudioProcessor::createEditor() {
