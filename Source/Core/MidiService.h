@@ -50,7 +50,9 @@ private:
     int currentStripPBperChannel_[16] = {0};
     
     static constexpr int PRESSURE_HISTORY_LENGTH = 6;
-    static constexpr float breathZeroThreshold_[3] = {0.06f, 0.06f, 0.2f};
+    static constexpr float breathZeroThreshold_[3] = {0.03125f, 0.03125f, 0.125f};
+    static constexpr float stripZeroThreshold_[3] = {0.0366f, 0.0366f, 0.12f};
+    static constexpr float stripGain_[3] = {1.3f, 1.3f, 1.2f};
     
     std::unique_ptr<juce::MPEChannelAssigner> lowerChanAssigner_;
     std::unique_ptr<juce::MPEChannelAssigner> upperChanAssigner_;
