@@ -8,7 +8,7 @@ BezierCurve::BezierCurve(float x0, float y0, float x1, float y1, float x2, float
     createTable();
 }
 
-float BezierCurve::getCurvePoint(float n1, float n2, int tablePos) const {
+float BezierCurve::getCurvePoint(float n1, float n2, int tablePos) const noexcept {
     float perc = tablePos / (TABLE_LENGTH * 1.0f);
     float diff = n2 - n1;
     return n1 + (diff * perc);
@@ -28,7 +28,7 @@ void BezierCurve::createTable() {
     table[TABLE_LENGTH - 1] = y3;
 }
 
-float BezierCurve::getTableValue(int index) const {
+float BezierCurve::getTableValue(int index) const noexcept {
     index = std::clamp(index, 0, TABLE_LENGTH - 1);
     return table[index];
 }

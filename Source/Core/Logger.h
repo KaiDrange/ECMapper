@@ -11,6 +11,7 @@ public:
     void log(const juce::String& text);
     
 private:
+    juce::CriticalSection lock_;
     bool logToFile_;
     bool logToConsole_;
     juce::File logFile_;

@@ -1,4 +1,5 @@
 #pragma once
+#include <array>
 #include <JuceHeader.h>
 #include "LayoutWrapper.h"
 #include "ZoneWrapper.h"
@@ -22,7 +23,7 @@ public:
         LayoutWrapper::KeyId keyId;
         EigenharpKeyType keyType = EigenharpKeyType::Normal;
         KeyMappingType mapType = KeyMappingType::None;
-        int notes[4] = { -1, -1, -1, -1 };
+        std::array<int, 4> notes = { -1, -1, -1, -1 };
         MidiChannelType output = MidiChannelType::Undefined;
         ZoneWrapper::MidiValue pressure;
         ZoneWrapper::MidiValue roll;
@@ -54,7 +55,10 @@ public:
     
     bool controlLights = true;
 
+    juce::CriticalSection& getLock() { return lock_; }
+
 private:
+    juce::CriticalSection lock_;
     InstrumentType deviceType;
     juce::AudioProcessorValueTreeState& pluginState;
 };

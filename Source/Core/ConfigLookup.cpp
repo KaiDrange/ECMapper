@@ -7,6 +7,7 @@ ConfigLookup::ConfigLookup(InstrumentType deviceType, juce::AudioProcessorValueT
 }
 
 void ConfigLookup::updateAll() {
+    const juce::ScopedLock sl(lock_);
     this->controlLights = SettingsWrapper::getControlLights(deviceType, pluginState.state);
 
     for (int course = 0; course < 3; ++course) {
@@ -35,6 +36,7 @@ void ConfigLookup::updateKey(juce::ValueTree keytree) {
 }
 
 void ConfigLookup::updateKey(LayoutWrapper::KeyId keyId) {
+    const juce::ScopedLock sl(lock_);
     LayoutWrapper::LayoutKey layoutKey = LayoutWrapper::getLayoutKey(keyId, pluginState.state);
     
     bool setKeyToDefault = false;
@@ -79,12 +81,16 @@ void ConfigLookup::updateKey(LayoutWrapper::KeyId keyId) {
         key.output = ZoneWrapper::getMidiChannelType(layoutKey.keyId.deviceType, layoutKey.zone, pluginState.state);
         
         auto keyPB = ZoneWrapper::getKeyPitchbend(layoutKey.keyId.deviceType, layoutKey.zone, pluginState.state);
+        auto getSafePbRange = [](float pb, float maxPb) {
+            return maxPb > 0.0f ? std::min(pb / maxPb, 1.0f) : 0.0f;
+        };
+
         if (key.output == MidiChannelType::MPE_Low)
-            key.pbRange = std::min(((float)keyPB) / ((float)SettingsWrapper::getLowerMPEPB(pluginState.state)), 1.0f);
+            key.pbRange = getSafePbRange((float)keyPB, (float)SettingsWrapper::getLowerMPEPB(pluginState.state));
         else if (key.output == MidiChannelType::MPE_High)
-            key.pbRange = std::min(((float)keyPB) / ((float)SettingsWrapper::getUpperMPEPB(pluginState.state)), 1.0f);
+            key.pbRange = getSafePbRange((float)keyPB, (float)SettingsWrapper::getUpperMPEPB(pluginState.state));
         else
-            key.pbRange = std::min(((float)keyPB) / ((float)ZoneWrapper::getChannelMaxPitchbend(layoutKey.keyId.deviceType, layoutKey.zone, pluginState.state)), 1.0f);
+            key.pbRange = getSafePbRange((float)keyPB, (float)ZoneWrapper::getChannelMaxPitchbend(layoutKey.keyId.deviceType, layoutKey.zone, pluginState.state));
         
         if (key.mapType != KeyMappingType::MidiMsg) {
             key.cmdType = 0;
@@ -114,10 +120,12 @@ void ConfigLookup::updateKey(LayoutWrapper::KeyId keyId) {
             }
         }
     }
-    keys[layoutKey.keyId.course][layoutKey.keyId.keyNo] = key;
+    if (layoutKey.keyId.course < 3 && layoutKey.keyId.keyNo < 120)
+        keys[layoutKey.keyId.course][layoutKey.keyId.keyNo] = key;
 }
 
 void ConfigLookup::updateBreath(Zone zone) {
+    const juce::ScopedLock sl(lock_);
     int zoneIdx = (int)zone - 1;
     if (zoneIdx < 0 || zoneIdx > 2) return;
 
@@ -139,6 +147,7 @@ void ConfigLookup::updateBreath(Zone zone) {
 }
 
 void ConfigLookup::updateStrips(Zone zone) {
+    const juce::ScopedLock sl(lock_);
     int zoneIdx = (int)zone - 1;
     if (zoneIdx < 0 || zoneIdx > 2) return;
 

@@ -61,9 +61,7 @@ LayoutComponent::LayoutComponent(InstrumentType deviceType, float widthFactor, f
     enableDisableMenuButtons(false);
 }
 
-LayoutComponent::~LayoutComponent() {
-    for (auto key : keys) delete key;
-}
+LayoutComponent::~LayoutComponent() = default;
 
 void LayoutComponent::resized() {
     auto area = getLocalBounds();
@@ -177,27 +175,27 @@ void LayoutComponent::deselectAllKeys() {
 void LayoutComponent::createKeys() {
     for (int i = 0; i < getNormalkeyCount(); i++) {
         LayoutWrapper::KeyId id = { .course = 0, .keyNo = i, .deviceType = deviceType };
-        keys.push_back(new KeyConfigComponent(id, EigenharpKeyType::Normal, pluginState));
+        keys.add(new KeyConfigComponent(id, EigenharpKeyType::Normal, pluginState));
     }
 
     if (deviceType == InstrumentType::Pico) {
         for (int i = 0; i < getButtonCount(); i++) {
             LayoutWrapper::KeyId id = { .course = 1, .keyNo = i, .deviceType = deviceType };
-            keys.push_back(new KeyConfigComponent(id, EigenharpKeyType::Button, pluginState));
+            keys.add(new KeyConfigComponent(id, EigenharpKeyType::Button, pluginState));
         }
     } else if (deviceType == InstrumentType::Alpha) {
         for (int i = 0; i < getPercKeyCount(); i++) {
             LayoutWrapper::KeyId id = { .course = 1, .keyNo = i, .deviceType = deviceType };
-            keys.push_back(new KeyConfigComponent(id, EigenharpKeyType::Perc, pluginState));
+            keys.add(new KeyConfigComponent(id, EigenharpKeyType::Perc, pluginState));
         }
     } else { // Tau
         for (int i = getPercKeyStartIndex(); i < getButtonStartIndex(); i++) {
             LayoutWrapper::KeyId id = { .course = 0, .keyNo = i, .deviceType = deviceType };
-            keys.push_back(new KeyConfigComponent(id, EigenharpKeyType::Perc, pluginState));
+            keys.add(new KeyConfigComponent(id, EigenharpKeyType::Perc, pluginState));
         }
         for (int i = 5; i < 13; i++) {
             LayoutWrapper::KeyId id = { .course = 1, .keyNo = i, .deviceType = deviceType };
-            keys.push_back(new KeyConfigComponent(id, EigenharpKeyType::Button, pluginState));
+            keys.add(new KeyConfigComponent(id, EigenharpKeyType::Button, pluginState));
         }
     }
     

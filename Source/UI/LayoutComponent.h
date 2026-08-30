@@ -39,7 +39,7 @@ public:
     
 private:
     LayoutWrapper::KeyId activeKeyId;
-    std::vector<KeyConfigComponent*> keys;
+    juce::OwnedArray<KeyConfigComponent> keys;
     std::unique_ptr<juce::DrawablePath> keyImgNormal, keyImgOver, keyImgDown, keyImgOn;
     
     juce::TextButton colourMenuButton { "Colour" };

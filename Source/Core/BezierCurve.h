@@ -1,4 +1,5 @@
 #pragma once
+#include <array>
 #include <JuceHeader.h>
 
 namespace ecm {
@@ -9,13 +10,13 @@ public:
     static constexpr int TABLE_LENGTH = 1024;
     
     void createTable();
-    float getTableValue(int index) const;
+    float getTableValue(int index) const noexcept;
     
 private:
-    float table[TABLE_LENGTH];
+    std::array<float, TABLE_LENGTH> table;
     float x0, y0, x1, y1, x2, y2, x3, y3;
     
-    float getCurvePoint(float n1, float n2, int tablePos) const;
+    float getCurvePoint(float n1, float n2, int tablePos) const noexcept;
 };
 
 } // namespace ecm

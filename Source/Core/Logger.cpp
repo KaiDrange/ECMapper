@@ -13,6 +13,7 @@ Logger::Logger(bool logToFile, bool logToConsole)
 }
 
 void Logger::log(const juce::String& text) {
+    const juce::ScopedLock sl(lock_);
     if (logToConsole_) {
         std::cout << text << std::endl;
     }

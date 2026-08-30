@@ -56,8 +56,11 @@ void MidiService::processMessage(osc::Message& oscMsg, osc::Message& outgoingOsc
         return;
     }
 
+    const juce::ScopedLock sl(configLookups_[deviceIndex].getLock());
+    
     switch (oscMsg.type) {
         case osc::MessageType::Key: {
+            if (oscMsg.course >= 3 || oscMsg.key >= 120) break;
             KeyState* keyState = &keyStates_[deviceIndex][oscMsg.course][oscMsg.key];
             keyState->ehYaw = oscMsg.yaw;
             keyState->ehRoll = oscMsg.roll;
@@ -144,6 +147,7 @@ void MidiService::processCmdKey(osc::Message& oscMsg, osc::Message& outgoingOscM
 
 void MidiService::reduceBreath(juce::MidiBuffer& buffer) {
     for (int i = 0; i < 3; i++) {
+        const juce::ScopedLock sl(configLookups_[i].getLock());
         if (ehBreath_[i] <= 0.0f) continue;
         ehBreath_[i] = (ehBreath_[i] > breathZeroThreshold_[i]) ? ehBreath_[i] - 0.005f : 0.0f;
         createBreath(i, configLookups_[i], buffer);
@@ -215,7 +219,7 @@ void MidiService::createNoteOff(ConfigLookup::Key& keyLookup, KeyState* state, j
         upperChanAssigner_->noteOff(keyLookup.notes[0], channel);
 
     if (channel > 0 && channel <= 16) {
-        chanNotePri_[channel - 1].remove_if([&keyLookup](const LayoutWrapper::KeyId& id) { return id.equals(keyLookup.keyId); });
+        chanNotePri_[channel - 1].remove_if([&keyLookup](const LayoutWrapper::KeyId& id) { return id == keyLookup.keyId; });
     }
 
     int eventTime = 0;
@@ -307,7 +311,7 @@ void MidiService::createAllNotesOff(juce::MidiBuffer& buffer) {
 
 void MidiService::createNoteHold(ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer) {
     int channel = state->midiChannel;
-    if (channel > 0 && channel <= 16 && (chanNotePri_[channel - 1].empty() || chanNotePri_[channel - 1].front().equals(keyLookup.keyId))) {
+    if (channel > 0 && channel <= 16 && (chanNotePri_[channel - 1].empty() || chanNotePri_[channel - 1].front() == keyLookup.keyId)) {
         addMidiValueMessage(channel, state->ehRoll, keyLookup.roll, keyLookup.pbRange, keyLookup.notes[0], buffer, true);
         addMidiValueMessage(channel, state->ehYaw, keyLookup.yaw, keyLookup.pbRange, keyLookup.notes[0], buffer, true);
         addMidiValueMessage(channel, state->ehPressureHistory.back(), keyLookup.pressure, keyLookup.pbRange, keyLookup.notes[0], buffer, false);

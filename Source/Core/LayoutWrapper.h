@@ -11,7 +11,9 @@ public:
         int course = 0;
         int keyNo = 0;
         InstrumentType deviceType = InstrumentType::None;
-        bool equals(const KeyId& id) const { return course == id.course && keyNo == id.keyNo && deviceType == id.deviceType; }
+        bool operator==(const KeyId& other) const noexcept { return course == other.course && keyNo == other.keyNo && deviceType == other.deviceType; }
+        bool operator!=(const KeyId& other) const noexcept { return !(*this == other); }
+        bool equals(const KeyId& id) const noexcept { return *this == id; }
     };
     
     struct LayoutKey {
