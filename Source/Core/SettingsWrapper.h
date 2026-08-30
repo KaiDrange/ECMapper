@@ -17,8 +17,8 @@ public:
     static inline const juce::Identifier id_controlLights { "controlLights" };
     
     static inline const juce::Identifier id_appRole { "appRole" };
-    static inline const juce::Identifier id_slaveListenIP { "slaveListenIP" };
-    static inline const juce::Identifier id_slaveListenPort { "slaveListenPort" };
+    static inline const juce::Identifier id_clientListenIP { "clientListenIP" };
+    static inline const juce::Identifier id_clientListenPort { "clientListenPort" };
 
     static void addListener(juce::ValueTree::Listener* listener, juce::ValueTree& rootState);
 
@@ -40,12 +40,22 @@ public:
     
     static AppRole getAppRole(juce::ValueTree& rootState);
     static void setAppRole(AppRole role, juce::ValueTree& rootState);
-    static juce::String getSlaveListenIP(juce::ValueTree& rootState);
-    static void setSlaveListenIP(juce::String ip, juce::ValueTree& rootState);
-    static int getSlaveListenPort(juce::ValueTree& rootState);
-    static void setSlaveListenPort(int port, juce::ValueTree& rootState);
+    static juce::String getClientListenIP(juce::ValueTree& rootState);
+    static void setClientListenIP(juce::String ip, juce::ValueTree& rootState);
+    static int getClientListenPort(juce::ValueTree& rootState);
+    static void setClientListenPort(int port, juce::ValueTree& rootState);
+    
+    static void saveDeviceSettings(const ConnectedDevice& device, juce::ValueTree& rootState);
+    static void loadDeviceSettings(ConnectedDevice& device, juce::ValueTree& rootState);
     
 private:
+    static inline const juce::Identifier id_devices { "devices" };
+    static inline const juce::Identifier id_mode { "mode" };
+    static inline const juce::Identifier id_targets { "targets" };
+    static inline const juce::Identifier id_target { "target" };
+    static inline const juce::Identifier id_port { "port" };
+    static inline const juce::Identifier id_deviceNode { "device" };
+    static inline const juce::Identifier id_devId { "devId" };
     static inline const juce::String default_IP { "127.0.0.1:12120" };
     static constexpr int default_lowerMPEVoiceCount = 15;
     static constexpr int default_upperMPEVoiceCount = 0;

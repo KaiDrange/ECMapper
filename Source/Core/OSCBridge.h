@@ -27,8 +27,8 @@ public:
     void setSenderTarget(const juce::String& ip, int port);
     void setReceiverPort(int port);
 
-    bool isSenderConnected() const { return masterEnabled_; }
-    bool isReceiverConnected() const { return masterEnabled_; }
+    bool isSenderConnected() const { return hostEnabled_; }
+    bool isReceiverConnected() const { return hostEnabled_; }
 
 private:
     void oscMessageReceived(const juce::OSCMessage& message) override;
@@ -36,7 +36,7 @@ private:
     void timerCallback() override;
     
     void updateConnections();
-    void updateSlaveReceiver();
+    void updateClientReceiver();
 
     HardwareService& hardwareService_;
     osc::MessageFifo& hardwareToMapperQueue_;
@@ -60,10 +60,10 @@ private:
     
     std::vector<std::unique_ptr<Connection>> connections_;
     juce::CriticalSection connectionsLock_;
-    bool masterEnabled_ = false;
+    bool hostEnabled_ = false;
     juce::String instanceId_;
     
-    std::unique_ptr<juce::OSCReceiver> globalSlaveReceiver_;
+    std::unique_ptr<juce::OSCReceiver> globalClientReceiver_;
 
     void sendOutgoingMessages();
     void sendPing(Connection* conn);

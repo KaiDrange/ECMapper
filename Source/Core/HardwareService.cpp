@@ -1,4 +1,5 @@
 #include "HardwareService.h"
+#include "SettingsWrapper.h"
 #include <iostream>
 
 namespace ecm {
@@ -14,16 +15,23 @@ HardwareService::~HardwareService() {
     stopService();
 }
 
-void HardwareService::startService() {
+void HardwareService::startService(juce::ValueTree* state) {
+    state_ = state;
     if (isThreadRunning()) return;
     
-    eigenApi_.addCallback(this);
-    eigenApi_.addLifecycleCallback(this);
-    eigenApi_.setPollTime(100);
+    if (state_) appRole_ = SettingsWrapper::getAppRole(*state_);
     
-    if (!eigenApi_.start()) {
-        std::cerr << "Unable to start EigenLite" << std::endl;
-        return;
+    // Re-create the Eigenharp instance to ensure a clean discovery state
+    eigenApi_ = std::make_unique<EigenApi::Eigenharp>();
+    
+    eigenApi_->addCallback(this);
+    eigenApi_->addLifecycleCallback(this);
+    eigenApi_->setPollTime(100);
+    
+    if (appRole_ == AppRole::Host) {
+        if (!eigenApi_->start()) {
+            std::cerr << "Unable to start EigenLite" << std::endl;
+        }
     }
     
     startThread();
@@ -35,12 +43,15 @@ void HardwareService::stopService() {
     signalThreadShouldExit();
     stopThread(2000);
     
-    eigenApi_.stop();
-    eigenApi_.removeCallback(this);
-    eigenApi_.removeLifecycleCallback(this);
+    if (eigenApi_) {
+        eigenApi_->stop();
+        eigenApi_->removeCallback(this);
+        eigenApi_->removeLifecycleCallback(this);
+        eigenApi_.reset();
+    }
 }
 
-std::vector<HardwareService::ConnectedDevice> HardwareService::getConnectedDevices() {
+std::vector<ConnectedDevice> HardwareService::getConnectedDevices() {
     const juce::ScopedLock sl(deviceListLock_);
     return connectedDevices_;
 }
@@ -51,6 +62,7 @@ void HardwareService::setDeviceMode(const std::string& dev, ecm::DeviceMode mode
         for (auto& d : connectedDevices_) {
             if (d.dev == dev) {
                 d.mode = mode;
+                if (state_) SettingsWrapper::saveDeviceSettings(d, *state_);
                 break;
             }
         }
@@ -58,13 +70,51 @@ void HardwareService::setDeviceMode(const std::string& dev, ecm::DeviceMode mode
     listeners_.call(&Listener::deviceListChanged);
 }
 
-void HardwareService::setDeviceOSCSettings(const std::string& dev, const juce::String& ip, int port) {
+void HardwareService::addDeviceOSCTarget(const std::string& dev, const juce::String& ip, int port) {
     {
         const juce::ScopedLock sl(deviceListLock_);
         for (auto& d : connectedDevices_) {
             if (d.dev == dev) {
-                d.oscIP = ip;
-                d.oscPort = port;
+                if (d.oscTargets.size() < 3) {
+                    int nextPort = port;
+                    if (!d.oscTargets.empty()) {
+                        nextPort = d.oscTargets.back().port + 2;
+                    }
+                    d.oscTargets.push_back({ip, nextPort});
+                    if (state_) SettingsWrapper::saveDeviceSettings(d, *state_);
+                }
+                break;
+            }
+        }
+    }
+    listeners_.call(&Listener::deviceListChanged);
+}
+
+void HardwareService::removeDeviceOSCTarget(const std::string& dev, int targetIndex) {
+    {
+        const juce::ScopedLock sl(deviceListLock_);
+        for (auto& d : connectedDevices_) {
+            if (d.dev == dev) {
+                if (targetIndex >= 0 && targetIndex < (int)d.oscTargets.size()) {
+                    d.oscTargets.erase(d.oscTargets.begin() + targetIndex);
+                    if (state_) SettingsWrapper::saveDeviceSettings(d, *state_);
+                }
+                break;
+            }
+        }
+    }
+    listeners_.call(&Listener::deviceListChanged);
+}
+
+void HardwareService::updateDeviceOSCTarget(const std::string& dev, int targetIndex, const juce::String& ip, int port) {
+    {
+        const juce::ScopedLock sl(deviceListLock_);
+        for (auto& d : connectedDevices_) {
+            if (d.dev == dev) {
+                if (targetIndex >= 0 && (size_t)targetIndex < d.oscTargets.size()) {
+                    d.oscTargets[(size_t)targetIndex] = {ip, port};
+                    if (state_) SettingsWrapper::saveDeviceSettings(d, *state_);
+                }
                 break;
             }
         }
@@ -110,16 +160,17 @@ void HardwareService::turnOffAllLEDs() {
                 course0Length = 120;
                 course1Length = 12;
                 break;
+            case InstrumentType::None:
             default: break;
         }
 
         for (int i = 0; i < course0Length; i++) {
-            eigenApi_.setLED(d.dev.c_str(), 0, i, EigenApi::Eigenharp::LED_OFF);
+            if (eigenApi_) eigenApi_->setLED(d.dev.c_str(), 0, (unsigned)i, EigenApi::Eigenharp::LED_OFF);
             d.assignedLEDColours[0][i] = 0;
             d.activeKeys[0][i] = false;
         }
         for (int i = course1Start; i < course1Start + course1Length; i++) {
-            eigenApi_.setLED(d.dev.c_str(), 1, i, EigenApi::Eigenharp::LED_OFF);
+            if (eigenApi_) eigenApi_->setLED(d.dev.c_str(), 1, (unsigned)i, EigenApi::Eigenharp::LED_OFF);
             d.assignedLEDColours[1][i] = 0;
             d.activeKeys[1][i] = false;
         }
@@ -128,10 +179,12 @@ void HardwareService::turnOffAllLEDs() {
 
 void HardwareService::run() {
     while (!threadShouldExit()) {
-        try {
-            eigenApi_.process();
-        } catch (...) {
-            std::cerr << "EigenAPI process() threw an exception." << std::endl;
+        if (appRole_ == AppRole::Host && eigenApi_) {
+            try {
+                eigenApi_->process();
+            } catch (...) {
+                std::cerr << "EigenAPI process() threw an exception." << std::endl;
+            }
         }
         
         processOutgoingMessages();
@@ -148,7 +201,7 @@ void HardwareService::processOutgoingMessages() {
             for (auto& d : connectedDevices_) {
                 if (d.type == msg.device) {
                     d.assignedLEDColours[msg.course][msg.key] = (int)msg.value;
-                    eigenApi_.setLED(d.dev.c_str(), msg.course, msg.key, (EigenApi::Eigenharp::LedColour)msg.value);
+                    if (eigenApi_) eigenApi_->setLED(d.dev.c_str(), msg.course, msg.key, (EigenApi::Eigenharp::LedColour)msg.value);
                 }
             }
         } else if (msg.type == osc::MessageType::Reset) {
@@ -173,6 +226,7 @@ void HardwareService::connected(const char* dev, EigenApi::DeviceType dt) {
     ConnectedDevice newDev;
     newDev.dev = dev;
     newDev.type = devType;
+    if (state_) SettingsWrapper::loadDeviceSettings(newDev, *state_);
     connectedDevices_.push_back(newDev);
     
     listeners_.call(&Listener::deviceListChanged);
@@ -204,10 +258,10 @@ void HardwareService::key(const char* dev, unsigned long long t, unsigned course
 
             if (a && !d.activeKeys[course][key]) {
                 d.activeKeys[course][key] = true;
-                eigenApi_.setLED(dev, course, key, EigenApi::Eigenharp::LED_ORANGE);
+                if (eigenApi_) eigenApi_->setLED(dev, course, key, EigenApi::Eigenharp::LED_ORANGE);
             } else if (!a) {
                 d.activeKeys[course][key] = false;
-                eigenApi_.setLED(dev, course, key, (EigenApi::Eigenharp::LedColour)d.assignedLEDColours[course][key]);
+                if (eigenApi_) eigenApi_->setLED(dev, course, key, (EigenApi::Eigenharp::LedColour)d.assignedLEDColours[course][key]);
             }
             
             osc::Message msg;
@@ -317,13 +371,22 @@ void HardwareService::handleRemoteDeviceConnection(ecm::InstrumentType type, con
         if (d.isRemote && d.remoteOriginalDevId == stdRemoteDevId) {
             bool changed = false;
             // If we have a real IP now and previously it was "Unknown", update it
-            if (remoteIP != "Unknown" && d.oscIP == "Unknown") {
-                d.oscIP = remoteIP;
+            if (remoteIP != "Unknown" && (d.oscTargets.empty() || d.oscTargets[0].ip == "Unknown")) {
+                if (d.oscTargets.empty()) {
+                    d.oscTargets.push_back({remoteIP, port});
+                } else {
+                    d.oscTargets[0].ip = remoteIP;
+                    d.oscTargets[0].port = port;
+                }
                 d.dev = "Remote-" + stdRemoteDevId + "@" + remoteIP.toStdString();
                 changed = true;
             }
-            if (port > 0 && d.oscPort != port) {
-                d.oscPort = port;
+            if (port > 0 && (d.oscTargets.empty() || d.oscTargets[0].port != port)) {
+                if (d.oscTargets.empty()) {
+                    d.oscTargets.push_back({remoteIP, port});
+                } else {
+                    d.oscTargets[0].port = port;
+                }
                 changed = true;
             }
             if (changed) {
@@ -340,8 +403,10 @@ void HardwareService::handleRemoteDeviceConnection(ecm::InstrumentType type, con
     newDev.remoteOriginalDevId = stdRemoteDevId;
     newDev.type = type;
     newDev.isRemote = true;
-    newDev.oscIP = remoteIP;
-    newDev.oscPort = port > 0 ? port : 12120;
+    if (state_) SettingsWrapper::loadDeviceSettings(newDev, *state_);
+    if (newDev.oscTargets.empty()) {
+        newDev.oscTargets.push_back({remoteIP, port > 0 ? port : 12120});
+    }
     newDev.mode = ecm::DeviceMode::ReceiveOSC; // Default for remote devices
     connectedDevices_.push_back(newDev);
     
@@ -350,23 +415,35 @@ void HardwareService::handleRemoteDeviceConnection(ecm::InstrumentType type, con
 
 void HardwareService::setAppRole(AppRole role) {
     if (appRole_ == role) return;
-    appRole_ = role;
     
-    // If we switch to Master, we should probably clear remote devices?
-    // User didn't specify, but it makes sense.
-    if (appRole_ == AppRole::Master) {
+    stopService();
+    
+    appRole_ = role;
+    if (state_) SettingsWrapper::setAppRole(role, *state_);
+    
+    {
         const juce::ScopedLock sl(deviceListLock_);
-        connectedDevices_.erase(std::remove_if(connectedDevices_.begin(), connectedDevices_.end(), 
-            [](const ConnectedDevice& d) { return d.isRemote; }), connectedDevices_.end());
+        if (appRole_ == AppRole::Client) {
+            // Remove local devices
+            connectedDevices_.erase(std::remove_if(connectedDevices_.begin(), connectedDevices_.end(), 
+                [](const ConnectedDevice& d) { return !d.isRemote; }), connectedDevices_.end());
+        } else {
+            // Host mode
+            // Remove remote devices
+            connectedDevices_.erase(std::remove_if(connectedDevices_.begin(), connectedDevices_.end(), 
+                [](const ConnectedDevice& d) { return d.isRemote; }), connectedDevices_.end());
+        }
     }
+    
+    startService(state_);
     
     listeners_.call(&Listener::deviceListChanged);
 }
 
-void HardwareService::setSlaveListenSettings(const juce::String& ip, int port) {
-    if (slaveListenIP_ == ip && slaveListenPort_ == port) return;
-    slaveListenIP_ = ip;
-    slaveListenPort_ = port;
+void HardwareService::setClientListenSettings(const juce::String& ip, int port) {
+    if (clientListenIP_ == ip && clientListenPort_ == port) return;
+    clientListenIP_ = ip;
+    clientListenPort_ = port;
     listeners_.call(&Listener::deviceListChanged);
 }
 

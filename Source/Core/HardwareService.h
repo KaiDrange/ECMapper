@@ -2,6 +2,7 @@
 #include <JuceHeader.h>
 #include <eigenapi.h>
 #include "OSCMessage.h"
+#include "Enums.h"
 
 namespace ecm {
 
@@ -11,27 +12,17 @@ public:
                     osc::MessageFifo& mapperToHardwareQueue);
     ~HardwareService() override;
     
-    void startService();
+    void startService(juce::ValueTree* state = nullptr);
     void stopService();
     bool isServiceRunning() const { return isThreadRunning(); }
 
     void turnOffAllLEDs();
 
-    struct ConnectedDevice {
-        std::string dev;
-        std::string remoteOriginalDevId;
-        ecm::InstrumentType type = ecm::InstrumentType::None;
-        ecm::DeviceMode mode = ecm::DeviceMode::Local;
-        bool isRemote = false;
-        juce::String oscIP = "127.0.0.1";
-        int oscPort = 12120;
-        int assignedLEDColours[3][120] = { {0} };
-        bool activeKeys[3][120] = { {false} };
-    };
-
     std::vector<ConnectedDevice> getConnectedDevices();
     void setDeviceMode(const std::string& dev, ecm::DeviceMode mode);
-    void setDeviceOSCSettings(const std::string& dev, const juce::String& ip, int port);
+    void addDeviceOSCTarget(const std::string& dev, const juce::String& ip, int port);
+    void removeDeviceOSCTarget(const std::string& dev, int targetIndex);
+    void updateDeviceOSCTarget(const std::string& dev, int targetIndex, const juce::String& ip, int port);
     bool isDeviceTypeInReceiveOSCMode(ecm::InstrumentType type);
     bool isDeviceInReceiveOSCMode(const std::string& dev);
     void handleRemoteDeviceConnection(ecm::InstrumentType type, const juce::String& remoteIP, const juce::String& remoteDevId, int port);
@@ -39,9 +30,9 @@ public:
     AppRole getAppRole() const { return appRole_; }
     void setAppRole(AppRole role);
     
-    juce::String getSlaveListenIP() const { return slaveListenIP_; }
-    int getSlaveListenPort() const { return slaveListenPort_; }
-    void setSlaveListenSettings(const juce::String& ip, int port);
+    juce::String getClientListenIP() const { return clientListenIP_; }
+    int getClientListenPort() const { return clientListenPort_; }
+    void setClientListenSettings(const juce::String& ip, int port);
 
     class Listener {
     public:
@@ -67,7 +58,9 @@ public:
 private:
     void run() override;
     
-    EigenApi::Eigenharp eigenApi_;
+    std::unique_ptr<EigenApi::Eigenharp> eigenApi_;
+    
+    juce::ValueTree* state_ = nullptr;
     
     osc::MessageFifo& hardwareToMapperQueue_;
     osc::MessageFifo& mapperToHardwareQueue_;
@@ -77,9 +70,9 @@ private:
     juce::CriticalSection deviceListLock_;
     juce::ListenerList<Listener> listeners_;
     
-    AppRole appRole_ = AppRole::Master;
-    juce::String slaveListenIP_ = "127.0.0.1";
-    int slaveListenPort_ = 12130;
+    AppRole appRole_ = AppRole::Host;
+    juce::String clientListenIP_ = "127.0.0.1";
+    int clientListenPort_ = 12130;
 
     void processOutgoingMessages();
     ecm::InstrumentType getInstrumentTypeFromCols(int cols) const;

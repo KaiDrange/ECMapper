@@ -28,20 +28,26 @@ private:
     juce::ComboBox roleCombo;
     juce::Label roleLabel;
     
-    juce::Label slaveIpLabel;
-    juce::TextEditor slaveIpInput;
-    juce::Label slavePortLabel;
-    juce::TextEditor slavePortInput;
+    juce::Label clientIpLabel;
+    juce::TextEditor clientIpInput;
+    juce::Label clientPortLabel;
+    juce::TextEditor clientPortInput;
     
+    struct TargetRow {
+        std::unique_ptr<juce::Label> ipLabel;
+        std::unique_ptr<juce::TextEditor> ipInput;
+        std::unique_ptr<juce::Label> portLabel;
+        std::unique_ptr<juce::TextEditor> portInput;
+        std::unique_ptr<juce::TextButton> removeButton;
+    };
+
     struct DeviceRow {
         std::string dev;
         std::unique_ptr<juce::ImageComponent> statusLed;
         std::unique_ptr<juce::Label> nameLabel;
         std::unique_ptr<juce::ComboBox> modeCombo;
-        std::unique_ptr<juce::Label> ipLabel;
-        std::unique_ptr<juce::TextEditor> ipInput;
-        std::unique_ptr<juce::Label> portLabel;
-        std::unique_ptr<juce::TextEditor> portInput;
+        std::vector<std::unique_ptr<TargetRow>> targets;
+        std::unique_ptr<juce::TextButton> addTargetButton;
         std::unique_ptr<juce::TextButton> disconnectButton;
     };
     

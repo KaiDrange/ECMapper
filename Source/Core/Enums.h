@@ -1,4 +1,6 @@
 #pragma once
+#include <JuceHeader.h>
+#include <vector>
 
 namespace ecm {
 
@@ -68,8 +70,24 @@ enum class DeviceMode {
 };
 
 enum class AppRole {
-    Master,
-    Slave
+    Host,
+    Client
+};
+
+struct OSCTarget {
+    juce::String ip = "127.0.0.1";
+    int port = 12120;
+};
+
+struct ConnectedDevice {
+    std::string dev;
+    std::string remoteOriginalDevId;
+    InstrumentType type = InstrumentType::None;
+    DeviceMode mode = DeviceMode::Local;
+    bool isRemote = false;
+    std::vector<OSCTarget> oscTargets;
+    int assignedLEDColours[3][120] = { {0} };
+    bool activeKeys[3][120] = { {false} };
 };
 
 } // namespace ecm

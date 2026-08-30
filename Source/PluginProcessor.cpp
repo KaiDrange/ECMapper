@@ -34,7 +34,7 @@ void ECMapperAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBloc
     
     updateGlobalSettings();
     midiService.start(state);
-    hardwareService.startService();
+    hardwareService.startService(&state.state);
     oscBridge.setSenderEnabled(true);
     oscBridge.setReceiverEnabled(true);
     
@@ -104,8 +104,8 @@ void ECMapperAudioProcessor::setStateInformation(const void* data, int sizeInByt
 
 void ECMapperAudioProcessor::updateGlobalSettings() {
     hardwareService.setAppRole(ecm::SettingsWrapper::getAppRole(state.state));
-    hardwareService.setSlaveListenSettings(ecm::SettingsWrapper::getSlaveListenIP(state.state), 
-                                         ecm::SettingsWrapper::getSlaveListenPort(state.state));
+    hardwareService.setClientListenSettings(ecm::SettingsWrapper::getClientListenIP(state.state), 
+                                         ecm::SettingsWrapper::getClientListenPort(state.state));
 }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() {

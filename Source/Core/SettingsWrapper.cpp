@@ -83,7 +83,7 @@ void SettingsWrapper::setControlLights(bool value, InstrumentType deviceType, ju
 
 AppRole SettingsWrapper::getAppRole(juce::ValueTree& rootState) {
     auto settings = getSettingsTree(rootState);
-    return (AppRole)(int)settings.getProperty(id_appRole, (int)AppRole::Master);
+    return (AppRole)(int)settings.getProperty(id_appRole, (int)AppRole::Host);
 }
 
 void SettingsWrapper::setAppRole(AppRole role, juce::ValueTree& rootState) {
@@ -91,24 +91,77 @@ void SettingsWrapper::setAppRole(AppRole role, juce::ValueTree& rootState) {
     settings.setProperty(id_appRole, (int)role, nullptr);
 }
 
-juce::String SettingsWrapper::getSlaveListenIP(juce::ValueTree& rootState) {
+juce::String SettingsWrapper::getClientListenIP(juce::ValueTree& rootState) {
     auto settings = getSettingsTree(rootState);
-    return settings.getProperty(id_slaveListenIP, "127.0.0.1").toString();
+    return settings.getProperty(id_clientListenIP, "127.0.0.1").toString();
 }
 
-void SettingsWrapper::setSlaveListenIP(juce::String ip, juce::ValueTree& rootState) {
+void SettingsWrapper::setClientListenIP(juce::String ip, juce::ValueTree& rootState) {
     auto settings = getSettingsTree(rootState);
-    settings.setProperty(id_slaveListenIP, ip, nullptr);
+    settings.setProperty(id_clientListenIP, ip, nullptr);
 }
 
-int SettingsWrapper::getSlaveListenPort(juce::ValueTree& rootState) {
+int SettingsWrapper::getClientListenPort(juce::ValueTree& rootState) {
     auto settings = getSettingsTree(rootState);
-    return settings.getProperty(id_slaveListenPort, 12130);
+    return settings.getProperty(id_clientListenPort, 12130);
 }
 
-void SettingsWrapper::setSlaveListenPort(int port, juce::ValueTree& rootState) {
+void SettingsWrapper::setClientListenPort(int port, juce::ValueTree& rootState) {
     auto settings = getSettingsTree(rootState);
-    settings.setProperty(id_slaveListenPort, port, nullptr);
+    settings.setProperty(id_clientListenPort, port, nullptr);
+}
+
+void SettingsWrapper::saveDeviceSettings(const ConnectedDevice& device, juce::ValueTree& rootState) {
+    auto settings = getSettingsTree(rootState);
+    auto devices = settings.getOrCreateChildWithName(id_devices, nullptr);
+    
+    juce::String devId = device.isRemote ? juce::String(device.remoteOriginalDevId) : juce::String(device.dev);
+    if (devId.isEmpty()) return;
+    
+    auto devNode = devices.getChildWithProperty(id_devId, devId);
+    if (!devNode.isValid()) {
+        devNode = juce::ValueTree(id_deviceNode);
+        devNode.setProperty(id_devId, devId, nullptr);
+        devices.appendChild(devNode, nullptr);
+    }
+    
+    devNode.setProperty(id_mode, (int)device.mode, nullptr);
+    
+    devNode.removeChild(devNode.getChildWithName(id_targets), nullptr);
+    auto targetsNode = devNode.getOrCreateChildWithName(id_targets, nullptr);
+    
+    for (const auto& t : device.oscTargets) {
+        juce::ValueTree tNode(id_target);
+        tNode.setProperty(id_IP, t.ip, nullptr);
+        tNode.setProperty(id_port, t.port, nullptr);
+        targetsNode.appendChild(tNode, nullptr);
+    }
+}
+
+void SettingsWrapper::loadDeviceSettings(ConnectedDevice& device, juce::ValueTree& rootState) {
+    auto settings = getSettingsTree(rootState);
+    auto devices = settings.getChildWithName(id_devices);
+    if (!devices.isValid()) return;
+    
+    juce::String devId = device.isRemote ? juce::String(device.remoteOriginalDevId) : juce::String(device.dev);
+    if (devId.isEmpty()) return;
+    
+    auto devNode = devices.getChildWithProperty(id_devId, devId);
+    if (!devNode.isValid()) return;
+    
+    device.mode = (DeviceMode)(int)devNode.getProperty(id_mode, (int)DeviceMode::Local);
+    
+    auto targetsNode = devNode.getChildWithName(id_targets);
+    if (targetsNode.isValid()) {
+        device.oscTargets.clear();
+        for (int i = 0; i < targetsNode.getNumChildren(); ++i) {
+            auto tNode = targetsNode.getChild(i);
+            OSCTarget t;
+            t.ip = tNode.getProperty(id_IP, "127.0.0.1");
+            t.port = tNode.getProperty(id_port, 12120);
+            device.oscTargets.push_back(t);
+        }
+    }
 }
 
 } // namespace ecm

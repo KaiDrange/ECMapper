@@ -26,26 +26,26 @@ OSCBridge::~OSCBridge() {
 
 void OSCBridge::deviceListChanged() {
     updateConnections();
-    updateSlaveReceiver();
+    updateClientReceiver();
 }
 
-void OSCBridge::updateSlaveReceiver() {
-    if (hardwareService_.getAppRole() == AppRole::Slave) {
-        int port = hardwareService_.getSlaveListenPort();
-        if (globalSlaveReceiver_ == nullptr || !globalSlaveReceiver_->connect(port)) {
-            globalSlaveReceiver_ = std::make_unique<juce::OSCReceiver>();
-            if (globalSlaveReceiver_->connect(port)) {
-                globalSlaveReceiver_->addListener(this);
-                logger_.log("Global Slave Receiver listening on port " + juce::String(port));
+void OSCBridge::updateClientReceiver() {
+    if (hardwareService_.getAppRole() == AppRole::Client) {
+        int port = hardwareService_.getClientListenPort();
+        if (globalClientReceiver_ == nullptr || !globalClientReceiver_->connect(port)) {
+            globalClientReceiver_ = std::make_unique<juce::OSCReceiver>();
+            if (globalClientReceiver_->connect(port)) {
+                globalClientReceiver_->addListener(this);
+                logger_.log("Global Client Receiver listening on port " + juce::String(port));
             } else {
-                logger_.log("Global Slave Receiver FAILED to listen on port " + juce::String(port));
+                logger_.log("Global Client Receiver FAILED to listen on port " + juce::String(port));
             }
         }
     } else {
-        if (globalSlaveReceiver_ != nullptr) {
-            globalSlaveReceiver_->removeListener(this);
-            globalSlaveReceiver_->disconnect();
-            globalSlaveReceiver_ = nullptr;
+        if (globalClientReceiver_ != nullptr) {
+            globalClientReceiver_->removeListener(this);
+            globalClientReceiver_->disconnect();
+            globalClientReceiver_ = nullptr;
         }
     }
 }
@@ -54,7 +54,7 @@ void OSCBridge::updateConnections() {
     const juce::ScopedLock sl(connectionsLock_);
     connections_.clear();
     
-    if (!masterEnabled_) {
+    if (!hostEnabled_) {
         stopTimer();
         return;
     }
@@ -63,48 +63,50 @@ void OSCBridge::updateConnections() {
     for (const auto& d : devices) {
         if (d.mode == ecm::DeviceMode::Local) continue;
         
-        auto conn = std::make_unique<Connection>();
-        conn->dev = d.dev;
-        conn->type = d.type;
-        conn->mode = d.mode;
-        conn->ip = d.oscIP;
-        
-        if (d.mode == ecm::DeviceMode::TransmitOSC) {
-            conn->sendPort = d.oscPort;
-            conn->receivePort = d.oscPort + 1;
-        } else {
-            conn->sendPort = d.oscPort + 1;
-            conn->receivePort = d.oscPort;
-        }
-        
-        conn->sender = std::make_unique<juce::OSCSender>();
-        if (conn->sender->connect(conn->ip, conn->sendPort)) {
-            logger_.log("OSC Sender connected to " + conn->ip + ":" + juce::String(conn->sendPort) + " for " + d.dev);
-        } else {
-            logger_.log("OSC Sender FAILED to connect to " + conn->ip + ":" + juce::String(conn->sendPort) + " for " + d.dev);
-        }
-        
-        bool needsReceiver = true;
-        if (globalSlaveReceiver_ != nullptr && conn->receivePort == hardwareService_.getSlaveListenPort()) {
-            needsReceiver = false;
-        }
-        
-        if (needsReceiver) {
-            conn->receiver = std::make_unique<juce::OSCReceiver>();
-            if (conn->receiver->connect(conn->receivePort)) {
-                conn->receiver->addListener(this);
-                logger_.log("OSC Receiver listening on port " + juce::String(conn->receivePort) + " for " + d.dev);
+        for (const auto& target : d.oscTargets) {
+            auto conn = std::make_unique<Connection>();
+            conn->dev = d.dev;
+            conn->type = d.type;
+            conn->mode = d.mode;
+            conn->ip = target.ip;
+            
+            if (d.mode == ecm::DeviceMode::TransmitOSC) {
+                conn->sendPort = target.port;
+                conn->receivePort = target.port + 1;
             } else {
-                logger_.log("OSC Receiver FAILED to listen on port " + juce::String(conn->receivePort) + " for " + d.dev);
+                conn->sendPort = target.port + 1;
+                conn->receivePort = target.port;
             }
-        } else {
-            logger_.log("OSC Receiver using global slave receiver for " + d.dev);
+            
+            conn->sender = std::make_unique<juce::OSCSender>();
+            if (conn->sender->connect(conn->ip, conn->sendPort)) {
+                logger_.log("OSC Sender connected to " + conn->ip + ":" + juce::String(conn->sendPort) + " for " + d.dev);
+            } else {
+                logger_.log("OSC Sender FAILED to connect to " + conn->ip + ":" + juce::String(conn->sendPort) + " for " + d.dev);
+            }
+            
+            bool needsReceiver = true;
+            if (globalClientReceiver_ != nullptr && conn->receivePort == hardwareService_.getClientListenPort()) {
+                needsReceiver = false;
+            }
+            
+            if (needsReceiver) {
+                conn->receiver = std::make_unique<juce::OSCReceiver>();
+                if (conn->receiver->connect(conn->receivePort)) {
+                    conn->receiver->addListener(this);
+                    logger_.log("OSC Receiver listening on port " + juce::String(conn->receivePort) + " for " + d.dev);
+                } else {
+                    logger_.log("OSC Receiver FAILED to listen on port " + juce::String(conn->receivePort) + " for " + d.dev);
+                }
+            } else {
+                logger_.log("OSC Receiver using global client receiver for " + d.dev);
+            }
+            
+            connections_.push_back(std::move(conn));
         }
-        
-        connections_.push_back(std::move(conn));
     }
     
-    if (masterEnabled_) {
+    if (hostEnabled_) {
         if (!isTimerRunning()) startTimer(100);
     } else {
         stopTimer();
@@ -112,8 +114,8 @@ void OSCBridge::updateConnections() {
 }
 
 void OSCBridge::setSenderEnabled(bool enabled) {
-    if (masterEnabled_ == enabled) return;
-    masterEnabled_ = enabled;
+    if (hostEnabled_ == enabled) return;
+    hostEnabled_ = enabled;
     updateConnections();
 }
 
@@ -151,16 +153,17 @@ void OSCBridge::timerCallback() {
         discoveryCounter = 0;
         auto devices = hardwareService_.getConnectedDevices();
         for (const auto& d : devices) {
-            if (!d.isRemote) {
+            if (!d.isRemote && d.mode == ecm::DeviceMode::TransmitOSC) {
                 juce::String localIP = juce::IPAddress::getLocalAddress().toString();
+                int port = d.oscTargets.empty() ? 12130 : d.oscTargets[0].port;
                 
                 // Send to global discovery port
-                discoverySender_.send("/EigenCore/device", (int)d.type, localIP, d.oscPort, instanceId_, juce::String(d.dev));
+                discoverySender_.send("/EigenCore/device", (int)d.type, localIP, port, instanceId_, juce::String(d.dev));
 
                 // Also send to all active Transmit connections
                 for (auto& conn : connections_) {
                     if (conn->mode == ecm::DeviceMode::TransmitOSC) {
-                        conn->sender->send("/EigenCore/device", (int)d.type, localIP, d.oscPort, instanceId_, juce::String(d.dev));
+                        conn->sender->send("/EigenCore/device", (int)d.type, localIP, port, instanceId_, juce::String(d.dev));
                     }
                 }
             }
@@ -184,7 +187,7 @@ void OSCBridge::sendOutgoingMessages() {
             auto devices = hardwareService_.getConnectedDevices();
             for (const auto& d : devices) {
                 if (d.dev == msg.devId) {
-                    port = d.oscPort;
+                    if (!d.oscTargets.empty()) port = d.oscTargets[0].port;
                     break;
                 }
             }
@@ -210,25 +213,25 @@ void OSCBridge::sendOutgoingMessages() {
 
                 switch (msg.type) {
                     case osc::MessageType::Key:
-                        conn->sender->send("/EigenCore/key", (int)msg.course, (int)msg.key, (int)msg.active, msg.pressure, msg.roll, msg.yaw, (int)msg.device, juce::String(msg.devId));
+                        conn->sender->send("/EigenCore/key", (int)msg.course, (int)msg.key, (int)msg.active, msg.pressure, msg.roll, msg.yaw, (int)msg.device, juce::String(msg.devId), instanceId_);
                         break;
                     case osc::MessageType::Breath:
-                        conn->sender->send("/EigenCore/breath", msg.value, (int)msg.device, juce::String(msg.devId));
+                        conn->sender->send("/EigenCore/breath", msg.value, (int)msg.device, juce::String(msg.devId), instanceId_);
                         break;
                     case osc::MessageType::Strip:
-                        conn->sender->send("/EigenCore/strip", (int)msg.strip, msg.value, (int)msg.active, (int)msg.device, juce::String(msg.devId));
+                        conn->sender->send("/EigenCore/strip", (int)msg.strip, msg.value, (int)msg.active, (int)msg.device, juce::String(msg.devId), instanceId_);
                         break;
                     case osc::MessageType::Pedal:
-                        conn->sender->send("/EigenCore/pedal", (int)msg.pedal, msg.value, (int)msg.device, juce::String(msg.devId));
+                        conn->sender->send("/EigenCore/pedal", (int)msg.pedal, msg.value, (int)msg.device, juce::String(msg.devId), instanceId_);
                         break;
                     case osc::MessageType::Device:
                         conn->sender->send("/EigenCore/device", (int)msg.device, juce::IPAddress::getLocalAddress().toString(), conn->sendPort, instanceId_, juce::String(msg.devId));
                         break;
                     case osc::MessageType::LED:
-                        conn->sender->send("/ECMapper/led", (int)msg.course, (int)msg.key, (int)msg.value, (int)msg.device, juce::String(msg.devId));
+                        conn->sender->send("/ECMapper/led", (int)msg.course, (int)msg.key, (int)msg.value, (int)msg.device, juce::String(msg.devId), instanceId_);
                         break;
                     case osc::MessageType::Reset:
-                        conn->sender->send("/ECMapper/reset", (int)msg.device, juce::String(msg.devId));
+                        conn->sender->send("/ECMapper/reset", (int)msg.device, juce::String(msg.devId), instanceId_);
                         break;
                     default: break;
                 }
@@ -275,6 +278,8 @@ void OSCBridge::oscMessageReceived(const juce::OSCMessage& message) {
         } else if (message.size() == 2) {
             auto devType = (InstrumentType)getInt(message[0]);
             auto remoteIP = message[1].getString();
+            // No instanceId, but we can't filter. Assume remote for now or ignore?
+            // Let's at least check if it's not us if we had an IP, but discovery is 127.0.0.1 often.
             hardwareService_.handleRemoteDeviceConnection(devType, remoteIP, "", 0);
         } else if (message.size() == 1) {
             auto devType = (InstrumentType)getInt(message[0]);
@@ -289,12 +294,27 @@ void OSCBridge::oscMessageReceived(const juce::OSCMessage& message) {
         msg.roll = getFloat(message[4]);
         msg.yaw = getFloat(message[5]);
         msg.device = (InstrumentType)getInt(message[6]);
-        if (message.size() >= 8) std::strncpy(msg.devId, message[7].getString().toRawUTF8(), 63);
         
+        juce::String senderId;
+        if (message.size() >= 8) {
+            // Check if 8th arg is devId or instanceId
+            if (message.size() >= 9) {
+                std::strncpy(msg.devId, message[7].getString().toRawUTF8(), 63);
+                senderId = message[8].getString();
+            } else {
+                // Could be either. If it matches our instanceId, it's definitely a senderId.
+                auto str = message[7].getString();
+                if (str == instanceId_) senderId = str;
+                else std::strncpy(msg.devId, str.toRawUTF8(), 63);
+            }
+        }
+        
+        if (senderId == instanceId_) return;
+
         if (std::strlen(msg.devId) > 0 && !hardwareService_.isDeviceInReceiveOSCMode(msg.devId)) {
-             // Auto-discover if we are in slave mode and receive data for unknown device
-             if (hardwareService_.getAppRole() == AppRole::Slave) {
-                 hardwareService_.handleRemoteDeviceConnection(msg.device, "Unknown", msg.devId, hardwareService_.getSlaveListenPort());
+             // Auto-discover if we are in client mode and receive data for unknown device
+             if (hardwareService_.getAppRole() == AppRole::Client) {
+                 hardwareService_.handleRemoteDeviceConnection(msg.device, "Unknown", msg.devId, hardwareService_.getClientListenPort());
              }
         }
 
@@ -305,7 +325,20 @@ void OSCBridge::oscMessageReceived(const juce::OSCMessage& message) {
         msg.type = osc::MessageType::Breath;
         msg.value = getFloat(message[0]);
         msg.device = (InstrumentType)getInt(message[1]);
-        if (message.size() >= 3) std::strncpy(msg.devId, message[2].getString().toRawUTF8(), 63);
+        
+        juce::String senderId;
+        if (message.size() >= 3) {
+            if (message.size() >= 4) {
+                std::strncpy(msg.devId, message[2].getString().toRawUTF8(), 63);
+                senderId = message[3].getString();
+            } else {
+                auto str = message[2].getString();
+                if (str == instanceId_) senderId = str;
+                else std::strncpy(msg.devId, str.toRawUTF8(), 63);
+            }
+        }
+        
+        if (senderId == instanceId_) return;
         
         if (hardwareService_.isDeviceInReceiveOSCMode(msg.devId)) {
             hardwareToMapperQueue_.add(msg);
@@ -316,7 +349,20 @@ void OSCBridge::oscMessageReceived(const juce::OSCMessage& message) {
         msg.value = getFloat(message[1]);
         msg.active = getInt(message[2]);
         msg.device = (InstrumentType)getInt(message[3]);
-        if (message.size() >= 5) std::strncpy(msg.devId, message[4].getString().toRawUTF8(), 63);
+        
+        juce::String senderId;
+        if (message.size() >= 5) {
+            if (message.size() >= 6) {
+                std::strncpy(msg.devId, message[4].getString().toRawUTF8(), 63);
+                senderId = message[5].getString();
+            } else {
+                auto str = message[4].getString();
+                if (str == instanceId_) senderId = str;
+                else std::strncpy(msg.devId, str.toRawUTF8(), 63);
+            }
+        }
+        
+        if (senderId == instanceId_) return;
         
         if (hardwareService_.isDeviceInReceiveOSCMode(msg.devId)) {
             hardwareToMapperQueue_.add(msg);
@@ -326,7 +372,20 @@ void OSCBridge::oscMessageReceived(const juce::OSCMessage& message) {
         msg.pedal = (unsigned int)getInt(message[0]);
         msg.value = getFloat(message[1]);
         msg.device = (InstrumentType)getInt(message[2]);
-        if (message.size() >= 4) std::strncpy(msg.devId, message[3].getString().toRawUTF8(), 63);
+        
+        juce::String senderId;
+        if (message.size() >= 4) {
+            if (message.size() >= 5) {
+                std::strncpy(msg.devId, message[3].getString().toRawUTF8(), 63);
+                senderId = message[4].getString();
+            } else {
+                auto str = message[3].getString();
+                if (str == instanceId_) senderId = str;
+                else std::strncpy(msg.devId, str.toRawUTF8(), 63);
+            }
+        }
+        
+        if (senderId == instanceId_) return;
         
         if (hardwareService_.isDeviceInReceiveOSCMode(msg.devId)) {
             hardwareToMapperQueue_.add(msg);
@@ -337,13 +396,39 @@ void OSCBridge::oscMessageReceived(const juce::OSCMessage& message) {
         msg.key = (unsigned int)getInt(message[1]);
         msg.value = (unsigned int)getInt(message[2]);
         msg.device = (InstrumentType)getInt(message[3]);
-        if (message.size() >= 5) std::strncpy(msg.devId, message[4].getString().toRawUTF8(), 63);
+        
+        juce::String senderId;
+        if (message.size() >= 5) {
+            if (message.size() >= 6) {
+                std::strncpy(msg.devId, message[4].getString().toRawUTF8(), 63);
+                senderId = message[5].getString();
+            } else {
+                auto str = message[4].getString();
+                if (str == instanceId_) senderId = str;
+                else std::strncpy(msg.devId, str.toRawUTF8(), 63);
+            }
+        }
+        
+        if (senderId == instanceId_) return;
         
         mapperToHardwareQueue_.add(msg);
     } else if (pattern == "/ECMapper/reset" && message.size() >= 1) {
         msg.type = osc::MessageType::Reset;
         msg.device = (InstrumentType)getInt(message[0]);
-        if (message.size() >= 2) std::strncpy(msg.devId, message[1].getString().toRawUTF8(), 63);
+        
+        juce::String senderId;
+        if (message.size() >= 2) {
+            if (message.size() >= 3) {
+                std::strncpy(msg.devId, message[1].getString().toRawUTF8(), 63);
+                senderId = message[2].getString();
+            } else {
+                auto str = message[1].getString();
+                if (str == instanceId_) senderId = str;
+                else std::strncpy(msg.devId, str.toRawUTF8(), 63);
+            }
+        }
+        
+        if (senderId == instanceId_) return;
         
         mapperToHardwareQueue_.add(msg);
     }
