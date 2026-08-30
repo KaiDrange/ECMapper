@@ -36,6 +36,5 @@ Use this skill when working on the ECMapper project, specifically when adding ne
 
 - **Shared Code**: Always prefer placing logic in `Source/Core` or `Source/UI` so it can be used by both the Standalone App and the Plugin.
 - **Legacy Reference**: If you need to check how things were done previously, refer to the `old/` directory. Do NOT modify files in `old/`. To avoid IDE confusion, ensure that any archived code moved to `old/` has its internal `.git` metadata removed.
-- **CMake**: Maintain the `CMakeLists.txt` at the root. Ensure any new source files are added to `SHARED_SOURCES` if they are shared, or to the specific target sources if they are target-specific.
+- **CMake**: Maintain the `CMakeLists.txt` at the root. Ensure any new source files are added to `SHARED_SOURCES` if they are shared, or to the specific target sources if they are target-specific. The CMake executable is bundled with CLion at: `/Applications/CLion.app/Contents/bin/cmake/mac/aarch64/bin/cmake`.
 - **Dependencies**: JUCE and EigenLite are subdirectories. Ensure they are correctly linked in CMake.
-- **Code Style**: Mirror the organization of the OctaChainer2 project found in the `old/` folder.

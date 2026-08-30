@@ -50,7 +50,11 @@ void MidiService::processMessage(osc::Message& oscMsg, osc::Message& outgoingOsc
     if (!initialized_) return;
     
     int deviceIndex = static_cast<int>(oscMsg.device) - 1;
-    if (deviceIndex < 0 || deviceIndex > 2) return;
+    if (deviceIndex < 0 || deviceIndex > 2) {
+        if (oscMsg.type == osc::MessageType::Key && oscMsg.active)
+            juce::Logger::writeToLog("MidiService: Invalid device index: " + juce::String(deviceIndex + 1));
+        return;
+    }
 
     switch (oscMsg.type) {
         case osc::MessageType::Key: {
@@ -62,7 +66,11 @@ void MidiService::processMessage(osc::Message& oscMsg, osc::Message& outgoingOsc
                 keyState->ehPressureHistory.pop_front();
 
             ConfigLookup::Key& keyLookup = configLookups_[deviceIndex].keys[oscMsg.course][oscMsg.key];
-            if (keyLookup.output == MidiChannelType::Undefined) break;
+            if (keyLookup.output == MidiChannelType::Undefined) {
+                if (oscMsg.active)
+                     juce::Logger::writeToLog("MidiService: Key press on undefined mapping - Course: " + juce::String(oscMsg.course) + ", Key: " + juce::String(oscMsg.key) + " for device " + juce::String(deviceIndex + 1));
+                break;
+            }
             
             if (keyLookup.mapType == KeyMappingType::Note || keyLookup.mapType == KeyMappingType::Chord)
                 processNoteKey(oscMsg, keyLookup, keyState, midiBuffer);
@@ -116,7 +124,7 @@ void MidiService::processNoteKey(osc::Message& oscMsg, ConfigLookup::Key& keyLoo
         state->status = KeyStatus::Pending;
     } else if (state->messageCount == PRESSURE_HISTORY_LENGTH && state->status == KeyStatus::Pending) {
         createNoteOn(keyLookup, state, buffer);
-    } else if (state->messageCount == 64 && state->status != KeyStatus::Pending) {
+    } else if (state->status == KeyStatus::Active) {
         createNoteHold(keyLookup, state, buffer);
     }
 }
@@ -181,7 +189,7 @@ void MidiService::createNoteOn(ConfigLookup::Key& keyLookup, KeyState* state, ju
 
     createNoteHold(keyLookup, state, buffer);
     auto vel = calculateNoteOnVelocity(state);
-    int eventTime = buffer.getLastEventTime() + 1;
+    int eventTime = 0;
     
     for (int i = 0; i < 4; i++) {
         if (keyLookup.notes[i] > -1) {
@@ -205,7 +213,7 @@ void MidiService::createNoteOff(ConfigLookup::Key& keyLookup, KeyState* state, j
         chanNotePri_[channel - 1].remove_if([&keyLookup](const LayoutWrapper::KeyId& id) { return id.equals(keyLookup.keyId); });
     }
 
-    int eventTime = buffer.getLastEventTime() + 1;
+    int eventTime = 0;
     auto vel = calculateNoteOffVelocity(state);
     for (int i = 0; i < 4; i++) {
         if (keyLookup.notes[i] > -1) {
@@ -230,7 +238,7 @@ void MidiService::createMidiMsgOn(ConfigLookup::Key& keyLookup, KeyState* state,
     state->midiChannel = (keyLookup.output == MidiChannelType::MPE_Low) ? 1 : 
                          (keyLookup.output == MidiChannelType::MPE_High) ? 16 : static_cast<int>(keyLookup.output);
 
-    int eventTime = buffer.getLastEventTime() + 1;
+    int eventTime = 0;
     if (keyLookup.msgType == 4) {
         createAllNotesOff(buffer);
     } else if (keyLookup.msgType == 1) {
@@ -284,7 +292,7 @@ void MidiService::createMidiMsgOff(ConfigLookup::Key& keyLookup, KeyState* state
 
 void MidiService::createAllNotesOff(juce::MidiBuffer& buffer) {
     for (int i = 1; i <= 16; i++) {
-        buffer.addEvent(juce::MidiMessage::allNotesOff(i), buffer.getLastEventTime() + 1);
+        buffer.addEvent(juce::MidiMessage::allNotesOff(i), 0);
         chanNotePri_[i - 1].clear();
     }
     if (lowerChanAssigner_) lowerChanAssigner_->allNotesOff();
@@ -325,7 +333,7 @@ void MidiService::addMidiValueMessage(int channel, int ehValue, ZoneWrapper::Mid
     }
     
     if (msg.getRawDataSize() > 0)
-        buffer.addEvent(msg, buffer.getLastEventTime() + 1);
+        buffer.addEvent(msg, 0);
 }
 
 void MidiService::addStripValueMessage(int channel, int ehValue, ZoneWrapper::MidiValue midiValue, juce::MidiBuffer& buffer, bool isBipolar) {
@@ -347,7 +355,7 @@ void MidiService::addStripValueMessage(int channel, int ehValue, ZoneWrapper::Mi
     }
 
     if (msg.getRawDataSize() > 0)
-        buffer.addEvent(msg, buffer.getLastEventTime() + 1);
+        buffer.addEvent(msg, 0);
 }
 
 void MidiService::createLayoutRPNs(juce::MidiBuffer& buffer) {

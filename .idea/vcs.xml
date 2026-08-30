@@ -1,14 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="VcsDirectoryMappings">
-    <mapping directory="" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/EigenLite" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/JUCE" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/old/OctaChainer2" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/old/OctaChainer2/build/debug/_deps/juce-src" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/old/OctaChainer2/build/macos/macos-debug/_deps/juce-src" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/old/OctaChainer2/build/macos/macos-release-signing/_deps/juce-src" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/old/OctaChainer2/build/macos/macos-release/_deps/juce-src" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/old/OctaChainer2/cmake-build-debug/_deps/juce-src" vcs="Git" />
   </component>
 </project>

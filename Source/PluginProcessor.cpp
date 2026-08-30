@@ -60,6 +60,8 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& audioBuffer,
 
     midiMessages.clear();
     
+    // Diagnostic Heartbeat removed.
+    
     if (!layoutChangeHandler->layoutMidiRPNSent) {
         midiService.createLayoutRPNs(midiMessages);
         layoutChangeHandler->layoutMidiRPNSent = true;

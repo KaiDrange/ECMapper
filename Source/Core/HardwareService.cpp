@@ -163,6 +163,11 @@ void HardwareService::key(const char* dev, unsigned long long t, unsigned course
             msg.roll = r;
             msg.yaw = y;
             msg.device = d.type;
+            
+            if (a) {
+                juce::Logger::writeToLog("HardwareService: Key Down - Course: " + juce::String(course) + ", Key: " + juce::String(key) + ", Pressure: " + juce::String(p));
+            }
+
             hardwareToMapperQueue_.add(msg);
             if (oscBroadcastQueue_) oscBroadcastQueue_->add(msg);
             break;

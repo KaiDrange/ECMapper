@@ -9,9 +9,10 @@ ConfigLookup::ConfigLookup(InstrumentType deviceType, juce::AudioProcessorValueT
 void ConfigLookup::updateAll() {
     this->controlLights = SettingsWrapper::getControlLights(deviceType, pluginState.state);
 
-    juce::ValueTree layoutTree = LayoutWrapper::getLayoutTree(deviceType, pluginState.state);
-    for (int i = 0; i < layoutTree.getNumChildren(); i++) {
-        updateKey(layoutTree.getChild(i));
+    for (int course = 0; course < 3; ++course) {
+        for (int keyNo = 0; keyNo < 120; ++keyNo) {
+            updateKey({course, keyNo, deviceType});
+        }
     }
     updateBreath(Zone::Zone1);
     updateBreath(Zone::Zone2);
@@ -30,6 +31,12 @@ void ConfigLookup::updateKey(juce::ValueTree keytree) {
     if (layoutKey.keyId.deviceType == InstrumentType::None)
         return;
 
+    updateKey(layoutKey.keyId);
+}
+
+void ConfigLookup::updateKey(LayoutWrapper::KeyId keyId) {
+    LayoutWrapper::LayoutKey layoutKey = LayoutWrapper::getLayoutKey(keyId, pluginState.state);
+    
     bool setKeyToDefault = false;
     if (layoutKey.keyMappingType == KeyMappingType::None)
         setKeyToDefault = true;

@@ -42,6 +42,9 @@ public:
 
     juce::AudioProcessorValueTreeState state;
     ecm::HardwareService& getHardwareService() { return hardwareService; }
+    
+    void setDeviceManager(juce::AudioDeviceManager* manager) { deviceManager = manager; }
+    juce::AudioDeviceManager* getDeviceManager() { return deviceManager; }
 
 private:
     ecm::Logger logger { false, true };
@@ -55,6 +58,8 @@ private:
     ecm::OSCBridge oscBridge;
     
     std::unique_ptr<ecm::LayoutChangeHandler> layoutChangeHandler;
+
+    juce::AudioDeviceManager* deviceManager = nullptr;
 
     void updateIPandPorts();
 

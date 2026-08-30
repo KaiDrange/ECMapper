@@ -89,25 +89,6 @@ if(ECMAPPER_BUILD_APP)
             MACOSX_BUNDLE_GUI_IDENTIFIER "com.yourcompany.ecmapper.app"
             MACOSX_BUNDLE_BUNDLE_NAME "ECMapper"
         )
-
-        # Universal Picodecoder handling
-        add_custom_target(Picodecoder_App_Universal)
-        add_dependencies(ECMapper_App Picodecoder_App_Universal)
-        
-        add_custom_command(TARGET Picodecoder_App_Universal
-            PRE_BUILD COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/ECMapper_App_artefacts"
-            COMMAND lipo -create
-            "${CMAKE_CURRENT_SOURCE_DIR}/EigenLite/resources/libpico_decoder_x86_64_1_0_0.dylib"
-            "${CMAKE_CURRENT_SOURCE_DIR}/EigenLite/resources/libpico_decoder_arm64_1_0_0.dylib"
-            -output "${CMAKE_CURRENT_BINARY_DIR}/ECMapper_App_artefacts/libpicodecoder.dylib"
-            COMMENT "Creating universal libpicodecoder.dylib"
-        )
-
-        add_custom_command(TARGET ECMapper_App
-            PRE_BUILD COMMAND ${CMAKE_COMMAND} -E copy
-            "${CMAKE_CURRENT_BINARY_DIR}/ECMapper_App_artefacts/libpicodecoder.dylib"
-            "$<TARGET_FILE_DIR:ECMapper_App>/../Frameworks/libpicodecoder.dylib"
-        )
     endif()
 endif()
 
@@ -145,25 +126,6 @@ if(ECMAPPER_BUILD_PLUGIN)
         set_target_properties(ECMapper_Plugin PROPERTIES
             MACOSX_BUNDLE_GUI_IDENTIFIER "com.yourcompany.ecmapper.plugin"
             MACOSX_BUNDLE_BUNDLE_NAME "ECMapper"
-        )
-
-        # Universal Picodecoder handling for plugin
-        add_custom_target(Picodecoder_Plugin_Universal)
-        add_dependencies(ECMapper_Plugin Picodecoder_Plugin_Universal)
-        
-        add_custom_command(TARGET Picodecoder_Plugin_Universal
-            PRE_BUILD COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/ECMapper_Plugin_artefacts"
-            COMMAND lipo -create
-            "${CMAKE_CURRENT_SOURCE_DIR}/EigenLite/resources/libpico_decoder_x86_64_1_0_0.dylib"
-            "${CMAKE_CURRENT_SOURCE_DIR}/EigenLite/resources/libpico_decoder_arm64_1_0_0.dylib"
-            -output "${CMAKE_CURRENT_BINARY_DIR}/ECMapper_Plugin_artefacts/libpicodecoder.dylib"
-            COMMENT "Creating universal libpicodecoder.dylib for plugin"
-        )
-
-        add_custom_command(TARGET ECMapper_Plugin
-            PRE_BUILD COMMAND ${CMAKE_COMMAND} -E copy
-            "${CMAKE_CURRENT_BINARY_DIR}/ECMapper_Plugin_artefacts/libpicodecoder.dylib"
-            "$<TARGET_FILE_DIR:ECMapper_Plugin>/../Frameworks/libpicodecoder.dylib"
         )
     endif()
 endif()

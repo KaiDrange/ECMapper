@@ -12,7 +12,7 @@ namespace ecm {
 
 class MainComponent : public juce::Component, public juce::ValueTree::Listener {
 public:
-    MainComponent(juce::AudioProcessorValueTreeState& pluginState, HardwareService& hardwareService);
+    MainComponent(juce::AudioProcessorValueTreeState& pluginStateToUse, HardwareService& hardwareService, juce::AudioDeviceManager* deviceManagerToUse = nullptr);
     ~MainComponent() override;
 
     void paint(juce::Graphics& g) override;
@@ -29,12 +29,14 @@ private:
     juce::TextEditor oscIPInput;
 
     TabButtonBarComponent tabs;
+    juce::TextButton audioSettingsButton;
     std::unique_ptr<CorePage> corePage;
     std::unique_ptr<TabPage> alphaPage;
     std::unique_ptr<TabPage> tauPage;
     std::unique_ptr<TabPage> picoPage;
 
     juce::AudioProcessorValueTreeState& pluginState;
+    juce::AudioDeviceManager* deviceManager;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainComponent)
 };

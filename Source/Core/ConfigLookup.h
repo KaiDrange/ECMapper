@@ -14,6 +14,7 @@ public:
     
     void updateAll();
     void updateKey(juce::ValueTree keytree);
+    void updateKey(LayoutWrapper::KeyId keyId);
     void updateBreath(Zone zone);
     void updateStrips(Zone zone);
 

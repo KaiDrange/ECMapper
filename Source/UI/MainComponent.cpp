@@ -2,12 +2,13 @@
 
 namespace ecm {
 
-MainComponent::MainComponent(juce::AudioProcessorValueTreeState& pluginState, HardwareService& hardwareService)
+MainComponent::MainComponent(juce::AudioProcessorValueTreeState& pluginStateToUse, HardwareService& hardwareService, juce::AudioDeviceManager* deviceManagerToUse)
     : lowerMPEVoiceCount("Lower MPE voices:", 2, 0, 15, true), 
       upperMPEVoiceCount("Upper MPE voices:", 2, 0, 15, true),  
       lowerMPEPitchbendRange("Lower MPE pb:", 2, 0, 96, true), 
       upperMPEPitchbendRange("Upper MPE pb:", 2, 0, 96, true),
-      pluginState(pluginState) {
+      pluginState(pluginStateToUse),
+      deviceManager(deviceManagerToUse) {
     
     SettingsWrapper::addListener(this, pluginState.state);
     
@@ -54,6 +55,25 @@ MainComponent::MainComponent(juce::AudioProcessorValueTreeState& pluginState, Ha
     };
     
     oscIPLabel.setText("Core IP:", juce::dontSendNotification);
+    
+    if (deviceManager != nullptr) {
+        audioSettingsButton.setButtonText("Audio/MIDI Settings");
+        audioSettingsButton.onClick = [this] {
+            auto* selector = new juce::AudioDeviceSelectorComponent(*this->deviceManager,
+                                                                  0, 256, 0, 256, true, true, true, false);
+            selector->setSize(500, 450);
+            juce::DialogWindow::LaunchOptions options;
+            options.content.setOwned(selector);
+            options.dialogTitle = "Audio/MIDI Settings";
+            options.dialogBackgroundColour = getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId);
+            options.escapeKeyTriggersCloseButton = true;
+            options.useNativeTitleBar = true;
+            options.resizable = false;
+            options.launchAsync();
+        };
+        addAndMakeVisible(audioSettingsButton);
+    }
+
     addAndMakeVisible(tabs);
     addAndMakeVisible(oscIPLabel);
     addAndMakeVisible(oscIPInput);
@@ -77,6 +97,10 @@ void MainComponent::resized() {
     auto area = getLocalBounds();
     auto header = area.removeFromTop(40);
     header.reduce(10, 5);
+    
+    if (deviceManager != nullptr) {
+        audioSettingsButton.setBounds(header.removeFromLeft(150));
+    }
     
     auto ipArea = header.removeFromRight(150);
     oscIPLabel.setBounds(ipArea.removeFromTop(ipArea.getHeight() / 2));
