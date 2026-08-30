@@ -25,8 +25,6 @@ private:
     NumberInputComponent upperMPEVoiceCount;
     NumberInputComponent lowerMPEPitchbendRange;
     NumberInputComponent upperMPEPitchbendRange;
-    juce::Label oscIPLabel;
-    juce::TextEditor oscIPInput;
 
     TabButtonBarComponent tabs;
     juce::TextButton audioSettingsButton;

@@ -61,7 +61,7 @@ private:
 
     juce::AudioDeviceManager* deviceManager = nullptr;
 
-    void updateIPandPorts();
+    void updateGlobalSettings();
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ECMapperAudioProcessor)
 };

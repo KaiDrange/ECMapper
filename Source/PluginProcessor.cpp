@@ -15,7 +15,7 @@ ECMapperAudioProcessor::ECMapperAudioProcessor() :
     },
     hardwareService(hardwareToMapperQueue, mapperToHardwareQueue),
     midiService(configLookups),
-    oscBridge(hardwareToMapperQueue, mapperToHardwareQueue, outgoingOSCQueue, logger) {
+    oscBridge(hardwareService, hardwareToMapperQueue, mapperToHardwareQueue, outgoingOSCQueue, logger) {
     
     hardwareService.setOSCBroadcastQueue(&outgoingOSCQueue);
     midiService.setOSCBroadcastQueue(&outgoingOSCQueue);
@@ -32,7 +32,7 @@ void ECMapperAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBloc
     juce::ignoreUnused(sampleRate, samplesPerBlock);
     logger.log("prepareToPlay() called.");
     
-    updateIPandPorts();
+    updateGlobalSettings();
     midiService.start(state);
     hardwareService.startService();
     oscBridge.setSenderEnabled(true);
@@ -102,14 +102,10 @@ void ECMapperAudioProcessor::setStateInformation(const void* data, int sizeInByt
     }
 }
 
-void ECMapperAudioProcessor::updateIPandPorts() {
-    auto ipStr = ecm::SettingsWrapper::getIP(state.state);
-    juce::StringArray parts;
-    parts.addTokens(ipStr, ":", "\"");
-    if (parts.size() == 2) {
-        oscBridge.setSenderTarget(parts[0], parts[1].getIntValue());
-        oscBridge.setReceiverPort(parts[1].getIntValue() + 1);
-    }
+void ECMapperAudioProcessor::updateGlobalSettings() {
+    hardwareService.setAppRole(ecm::SettingsWrapper::getAppRole(state.state));
+    hardwareService.setSlaveListenSettings(ecm::SettingsWrapper::getSlaveListenIP(state.state), 
+                                         ecm::SettingsWrapper::getSlaveListenPort(state.state));
 }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() {

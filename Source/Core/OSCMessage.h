@@ -28,6 +28,7 @@ struct Message {
     unsigned int pedal = 0;
     float value = 0.0f;
     InstrumentType device = InstrumentType::None;
+    char devId[64] = {0};
 };
 
 // Ensure the struct is safely copyable via int buffer if needed, 

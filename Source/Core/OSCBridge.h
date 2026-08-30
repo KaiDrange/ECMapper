@@ -3,16 +3,23 @@
 #include "OSCMessage.h"
 #include "Logger.h"
 
+#include "HardwareService.h"
+
 namespace ecm {
 
-class OSCBridge : private juce::OSCReceiver::Listener<juce::OSCReceiver::MessageLoopCallback>, 
+class OSCBridge : public HardwareService::Listener,
+                  private juce::OSCReceiver::Listener<juce::OSCReceiver::MessageLoopCallback>, 
                   private juce::Timer {
 public:
-    OSCBridge(osc::MessageFifo& hardwareToMapperQueue, 
+    OSCBridge(HardwareService& hardwareService,
+              osc::MessageFifo& hardwareToMapperQueue, 
               osc::MessageFifo& mapperToHardwareQueue, 
               osc::MessageFifo& outgoingOSCQueue,
               Logger& logger);
     ~OSCBridge() override;
+    
+    // HardwareService::Listener overrides
+    void deviceListChanged() override;
 
     void setSenderEnabled(bool enabled);
     void setReceiverEnabled(bool enabled);
@@ -20,32 +27,46 @@ public:
     void setSenderTarget(const juce::String& ip, int port);
     void setReceiverPort(int port);
 
-    bool isSenderConnected() const { return senderConnected_; }
-    bool isReceiverConnected() const { return receiverConnected_; }
+    bool isSenderConnected() const { return masterEnabled_; }
+    bool isReceiverConnected() const { return masterEnabled_; }
 
 private:
     void oscMessageReceived(const juce::OSCMessage& message) override;
+    void oscBundleReceived(const juce::OSCBundle& bundle) override {}
     void timerCallback() override;
+    
+    void updateConnections();
+    void updateSlaveReceiver();
 
+    HardwareService& hardwareService_;
     osc::MessageFifo& hardwareToMapperQueue_;
     osc::MessageFifo& mapperToHardwareQueue_;
     osc::MessageFifo& outgoingOSCQueue_;
     Logger& logger_;
-
-    juce::OSCSender sender_;
-    juce::OSCReceiver receiver_;
     
-    bool senderEnabled_ = false;
-    bool receiverEnabled_ = false;
-    bool senderConnected_ = false;
-    bool receiverConnected_ = false;
-
-    juce::String senderIP_ = "127.0.0.1";
-    int senderPort_ = 12120;
-    int receiverPort_ = 12121;
+    juce::OSCSender discoverySender_;
+    juce::OSCReceiver discoveryReceiver_;
+    
+    struct Connection {
+        std::string dev;
+        ecm::InstrumentType type;
+        ecm::DeviceMode mode;
+        juce::String ip;
+        int sendPort;
+        int receivePort;
+        std::unique_ptr<juce::OSCSender> sender;
+        std::unique_ptr<juce::OSCReceiver> receiver;
+    };
+    
+    std::vector<std::unique_ptr<Connection>> connections_;
+    juce::CriticalSection connectionsLock_;
+    bool masterEnabled_ = false;
+    juce::String instanceId_;
+    
+    std::unique_ptr<juce::OSCReceiver> globalSlaveReceiver_;
 
     void sendOutgoingMessages();
-    void sendPing();
+    void sendPing(Connection* conn);
     
     // We need another queue to mirror hardwareToMapperQueue_ without consuming it
     // Actually, OSCBridge should probably be another consumer of a separate "broadcast" queue

@@ -4,18 +4,49 @@
 
 namespace ecm {
 
-class CorePage : public juce::Component, private juce::Timer {
+class CorePage : public juce::Component, 
+                 public HardwareService::Listener,
+                 private juce::Timer {
 public:
-    CorePage(HardwareService& hardwareService);
-    ~CorePage() override = default;
+    CorePage(HardwareService& hardwareService, juce::ValueTree& state);
+    ~CorePage() override;
 
     void paint(juce::Graphics& g) override;
     void resized() override;
 
+    // HardwareService::Listener overrides
+    void deviceListChanged() override;
+
 private:
     void timerCallback() override { repaint(); }
+    
+    void updateDeviceList();
 
     HardwareService& hardwareService_;
+    juce::ValueTree& state_;
+    
+    juce::ComboBox roleCombo;
+    juce::Label roleLabel;
+    
+    juce::Label slaveIpLabel;
+    juce::TextEditor slaveIpInput;
+    juce::Label slavePortLabel;
+    juce::TextEditor slavePortInput;
+    
+    struct DeviceRow {
+        std::string dev;
+        std::unique_ptr<juce::ImageComponent> statusLed;
+        std::unique_ptr<juce::Label> nameLabel;
+        std::unique_ptr<juce::ComboBox> modeCombo;
+        std::unique_ptr<juce::Label> ipLabel;
+        std::unique_ptr<juce::TextEditor> ipInput;
+        std::unique_ptr<juce::Label> portLabel;
+        std::unique_ptr<juce::TextEditor> portInput;
+        std::unique_ptr<juce::TextButton> disconnectButton;
+    };
+    
+    std::vector<std::unique_ptr<DeviceRow>> deviceRows_;
+
     juce::Image ledGreen;
     juce::Image ledOff;
 

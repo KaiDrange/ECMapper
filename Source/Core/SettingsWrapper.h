@@ -15,6 +15,10 @@ public:
     static inline const juce::Identifier id_upperMPEPB {"uppermpepb"};
     static inline const juce::Identifier id_activeTab {"activetab"};
     static inline const juce::Identifier id_controlLights { "controlLights" };
+    
+    static inline const juce::Identifier id_appRole { "appRole" };
+    static inline const juce::Identifier id_slaveListenIP { "slaveListenIP" };
+    static inline const juce::Identifier id_slaveListenPort { "slaveListenPort" };
 
     static void addListener(juce::ValueTree::Listener* listener, juce::ValueTree& rootState);
 
@@ -33,6 +37,13 @@ public:
     
     static bool getControlLights(InstrumentType deviceType, juce::ValueTree& rootState);
     static void setControlLights(bool value, InstrumentType deviceType, juce::ValueTree& rootState);
+    
+    static AppRole getAppRole(juce::ValueTree& rootState);
+    static void setAppRole(AppRole role, juce::ValueTree& rootState);
+    static juce::String getSlaveListenIP(juce::ValueTree& rootState);
+    static void setSlaveListenIP(juce::String ip, juce::ValueTree& rootState);
+    static int getSlaveListenPort(juce::ValueTree& rootState);
+    static void setSlaveListenPort(int port, juce::ValueTree& rootState);
     
 private:
     static inline const juce::String default_IP { "127.0.0.1:12120" };

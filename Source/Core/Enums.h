@@ -61,4 +61,15 @@ enum class ConnectionType {
     Mapper = 3
 };
 
+enum class DeviceMode {
+    Local = 0,
+    TransmitOSC,
+    ReceiveOSC
+};
+
+enum class AppRole {
+    Master,
+    Slave
+};
+
 } // namespace ecm

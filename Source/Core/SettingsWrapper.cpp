@@ -81,4 +81,34 @@ void SettingsWrapper::setControlLights(bool value, InstrumentType deviceType, ju
     deviceChild.setProperty(id_controlLights, value, nullptr);
 }
 
+AppRole SettingsWrapper::getAppRole(juce::ValueTree& rootState) {
+    auto settings = getSettingsTree(rootState);
+    return (AppRole)(int)settings.getProperty(id_appRole, (int)AppRole::Master);
+}
+
+void SettingsWrapper::setAppRole(AppRole role, juce::ValueTree& rootState) {
+    auto settings = getSettingsTree(rootState);
+    settings.setProperty(id_appRole, (int)role, nullptr);
+}
+
+juce::String SettingsWrapper::getSlaveListenIP(juce::ValueTree& rootState) {
+    auto settings = getSettingsTree(rootState);
+    return settings.getProperty(id_slaveListenIP, "127.0.0.1").toString();
+}
+
+void SettingsWrapper::setSlaveListenIP(juce::String ip, juce::ValueTree& rootState) {
+    auto settings = getSettingsTree(rootState);
+    settings.setProperty(id_slaveListenIP, ip, nullptr);
+}
+
+int SettingsWrapper::getSlaveListenPort(juce::ValueTree& rootState) {
+    auto settings = getSettingsTree(rootState);
+    return settings.getProperty(id_slaveListenPort, 12130);
+}
+
+void SettingsWrapper::setSlaveListenPort(int port, juce::ValueTree& rootState) {
+    auto settings = getSettingsTree(rootState);
+    settings.setProperty(id_slaveListenPort, port, nullptr);
+}
+
 } // namespace ecm

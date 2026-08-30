@@ -12,11 +12,6 @@ MainComponent::MainComponent(juce::AudioProcessorValueTreeState& pluginStateToUs
     
     SettingsWrapper::addListener(this, pluginState.state);
     
-    oscIPInput.setText(SettingsWrapper::getIP(pluginState.state));
-    oscIPInput.onFocusLost = [this] {
-        SettingsWrapper::setIP(oscIPInput.getText(), this->pluginState.state);
-    };
-    
     lowerMPEVoiceCount.setValue(SettingsWrapper::getLowerMPEVoiceCount(pluginState.state));
     lowerMPEVoiceCount.input.onFocusLost = [this] {
         SettingsWrapper::setLowerMPEVoiceCount(lowerMPEVoiceCount.getValue(), this->pluginState.state);
@@ -39,12 +34,12 @@ MainComponent::MainComponent(juce::AudioProcessorValueTreeState& pluginStateToUs
     
     auto bgColour = getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId);
     
-    corePage = std::make_unique<CorePage>(hardwareService);
+    corePage = std::make_unique<CorePage>(hardwareService, pluginState.state);
     alphaPage = std::make_unique<TabPage>(0, InstrumentType::Alpha, pluginState);
     tauPage = std::make_unique<TabPage>(1, InstrumentType::Tau, pluginState);
     picoPage = std::make_unique<TabPage>(2, InstrumentType::Pico, pluginState);
     
-    tabs.addTab("Core", bgColour, corePage.get(), false);
+    tabs.addTab("Communication", bgColour, corePage.get(), false);
     tabs.addTab("Alpha", bgColour, alphaPage.get(), false);
     tabs.addTab("Tau", bgColour, tauPage.get(), false);
     tabs.addTab("Pico", bgColour, picoPage.get(), false);
@@ -53,8 +48,6 @@ MainComponent::MainComponent(juce::AudioProcessorValueTreeState& pluginStateToUs
     tabs.onTabChanged = [this](int index) {
         SettingsWrapper::setCurrentTabIndex(index, this->pluginState.state);
     };
-    
-    oscIPLabel.setText("Core IP:", juce::dontSendNotification);
     
     if (deviceManager != nullptr) {
         audioSettingsButton.setButtonText("Audio/MIDI Settings");
@@ -75,8 +68,6 @@ MainComponent::MainComponent(juce::AudioProcessorValueTreeState& pluginStateToUs
     }
 
     addAndMakeVisible(tabs);
-    addAndMakeVisible(oscIPLabel);
-    addAndMakeVisible(oscIPInput);
     addAndMakeVisible(lowerMPEVoiceCount);
     addAndMakeVisible(upperMPEVoiceCount);
     addAndMakeVisible(lowerMPEPitchbendRange);
@@ -101,10 +92,6 @@ void MainComponent::resized() {
     if (deviceManager != nullptr) {
         audioSettingsButton.setBounds(header.removeFromLeft(150));
     }
-    
-    auto ipArea = header.removeFromRight(150);
-    oscIPLabel.setBounds(ipArea.removeFromTop(ipArea.getHeight() / 2));
-    oscIPInput.setBounds(ipArea);
     
     header.removeFromRight(10);
     upperMPEPitchbendRange.setBounds(header.removeFromRight(80));
