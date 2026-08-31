@@ -67,24 +67,9 @@ void KeyConfigComponent::paint(juce::Graphics& g) {
     g.setGradientFill(faceGrad);
     g.fillRoundedRectangle(face, keyRadius - 2.0f);
 
-    auto inset = face.reduced(face.getWidth() * 0.18f, face.getHeight() * 0.16f);
-    juce::ColourGradient dome(juce::Colour(0xffffffff).withAlpha(0.12f),
-                              inset.getCentreX() - inset.getWidth() * 0.15f,
-                              inset.getY() + inset.getHeight() * 0.05f,
-                              juce::Colour(0xff000000).withAlpha(0.40f),
-                              inset.getCentreX(),
-                              inset.getBottom(),
-                              false);
-    g.setGradientFill(dome);
-    g.fillEllipse(inset);
-
     auto gloss = face.removeFromTop(juce::jmax(2.0f, face.getHeight() * 0.22f));
     g.setColour(juce::Colour(0xffffffff).withAlpha(isSelected ? 0.18f : 0.10f));
     g.fillRoundedRectangle(gloss, keyRadius - 2.0f);
-
-    g.setColour(Style::background().withAlpha(0.35f));
-    g.drawLine(keyBounds.getX() + 3.0f, keyBounds.getY() + 3.0f,
-               keyBounds.getRight() - 3.0f, keyBounds.getBottom() - 3.0f, 0.6f);
 
     if (isSelected)
     {
@@ -126,9 +111,14 @@ void KeyConfigComponent::paint(juce::Graphics& g) {
         g.drawFittedText(keyText, labelArea, juce::Justification::centredBottom, 1);
     }
 
-    g.setColour(Utils::keyColourEnumToColour(layoutKey.keyColour));
     auto lightPosition = area.getX() + area.getWidth() / 2.0f;
-    g.fillEllipse(lightPosition - 2.0f, area.getY() + 2.0f, 4.0f, 4.0f);
+    auto ledColour = Utils::keyColourEnumToColour(layoutKey.keyColour);
+    g.setColour(ledColour.withAlpha(0.08f));
+    g.fillEllipse(lightPosition - 5.5f, area.getY() - 0.4f, 11.0f, 11.0f);
+    g.setColour(ledColour.withAlpha(0.16f));
+    g.fillEllipse(lightPosition - 3.8f, area.getY() + 1.2f, 7.6f, 7.6f);
+    g.setColour(ledColour);
+    g.fillEllipse(lightPosition - 1.25f, area.getY() + 2.6f, 2.5f, 2.5f);
 
     g.setColour(Utils::zoneEnumToColour(layoutKey.zone));
     if (keyType == EigenharpKeyType::Normal) {

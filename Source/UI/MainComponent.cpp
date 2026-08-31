@@ -102,37 +102,37 @@ void MainComponent::paint(juce::Graphics& g) {
     g.setColour(Style::border());
     g.drawRect(getLocalBounds(), 1);
 
-    auto header = getLocalBounds().removeFromTop(78);
-    g.setColour(Style::surface());
+    auto header = getLocalBounds().removeFromTop(86);
+    g.setColour(Style::background().interpolatedWith(Style::surface(), 0.24f));
     g.fillRect(header);
 
-    g.setColour(Style::accent());
+    g.setColour(Style::accent().withAlpha(0.70f));
     g.fillRect(header.removeFromTop(3));
 }
 
 void MainComponent::resized() {
     auto area = getLocalBounds();
-    auto header = area.removeFromTop(78);
+    auto header = area.removeFromTop(86);
     header.reduce(10, 8);
 
-    auto topRow = header.removeFromTop(26);
+    auto topRow = header.removeFromTop(30);
     auto bottomRow = header.removeFromTop(34);
 
     if (deviceManager != nullptr) {
-        audioSettingsButton.setBounds(topRow.removeFromLeft(150));
+        audioSettingsButton.setBounds(topRow.removeFromLeft(158).withSizeKeepingCentre(158, 24));
     }
 
     auto controlArea = topRow;
     controlArea.removeFromLeft(12);
     controlArea.removeFromRight(12);
-    auto controlWidth = 78;
-    upperMPEPitchbendRange.setBounds(controlArea.removeFromRight(controlWidth));
+    auto controlWidth = 120;
+    upperMPEPitchbendRange.setBounds(controlArea.removeFromRight(controlWidth).withHeight(28));
     controlArea.removeFromRight(8);
-    lowerMPEPitchbendRange.setBounds(controlArea.removeFromRight(controlWidth));
+    lowerMPEPitchbendRange.setBounds(controlArea.removeFromRight(controlWidth).withHeight(28));
     controlArea.removeFromRight(8);
-    upperMPEVoiceCount.setBounds(controlArea.removeFromRight(controlWidth));
+    upperMPEVoiceCount.setBounds(controlArea.removeFromRight(controlWidth).withHeight(28));
     controlArea.removeFromRight(8);
-    lowerMPEVoiceCount.setBounds(controlArea.removeFromRight(controlWidth));
+    lowerMPEVoiceCount.setBounds(controlArea.removeFromRight(controlWidth).withHeight(28));
 
     auto tabArea = bottomRow.reduced(0, 1);
     auto tabWidth = tabArea.getWidth() / 4;
