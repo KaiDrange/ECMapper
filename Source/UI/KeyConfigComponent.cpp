@@ -123,9 +123,12 @@ void KeyConfigComponent::paint(juce::Graphics& g) {
     if (keyText.isNotEmpty())
     {
         auto labelArea = area.reduced(4, 3);
-        labelArea.removeFromTop((int)(labelArea.getHeight() * 0.36f));
+        if (keyIsRound)
+            labelArea.reduce(0, (int)(labelArea.getHeight() * 0.10f));
+        else
+            labelArea.removeFromTop((int)(labelArea.getHeight() * 0.36f));
         g.setColour(Style::text().withAlpha(0.92f));
-        g.drawFittedText(keyText, labelArea, juce::Justification::centredBottom, 1);
+        g.drawFittedText(keyText, labelArea, keyIsRound ? juce::Justification::centred : juce::Justification::centredBottom, 1);
     }
 
     auto lightPosition = area.getX() + area.getWidth() / 2.0f;
