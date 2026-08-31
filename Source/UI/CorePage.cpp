@@ -5,6 +5,8 @@ namespace ecm {
 
 CorePage::CorePage(HardwareService& hardwareService, juce::ValueTree& state) 
     : hardwareService_(hardwareService), state_(state) {
+    const bool hardwareEnabled = HardwareService::supportsLocalHardware();
+
     ledGreen = juce::ImageFileFormat::loadFrom(BinaryData::GreenLight_png, BinaryData::GreenLight_pngSize);
     ledOff = juce::ImageFileFormat::loadFrom(BinaryData::DarkLight_png, BinaryData::DarkLight_pngSize);
     
@@ -22,9 +24,15 @@ CorePage::CorePage(HardwareService& hardwareService, juce::ValueTree& state)
     
     roleCombo.addItem("Host (with Hardware)", 1);
     roleCombo.addItem("Client (Remote)", 2);
+    if (!hardwareEnabled) {
+        roleCombo.setItemEnabled(1, false);
+    }
     roleCombo.setSelectedId(hardwareService_.getAppRole() == AppRole::Host ? 1 : 2, juce::dontSendNotification);
     roleCombo.onChange = [this] {
         auto role = roleCombo.getSelectedId() == 1 ? AppRole::Host : AppRole::Client;
+        if (!HardwareService::supportsLocalHardware()) {
+            role = AppRole::Client;
+        }
         hardwareService_.setAppRole(role);
         SettingsWrapper::setAppRole(role, state_);
         updateDeviceList();

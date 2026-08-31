@@ -46,7 +46,8 @@
       "hidden": true,
       "binaryDir": "${sourceDir}/build/windows/${presetName}",
       "cacheVariables": {
-        "CMAKE_CXX_STANDARD": "20"
+        "CMAKE_CXX_STANDARD": "20",
+        "ECMAPPER_ENABLE_HARDWARE": "OFF"
       }
     },
     {

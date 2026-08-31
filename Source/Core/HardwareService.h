@@ -1,13 +1,28 @@
 #pragma once
 #include <JuceHeader.h>
-#include <eigenapi.h>
 #include "OSCMessage.h"
 #include "Enums.h"
 
+#if ECMAPPER_ENABLE_HARDWARE
+#include <eigenapi.h>
+#endif
+
 namespace ecm {
 
-class HardwareService : private juce::Thread, public EigenApi::Callback, public EigenApi::LifecycleCallback {
+class HardwareService : private juce::Thread
+#if ECMAPPER_ENABLE_HARDWARE
+    , public EigenApi::Callback, public EigenApi::LifecycleCallback
+#endif
+{
 public:
+    static constexpr bool supportsLocalHardware() noexcept {
+#if ECMAPPER_ENABLE_HARDWARE
+        return true;
+#else
+        return false;
+#endif
+    }
+
     HardwareService(osc::MessageFifo& hardwareToMapperQueue, 
                     osc::MessageFifo& mapperToHardwareQueue);
     ~HardwareService() override;
@@ -55,7 +70,8 @@ public:
     void setOSCBroadcastQueue(osc::MessageFifo* queue) { oscBroadcastQueue_ = queue; }
 
     bool isDeviceAuthorizedForLEDs(const std::string& devId) const;
-    
+
+#if ECMAPPER_ENABLE_HARDWARE
     // EigenApi::LifecycleCallback overrides
     void connected(const char* dev, EigenApi::DeviceType dt) override;
     void disconnected(const char* dev) override;
@@ -65,11 +81,14 @@ public:
     void breath(const char* dev, unsigned long long t, float val) override;
     void strip(const char* dev, unsigned long long t, unsigned strip, float val, bool a) override;
     void pedal(const char* dev, unsigned long long t, unsigned pedal, float val) override;
+#endif
 
 private:
     void run() override;
-    
+
+#if ECMAPPER_ENABLE_HARDWARE
     std::unique_ptr<EigenApi::Eigenharp> eigenApi_;
+#endif
     
     juce::ValueTree* state_ = nullptr;
     
@@ -81,7 +100,7 @@ private:
     juce::CriticalSection deviceListLock_;
     juce::ListenerList<Listener> listeners_;
     
-    AppRole appRole_ = AppRole::Host;
+    AppRole appRole_ = supportsLocalHardware() ? AppRole::Host : AppRole::Client;
     juce::String clientListenIP_ = "127.0.0.1";
     int clientListenPort_ = 12130;
 

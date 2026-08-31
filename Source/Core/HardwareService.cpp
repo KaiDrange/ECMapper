@@ -20,19 +20,26 @@ void HardwareService::startService(juce::ValueTree* state) {
     if (isThreadRunning()) return;
     
     if (state_) appRole_ = SettingsWrapper::getAppRole(*state_);
-    
+
+    if (!supportsLocalHardware() && appRole_ == AppRole::Host) {
+        appRole_ = AppRole::Client;
+        if (state_) SettingsWrapper::setAppRole(appRole_, *state_);
+    }
+
+#if ECMAPPER_ENABLE_HARDWARE
     // Re-create the Eigenharp instance to ensure a clean discovery state
     eigenApi_ = std::make_unique<EigenApi::Eigenharp>();
-    
+
     eigenApi_->addCallback(this);
     eigenApi_->addLifecycleCallback(this);
     eigenApi_->setPollTime(100);
-    
+
     if (appRole_ == AppRole::Host) {
         if (!eigenApi_->start()) {
             std::cerr << "Unable to start EigenLite" << std::endl;
         }
     }
+#endif
     
     startThread();
 }
@@ -42,13 +49,15 @@ void HardwareService::stopService() {
     
     signalThreadShouldExit();
     stopThread(2000);
-    
+
+#if ECMAPPER_ENABLE_HARDWARE
     if (eigenApi_) {
         eigenApi_->stop();
         eigenApi_->removeCallback(this);
         eigenApi_->removeLifecycleCallback(this);
         eigenApi_.reset();
     }
+#endif
 }
 
 std::vector<ConnectedDevice> HardwareService::getConnectedDevices() {
@@ -189,7 +198,9 @@ void HardwareService::turnOffDeviceLEDs(const std::string& devId) {
         if (d.dev == devId && !d.isRemote) {
             for (int course = 0; course < 3; course++) {
                 for (int key = 0; key < 120; key++) {
+#if ECMAPPER_ENABLE_HARDWARE
                     if (eigenApi_) eigenApi_->setLED(d.dev.c_str(), (unsigned)course, (unsigned)key, EigenApi::Eigenharp::LED_OFF);
+#endif
                     d.assignedLEDColours[course][key] = 0;
                     d.activeKeys[course][key] = false;
                 }
@@ -201,6 +212,7 @@ void HardwareService::turnOffDeviceLEDs(const std::string& devId) {
 
 void HardwareService::run() {
     while (!threadShouldExit()) {
+#if ECMAPPER_ENABLE_HARDWARE
         if (appRole_ == AppRole::Host && eigenApi_) {
             try {
                 eigenApi_->process();
@@ -208,6 +220,7 @@ void HardwareService::run() {
                 std::cerr << "EigenAPI process() threw an exception." << std::endl;
             }
         }
+#endif
         
         processOutgoingMessages();
         
@@ -270,7 +283,9 @@ void HardwareService::processOutgoingMessages() {
                     } else {
                         if (d.mode == ecm::DeviceMode::Local || std::strlen(msg.devId) > 0) {
                             d.assignedLEDColours[msg.course][msg.key] = (int)msg.value;
+#if ECMAPPER_ENABLE_HARDWARE
                             if (eigenApi_) eigenApi_->setLED(d.dev.c_str(), msg.course, msg.key, (EigenApi::Eigenharp::LedColour)msg.value);
+#endif
                         }
                     }
                     if (std::strlen(msg.devId) > 0) break;
@@ -301,6 +316,7 @@ void HardwareService::processOutgoingMessages() {
 }
 
 // EigenApi::LifecycleCallback implementations
+#if ECMAPPER_ENABLE_HARDWARE
 void HardwareService::connected(const char* dev, EigenApi::DeviceType dt) {
     InstrumentType devType = InstrumentType::None;
     switch (dt) {
@@ -462,6 +478,7 @@ void HardwareService::pedal(const char* dev, unsigned long long t, unsigned peda
         }
     }
 }
+#endif
 
 void HardwareService::handleRemoteDeviceConnection(ecm::InstrumentType type, const juce::String& remoteIP, const juce::String& remoteDevId, int port) {
     std::string stdRemoteDevId = remoteDevId.toStdString();
@@ -589,6 +606,12 @@ void HardwareService::checkStaleDevices() {
 }
 
 void HardwareService::setAppRole(AppRole role) {
+    if (!supportsLocalHardware()) {
+        role = AppRole::Client;
+    }
+
+    if (state_) SettingsWrapper::setAppRole(role, *state_);
+
     if (appRole_ == role) return;
     
     if (appRole_ == AppRole::Host) {
@@ -598,7 +621,6 @@ void HardwareService::setAppRole(AppRole role) {
     stopService();
     
     appRole_ = role;
-    if (state_) SettingsWrapper::setAppRole(role, *state_);
     
     {
         const juce::ScopedLock sl(deviceListLock_);

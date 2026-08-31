@@ -153,8 +153,10 @@ void ECMapperAudioProcessor::setStateInformation(const void* data, int sizeInByt
 
 void ECMapperAudioProcessor::updateGlobalSettings() {
     auto role = ecm::SettingsWrapper::getAppRole(state.state);
-    
-    if (role == ecm::AppRole::Host && ecm::OSCBridge::isPortOccupied(12121)) {
+
+    if (!ecm::HardwareService::supportsLocalHardware()) {
+        role = ecm::AppRole::Client;
+    } else if (role == ecm::AppRole::Host && ecm::OSCBridge::isPortOccupied(12121)) {
         logger.log("Host detected on network (port 12121 busy). Auto-switching to Client mode.");
         role = ecm::AppRole::Client;
     }

@@ -34,6 +34,7 @@ StandaloneAppMainWindow::StandaloneAppMainWindow (const juce::String& name)
 
 StandaloneAppMainWindow::~StandaloneAppMainWindow()
 {
+    setContentOwned(nullptr, true);
     savePluginState();
     deviceManager.removeChangeListener(this);
     processorPlayer.setProcessor(nullptr);

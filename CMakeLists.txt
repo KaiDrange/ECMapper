@@ -1,11 +1,12 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(ECMapper VERSION 2.0.0 LANGUAGES C CXX OBJC OBJCXX)
+project(ECMapper VERSION 2.0.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(APPLE)
+    enable_language(OBJC OBJCXX)
     if(NOT CMAKE_OSX_ARCHITECTURES)
         set(CMAKE_OSX_ARCHITECTURES x86_64 arm64)
     endif()
@@ -16,12 +17,22 @@ endif()
 
 option(ECMAPPER_BUILD_APP "Build the standalone application" ON)
 option(ECMAPPER_BUILD_PLUGIN "Build the VST3 plugin" ON)
+if(WIN32)
+    set(ECMAPPER_ENABLE_HARDWARE_DEFAULT OFF)
+else()
+    set(ECMAPPER_ENABLE_HARDWARE_DEFAULT ON)
+endif()
+option(ECMAPPER_ENABLE_HARDWARE "Enable direct hardware communication via EigenLite" ${ECMAPPER_ENABLE_HARDWARE_DEFAULT})
 
 # ------------------------------------------------------------------------------
 # Dependencies
 
 add_subdirectory(JUCE)
-add_subdirectory(EigenLite/eigenapi)
+if(ECMAPPER_ENABLE_HARDWARE)
+    add_subdirectory(EigenLite/eigenapi)
+else()
+    add_library(eigenapi INTERFACE)
+endif()
 
 # Handle Universal Static Library for Pico Decoder on macOS
 if(APPLE)
@@ -99,6 +110,7 @@ if(ECMAPPER_BUILD_APP)
 
     target_link_libraries(ECMapper_App PRIVATE ${COMMON_LIBS} juce::juce_gui_extra)
     target_include_directories(ECMapper_App PRIVATE Source)
+    target_compile_definitions(ECMapper_App PRIVATE ECMAPPER_ENABLE_HARDWARE=$<BOOL:${ECMAPPER_ENABLE_HARDWARE}>)
     juce_generate_juce_header(ECMapper_App)
 
     set_target_properties(ECMapper_App PROPERTIES OUTPUT_NAME "ECMapper")
@@ -137,6 +149,7 @@ if(ECMAPPER_BUILD_PLUGIN)
 
     target_link_libraries(ECMapper_Plugin PRIVATE ${COMMON_LIBS})
     target_compile_definitions(ECMapper_Plugin PRIVATE JUCE_VST3_CAN_REPLACE_VST2=0)
+    target_compile_definitions(ECMapper_Plugin PRIVATE ECMAPPER_ENABLE_HARDWARE=$<BOOL:${ECMAPPER_ENABLE_HARDWARE}>)
     target_include_directories(ECMapper_Plugin PRIVATE Source)
     juce_generate_juce_header(ECMapper_Plugin)
 
