@@ -53,7 +53,7 @@ private:
     std::vector<std::unique_ptr<DeviceRow>> deviceRows_;
 
     juce::Image ledGreen;
-    juce::Image ledOff;
+    [[maybe_unused]] juce::Image ledOff;
     juce::Image ledRed;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (CorePage)

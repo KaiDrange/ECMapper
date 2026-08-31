@@ -1,5 +1,6 @@
 #include "MainComponent.h"
 #include "AppStyle.h"
+#include "../Core/SettingsWrapper.h"
 
 namespace ecm {
 

@@ -4,12 +4,62 @@
 
 namespace ecm {
 
+namespace {
+
+juce::Image createStatusLed(juce::Colour bodyColour, juce::Colour glowColour, bool glowEnabled)
+{
+    constexpr int size = 32;
+    juce::Image image(juce::Image::ARGB, size, size, true);
+    juce::Graphics g(image);
+    g.setImageResamplingQuality(juce::Graphics::highResamplingQuality);
+
+    const auto full = juce::Rectangle<float>(0.0f, 0.0f, static_cast<float>(size), static_cast<float>(size));
+    const auto body = full.reduced(4.0f);
+    const auto centre = body.getCentre();
+
+    if (glowEnabled)
+    {
+        juce::ColourGradient outerGlow(glowColour.withAlpha(0.0f), centre,
+                                       glowColour.withAlpha(0.55f), centre.translated(16.0f, 0.0f),
+                                       true);
+        g.setGradientFill(outerGlow);
+        g.fillEllipse(0.0f, 0.0f, static_cast<float>(size), static_cast<float>(size));
+
+        juce::ColourGradient innerGlow(glowColour.withAlpha(0.0f), centre,
+                                       glowColour.withAlpha(0.8f), centre.translated(9.0f, 0.0f),
+                                       true);
+        g.setGradientFill(innerGlow);
+        g.fillEllipse(4.0f, 4.0f, 24.0f, 24.0f);
+    }
+
+    juce::ColourGradient bodyFill(bodyColour.brighter(0.25f), centre.x, body.getY(),
+                                  bodyColour.darker(0.25f), centre.x, body.getBottom(), false);
+    g.setGradientFill(bodyFill);
+    g.fillEllipse(body);
+
+    g.setColour(bodyColour.brighter(0.45f).withAlpha(glowEnabled ? 0.9f : 0.55f));
+    g.drawEllipse(body.reduced(0.5f), 1.0f);
+
+    g.setColour(juce::Colours::white.withAlpha(glowEnabled ? 0.45f : 0.2f));
+    g.fillEllipse(body.getX() + 5.5f, body.getY() + 4.0f, body.getWidth() * 0.36f, body.getHeight() * 0.24f);
+
+    if (glowEnabled)
+    {
+        g.setColour(juce::Colours::white.withAlpha(0.08f));
+        g.drawEllipse(full.reduced(1.5f), 1.0f);
+    }
+
+    return image;
+}
+
+} // namespace
+
 CorePage::CorePage(HardwareService& hardwareService, juce::ValueTree& state) 
     : hardwareService_(hardwareService), state_(state) {
     const bool hardwareEnabled = HardwareService::supportsLocalHardware();
 
-    ledGreen = juce::ImageFileFormat::loadFrom(BinaryData::GreenLight_png, BinaryData::GreenLight_pngSize);
-    ledOff = juce::ImageFileFormat::loadFrom(BinaryData::DarkLight_png, BinaryData::DarkLight_pngSize);
+    ledGreen = createStatusLed(juce::Colour(0xff4fd17a), juce::Colour(0xff4fd17a), true);
+    ledOff = createStatusLed(juce::Colour(0xff51625a), juce::Colour(0xff51625a), false);
     
     ledRed = juce::Image(juce::Image::ARGB, 32, 32, true);
     {

@@ -56,11 +56,6 @@ if(APPLE)
     endif()
 endif()
 
-juce_add_binary_data(ECMapper_Data SOURCES
-    Resources/GreenLight.png
-    Resources/DarkLight.png
-)
-
 # ------------------------------------------------------------------------------
 # Shared Configuration
 
@@ -71,7 +66,6 @@ file(GLOB_RECURSE SHARED_SOURCES CONFIGURE_DEPENDS
 
 set(COMMON_LIBS
     eigenapi
-    ECMapper_Data
     juce::juce_audio_utils
     juce::juce_audio_processors
     juce::juce_gui_basics
