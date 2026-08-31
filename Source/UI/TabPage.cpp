@@ -58,16 +58,16 @@ void TabPage::resized() {
     keyboard.setBounds(area.removeFromLeft(area.getWidth() * 0.1f));
     area.removeFromLeft(area.getWidth() * 0.01f);
     
-    auto btnarea = area.removeFromTop(static_cast<int>(area.getHeight() * 0.05f));
-    loadMappingButton.setBounds(btnarea.removeFromLeft(area.getWidth() * 0.1f));
-    saveMappingButton.setBounds(btnarea.removeFromLeft(area.getWidth() * 0.1f));
-    clearMappingButton.setBounds(btnarea.removeFromLeft(area.getWidth() * 0.1f));
+    auto btnArea = area.removeFromTop(static_cast<int>(area.getHeight() * 0.05f));
+    loadMappingButton.setBounds(btnArea.removeFromLeft(area.getWidth() * 0.1f));
+    saveMappingButton.setBounds(btnArea.removeFromLeft(area.getWidth() * 0.1f));
+    clearMappingButton.setBounds(btnArea.removeFromLeft(area.getWidth() * 0.1f));
 
     layoutPanel->setBounds(area.removeFromLeft(static_cast<int>(area.getWidth() * 0.4f)));
     
     auto zoneArea = area.removeFromRight(static_cast<int>(area.getWidth() * 0.98f));
-    for (int i = 0; i < 3; i++) {
-        zonePanels[i]->setBounds(zoneArea.removeFromTop(area.getHeight() / 3));
+    for (const auto & zonePanel : zonePanels) {
+        zonePanel->setBounds(zoneArea.removeFromTop(area.getHeight() / 3));
     }
 }
 

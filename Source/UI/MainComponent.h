@@ -1,7 +1,5 @@
 #pragma once
 #include <JuceHeader.h>
-#include "../Core/Enums.h"
-#include "../Core/SettingsWrapper.h"
 #include "TabPage.h"
 #include "CorePage.h"
 #include "NumberInputComponent.h"
@@ -16,11 +14,11 @@ public:
 
     void paint(juce::Graphics& g) override;
     void resized() override;
+    void valueTreePropertyChanged(juce::ValueTree& vTree, const juce::Identifier& property) override;
 
 private:
     void selectTab(int index);
-    void valueTreePropertyChanged(juce::ValueTree& vTree, const juce::Identifier& property) override;
-    
+
     NumberInputComponent lowerMPEVoiceCount;
     NumberInputComponent upperMPEVoiceCount;
     NumberInputComponent lowerMPEPitchbendRange;
@@ -32,7 +30,6 @@ private:
     juce::TextButton alphaTabButton;
     juce::TextButton tauTabButton;
     juce::TextButton picoTabButton;
-    juce::TextButton audioSettingsButton;
     std::unique_ptr<CorePage> corePage;
     std::unique_ptr<TabPage> alphaPage;
     std::unique_ptr<TabPage> tauPage;

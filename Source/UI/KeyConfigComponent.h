@@ -2,7 +2,6 @@
 #include <JuceHeader.h>
 #include "../Core/Enums.h"
 #include "../Core/LayoutWrapper.h"
-#include "../Core/Utils.h"
 
 namespace ecm {
 
@@ -11,8 +10,10 @@ public:
     KeyConfigComponent(LayoutWrapper::KeyId id, EigenharpKeyType keyType, juce::AudioProcessorValueTreeState& pluginState);
     ~KeyConfigComponent() override = default;
 
-    void paint (juce::Graphics& g) override;
     LayoutWrapper::KeyId getKeyId() const { return keyId; }
+
+protected:
+    void paint (juce::Graphics& g) override;
 
 private:
     EigenharpKeyType keyType;

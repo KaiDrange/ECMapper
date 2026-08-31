@@ -42,19 +42,18 @@ ChordSectionComponent::ChordSectionComponent() : chordNameInput("Name:", 0, 5, "
     chordNotes[3].clearButton.onClick = [this] { chordNotes[3].midiNoteNumber = -1; setNoteLabelText(3); sendChangeMessage(); };
 }
 
-ChordSectionComponent::~ChordSectionComponent() {
-}
+ChordSectionComponent::~ChordSectionComponent() = default;
 
 void ChordSectionComponent::resized() {
     auto area = getLocalBounds();
     float lineHeight = area.getHeight() * 0.04f;
     chordNameInput.setBounds(area.removeFromTop(lineHeight));
-    for (int i = 0; i < 4; i++) {
+    for (auto & chordNote : chordNotes) {
         area.removeFromTop(lineHeight);
-        chordNotes[i].label.setBounds(area.removeFromTop(lineHeight));
+        chordNote.label.setBounds(area.removeFromTop(lineHeight));
         auto line = area.removeFromTop(lineHeight);
-        chordNotes[i].setButton.setBounds(line.removeFromLeft(line.getWidth() / 2));
-        chordNotes[i].clearButton.setBounds(line);
+        chordNote.setButton.setBounds(line.removeFromLeft(line.getWidth() / 2));
+        chordNote.clearButton.setBounds(line);
     }
 }
 
@@ -68,7 +67,8 @@ void ChordSectionComponent::setNoteLabelText(int noteIndex) {
         , juce::NotificationType::dontSendNotification);
 }
 
-juce::String ChordSectionComponent::getMessageString() {
+juce::String ChordSectionComponent::getMessageString() const
+{
     return chordNameInput.getValue() + ";" +
         juce::String(chordNotes[0].midiNoteNumber) + ";" +
         juce::String(chordNotes[1].midiNoteNumber) + ";" +

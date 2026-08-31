@@ -1,5 +1,7 @@
 #include "LayoutComponent.h"
 
+#include "Core/Utils.h"
+
 namespace ecm {
 
 LayoutComponent::LayoutComponent(InstrumentType deviceType, float widthFactor, float heightFactor, juce::AudioProcessorValueTreeState& pluginState) 

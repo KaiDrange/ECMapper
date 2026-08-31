@@ -1,7 +1,6 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 #include "Core/SettingsWrapper.h"
-#include "Core/LayoutWrapper.h"
 
 ECMapperAudioProcessor::ECMapperAudioProcessor() :
     AudioProcessor(BusesProperties()

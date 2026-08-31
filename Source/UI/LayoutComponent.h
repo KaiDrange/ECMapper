@@ -5,7 +5,6 @@
 #include "KeyConfigComponent.h"
 #include "MidiMessageSectionComponent.h"
 #include "ChordSectionComponent.h"
-#include "../Core/Utils.h"
 
 namespace ecm {
 

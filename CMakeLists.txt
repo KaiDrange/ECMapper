@@ -92,8 +92,9 @@ if(ECMAPPER_BUILD_APP)
     juce_add_gui_app(ECMapper_App
         PRODUCT_NAME "ECMapper"
         VERSION "2.0.0"
-        COMPANY_NAME "EigenLabs Alternative"
-        BUNDLE_ID "com.yourcompany.ecmapper.app"
+        COMPANY_NAME "Tic Tech"
+        BUNDLE_ID "com.tictech.ecmapper.app"
+        ICON_BIG "${CMAKE_CURRENT_SOURCE_DIR}/assets/app_icon.png"
     )
 
     target_sources(ECMapper_App PRIVATE
@@ -119,7 +120,7 @@ if(ECMAPPER_BUILD_APP)
 
     if(APPLE)
         set_target_properties(ECMapper_App PROPERTIES
-            MACOSX_BUNDLE_GUI_IDENTIFIER "com.yourcompany.ecmapper.app"
+            MACOSX_BUNDLE_GUI_IDENTIFIER "com.tictech.ecmapper.app"
             MACOSX_BUNDLE_BUNDLE_NAME "ECMapper"
         )
     endif()
@@ -132,11 +133,11 @@ if(ECMAPPER_BUILD_PLUGIN)
     juce_add_plugin(ECMapper_Plugin
         PRODUCT_NAME "ECMapper"
         VERSION "2.0.0"
-        COMPANY_NAME "EigenLabs Alternative"
-        BUNDLE_ID "com.yourcompany.ecmapper.plugin"
+        COMPANY_NAME "Tic Tech"
+        BUNDLE_ID "com.tictech.ecmapper.plugin"
         FORMATS VST3
         IS_SYNTH TRUE
-        NEEDS_MIDI_INPUT TRUE
+        NEEDS_MIDI_INPUT FALSE
         NEEDS_MIDI_OUTPUT TRUE
         COPY_PLUGIN_AFTER_BUILD FALSE
     )
@@ -161,7 +162,7 @@ if(ECMAPPER_BUILD_PLUGIN)
 
     if(APPLE)
         set_target_properties(ECMapper_Plugin PROPERTIES
-            MACOSX_BUNDLE_GUI_IDENTIFIER "com.yourcompany.ecmapper.plugin"
+            MACOSX_BUNDLE_GUI_IDENTIFIER "com.tictech.ecmapper.plugin"
             MACOSX_BUNDLE_BUNDLE_NAME "ECMapper"
         )
     endif()

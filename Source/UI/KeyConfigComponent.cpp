@@ -1,5 +1,6 @@
 #include "KeyConfigComponent.h"
 #include "AppStyle.h"
+#include "Core/Utils.h"
 
 namespace ecm {
 

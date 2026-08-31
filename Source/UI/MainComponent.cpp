@@ -124,24 +124,6 @@ MainComponent::MainComponent(juce::AudioProcessorValueTreeState& pluginStateToUs
 
     currentTabIndex = juce::jlimit(0, 3, SettingsWrapper::getCurrentTabIndex(pluginState.state));
     selectTab(currentTabIndex);
-    
-    if (deviceManager != nullptr) {
-        audioSettingsButton.setButtonText("Audio/MIDI Settings");
-        audioSettingsButton.onClick = [this] {
-            auto* selector = new juce::AudioDeviceSelectorComponent(*this->deviceManager,
-                                                                  0, 256, 0, 256, true, true, true, false);
-            selector->setSize(500, 450);
-            juce::DialogWindow::LaunchOptions options;
-            options.content.setOwned(selector);
-            options.dialogTitle = "Audio/MIDI Settings";
-            options.dialogBackgroundColour = Style::background();
-            options.escapeKeyTriggersCloseButton = true;
-            options.useNativeTitleBar = true;
-            options.resizable = false;
-            options.launchAsync();
-        };
-        addAndMakeVisible(audioSettingsButton);
-    }
 
     addAndMakeVisible(lowerMPEVoiceCount);
     addAndMakeVisible(upperMPEVoiceCount);
@@ -174,10 +156,6 @@ void MainComponent::resized() {
 
     auto topRow = header.removeFromTop(30);
     auto bottomRow = header.removeFromTop(34);
-
-    if (deviceManager != nullptr) {
-        audioSettingsButton.setBounds(topRow.removeFromLeft(158).withSizeKeepingCentre(158, 24));
-    }
 
     auto controlArea = topRow;
     controlArea.removeFromLeft(12);

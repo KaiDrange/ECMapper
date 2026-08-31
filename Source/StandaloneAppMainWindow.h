@@ -1,11 +1,12 @@
 #pragma once
 
-#include <juce_gui_basics/juce_gui_basics.h>
+#include <juceheader.h>
 #include "PluginProcessor.h"
 #include "UI/AppStyle.h"
+#include "UI/MainMenuBarModel.h"
 
 class StandaloneAppMainWindow : public juce::DocumentWindow,
-                                 private juce::ChangeListener
+                                private juce::ChangeListener
 {
 public:
     explicit StandaloneAppMainWindow (const juce::String& name);
@@ -13,8 +14,13 @@ public:
 
     void closeButtonPressed() override;
 
-private:
+    void showAudioSettings();
+    void showAboutDialog();
+    static void showOnlineManual();
+    static void showOurMusic();
     void changeListenerCallback (juce::ChangeBroadcaster* source) override;
+
+private:
     void updateMidiOutput();
     
     void saveAudioSettings();
@@ -29,6 +35,7 @@ private:
     juce::AudioDeviceManager deviceManager;
     juce::AudioProcessorPlayer processorPlayer;
     ecm::AppLookAndFeel lookAndFeel;
+    MainMenuBarModel menuBarModel;
 
     bool isUpdatingSettings = false;
 

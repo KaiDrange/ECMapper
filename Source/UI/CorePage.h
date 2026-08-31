@@ -14,7 +14,6 @@ public:
     void paint(juce::Graphics& g) override;
     void resized() override;
 
-    // HardwareService::Listener overrides
     void deviceListChanged() override;
     void timerCallback() override;
 

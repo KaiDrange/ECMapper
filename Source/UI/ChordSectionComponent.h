@@ -10,7 +10,7 @@ public:
     ~ChordSectionComponent() override;
 
     void resized() override;
-    juce::String getMessageString();
+    juce::String getMessageString() const;
     void updatePanelFromMessageString(const juce::String& msgString);
 
     void handleNoteOn(juce::MidiKeyboardState*, int midiChannel, int midiNoteNumber, float velocity) override;
@@ -22,7 +22,9 @@ public:
     };
     void addListener(Listener* listenerToAdd) { listeners.add(listenerToAdd); }
     void removeListener(Listener* listenerToRemove) { listeners.remove(listenerToRemove); }
-    
+    void textInputChanged(TextInputComponent*) override;
+    void visibilityChanged() override;
+
     struct ChordNote {
         juce::Label label;
         juce::TextButton setButton { "Set" };
@@ -30,11 +32,11 @@ public:
         int midiNoteNumber = -1;
     };
 
+
+
 private:
     void setNoteLabelText(int noteIndex);
     void sendChangeMessage();
-    void textInputChanged(TextInputComponent*) override;
-    void visibilityChanged() override;
     void resetPanel();
     
     TextInputComponent chordNameInput;

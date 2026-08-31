@@ -3,7 +3,6 @@
 #include "LayoutComponent.h"
 #include "ZonePanelComponent.h"
 #include "../Core/Enums.h"
-#include "../Core/SettingsWrapper.h"
 
 namespace ecm {
 

@@ -210,7 +210,7 @@ void CorePage::updateDeviceList() {
                 }
             };
             addAndMakeVisible(tRow->ledToggle.get());
-            if (isHost) tRow->ledToggle->setVisible(false); // Hide in Host mode per user request "should only be on the Client"
+            if (isHost) tRow->ledToggle->setVisible(false);
             
             tRow->addButton = std::make_unique<juce::TextButton>("+");
             tRow->addButton->onClick = [this, dev = d.dev] {
@@ -252,6 +252,7 @@ void CorePage::updateDeviceList() {
                 case 1: mode = DeviceMode::Local; break;
                 case 2: mode = DeviceMode::TransmitOSC; break;
                 case 3: mode = DeviceMode::ReceiveOSC; break;
+                default: ;
             }
             hardwareService_.setDeviceMode(dev, mode);
             updateVisibility();

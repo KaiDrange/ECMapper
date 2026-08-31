@@ -1,34 +1,50 @@
 #include "StandaloneAppMainWindow.h"
 
-StandaloneAppMainWindow::StandaloneAppMainWindow (const juce::String& name)
-    : DocumentWindow (name,
-                      ecm::Style::background(),
-                      DocumentWindow::allButtons)
+#include "UI/AboutDialogComponent.h"
+
+StandaloneAppMainWindow::StandaloneAppMainWindow(const juce::String& name)
+    : DocumentWindow(name,
+                     ecm::Style::background(),
+                     DocumentWindow::allButtons),
+      menuBarModel(
+          [] { juce::JUCEApplication::getInstance()->systemRequestedQuit(); },
+          [this] { showAudioSettings(); },
+          [this] { showAboutDialog(); },
+          [] { showOnlineManual(); },
+          [] { showOurMusic(); }
+      )
 {
     setLookAndFeel(&lookAndFeel);
-    setUsingNativeTitleBar (true);
-    setResizable (true, true);
-    
+    setUsingNativeTitleBar(true);
+#if JUCE_MAC
+    juce::MenuBarModel::setMacMainMenu(&menuBarModel);
+#endif
+
+#if ! JUCE_MAC
+    setMenuBar(&menuBarModel);
+#endif
+    setResizable(true, true);
+
     processor = std::make_unique<ECMapperAudioProcessor>();
     processor->setDeviceManager(&deviceManager);
-    
+
     processorPlayer.setProcessor(processor.get());
-    
+
     loadAudioSettings();
-    
+
     deviceManager.addAudioCallback(&processorPlayer);
-    
+
     updateMidiOutput();
-    
+
     loadPluginState();
-    
+
     deviceManager.addChangeListener(this);
-    
+
     setContentOwned(processor->createEditor(), true);
 
-    centreWithSize (1000, 700);
-    setVisible (true);
-    
+    centreWithSize(1000, 700);
+    setVisible(true);
+
     saveAudioSettings();
 }
 
@@ -40,6 +56,11 @@ StandaloneAppMainWindow::~StandaloneAppMainWindow()
     deviceManager.removeChangeListener(this);
     processorPlayer.setProcessor(nullptr);
     deviceManager.removeAudioCallback(&processorPlayer);
+#if JUCE_MAC
+    juce::MenuBarModel::setMacMainMenu(nullptr);
+#endif
+
+    setMenuBar(nullptr);
 }
 
 void StandaloneAppMainWindow::closeButtonPressed()
@@ -47,7 +68,7 @@ void StandaloneAppMainWindow::closeButtonPressed()
     juce::JUCEApplication::getInstance()->systemRequestedQuit();
 }
 
-void StandaloneAppMainWindow::changeListenerCallback (juce::ChangeBroadcaster* source)
+void StandaloneAppMainWindow::changeListenerCallback(juce::ChangeBroadcaster* source)
 {
     if (source == &deviceManager && !isUpdatingSettings)
     {
@@ -61,10 +82,13 @@ void StandaloneAppMainWindow::changeListenerCallback (juce::ChangeBroadcaster* s
 void StandaloneAppMainWindow::updateMidiOutput()
 {
     auto* currentOutput = deviceManager.getDefaultMidiOutput();
-    
-    if (currentOutput != nullptr) {
+
+    if (currentOutput != nullptr)
+    {
         juce::Logger::writeToLog("ECMapper: MIDI Output set to: " + currentOutput->getName());
-    } else {
+    }
+    else
+    {
         juce::Logger::writeToLog("ECMapper: No MIDI Output selected.");
     }
 
@@ -79,7 +103,7 @@ void StandaloneAppMainWindow::saveAudioSettings()
         auto file = getAudioSettingsFile();
         if (!file.getParentDirectory().exists())
             file.getParentDirectory().createDirectory();
-            
+
         xml->writeTo(file);
     }
 }
@@ -97,7 +121,7 @@ void StandaloneAppMainWindow::loadAudioSettings()
             return;
         }
     }
-    
+
     juce::Logger::writeToLog("ECMapper: Initializing with default audio devices.");
     deviceManager.initialiseWithDefaultDevices(0, 2);
 }
@@ -109,7 +133,7 @@ void StandaloneAppMainWindow::savePluginState()
     auto file = getPluginStateFile();
     if (!file.getParentDirectory().exists())
         file.getParentDirectory().createDirectory();
-    
+
     if (file.replaceWithData(data.getData(), data.getSize()))
         juce::Logger::writeToLog("ECMapper: Saved plugin state to " + file.getFullPathName());
 }
@@ -131,13 +155,56 @@ void StandaloneAppMainWindow::loadPluginState()
 juce::File StandaloneAppMainWindow::getAudioSettingsFile()
 {
     return juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
-        .getChildFile("ECMapper")
-        .getChildFile("audio_settings.xml");
+           .getChildFile("ECMapper")
+           .getChildFile("audio_settings.xml");
 }
 
 juce::File StandaloneAppMainWindow::getPluginStateFile()
 {
     return juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
-        .getChildFile("ECMapper")
-        .getChildFile("plugin_state.xml");
+           .getChildFile("ECMapper")
+           .getChildFile("plugin_state.xml");
+}
+
+void StandaloneAppMainWindow::showAudioSettings()
+{
+    auto* selector = new juce::AudioDeviceSelectorComponent(deviceManager,
+                                                            0, 0, 0, 256, false, true, true, false);
+    selector->setSize(500, 450);
+    juce::DialogWindow::LaunchOptions options;
+    options.content.setOwned(selector);
+    options.dialogTitle = "Audio/MIDI Settings";
+    options.dialogBackgroundColour = ecm::Style::background();
+    options.escapeKeyTriggersCloseButton = true;
+    options.useNativeTitleBar = true;
+    options.resizable = false;
+    options.launchAsync();
+}
+
+void StandaloneAppMainWindow::showAboutDialog()
+{
+    auto about = std::make_unique<AboutDialogComponent>(
+        "ECMapper",
+        ProjectInfo::versionString
+    );
+
+    juce::DialogWindow::LaunchOptions options;
+    options.content.setOwned(about.release());
+    options.dialogTitle = "About ECMapper";
+    options.escapeKeyTriggersCloseButton = true;
+    options.useNativeTitleBar = true;
+    options.resizable = false;
+    options.componentToCentreAround = this;
+
+    options.launchAsync();
+}
+
+void StandaloneAppMainWindow::showOnlineManual()
+{
+    juce::ignoreUnused(juce::URL(AboutDialogComponent::onlineManualUrl).launchInDefaultBrowser());
+}
+
+void StandaloneAppMainWindow::showOurMusic()
+{
+    juce::ignoreUnused(juce::URL(AboutDialogComponent::ourMusicUrl).launchInDefaultBrowser());
 }
