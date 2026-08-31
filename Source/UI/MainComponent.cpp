@@ -3,6 +3,25 @@
 
 namespace ecm {
 
+namespace {
+
+void updateMpeControlsEnabled(juce::Component& component, bool enabled)
+{
+    component.setEnabled(enabled);
+}
+
+void configureModeButton(juce::TextButton& button)
+{
+    button.setClickingTogglesState(true);
+    button.setRadioGroupId(2);
+    button.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff395060));
+    button.setColour(juce::TextButton::buttonOnColourId, juce::Colour(0xff2bb6df));
+    button.setColour(juce::TextButton::textColourOffId, Style::text());
+    button.setColour(juce::TextButton::textColourOnId, Style::background());
+}
+
+}
+
 MainComponent::MainComponent(juce::AudioProcessorValueTreeState& pluginStateToUse, HardwareService& hardwareService, juce::AudioDeviceManager* deviceManagerToUse)
     : lowerMPEVoiceCount("Lower MPE voices:", 2, 0, 15, true), 
       upperMPEVoiceCount("Upper MPE voices:", 2, 0, 15, true),  
@@ -36,6 +55,44 @@ MainComponent::MainComponent(juce::AudioProcessorValueTreeState& pluginStateToUs
     upperMPEPitchbendRange.input.onFocusLost = [this] {
         SettingsWrapper::setUpperMPEPB(upperMPEPitchbendRange.getValue(), this->pluginState.state);
     };
+
+    midi2ModeEnabled = SettingsWrapper::getMidi2Mode(pluginState.state);
+    configureModeButton(mpeModeButton);
+    configureModeButton(midi20ModeButton);
+    mpeModeButton.setConnectedEdges(juce::Button::ConnectedOnRight);
+    midi20ModeButton.setConnectedEdges(juce::Button::ConnectedOnLeft);
+    mpeModeButton.setButtonText("MPE");
+    midi20ModeButton.setButtonText("MIDI 2.0");
+    mpeModeButton.onClick = [this] {
+        if (!mpeModeButton.getToggleState())
+            return;
+        midi2ModeEnabled = false;
+        SettingsWrapper::setMidi2Mode(midi2ModeEnabled, this->pluginState.state);
+        updateMpeControlsEnabled(lowerMPEVoiceCount, true);
+        updateMpeControlsEnabled(upperMPEVoiceCount, true);
+        updateMpeControlsEnabled(lowerMPEPitchbendRange, true);
+        updateMpeControlsEnabled(upperMPEPitchbendRange, true);
+        repaint();
+    };
+    midi20ModeButton.onClick = [this] {
+        if (!midi20ModeButton.getToggleState())
+            return;
+        midi2ModeEnabled = true;
+        SettingsWrapper::setMidi2Mode(midi2ModeEnabled, this->pluginState.state);
+        updateMpeControlsEnabled(lowerMPEVoiceCount, false);
+        updateMpeControlsEnabled(upperMPEVoiceCount, false);
+        updateMpeControlsEnabled(lowerMPEPitchbendRange, false);
+        updateMpeControlsEnabled(upperMPEPitchbendRange, false);
+        repaint();
+    };
+    addAndMakeVisible(mpeModeButton);
+    addAndMakeVisible(midi20ModeButton);
+    mpeModeButton.setToggleState(!midi2ModeEnabled, juce::dontSendNotification);
+    midi20ModeButton.setToggleState(midi2ModeEnabled, juce::dontSendNotification);
+    updateMpeControlsEnabled(lowerMPEVoiceCount, !midi2ModeEnabled);
+    updateMpeControlsEnabled(upperMPEVoiceCount, !midi2ModeEnabled);
+    updateMpeControlsEnabled(lowerMPEPitchbendRange, !midi2ModeEnabled);
+    updateMpeControlsEnabled(upperMPEPitchbendRange, !midi2ModeEnabled);
     
     corePage = std::make_unique<CorePage>(hardwareService, pluginState.state);
     alphaPage = std::make_unique<TabPage>(0, InstrumentType::Alpha, pluginState);
@@ -126,6 +183,9 @@ void MainComponent::resized() {
     controlArea.removeFromLeft(12);
     controlArea.removeFromRight(12);
     auto controlWidth = 120;
+    auto modeWidth = 72;
+    auto modeGap = 2;
+
     upperMPEPitchbendRange.setBounds(controlArea.removeFromRight(controlWidth).withHeight(28));
     controlArea.removeFromRight(8);
     lowerMPEPitchbendRange.setBounds(controlArea.removeFromRight(controlWidth).withHeight(28));
@@ -133,6 +193,10 @@ void MainComponent::resized() {
     upperMPEVoiceCount.setBounds(controlArea.removeFromRight(controlWidth).withHeight(28));
     controlArea.removeFromRight(8);
     lowerMPEVoiceCount.setBounds(controlArea.removeFromRight(controlWidth).withHeight(28));
+    controlArea.removeFromRight(4);
+    midi20ModeButton.setBounds(controlArea.removeFromRight(modeWidth).withSizeKeepingCentre(modeWidth, 24));
+    controlArea.removeFromRight(modeGap);
+    mpeModeButton.setBounds(controlArea.removeFromRight(modeWidth).withSizeKeepingCentre(modeWidth, 24));
 
     auto tabArea = bottomRow.reduced(0, 1);
     auto tabWidth = tabArea.getWidth() / 4;
@@ -174,7 +238,19 @@ void MainComponent::selectTab(int index)
 }
 
 void MainComponent::valueTreePropertyChanged(juce::ValueTree& vTree, const juce::Identifier& property) {
-    juce::ignoreUnused(vTree, property);
+    juce::ignoreUnused(vTree);
+
+    if (property == SettingsWrapper::id_midi2Mode)
+    {
+        midi2ModeEnabled = SettingsWrapper::getMidi2Mode(pluginState.state);
+        mpeModeButton.setToggleState(!midi2ModeEnabled, juce::dontSendNotification);
+        midi20ModeButton.setToggleState(midi2ModeEnabled, juce::dontSendNotification);
+        updateMpeControlsEnabled(lowerMPEVoiceCount, !midi2ModeEnabled);
+        updateMpeControlsEnabled(upperMPEVoiceCount, !midi2ModeEnabled);
+        updateMpeControlsEnabled(lowerMPEPitchbendRange, !midi2ModeEnabled);
+        updateMpeControlsEnabled(upperMPEPitchbendRange, !midi2ModeEnabled);
+        repaint();
+    }
 }
 
 } // namespace ecm

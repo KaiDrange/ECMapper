@@ -74,6 +74,16 @@ int SettingsWrapper::getUpperMPEPB(juce::ValueTree& rootState) {
     return vTree.getProperty(id_upperMPEPB, default_upperMPEPB);
 }
 
+void SettingsWrapper::setMidi2Mode(bool enabled, juce::ValueTree& rootState) {
+    auto vTree = getSettingsTree(rootState);
+    vTree.setProperty(id_midi2Mode, enabled, nullptr);
+}
+
+bool SettingsWrapper::getMidi2Mode(juce::ValueTree& rootState) {
+    auto vTree = getSettingsTree(rootState);
+    return vTree.getProperty(id_midi2Mode, default_midi2Mode);
+}
+
 void SettingsWrapper::setCurrentTabIndex(int index, juce::ValueTree& rootState) {
     auto vTree = getSettingsTree(rootState);
     vTree.setProperty(id_activeTab, index, nullptr);

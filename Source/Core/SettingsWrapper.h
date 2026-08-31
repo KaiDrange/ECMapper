@@ -13,6 +13,7 @@ public:
     static inline const juce::Identifier id_upperMPEVoiceCount {"uppermpevoicecount"};
     static inline const juce::Identifier id_lowerMPEPB {"lowermpepb"};
     static inline const juce::Identifier id_upperMPEPB {"uppermpepb"};
+    static inline const juce::Identifier id_midi2Mode {"midi2Mode"};
     static inline const juce::Identifier id_activeTab {"activetab"};
     
     static inline const juce::Identifier id_appRole { "appRole" };
@@ -31,6 +32,8 @@ public:
     static int getLowerMPEPB(juce::ValueTree& rootState);
     static void setUpperMPEPB(int pbValue, juce::ValueTree& rootState);
     static int getUpperMPEPB(juce::ValueTree& rootState);
+    static void setMidi2Mode(bool enabled, juce::ValueTree& rootState);
+    static bool getMidi2Mode(juce::ValueTree& rootState);
     static void setCurrentTabIndex(int index, juce::ValueTree& rootState);
     static int getCurrentTabIndex(juce::ValueTree& rootState);
     
@@ -58,6 +61,7 @@ private:
     static constexpr int default_upperMPEVoiceCount = 0;
     static constexpr int default_lowerMPEPB = 48;
     static constexpr int default_upperMPEPB = 48;
+    static constexpr bool default_midi2Mode = false;
     static constexpr int default_activeTab = 0;
 
     static void cleanupLegacyDeviceNodes(juce::ValueTree& devicesNode);

@@ -1,4 +1,5 @@
 #include "NumberInputComponent.h"
+#include "AppStyle.h"
 
 namespace ecm {
 
@@ -14,6 +15,7 @@ NumberInputComponent::NumberInputComponent(const juce::String& labelText,
     input.setJustification(juce::Justification::right);
     addAndMakeVisible(label);
     addAndMakeVisible(input);
+    updateTextColours();
 
     input.onTextChange = [this] {
         auto newVal = getValue();
@@ -36,6 +38,12 @@ void NumberInputComponent::resized() {
     else
         label.setBounds(area.removeFromLeft(area.getWidth() / 2));
     input.setBounds(area);
+}
+
+void NumberInputComponent::enablementChanged()
+{
+    updateTextColours();
+    repaint();
 }
 
 int NumberInputComponent::getValue() const {
@@ -61,6 +69,27 @@ void NumberInputComponent::removeListener(Listener* listenerToRemove) {
 
 void NumberInputComponent::sendChangeMessage() {
     listeners.call([this](Listener& l) { l.numberInputChanged(this); });
+}
+
+void NumberInputComponent::updateTextColours()
+{
+    auto enabled = isEnabled();
+    auto labelColour = enabled ? Style::text() : Style::mutedText().withMultipliedAlpha(0.70f);
+    auto inputColour = enabled ? Style::text() : Style::mutedText().withMultipliedAlpha(0.82f);
+    auto highlightColour = Style::accent().withAlpha(enabled ? 0.35f : 0.20f);
+    auto outlineColour = enabled ? Style::border() : Style::border().withMultipliedAlpha(0.55f);
+
+    label.setEnabled(enabled);
+    input.setEnabled(enabled);
+
+    label.setColour(juce::Label::textColourId, labelColour);
+    label.setColour(juce::Label::outlineColourId, juce::Colours::transparentBlack);
+
+    input.setColour(juce::TextEditor::textColourId, inputColour);
+    input.setColour(juce::TextEditor::highlightColourId, highlightColour);
+    input.setColour(juce::TextEditor::focusedOutlineColourId, enabled ? Style::accent() : outlineColour);
+    input.setColour(juce::TextEditor::outlineColourId, outlineColour);
+    input.applyColourToAllText(inputColour, true);
 }
 
 } // namespace ecm

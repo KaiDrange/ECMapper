@@ -25,6 +25,8 @@ private:
     NumberInputComponent upperMPEVoiceCount;
     NumberInputComponent lowerMPEPitchbendRange;
     NumberInputComponent upperMPEPitchbendRange;
+    juce::TextButton mpeModeButton;
+    juce::TextButton midi20ModeButton;
 
     juce::TextButton communicationTabButton;
     juce::TextButton alphaTabButton;
@@ -36,6 +38,7 @@ private:
     std::unique_ptr<TabPage> tauPage;
     std::unique_ptr<TabPage> picoPage;
     int currentTabIndex = 0;
+    bool midi2ModeEnabled = false;
 
     juce::AudioProcessorValueTreeState& pluginState;
     juce::AudioDeviceManager* deviceManager;

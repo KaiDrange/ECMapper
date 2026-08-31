@@ -12,6 +12,7 @@ public:
     void setValue(int number);
     void setLabelText(const juce::String& text);
     void resized() override;
+    void enablementChanged() override;
     
     struct Listener {
         virtual ~Listener() = default;
@@ -23,6 +24,7 @@ public:
 
 private:
     void sendChangeMessage();
+    void updateTextColours();
     juce::Label label;
     int maxValue;
     int minValue;
