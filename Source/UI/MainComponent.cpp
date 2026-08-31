@@ -118,10 +118,10 @@ MainComponent::MainComponent(juce::AudioProcessorValueTreeState& pluginStateToUs
         addAndMakeVisible(button);
     };
 
-    configureTab(communicationTabButton, "Communication", juce::Colour(0xff4d79a6), 0);
-    configureTab(alphaTabButton, "Alpha", juce::Colour(0xff3f8aa8), 1);
-    configureTab(tauTabButton, "Tau", juce::Colour(0xff5f7aa8), 2);
-    configureTab(picoTabButton, "Pico", juce::Colour(0xff4e8f84), 3);
+    configureTab(communicationTabButton, "Communication", Style::tabColour(0), 0);
+    configureTab(alphaTabButton, "Alpha", Style::tabColour(1), 1);
+    configureTab(tauTabButton, "Tau", Style::tabColour(2), 2);
+    configureTab(picoTabButton, "Pico", Style::tabColour(3), 3);
 
     currentTabIndex = juce::jlimit(0, 3, SettingsWrapper::getCurrentTabIndex(pluginState.state));
     selectTab(currentTabIndex);

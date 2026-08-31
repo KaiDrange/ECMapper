@@ -13,6 +13,30 @@ juce::Colour accentStrong() { return juce::Colour(0xff68d6ff); }
 juce::Colour warning()      { return juce::Colour(0xffd2a24b); }
 juce::Colour danger()       { return juce::Colour(0xffc96f6f); }
 
+juce::Colour zoneColour(Zone zone)
+{
+    switch (zone)
+    {
+        case Zone::Zone1: return juce::Colour(0xff1b1bb0);
+        case Zone::Zone2: return juce::Colours::maroon;
+        case Zone::Zone3: return juce::Colours::darkorange;
+        case Zone::AllZones: return juce::Colours::white;
+        default: return juce::Colours::black;
+    }
+}
+
+juce::Colour tabColour(int tabIndex)
+{
+    switch (tabIndex)
+    {
+        case 0: return juce::Colour(0xff4d79a6);
+        case 1: return juce::Colour(0xff3f8aa8);
+        case 2: return juce::Colour(0xff5f7aa8);
+        case 3: return juce::Colour(0xff4e8f84);
+        default: return accent();
+    }
+}
+
 juce::LookAndFeel_V4::ColourScheme colourScheme()
 {
     return {

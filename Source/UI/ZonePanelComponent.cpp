@@ -80,7 +80,7 @@ void ZonePanelComponent::paint(juce::Graphics& g) {
     g.setColour(Style::surface());
     g.fillRoundedRectangle(bounds, 4.0f);
 
-    g.setColour(Utils::zoneEnumToColour(zone));
+    g.setColour(Style::zoneColour(zone));
     g.drawRoundedRectangle(bounds, 4.0f, 1.2f);
 }
 

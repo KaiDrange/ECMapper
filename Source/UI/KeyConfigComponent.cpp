@@ -18,6 +18,7 @@ void KeyConfigComponent::paint(juce::Graphics& g) {
 
     auto keyBounds = area.toFloat().reduced(1.0f);
     auto keyRadius = keyType == EigenharpKeyType::Button ? 8.0f : (keyType == EigenharpKeyType::Perc ? 6.0f : 5.0f);
+    auto keyIsRound = keyType == EigenharpKeyType::Button;
     auto isSelected = getToggleState();
 
     auto baseFill = juce::Colour(0xff11161c);
@@ -51,11 +52,17 @@ void KeyConfigComponent::paint(juce::Graphics& g) {
                                    keyBounds.getCentreX(), keyBounds.getBottom(),
                                    false);
     g.setGradientFill(outerGrad);
-    g.fillRoundedRectangle(keyBounds, keyRadius);
+    if (keyIsRound)
+        g.fillEllipse(keyBounds);
+    else
+        g.fillRoundedRectangle(keyBounds, keyRadius);
 
     auto rim = keyBounds.reduced(1.5f);
     g.setColour(rimFill);
-    g.drawRoundedRectangle(rim, keyRadius - 0.75f, 1.0f);
+    if (keyIsRound)
+        g.drawEllipse(rim, 1.0f);
+    else
+        g.drawRoundedRectangle(rim, keyRadius - 0.75f, 1.0f);
 
     auto face = keyBounds.reduced(3.0f);
     juce::ColourGradient faceGrad(highlightFill,
@@ -66,16 +73,25 @@ void KeyConfigComponent::paint(juce::Graphics& g) {
                                   face.getBottom(),
                                   false);
     g.setGradientFill(faceGrad);
-    g.fillRoundedRectangle(face, keyRadius - 2.0f);
+    if (keyIsRound)
+        g.fillEllipse(face);
+    else
+        g.fillRoundedRectangle(face, keyRadius - 2.0f);
 
     auto gloss = face.removeFromTop(juce::jmax(2.0f, face.getHeight() * 0.22f));
     g.setColour(juce::Colour(0xffffffff).withAlpha(isSelected ? 0.18f : 0.10f));
-    g.fillRoundedRectangle(gloss, keyRadius - 2.0f);
+    if (keyIsRound)
+        g.fillEllipse(gloss);
+    else
+        g.fillRoundedRectangle(gloss, keyRadius - 2.0f);
 
     if (isSelected)
     {
         g.setColour(Style::accentStrong().withAlpha(0.50f));
-        g.drawRoundedRectangle(keyBounds.reduced(0.5f), keyRadius, 1.4f);
+        if (keyIsRound)
+            g.drawEllipse(keyBounds.reduced(0.5f), 1.4f);
+        else
+            g.drawRoundedRectangle(keyBounds.reduced(0.5f), keyRadius, 1.4f);
     }
 
     g.setColour(Style::text());
@@ -121,13 +137,36 @@ void KeyConfigComponent::paint(juce::Graphics& g) {
     g.setColour(ledColour);
     g.fillEllipse(lightPosition - 1.25f, area.getY() + 2.6f, 2.5f, 2.5f);
 
-    g.setColour(Utils::zoneEnumToColour(layoutKey.zone));
-    if (keyType == EigenharpKeyType::Normal) {
-        g.drawRoundedRectangle(area.getX() + 1.0f, area.getY() + 1.0f, area.getWidth() - 2.0f, area.getHeight() - 2.0f, 5.0f, 1.0f);
-    } else if (keyType == EigenharpKeyType::Perc) {
-        g.drawRoundedRectangle(area.getX() + 1.0f, area.getY() + 1.0f, area.getWidth() - 2.0f, area.getHeight() - 2.0f, 9.0f, 1.0f);
-    } else if (keyType == EigenharpKeyType::Button) {
-        g.drawEllipse(area.getX() + 1.0f, area.getY() + 1.0f, area.getWidth() - 2.0f, area.getHeight() - 2.0f, 1.0f);
+    auto zoneColour = Style::zoneColour(layoutKey.zone);
+    if (layoutKey.zone != Zone::NoZone)
+    {
+        juce::Path zonePath;
+        auto strokeBounds = area.toFloat().reduced(1.0f);
+
+        if (keyType == EigenharpKeyType::Button)
+            zonePath.addEllipse(strokeBounds);
+        else if (keyType == EigenharpKeyType::Perc)
+            zonePath.addRoundedRectangle(strokeBounds, 9.0f);
+        else
+            zonePath.addRoundedRectangle(strokeBounds, 5.0f);
+
+        juce::PathStrokeType glowStroke(5.5f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded);
+        juce::Path glowPath;
+        glowStroke.createStrokedPath(glowPath, zonePath);
+        g.setColour(zoneColour.withAlpha(0.14f));
+        g.fillPath(glowPath);
+
+        juce::PathStrokeType borderStroke(1.8f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded);
+        juce::Path borderPath;
+        borderStroke.createStrokedPath(borderPath, zonePath);
+
+        juce::ColourGradient borderGradient(zoneColour.brighter(0.26f).withAlpha(1.0f),
+                                           0.0f, strokeBounds.getY(),
+                                           zoneColour.darker(0.20f).withAlpha(1.0f),
+                                           0.0f, strokeBounds.getBottom(),
+                                           false);
+        g.setGradientFill(borderGradient);
+        g.fillPath(borderPath);
     }
 }
 

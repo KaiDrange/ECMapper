@@ -16,6 +16,7 @@ public:
 
 private:
     InstrumentType deviceType;
+    int tabIndex_;
     std::unique_ptr<LayoutComponent> layoutPanel;
     std::unique_ptr<ZonePanelComponent> zonePanels[3];
 

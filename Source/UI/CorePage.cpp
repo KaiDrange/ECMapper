@@ -321,6 +321,9 @@ void CorePage::updateDeviceList() {
 
 void CorePage::paint(juce::Graphics& g) {
     g.fillAll(Style::background());
+
+    g.setColour(Style::tabColour(0).withAlpha(0.80f));
+    g.fillRect(0, 0, getWidth(), 3);
     
     auto area = getLocalBounds().reduced(20);
     auto headerArea = area.removeFromTop(40);

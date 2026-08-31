@@ -1,10 +1,12 @@
 #include "TabPage.h"
+#include "AppStyle.h"
 #include "../Core/LayoutWrapper.h"
 
 namespace ecm {
 
 TabPage::TabPage(int tabIndex, InstrumentType deviceType, juce::AudioProcessorValueTreeState& pluginState) 
     : deviceType(deviceType), 
+      tabIndex_(tabIndex),
       keyboard(keyboardState, juce::MidiKeyboardComponent::Orientation::verticalKeyboardFacingRight),
       pluginState(pluginState) {
     
@@ -48,7 +50,10 @@ TabPage::~TabPage() {
 }
 
 void TabPage::paint(juce::Graphics& g) {
-    juce::ignoreUnused(g);
+    g.fillAll(Style::background());
+
+    g.setColour(Style::tabColour(tabIndex_).withAlpha(0.80f));
+    g.fillRect(0, 0, getWidth(), 3);
 }
 
 void TabPage::resized() {

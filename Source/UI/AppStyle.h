@@ -1,6 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include "../Core/Enums.h"
 
 namespace ecm::Style {
 
@@ -14,6 +15,8 @@ juce::Colour accent();
 juce::Colour accentStrong();
 juce::Colour warning();
 juce::Colour danger();
+juce::Colour zoneColour(Zone zone);
+juce::Colour tabColour(int tabIndex);
 
 juce::LookAndFeel_V4::ColourScheme colourScheme();
 

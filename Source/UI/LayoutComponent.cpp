@@ -1,6 +1,6 @@
 #include "LayoutComponent.h"
 
-#include "Core/Utils.h"
+#include "AppStyle.h"
 
 namespace ecm {
 
@@ -47,9 +47,9 @@ LayoutComponent::LayoutComponent(InstrumentType deviceType, float widthFactor, f
             menu.addItem(item);
         };
         menu.addItem("None", [this] { LayoutWrapper::setKeyZone(activeKeyId, Zone::NoZone, this->pluginState.state); repaint(); });
-        addItem("Zone1", Zone::Zone1, Utils::zoneEnumToColour(Zone::Zone1));
-        addItem("Zone2", Zone::Zone2, Utils::zoneEnumToColour(Zone::Zone2));
-        addItem("Zone3", Zone::Zone3, Utils::zoneEnumToColour(Zone::Zone3));
+        addItem("Zone1", Zone::Zone1, Style::zoneColour(Zone::Zone1));
+        addItem("Zone2", Zone::Zone2, Style::zoneColour(Zone::Zone2));
+        addItem("Zone3", Zone::Zone3, Style::zoneColour(Zone::Zone3));
         menu.showMenuAsync(juce::PopupMenu::Options{}.withTargetComponent(zoneMenuButton));
     };
     
