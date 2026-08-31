@@ -1,5 +1,6 @@
 #include "CorePage.h"
 #include "../Core/SettingsWrapper.h"
+#include "AppStyle.h"
 
 namespace ecm {
 
@@ -13,9 +14,9 @@ CorePage::CorePage(HardwareService& hardwareService, juce::ValueTree& state)
     ledRed = juce::Image(juce::Image::ARGB, 32, 32, true);
     {
         juce::Graphics g(ledRed);
-        g.setColour(juce::Colours::red);
+        g.setColour(Style::danger());
         g.fillEllipse(4, 4, 24, 24);
-        g.setColour(juce::Colours::white.withAlpha(0.4f));
+        g.setColour(Style::text().withAlpha(0.4f));
         g.fillEllipse(8, 8, 10, 10);
     }
     
@@ -131,7 +132,7 @@ void CorePage::updateDeviceList() {
         juce::String labelText = typeStr + " (" + d.dev + ")";
         if (d.isRemote) labelText += " [Remote]";
         row->nameLabel = std::make_unique<juce::Label>("", labelText);
-        row->nameLabel->setColour(juce::Label::textColourId, d.isRemote ? juce::Colours::lightblue : juce::Colours::white);
+        row->nameLabel->setColour(juce::Label::textColourId, d.isRemote ? Style::accentStrong() : Style::text());
         addAndMakeVisible(row->nameLabel.get());
         
         row->modeCombo = std::make_unique<juce::ComboBox>();
@@ -171,7 +172,7 @@ void CorePage::updateDeviceList() {
             auto tRow = std::make_unique<TargetRow>();
             
             tRow->ipLabel = std::make_unique<juce::Label>("", "Host:");
-            tRow->ipLabel->setColour(juce::Label::textColourId, juce::Colours::grey);
+            tRow->ipLabel->setColour(juce::Label::textColourId, Style::mutedText());
             addAndMakeVisible(tRow->ipLabel.get());
             
             tRow->ipInput = std::make_unique<juce::TextEditor>();
@@ -186,7 +187,7 @@ void CorePage::updateDeviceList() {
             addAndMakeVisible(tRow->ipInput.get());
             
             tRow->portLabel = std::make_unique<juce::Label>("", "Port:");
-            tRow->portLabel->setColour(juce::Label::textColourId, juce::Colours::grey);
+            tRow->portLabel->setColour(juce::Label::textColourId, Style::mutedText());
             addAndMakeVisible(tRow->portLabel.get());
             
             tRow->portInput = std::make_unique<juce::TextEditor>();
@@ -199,8 +200,8 @@ void CorePage::updateDeviceList() {
             tRow->ledToggle = std::make_unique<juce::TextButton>(isHost ? "L" : "Control LEDs");
             tRow->ledToggle->setClickingTogglesState(true);
             tRow->ledToggle->setToggleState(target.receiveLEDs, juce::dontSendNotification);
-            tRow->ledToggle->setColour(juce::TextButton::buttonOnColourId, juce::Colours::yellow);
-            tRow->ledToggle->setColour(juce::TextButton::textColourOnId, juce::Colours::black);
+            tRow->ledToggle->setColour(juce::TextButton::buttonOnColourId, Style::warning());
+            tRow->ledToggle->setColour(juce::TextButton::textColourOnId, Style::background());
             tRow->ledToggle->setTooltip(isHost ? "Toggle Send LEDs" : "Toggle Control LEDs");
             tRow->ledToggle->onClick = [this, dev = d.dev, ti = i, r = row.get()] {
                 if (ti < (int)r->targets.size()) {
@@ -268,17 +269,17 @@ void CorePage::updateDeviceList() {
 }
 
 void CorePage::paint(juce::Graphics& g) {
-    g.fillAll(getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
+    g.fillAll(Style::background());
     
     auto area = getLocalBounds().reduced(20);
     auto headerArea = area.removeFromTop(40);
     
-    g.setColour(juce::Colours::white);
+    g.setColour(Style::text());
     g.setFont(20.0f);
     g.drawText("Communication", headerArea.removeFromLeft(200), juce::Justification::centredLeft);
     
     if (deviceRows_.empty()) {
-        g.setColour(juce::Colours::grey);
+        g.setColour(Style::mutedText());
         auto emptyArea = getLocalBounds().reduced(20);
         emptyArea.removeFromTop(100);
         g.drawFittedText(hardwareService_.getAppRole() == AppRole::Host ? "No local devices connected" : "No remote devices discovered", emptyArea, juce::Justification::centred, 1);

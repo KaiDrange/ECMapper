@@ -2,10 +2,10 @@
 
 StandaloneAppMainWindow::StandaloneAppMainWindow (const juce::String& name)
     : DocumentWindow (name,
-                      juce::Desktop::getInstance().getDefaultLookAndFeel()
-                                                  .findColour (juce::ResizableWindow::backgroundColourId),
+                      ecm::Style::background(),
                       DocumentWindow::allButtons)
 {
+    setLookAndFeel(&lookAndFeel);
     setUsingNativeTitleBar (true);
     setResizable (true, true);
     
@@ -35,6 +35,7 @@ StandaloneAppMainWindow::StandaloneAppMainWindow (const juce::String& name)
 StandaloneAppMainWindow::~StandaloneAppMainWindow()
 {
     setContentOwned(nullptr, true);
+    setLookAndFeel(nullptr);
     savePluginState();
     deviceManager.removeChangeListener(this);
     processorPlayer.setProcessor(nullptr);

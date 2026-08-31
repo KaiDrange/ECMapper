@@ -1,4 +1,5 @@
 #include "ZonePanelComponent.h"
+#include "AppStyle.h"
 
 namespace ecm {
 
@@ -75,9 +76,12 @@ ZonePanelComponent::ZonePanelComponent(InstrumentType deviceType, Zone zone, flo
 }
 
 void ZonePanelComponent::paint(juce::Graphics& g) {
-    g.fillAll(getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
+    auto bounds = getLocalBounds().toFloat().reduced(0.5f);
+    g.setColour(Style::surface());
+    g.fillRoundedRectangle(bounds, 4.0f);
+
     g.setColour(Utils::zoneEnumToColour(zone));
-    g.drawRect(getLocalBounds(), 1);
+    g.drawRoundedRectangle(bounds, 4.0f, 1.2f);
 }
 
 void ZonePanelComponent::resized() {

@@ -2,6 +2,7 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "PluginProcessor.h"
+#include "UI/AppStyle.h"
 
 class StandaloneAppMainWindow : public juce::DocumentWindow,
                                  private juce::ChangeListener
@@ -27,6 +28,7 @@ private:
     
     juce::AudioDeviceManager deviceManager;
     juce::AudioProcessorPlayer processorPlayer;
+    ecm::AppLookAndFeel lookAndFeel;
 
     bool isUpdatingSettings = false;
 

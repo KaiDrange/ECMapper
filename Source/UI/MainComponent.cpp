@@ -1,4 +1,5 @@
 #include "MainComponent.h"
+#include "AppStyle.h"
 
 namespace ecm {
 
@@ -7,9 +8,13 @@ MainComponent::MainComponent(juce::AudioProcessorValueTreeState& pluginStateToUs
       upperMPEVoiceCount("Upper MPE voices:", 2, 0, 15, true),  
       lowerMPEPitchbendRange("Lower MPE pb:", 2, 0, 96, true), 
       upperMPEPitchbendRange("Upper MPE pb:", 2, 0, 96, true),
+      communicationTabButton("Communication"),
+      alphaTabButton("Alpha"),
+      tauTabButton("Tau"),
+      picoTabButton("Pico"),
       pluginState(pluginStateToUse),
       deviceManager(deviceManagerToUse) {
-    
+
     SettingsWrapper::addListener(this, pluginState.state);
     
     lowerMPEVoiceCount.setValue(SettingsWrapper::getLowerMPEVoiceCount(pluginState.state));
@@ -32,22 +37,36 @@ MainComponent::MainComponent(juce::AudioProcessorValueTreeState& pluginStateToUs
         SettingsWrapper::setUpperMPEPB(upperMPEPitchbendRange.getValue(), this->pluginState.state);
     };
     
-    auto bgColour = getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId);
-    
     corePage = std::make_unique<CorePage>(hardwareService, pluginState.state);
     alphaPage = std::make_unique<TabPage>(0, InstrumentType::Alpha, pluginState);
     tauPage = std::make_unique<TabPage>(1, InstrumentType::Tau, pluginState);
     picoPage = std::make_unique<TabPage>(2, InstrumentType::Pico, pluginState);
+
+    addAndMakeVisible(corePage.get());
+    addAndMakeVisible(alphaPage.get());
+    addAndMakeVisible(tauPage.get());
+    addAndMakeVisible(picoPage.get());
     
-    tabs.addTab("Communication", bgColour, corePage.get(), false);
-    tabs.addTab("Alpha", bgColour, alphaPage.get(), false);
-    tabs.addTab("Tau", bgColour, tauPage.get(), false);
-    tabs.addTab("Pico", bgColour, picoPage.get(), false);
-    
-    tabs.setCurrentTabIndex(SettingsWrapper::getCurrentTabIndex(pluginState.state));
-    tabs.onTabChanged = [this](int index) {
-        SettingsWrapper::setCurrentTabIndex(index, this->pluginState.state);
+    auto configureTab = [this](juce::TextButton& button, const juce::String& text, juce::Colour colour, int index)
+    {
+        button.setButtonText(text);
+        button.setClickingTogglesState(true);
+        button.setRadioGroupId(1);
+        button.setColour(juce::TextButton::buttonColourId, colour);
+        button.setColour(juce::TextButton::buttonOnColourId, colour.brighter(0.25f));
+        button.setColour(juce::TextButton::textColourOffId, Style::text());
+        button.setColour(juce::TextButton::textColourOnId, Style::background());
+        button.onClick = [this, index] { selectTab(index); };
+        addAndMakeVisible(button);
     };
+
+    configureTab(communicationTabButton, "Communication", juce::Colour(0xff4d79a6), 0);
+    configureTab(alphaTabButton, "Alpha", juce::Colour(0xff3f8aa8), 1);
+    configureTab(tauTabButton, "Tau", juce::Colour(0xff5f7aa8), 2);
+    configureTab(picoTabButton, "Pico", juce::Colour(0xff4e8f84), 3);
+
+    currentTabIndex = juce::jlimit(0, 3, SettingsWrapper::getCurrentTabIndex(pluginState.state));
+    selectTab(currentTabIndex);
     
     if (deviceManager != nullptr) {
         audioSettingsButton.setButtonText("Audio/MIDI Settings");
@@ -58,7 +77,7 @@ MainComponent::MainComponent(juce::AudioProcessorValueTreeState& pluginStateToUs
             juce::DialogWindow::LaunchOptions options;
             options.content.setOwned(selector);
             options.dialogTitle = "Audio/MIDI Settings";
-            options.dialogBackgroundColour = getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId);
+            options.dialogBackgroundColour = Style::background();
             options.escapeKeyTriggersCloseButton = true;
             options.useNativeTitleBar = true;
             options.resizable = false;
@@ -67,7 +86,6 @@ MainComponent::MainComponent(juce::AudioProcessorValueTreeState& pluginStateToUs
         addAndMakeVisible(audioSettingsButton);
     }
 
-    addAndMakeVisible(tabs);
     addAndMakeVisible(lowerMPEVoiceCount);
     addAndMakeVisible(upperMPEVoiceCount);
     addAndMakeVisible(lowerMPEPitchbendRange);
@@ -79,30 +97,80 @@ MainComponent::~MainComponent() {
 }
 
 void MainComponent::paint(juce::Graphics& g) {
-    g.fillAll(getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
-    g.setColour(juce::Colours::grey);
+    g.fillAll(Style::background());
+
+    g.setColour(Style::border());
     g.drawRect(getLocalBounds(), 1);
+
+    auto header = getLocalBounds().removeFromTop(78);
+    g.setColour(Style::surface());
+    g.fillRect(header);
+
+    g.setColour(Style::accent());
+    g.fillRect(header.removeFromTop(3));
 }
 
 void MainComponent::resized() {
     auto area = getLocalBounds();
-    auto header = area.removeFromTop(40);
-    header.reduce(10, 5);
-    
+    auto header = area.removeFromTop(78);
+    header.reduce(10, 8);
+
+    auto topRow = header.removeFromTop(26);
+    auto bottomRow = header.removeFromTop(34);
+
     if (deviceManager != nullptr) {
-        audioSettingsButton.setBounds(header.removeFromLeft(150));
+        audioSettingsButton.setBounds(topRow.removeFromLeft(150));
     }
+
+    auto controlArea = topRow;
+    controlArea.removeFromLeft(12);
+    controlArea.removeFromRight(12);
+    auto controlWidth = 78;
+    upperMPEPitchbendRange.setBounds(controlArea.removeFromRight(controlWidth));
+    controlArea.removeFromRight(8);
+    lowerMPEPitchbendRange.setBounds(controlArea.removeFromRight(controlWidth));
+    controlArea.removeFromRight(8);
+    upperMPEVoiceCount.setBounds(controlArea.removeFromRight(controlWidth));
+    controlArea.removeFromRight(8);
+    lowerMPEVoiceCount.setBounds(controlArea.removeFromRight(controlWidth));
+
+    auto tabArea = bottomRow.reduced(0, 1);
+    auto tabWidth = tabArea.getWidth() / 4;
+    communicationTabButton.setBounds(tabArea.removeFromLeft(tabWidth).reduced(0, 0));
+    alphaTabButton.setBounds(tabArea.removeFromLeft(tabWidth).reduced(4, 0));
+    tauTabButton.setBounds(tabArea.removeFromLeft(tabWidth).reduced(4, 0));
+    picoTabButton.setBounds(tabArea.reduced(4, 0));
     
-    header.removeFromRight(10);
-    upperMPEPitchbendRange.setBounds(header.removeFromRight(80));
-    header.removeFromRight(10);
-    lowerMPEPitchbendRange.setBounds(header.removeFromRight(80));
-    header.removeFromRight(10);
-    upperMPEVoiceCount.setBounds(header.removeFromRight(80));
-    header.removeFromRight(10);
-    lowerMPEVoiceCount.setBounds(header.removeFromRight(80));
-    
-    tabs.setBounds(area);
+    auto contentArea = area;
+    corePage->setVisible(currentTabIndex == 0);
+    alphaPage->setVisible(currentTabIndex == 1);
+    tauPage->setVisible(currentTabIndex == 2);
+    picoPage->setVisible(currentTabIndex == 3);
+
+    corePage->setBounds(contentArea);
+    alphaPage->setBounds(contentArea);
+    tauPage->setBounds(contentArea);
+    picoPage->setBounds(contentArea);
+}
+
+void MainComponent::selectTab(int index)
+{
+    index = juce::jlimit(0, 3, index);
+    currentTabIndex = index;
+
+    communicationTabButton.setToggleState(index == 0, juce::dontSendNotification);
+    alphaTabButton.setToggleState(index == 1, juce::dontSendNotification);
+    tauTabButton.setToggleState(index == 2, juce::dontSendNotification);
+    picoTabButton.setToggleState(index == 3, juce::dontSendNotification);
+
+    corePage->setVisible(index == 0);
+    alphaPage->setVisible(index == 1);
+    tauPage->setVisible(index == 2);
+    picoPage->setVisible(index == 3);
+
+    SettingsWrapper::setCurrentTabIndex(index, this->pluginState.state);
+    resized();
+    repaint();
 }
 
 void MainComponent::valueTreePropertyChanged(juce::ValueTree& vTree, const juce::Identifier& property) {

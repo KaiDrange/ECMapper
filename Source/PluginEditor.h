@@ -2,6 +2,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "PluginProcessor.h"
 #include "UI/MainComponent.h"
+#include "UI/AppStyle.h"
 
 class ECMapperAudioProcessorEditor : public juce::AudioProcessorEditor {
 public:
@@ -14,6 +15,7 @@ public:
 private:
     ECMapperAudioProcessor& audioProcessor;
     std::unique_ptr<ecm::MainComponent> mainComponent;
+    ecm::AppLookAndFeel lookAndFeel;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ECMapperAudioProcessorEditor)
 };

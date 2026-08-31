@@ -6,17 +6,20 @@ ECMapperAudioProcessorEditor::ECMapperAudioProcessorEditor(ECMapperAudioProcesso
     
     mainComponent = std::make_unique<ecm::MainComponent>(p.state, p.getHardwareService(), p.getDeviceManager());
     addAndMakeVisible(mainComponent.get());
-    
+    setLookAndFeel(&lookAndFeel);
+
     setResizable(true, true);
     setResizeLimits(800, 600, 4096, 4096);
     setSize(1000, 700);
 }
 
 ECMapperAudioProcessorEditor::~ECMapperAudioProcessorEditor() {
+    mainComponent.reset();
+    setLookAndFeel(nullptr);
 }
 
 void ECMapperAudioProcessorEditor::paint(juce::Graphics& g) {
-    g.fillAll(getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
+    g.fillAll(ecm::Style::background());
 }
 
 void ECMapperAudioProcessorEditor::resized() {

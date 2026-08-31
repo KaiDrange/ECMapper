@@ -7,6 +7,9 @@ class TabButtonBarComponent : public juce::TabbedComponent {
 public:
     TabButtonBarComponent() : TabbedComponent(juce::TabbedButtonBar::TabsAtTop) {
         onTabChanged = [](int) {};
+        setTabBarDepth(34);
+        setOutline(1);
+        setIndent(0);
     }
 
     void currentTabChanged(int index, const juce::String& name) override {

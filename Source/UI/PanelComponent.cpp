@@ -1,4 +1,5 @@
 #include "PanelComponent.h"
+#include "AppStyle.h"
 
 namespace ecm {
 
@@ -7,8 +8,12 @@ PanelComponent::PanelComponent(float widthFactor, float heightFactor)
 }
 
 void PanelComponent::paint(juce::Graphics& g) {
-    g.setColour(juce::Colours::grey.withAlpha(0.2f));
-    g.drawRect(getLocalBounds(), 1);
+    auto bounds = getLocalBounds().toFloat().reduced(0.5f);
+    g.setColour(Style::surface());
+    g.fillRoundedRectangle(bounds, 4.0f);
+
+    g.setColour(Style::border());
+    g.drawRoundedRectangle(bounds, 4.0f, 1.0f);
 }
 
 void PanelComponent::resized() {

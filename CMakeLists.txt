@@ -101,6 +101,8 @@ if(ECMAPPER_BUILD_APP)
         Source/StandaloneApp.h
         Source/StandaloneAppMainWindow.cpp
         Source/StandaloneAppMainWindow.h
+        Source/UI/AppStyle.cpp
+        Source/UI/AppStyle.h
         Source/PluginProcessor.cpp
         Source/PluginProcessor.h
         Source/PluginEditor.cpp
@@ -144,6 +146,8 @@ if(ECMAPPER_BUILD_PLUGIN)
         Source/PluginProcessor.h
         Source/PluginEditor.cpp
         Source/PluginEditor.h
+        Source/UI/AppStyle.cpp
+        Source/UI/AppStyle.h
         ${SHARED_SOURCES}
     )
 

@@ -2,7 +2,6 @@
 #include <JuceHeader.h>
 #include "../Core/Enums.h"
 #include "../Core/SettingsWrapper.h"
-#include "TabButtonBarComponent.h"
 #include "TabPage.h"
 #include "CorePage.h"
 #include "NumberInputComponent.h"
@@ -19,6 +18,7 @@ public:
     void resized() override;
 
 private:
+    void selectTab(int index);
     void valueTreePropertyChanged(juce::ValueTree& vTree, const juce::Identifier& property) override;
     
     NumberInputComponent lowerMPEVoiceCount;
@@ -26,12 +26,16 @@ private:
     NumberInputComponent lowerMPEPitchbendRange;
     NumberInputComponent upperMPEPitchbendRange;
 
-    TabButtonBarComponent tabs;
+    juce::TextButton communicationTabButton;
+    juce::TextButton alphaTabButton;
+    juce::TextButton tauTabButton;
+    juce::TextButton picoTabButton;
     juce::TextButton audioSettingsButton;
     std::unique_ptr<CorePage> corePage;
     std::unique_ptr<TabPage> alphaPage;
     std::unique_ptr<TabPage> tauPage;
     std::unique_ptr<TabPage> picoPage;
+    int currentTabIndex = 0;
 
     juce::AudioProcessorValueTreeState& pluginState;
     juce::AudioDeviceManager* deviceManager;
