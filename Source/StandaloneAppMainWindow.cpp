@@ -33,6 +33,7 @@ StandaloneAppMainWindow::StandaloneAppMainWindow(const juce::String& name)
     loadAudioSettings();
 
     deviceManager.addAudioCallback(&processorPlayer);
+    deviceManager.addMidiInputDeviceCallback({}, &processorPlayer.getMidiMessageCollector());
 
     updateMidiOutput();
 
@@ -55,6 +56,7 @@ StandaloneAppMainWindow::~StandaloneAppMainWindow()
     savePluginState();
     deviceManager.removeChangeListener(this);
     processorPlayer.setProcessor(nullptr);
+    deviceManager.removeMidiInputDeviceCallback({}, &processorPlayer.getMidiMessageCollector());
     deviceManager.removeAudioCallback(&processorPlayer);
 #if JUCE_MAC
     juce::MenuBarModel::setMacMainMenu(nullptr);
@@ -169,7 +171,7 @@ juce::File StandaloneAppMainWindow::getPluginStateFile()
 void StandaloneAppMainWindow::showAudioSettings()
 {
     auto* selector = new juce::AudioDeviceSelectorComponent(deviceManager,
-                                                            0, 0, 0, 256, false, true, true, false);
+                                                            0, 0, 0, 256, true, true, true, false);
     selector->setSize(500, 450);
     juce::DialogWindow::LaunchOptions options;
     options.content.setOwned(selector);

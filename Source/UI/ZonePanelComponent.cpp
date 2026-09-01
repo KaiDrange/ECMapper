@@ -16,15 +16,36 @@ ZonePanelComponent::ZonePanelComponent(InstrumentType deviceType, Zone zone, flo
     label.setText("Zone " + juce::String(static_cast<int>(zone)), juce::dontSendNotification);
 
     addAndMakeVisible(enableZoneButton);
-    enableZoneButton.setToggleState(ZoneWrapper::getEnabled(deviceType, zone, pluginState.state), juce::dontSendNotification);
+    if (auto* param = dynamic_cast<juce::AudioParameterBool*>(
+            pluginState.getParameter(ZoneWrapper::getEnabledParameterID(deviceType, zone)))) {
+        enableZoneButton.setToggleState(param->get(), juce::dontSendNotification);
+    } else {
+        enableZoneButton.setToggleState(ZoneWrapper::getEnabled(deviceType, zone, pluginState.state), juce::dontSendNotification);
+    }
     enableZoneButton.onClick = [this] {
-        ZoneWrapper::setEnabled(this->deviceType, this->zone, enableZoneButton.getToggleState(), this->pluginState.state);
+        auto enabled = enableZoneButton.getToggleState();
+        ZoneWrapper::setEnabled(this->deviceType, this->zone, enabled, this->pluginState.state);
+        if (auto* param = dynamic_cast<juce::AudioParameterBool*>(
+                this->pluginState.getParameter(ZoneWrapper::getEnabledParameterID(this->deviceType, this->zone)))) {
+            param->setValueNotifyingHost(enabled);
+        }
     };
+    ZoneWrapper::addListener(deviceType, this, pluginState.state);
     
     addAndMakeVisible(transposeInput);
-    transposeInput.setValue(ZoneWrapper::getTranspose(deviceType, zone, pluginState.state));
+    if (auto* param = dynamic_cast<juce::AudioParameterInt*>(
+            pluginState.getParameter(ZoneWrapper::getTransposeParameterID(deviceType, zone)))) {
+        transposeInput.setValue(param->get());
+    } else {
+        transposeInput.setValue(ZoneWrapper::getTranspose(deviceType, zone, pluginState.state));
+    }
     transposeInput.input.onFocusLost = [this] {
-        ZoneWrapper::setTranspose(this->deviceType, this->zone, transposeInput.getValue(), this->pluginState.state);
+        auto value = transposeInput.getValue();
+        ZoneWrapper::setTranspose(this->deviceType, this->zone, value, this->pluginState.state);
+        if (auto* param = dynamic_cast<juce::AudioParameterInt*>(
+                this->pluginState.getParameter(ZoneWrapper::getTransposeParameterID(this->deviceType, this->zone)))) {
+            param->setValueNotifyingHost(param->getNormalisableRange().convertTo0to1((float) value));
+        }
     };
 
     addAndMakeVisible(keyPitchbendRangeInput);
@@ -75,6 +96,10 @@ ZonePanelComponent::ZonePanelComponent(InstrumentType deviceType, Zone zone, flo
     setStandardMidiDropdownParams(breathDropdown, ZoneWrapper::id_breath, ZoneWrapper::default_breath);
 }
 
+ZonePanelComponent::~ZonePanelComponent() {
+    ZoneWrapper::removeListener(deviceType, this, pluginState.state);
+}
+
 void ZonePanelComponent::paint(juce::Graphics& g) {
     auto bounds = getLocalBounds().toFloat().reduced(0.5f);
     g.setColour(Style::surface());
@@ -111,6 +136,24 @@ void ZonePanelComponent::resized() {
     transposeInput.setBounds(col2.removeFromTop(lineHeight));
     keyPitchbendRangeInput.setBounds(col2.removeFromTop(lineHeight));
     channelMaxPBInput.setBounds(col2.removeFromTop(lineHeight));
+}
+
+void ZonePanelComponent::valueTreePropertyChanged(juce::ValueTree& vTree, const juce::Identifier& property) {
+    if (property != ZoneWrapper::id_enabled)
+        return;
+
+    if (ZoneWrapper::getInstrumentTypeFromTree(vTree) != deviceType)
+        return;
+
+    auto typeStr = vTree.getType().toString();
+    if (!typeStr.startsWith(ZoneWrapper::id_zone.toString()))
+        return;
+
+    auto changedZone = static_cast<Zone>(typeStr.substring(4).getIntValue());
+    if (changedZone != zone)
+        return;
+
+    enableZoneButton.setToggleState(ZoneWrapper::getEnabled(deviceType, zone, pluginState.state), juce::dontSendNotification);
 }
 
 void ZonePanelComponent::setStandardMidiDropdownParams(DropdownComponent& dropdown, juce::Identifier treeId, const ZoneWrapper::MidiValue& defaultValue) {

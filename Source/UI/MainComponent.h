@@ -5,11 +5,13 @@
 #include "NumberInputComponent.h"
 #include "../Core/HardwareService.h"
 
+class ECMapperAudioProcessor;
+
 namespace ecm {
 
 class MainComponent : public juce::Component, public juce::ValueTree::Listener {
 public:
-    MainComponent(juce::AudioProcessorValueTreeState& pluginStateToUse, HardwareService& hardwareService, juce::AudioDeviceManager* deviceManagerToUse = nullptr);
+    MainComponent(juce::AudioProcessorValueTreeState& pluginStateToUse, HardwareService& hardwareService, ECMapperAudioProcessor& processorToUse, juce::AudioDeviceManager* deviceManagerToUse = nullptr);
     ~MainComponent() override;
 
     void paint(juce::Graphics& g) override;
@@ -36,6 +38,7 @@ private:
     std::unique_ptr<TabPage> picoPage;
     int currentTabIndex = 0;
     bool midi2ModeEnabled = false;
+    ECMapperAudioProcessor& processor;
 
     juce::AudioProcessorValueTreeState& pluginState;
     juce::AudioDeviceManager* deviceManager;

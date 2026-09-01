@@ -11,12 +11,19 @@ namespace ecm {
 class ZonePanelComponent  : public PanelComponent, public juce::ValueTree::Listener {
 public:
     ZonePanelComponent(InstrumentType deviceType, Zone zone, float widthFactor, float heightFactor, juce::AudioProcessorValueTreeState& pluginState);
-    ~ZonePanelComponent() override = default;
+    ~ZonePanelComponent() override;
 
     void paint(juce::Graphics& g) override;
     void resized() override;
 
 private:
+    void valueTreePropertyChanged(juce::ValueTree& vTree, const juce::Identifier& property) override;
+    void valueTreeChildAdded(juce::ValueTree&, juce::ValueTree&) override {}
+    void valueTreeChildRemoved(juce::ValueTree&, juce::ValueTree&, int) override {}
+    void valueTreeChildOrderChanged(juce::ValueTree&, int, int) override {}
+    void valueTreeParentChanged(juce::ValueTree&) override {}
+    void valueTreeRedirected(juce::ValueTree&) override {}
+
     void setStandardMidiDropdownParams(DropdownComponent& dropdown, juce::Identifier treeId, const ZoneWrapper::MidiValue& defaultValue);
 
     juce::Label label;

@@ -14,6 +14,7 @@ MidiService::~MidiService() {
 
 void MidiService::start(juce::AudioProcessorValueTreeState& pluginState, HardwareService* hs) {
     hardwareService_ = hs;
+    pluginState_ = &pluginState;
     int lowerChannelCount = SettingsWrapper::getLowerMPEVoiceCount(pluginState.state);
     mpeZone_.setLowerZone(lowerChannelCount, 2, SettingsWrapper::getLowerMPEPB(pluginState.state));
     
@@ -46,6 +47,11 @@ void MidiService::stop() {
     initialized_ = false;
     lowerChanAssigner_.reset();
     upperChanAssigner_.reset();
+    pluginState_ = nullptr;
+    {
+        const juce::ScopedLock sl(pendingMessageLock_);
+        pendingMidiMessages_.clear();
+    }
 }
 
 void MidiService::processMessage(osc::Message& oscMsg, osc::Message& outgoingOscMsg, juce::MidiBuffer& midiBuffer, int eventTime) {
@@ -158,6 +164,17 @@ void MidiService::processCmdKey(osc::Message& oscMsg, osc::Message& outgoingOscM
 void MidiService::handleRemotePerformanceData(osc::Message& oscMsg, juce::MidiBuffer& midiBuffer, int eventTime) {
     osc::Message outgoingMsg;
     processMessage(oscMsg, outgoingMsg, midiBuffer, eventTime);
+}
+
+void MidiService::drainPendingMidiMessages(juce::MidiBuffer& buffer, int eventTime) {
+    std::vector<PendingMidiMessage> messagesToDrain;
+    {
+        const juce::ScopedLock sl(pendingMessageLock_);
+        messagesToDrain.swap(pendingMidiMessages_);
+    }
+
+    for (const auto& pending : messagesToDrain)
+        buffer.addEvent(pending.message, pending.eventTime >= 0 ? pending.eventTime : eventTime);
 }
 
 void MidiService::resendLEDs(const char* devId, InstrumentType type, osc::MessageFifo* targetQueue, bool onlyNonOff) {
@@ -359,6 +376,73 @@ void MidiService::createAllNotesOff(juce::MidiBuffer& buffer, int eventTime) {
     if (lowerChanAssigner_) lowerChanAssigner_->allNotesOff();
     if (upperChanAssigner_) upperChanAssigner_->allNotesOff();
     playingNotes_.clear();
+}
+
+void MidiService::appendPendingMidiMessage(const juce::MidiMessage& message, int eventTime) {
+    const juce::ScopedLock sl(pendingMessageLock_);
+    pendingMidiMessages_.push_back({message, eventTime});
+}
+
+void MidiService::queueTransposeChangeFlush(InstrumentType deviceType, Zone zone) {
+    if (!initialized_ || pluginState_ == nullptr || deviceType == InstrumentType::None || zone == Zone::NoZone)
+        return;
+
+    int deviceIndex = static_cast<int>(deviceType) - 1;
+    if (deviceIndex < 0 || deviceIndex > 2)
+        return;
+
+    std::vector<PendingMidiMessage> localMessages;
+
+    const juce::ScopedLock sl(configLookups_[deviceIndex].getLock());
+    auto& state = pluginState_->state;
+
+    for (int course = 0; course < 3; ++course) {
+        for (int keyNo = 0; keyNo < 120; ++keyNo) {
+            LayoutWrapper::KeyId keyId { course, keyNo, deviceType };
+            auto layoutKey = LayoutWrapper::getLayoutKey(keyId, state);
+            if (layoutKey.zone != zone)
+                continue;
+
+            auto& keyState = keyStates_[deviceIndex][course][keyNo];
+            auto& keyLookup = configLookups_[deviceIndex].keys[course][keyNo];
+
+            if (keyState.status == KeyStatus::Active) {
+                int channel = keyState.midiChannel;
+                auto vel = calculateNoteOffVelocity(deviceType, &keyState);
+
+                for (int i = 0; i < 4; ++i) {
+                    if (keyLookup.notes[i] > -1) {
+                        if (countPlayingNoteMatches(channel, keyLookup.notes[i]) < 2)
+                            localMessages.push_back({ juce::MidiMessage::noteOff(channel, keyLookup.notes[i], vel.asUnsignedFloat()), 0 });
+                        removeOneNoteMatch(channel, keyLookup.notes[i]);
+                    }
+                }
+
+                if (channel > 0 && channel <= 16) {
+                    chanNotePri_[channel - 1].remove_if([&keyId](const LayoutWrapper::KeyId& id) { return id == keyId; });
+
+                    if (chanNotePri_[channel - 1].empty()) {
+                        currentKeyPBperChannel_[channel - 1] = 0;
+                        currentStripPBperChannel_[channel - 1] = 0;
+                        localMessages.push_back({ juce::MidiMessage::channelPressureChange(channel, 0), 0 });
+                        localMessages.push_back({ juce::MidiMessage::pitchWheel(channel, 8192), 0 });
+                    }
+                }
+            }
+
+            keyState.status = KeyStatus::Off;
+            keyState.messageCount = 0;
+            keyState.isLatchOn = false;
+            keyState.ehPressureHistory.clear();
+            keyState.ehRoll = 0.0f;
+            keyState.ehYaw = 0.0f;
+        }
+    }
+
+    {
+        const juce::ScopedLock pendingLock(pendingMessageLock_);
+        pendingMidiMessages_.insert(pendingMidiMessages_.end(), localMessages.begin(), localMessages.end());
+    }
 }
 
 void MidiService::createNoteHold(ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime) {

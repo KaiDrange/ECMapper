@@ -8,8 +8,17 @@ namespace ecm {
 LayoutChangeHandler::LayoutChangeHandler(osc::MessageFifo& oscSendQueue, 
                                         juce::ValueTree& state, 
                                         ConfigLookup (&configLookups)[3],
-                                        std::function<void(bool)> suspendProcessingCallback)
-    : oscSendQueue_(oscSendQueue), state_(state), configLookups_(configLookups), suspendProcessingCallback_(suspendProcessingCallback) {
+                                        std::function<void(bool)> suspendProcessingCallback,
+                                        std::function<void(InstrumentType, Zone)> zoneChangeCallback)
+    : oscSendQueue_(oscSendQueue), state_(state), configLookups_(configLookups), suspendProcessingCallback_(suspendProcessingCallback), zoneChangeCallback_(zoneChangeCallback) {
+}
+
+Zone LayoutChangeHandler::getZoneFromTree(juce::ValueTree& vTree) {
+    auto typeStr = vTree.getType().toString();
+    if (!typeStr.startsWith(ZoneWrapper::id_zone.toString()))
+        return Zone::NoZone;
+
+    return static_cast<Zone>(typeStr.substring(4).getIntValue());
 }
 
 void LayoutChangeHandler::valueTreePropertyChanged(juce::ValueTree& vTree, const juce::Identifier& property) {
@@ -33,6 +42,12 @@ void LayoutChangeHandler::valueTreePropertyChanged(juce::ValueTree& vTree, const
     } else if (vTree.getParent().getType().toString().startsWith(ZoneWrapper::id_zone.toString())) {
         deviceType = ZoneWrapper::getInstrumentTypeFromTree(vTree);
         if (deviceType != InstrumentType::None) {
+            auto zone = getZoneFromTree(vTree);
+            if ((property == ZoneWrapper::id_transpose ||
+                 (property == ZoneWrapper::id_enabled && !ZoneWrapper::getEnabled(deviceType, zone, state_))) &&
+                zoneChangeCallback_) {
+                zoneChangeCallback_(deviceType, zone);
+            }
             configLookups_[getConfigIndexFromInstrumentType(deviceType)].updateAll();
         }
     } else if (vTree.getParent().getType().toString().startsWith(ExpressionCurveWrapper::id_expressionCurves.toString())) {
@@ -43,6 +58,12 @@ void LayoutChangeHandler::valueTreePropertyChanged(juce::ValueTree& vTree, const
     } else if (typeStr.startsWith(ZoneWrapper::id_zone.toString())) {
         deviceType = ZoneWrapper::getInstrumentTypeFromTree(vTree);
         if (deviceType != InstrumentType::None) {
+            auto zone = getZoneFromTree(vTree);
+            if ((property == ZoneWrapper::id_transpose ||
+                 (property == ZoneWrapper::id_enabled && !ZoneWrapper::getEnabled(deviceType, zone, state_))) &&
+                zoneChangeCallback_) {
+                zoneChangeCallback_(deviceType, zone);
+            }
             configLookups_[getConfigIndexFromInstrumentType(deviceType)].updateAll();
         }
     } else if (typeStr.startsWith(ExpressionCurveWrapper::id_expressionCurves.toString()) || typeStr.startsWith(ExpressionCurveWrapper::id_curve.toString())) {

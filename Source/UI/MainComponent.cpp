@@ -23,7 +23,7 @@ void configureModeButton(juce::TextButton& button)
 
 }
 
-MainComponent::MainComponent(juce::AudioProcessorValueTreeState& pluginStateToUse, HardwareService& hardwareService, juce::AudioDeviceManager* deviceManagerToUse)
+MainComponent::MainComponent(juce::AudioProcessorValueTreeState& pluginStateToUse, HardwareService& hardwareService, ECMapperAudioProcessor& processorToUse, juce::AudioDeviceManager* deviceManagerToUse)
     : lowerMPEVoiceCount("Lower MPE voices:", 2, 0, 15, true), 
       upperMPEVoiceCount("Upper MPE voices:", 2, 0, 15, true),  
       lowerMPEPitchbendRange("Lower MPE pb:", 2, 0, 96, true), 
@@ -32,6 +32,7 @@ MainComponent::MainComponent(juce::AudioProcessorValueTreeState& pluginStateToUs
       alphaTabButton("Alpha"),
       tauTabButton("Tau"),
       picoTabButton("Pico"),
+      processor(processorToUse),
       pluginState(pluginStateToUse),
       deviceManager(deviceManagerToUse) {
 
@@ -96,9 +97,9 @@ MainComponent::MainComponent(juce::AudioProcessorValueTreeState& pluginStateToUs
     updateMpeControlsEnabled(upperMPEPitchbendRange, !midi2ModeEnabled);
     
     corePage = std::make_unique<CorePage>(hardwareService, pluginState.state);
-    alphaPage = std::make_unique<TabPage>(0, InstrumentType::Alpha, pluginState);
-    tauPage = std::make_unique<TabPage>(1, InstrumentType::Tau, pluginState);
-    picoPage = std::make_unique<TabPage>(2, InstrumentType::Pico, pluginState);
+    alphaPage = std::make_unique<TabPage>(0, InstrumentType::Alpha, pluginState, processor);
+    tauPage = std::make_unique<TabPage>(1, InstrumentType::Tau, pluginState, processor);
+    picoPage = std::make_unique<TabPage>(2, InstrumentType::Pico, pluginState, processor);
 
     addAndMakeVisible(corePage.get());
     addAndMakeVisible(alphaPage.get());
@@ -210,6 +211,10 @@ void MainComponent::selectTab(int index)
     alphaPage->setVisible(index == 1);
     tauPage->setVisible(index == 2);
     picoPage->setVisible(index == 3);
+
+    alphaPage->setActive(index == 1);
+    tauPage->setActive(index == 2);
+    picoPage->setActive(index == 3);
 
     SettingsWrapper::setCurrentTabIndex(index, this->pluginState.state);
     resized();

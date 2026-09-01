@@ -4,7 +4,7 @@
 ECMapperAudioProcessorEditor::ECMapperAudioProcessorEditor(ECMapperAudioProcessor& p)
     : AudioProcessorEditor(&p), audioProcessor(p) {
     
-    mainComponent = std::make_unique<ecm::MainComponent>(p.state, p.getHardwareService(), p.getDeviceManager());
+    mainComponent = std::make_unique<ecm::MainComponent>(p.state, p.getHardwareService(), p, p.getDeviceManager());
     addAndMakeVisible(mainComponent.get());
     setLookAndFeel(&lookAndFeel);
 

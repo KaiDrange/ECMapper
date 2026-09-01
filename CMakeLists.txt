@@ -139,7 +139,7 @@ if(ECMAPPER_BUILD_PLUGIN)
         BUNDLE_ID "com.tictech.ecmapper.plugin"
         FORMATS VST3
         IS_SYNTH TRUE
-        NEEDS_MIDI_INPUT FALSE
+        NEEDS_MIDI_INPUT TRUE
         NEEDS_MIDI_OUTPUT TRUE
         COPY_PLUGIN_AFTER_BUILD FALSE
     )

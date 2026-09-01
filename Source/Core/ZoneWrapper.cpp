@@ -11,6 +11,15 @@ void ZoneWrapper::addListener(InstrumentType deviceType, juce::ValueTree::Listen
     vTree3.addListener(listener);
 }
 
+void ZoneWrapper::removeListener(InstrumentType deviceType, juce::ValueTree::Listener* listener, juce::ValueTree& rootState) {
+    auto vTree1 = getZoneTree(deviceType, Zone::Zone1, rootState);
+    vTree1.removeListener(listener);
+    auto vTree2 = getZoneTree(deviceType, Zone::Zone2, rootState);
+    vTree2.removeListener(listener);
+    auto vTree3 = getZoneTree(deviceType, Zone::Zone3, rootState);
+    vTree3.removeListener(listener);
+}
+
 juce::ValueTree ZoneWrapper::getZoneTree(InstrumentType deviceType, Zone zone, juce::ValueTree& rootState) {
     auto deviceChild = rootState.getOrCreateChildWithName(id_device + juce::String((int)deviceType), nullptr);
     return deviceChild.getOrCreateChildWithName(id_zone + juce::String((int)zone), nullptr);
@@ -38,6 +47,14 @@ void ZoneWrapper::setTranspose(InstrumentType deviceType, Zone zone, int value, 
     if (deviceType == InstrumentType::None) return;
     auto zoneTree = getZoneTree(deviceType, zone, rootState);
     zoneTree.setProperty(id_transpose, value, nullptr);
+}
+
+juce::String ZoneWrapper::getTransposeParameterID(InstrumentType deviceType, Zone zone) {
+    return "transpose_" + juce::String((int)deviceType) + "_" + juce::String((int)zone);
+}
+
+juce::String ZoneWrapper::getEnabledParameterID(InstrumentType deviceType, Zone zone) {
+    return "enabled_" + juce::String((int)deviceType) + "_" + juce::String((int)zone);
 }
 
 void ZoneWrapper::setKeyPitchbend(InstrumentType deviceType, Zone zone, int value, juce::ValueTree& rootState) {

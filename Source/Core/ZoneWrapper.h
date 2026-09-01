@@ -35,6 +35,8 @@ public:
     static MidiValue getMidiValue(InstrumentType deviceType, Zone zone, juce::Identifier childId, MidiValue defaultValue, juce::ValueTree& rootState);
     static int getTranspose(InstrumentType deviceType, Zone zone, juce::ValueTree& rootState);
     static void setTranspose(InstrumentType deviceType, Zone zone, int value, juce::ValueTree& rootState);
+    static juce::String getTransposeParameterID(InstrumentType deviceType, Zone zone);
+    static juce::String getEnabledParameterID(InstrumentType deviceType, Zone zone);
     static int getKeyPitchbend(InstrumentType deviceType, Zone zone, juce::ValueTree& rootState);
     static void setKeyPitchbend(InstrumentType deviceType, Zone zone, int value, juce::ValueTree& rootState);
     static int getChannelMaxPitchbend(InstrumentType deviceType, Zone zone, juce::ValueTree& rootState);
@@ -45,6 +47,7 @@ public:
     static InstrumentType getInstrumentTypeFromTree(juce::ValueTree tree);
 
     static void addListener(InstrumentType deviceType, juce::ValueTree::Listener* listener, juce::ValueTree& rootState);
+    static void removeListener(InstrumentType deviceType, juce::ValueTree::Listener* listener, juce::ValueTree& rootState);
 
     static inline const MidiValue default_pressure = { MidiValueType::ChannelAftertouch, 0 };
     static inline const MidiValue default_roll = { MidiValueType::Pitchbend, 0 };

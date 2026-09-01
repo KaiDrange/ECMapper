@@ -7,7 +7,9 @@
 #include "Core/ConfigLookup.h"
 #include "Core/LayoutChangeHandler.h"
 #include "Core/Logger.h"
+#include <array>
 #include <map>
+#include <vector>
 
 class ECMapperAudioProcessor : public juce::AudioProcessor,
                                public ecm::HardwareService::Listener
@@ -52,6 +54,10 @@ public:
     void setDeviceManager(juce::AudioDeviceManager* manager) { deviceManager = manager; }
     juce::AudioDeviceManager* getDeviceManager() { return deviceManager; }
 
+    void queueKeyboardSelectionMessage(const juce::MidiMessage& message);
+    void drainKeyboardSelectionMessages(std::vector<juce::MidiMessage>& messages);
+    void clearKeyboardSelectionMessages();
+
 private:
     ecm::Logger logger { false, true };
     ecm::osc::MessageFifo hardwareToMapperQueue;
@@ -69,8 +75,17 @@ private:
     double lastBlockEndUs = 0.0;
     double localClockOffset = 0.0;
     std::map<juce::String, double> remoteClockOffsets;
+    std::array<int, 9> transposeCache_ {};
+    std::array<int, 9> enableCache_ {};
+    bool transposeCacheInitialised_ = false;
+    bool enableCacheInitialised_ = false;
+    std::vector<juce::MidiMessage> keyboardSelectionMessages_;
+    juce::CriticalSection keyboardSelectionLock_;
 
     void updateGlobalSettings();
+    static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
+    void syncZoneParameters(juce::MidiBuffer& midiMessages);
+    static int transposeIndex(ecm::InstrumentType deviceType, ecm::Zone zone);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ECMapperAudioProcessor)
 };

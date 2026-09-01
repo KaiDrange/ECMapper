@@ -1,6 +1,20 @@
 #include "ConfigLookup.h"
+#include <cmath>
 
 namespace ecm {
+
+namespace {
+
+int getTransposeForZone(InstrumentType deviceType, Zone zone, juce::AudioProcessorValueTreeState& pluginState)
+{
+    auto paramId = ZoneWrapper::getTransposeParameterID(deviceType, zone);
+    if (auto* raw = pluginState.getRawParameterValue(paramId))
+        return (int) std::lround(raw->load());
+
+    return ZoneWrapper::getTranspose(deviceType, zone, pluginState.state);
+}
+
+}
 
 ConfigLookup::ConfigLookup(InstrumentType deviceType, juce::AudioProcessorValueTreeState& pluginState)
     : pluginState(pluginState), deviceType(deviceType) {
@@ -67,13 +81,13 @@ void ConfigLookup::updateKey(LayoutWrapper::KeyId keyId) {
                     int noteNumber = chordParts[i+1].getIntValue();
                     key.notes[i] = noteNumber < 0
                        ? -1
-                       : std::clamp(noteNumber + ZoneWrapper::getTranspose(layoutKey.keyId.deviceType, layoutKey.zone, pluginState.state), 0, 127);
+                       : std::clamp(noteNumber + getTransposeForZone(layoutKey.keyId.deviceType, layoutKey.zone, pluginState), 0, 127);
                 }
             }
         }
         else {
             key.notes[0] = key.mapType == KeyMappingType::Note
-                ? std::clamp(layoutKey.mappingValue.getIntValue() + ZoneWrapper::getTranspose(layoutKey.keyId.deviceType, layoutKey.zone, pluginState.state), 0, 127)
+                ? std::clamp(layoutKey.mappingValue.getIntValue() + getTransposeForZone(layoutKey.keyId.deviceType, layoutKey.zone, pluginState), 0, 127)
                 : -1;
         }
         

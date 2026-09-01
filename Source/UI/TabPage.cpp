@@ -1,5 +1,6 @@
 #include "TabPage.h"
 #include "AppStyle.h"
+#include "../PluginProcessor.h"
 #include "../Core/LayoutWrapper.h"
 
 namespace ecm {
@@ -18,10 +19,11 @@ void configureViewButton(juce::TextButton& button)
 
 }
 
-TabPage::TabPage(int tabIndex, InstrumentType deviceType, juce::AudioProcessorValueTreeState& pluginState) 
+TabPage::TabPage(int tabIndex, InstrumentType deviceType, juce::AudioProcessorValueTreeState& pluginState, ECMapperAudioProcessor& processor) 
     : deviceType(deviceType), 
       tabIndex_(tabIndex),
       keyboard(keyboardState, juce::MidiKeyboardComponent::Orientation::verticalKeyboardFacingRight),
+      processor(processor),
       pluginState(pluginState) {
 
     layoutPanel = std::make_unique<LayoutComponent>(deviceType, 0.4f, 1.0f, pluginState);
@@ -78,9 +80,11 @@ TabPage::TabPage(int tabIndex, InstrumentType deviceType, juce::AudioProcessorVa
     addKeyListener(layoutPanel.get());
 
     setRightPanelView(rightPanelView);
+    setActive(isVisible());
 }
 
 TabPage::~TabPage() {
+    stopTimer();
     keyboardState.removeListener(layoutPanel.get());
     keyboardState.removeListener(&layoutPanel->chordSectionComponent);
 }
@@ -105,6 +109,19 @@ void TabPage::setRightPanelView(RightPanelView view)
 
     resized();
     repaint();
+}
+
+void TabPage::setActive(bool active)
+{
+    processor.clearKeyboardSelectionMessages();
+
+    if (active) {
+        keyboardState.reset();
+        startTimerHz(30);
+    } else {
+        stopTimer();
+        keyboardState.reset();
+    }
 }
 
 void TabPage::resized() {
@@ -145,6 +162,16 @@ void TabPage::resized() {
                 --remainder;
             zonePanel->setBounds(zoneArea.removeFromTop(sliceHeight));
         }
+    }
+}
+
+void TabPage::timerCallback() {
+    std::vector<juce::MidiMessage> messages;
+    processor.drainKeyboardSelectionMessages(messages);
+
+    for (const auto& message : messages) {
+        if (message.isNoteOn() || message.isNoteOff())
+            keyboardState.processNextMidiEvent(message);
     }
 }
 

@@ -5,17 +5,22 @@
 #include "ExpressionCurvesComponent.h"
 #include "../Core/Enums.h"
 
+class ECMapperAudioProcessor;
+
 namespace ecm {
 
-class TabPage : public juce::Component {
+class TabPage : public juce::Component, private juce::Timer {
 public:
-    TabPage(int tabIndex, InstrumentType deviceType, juce::AudioProcessorValueTreeState& pluginState);
+    TabPage(int tabIndex, InstrumentType deviceType, juce::AudioProcessorValueTreeState& pluginState, ECMapperAudioProcessor& processor);
     ~TabPage() override;
 
     void paint(juce::Graphics& g) override;
     void resized() override;
+    void setActive(bool active);
 
 private:
+    void timerCallback() override;
+
     enum class RightPanelView {
         Curves,
         Zones
@@ -37,6 +42,7 @@ private:
     juce::TextButton saveMappingButton { "Save" };
     juce::TextButton loadMappingButton { "Load" };
     juce::TextButton clearMappingButton { "Clear" };
+    ECMapperAudioProcessor& processor;
     
     juce::AudioProcessorValueTreeState& pluginState;
 

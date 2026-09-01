@@ -11,7 +11,8 @@ public:
     LayoutChangeHandler(osc::MessageFifo& oscSendQueue, 
                         juce::ValueTree& state, 
                         ConfigLookup (&configLookups)[3],
-                        std::function<void(bool)> suspendProcessingCallback);
+                        std::function<void(bool)> suspendProcessingCallback,
+                        std::function<void(InstrumentType, Zone)> zoneChangeCallback = {});
     
     void sendLEDMsg(LayoutWrapper::LayoutKey layoutKey);
     void sendLEDMsgForAllKeys(InstrumentType deviceType);
@@ -30,8 +31,10 @@ private:
     juce::ValueTree& state_;
     ConfigLookup (&configLookups_)[3];
     std::function<void(bool)> suspendProcessingCallback_;
+    std::function<void(InstrumentType, Zone)> zoneChangeCallback_;
     
     int getConfigIndexFromInstrumentType(InstrumentType type) { return static_cast<int>(type) - 1; }
+    static Zone getZoneFromTree(juce::ValueTree& vTree);
 };
 
 } // namespace ecm
