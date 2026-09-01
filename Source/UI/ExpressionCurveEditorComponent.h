@@ -18,6 +18,18 @@ public:
     void mouseUp(const juce::MouseEvent& e) override;
 
 private:
+    class PresetSwatchButton : public juce::Button {
+    public:
+        PresetSwatchButton(int presetId, const ExpressionCurveData& previewData, juce::Colour curveColour);
+
+        void paintButton(juce::Graphics& g, bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) override;
+
+    private:
+        int presetId;
+        ExpressionCurveData previewData;
+        juce::Colour curveColour;
+    };
+
     enum class Handle {
         None = -1,
         Start = 0,
@@ -33,7 +45,7 @@ private:
     juce::String labelText;
     ExpressionCurve curve;
     Handle activeHandle = Handle::None;
-    juce::TextButton presetButton { "Preset" };
+    std::array<std::unique_ptr<PresetSwatchButton>, 5> presetButtons;
 
     juce::Rectangle<float> getPlotArea() const;
     juce::Point<float> toScreen(const ExpressionCurvePoint& point) const;

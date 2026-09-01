@@ -11,6 +11,8 @@ namespace ecm {
 namespace {
 
 constexpr int headerHeight = 22;
+constexpr int presetButtonSize = 16;
+constexpr int presetButtonGap = 4;
 
 juce::String getDefaultCurveLabel(ExpressionCurveTarget target)
 {
@@ -50,29 +52,80 @@ ExpressionCurveData presetData(int presetId)
 
 } // namespace
 
+ExpressionCurveEditorComponent::PresetSwatchButton::PresetSwatchButton(int presetId, const ExpressionCurveData& previewData, juce::Colour curveColour)
+    : juce::Button("preset-" + juce::String(presetId)),
+      presetId(presetId),
+      previewData(previewData),
+      curveColour(curveColour)
+{
+    setTooltip("Apply preset " + juce::String(presetId));
+}
+
+void ExpressionCurveEditorComponent::PresetSwatchButton::paintButton(juce::Graphics& g, bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown)
+{
+    auto bounds = getLocalBounds().toFloat().reduced(0.5f);
+    auto fill = Style::surfaceRaised();
+
+    if (shouldDrawButtonAsDown)
+        fill = fill.interpolatedWith(curveColour, 0.18f);
+    else if (shouldDrawButtonAsHighlighted)
+        fill = fill.interpolatedWith(Style::accentStrong(), 0.08f);
+
+    g.setColour(fill);
+    g.fillRoundedRectangle(bounds, 2.5f);
+
+    g.setColour(curveColour.withAlpha(0.75f));
+    g.drawRoundedRectangle(bounds, 2.5f, 1.0f);
+
+    auto previewArea = bounds.reduced(3.0f, 3.0f);
+    auto previewPath = [&] {
+        juce::Path path;
+        auto toPoint = [previewArea](float x, float y) {
+            return juce::Point<float>(
+                previewArea.getX() + previewArea.getWidth() * x,
+                previewArea.getBottom() - previewArea.getHeight() * y
+            );
+        };
+
+        auto start = toPoint(0.0f, std::clamp(previewData.startY, 0.0f, 1.0f));
+        auto left = toPoint(std::clamp(previewData.leftControl.x, 0.0f, 0.5f), std::clamp(previewData.leftControl.y, 0.0f, 1.0f));
+        auto center = toPoint(0.5f, std::clamp(previewData.centerY, 0.0f, 1.0f));
+        auto right = toPoint(std::clamp(previewData.rightControl.x, 0.5f, 1.0f), std::clamp(previewData.rightControl.y, 0.0f, 1.0f));
+        auto end = toPoint(1.0f, std::clamp(previewData.endY, 0.0f, 1.0f));
+
+        path.startNewSubPath(start);
+        path.quadraticTo(left, center);
+        path.quadraticTo(right, end);
+        return path;
+    }();
+
+    g.setColour(curveColour.withAlpha(0.20f));
+    g.strokePath(previewPath, juce::PathStrokeType(2.8f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    g.setColour(curveColour.withAlpha(0.95f));
+    g.strokePath(previewPath, juce::PathStrokeType(1.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+
+    g.setColour(shouldDrawButtonAsDown ? Style::text().withAlpha(0.65f) : Style::text().withAlpha(0.22f));
+    g.drawRect(bounds);
+    juce::ignoreUnused(presetId);
+}
+
 ExpressionCurveEditorComponent::ExpressionCurveEditorComponent(InstrumentType deviceType, ExpressionCurveTarget target, juce::AudioProcessorValueTreeState& pluginState, juce::String labelText)
     : deviceType(deviceType),
       target(target),
       pluginState(pluginState),
       labelText(labelText.isEmpty() ? getDefaultCurveLabel(target) : labelText),
       curve(ExpressionCurveWrapper::getCurve(deviceType, target, pluginState.state)) {
-    presetButton.setButtonText("Preset");
-    presetButton.onClick = [this] {
-        juce::PopupMenu menu;
-        menu.addItem(1, "Flat diagonal");
-        menu.addItem(2, "V shape");
-        menu.addItem(3, "Exponential");
-        menu.addItem(4, "Logarithmic");
-        menu.addItem(5, "S curve");
-        menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&presetButton), [this](int result) {
-            if (result <= 0)
-                return;
+    auto deviceTabIndex = static_cast<int>(deviceType) - 1;
+    auto curveColour = Style::tabColour(deviceTabIndex);
 
-            curve.setData(presetData(result));
+    for (int i = 0; i < 5; ++i) {
+        presetButtons[(size_t)i] = std::make_unique<PresetSwatchButton>(i + 1, presetData(i + 1), curveColour);
+        presetButtons[(size_t)i]->onClick = [this, presetId = i + 1] {
+            curve.setData(presetData(presetId));
             commitCurve();
-        });
-    };
-    addAndMakeVisible(presetButton);
+        };
+        addAndMakeVisible(presetButtons[(size_t)i].get());
+    }
 }
 
 void ExpressionCurveEditorComponent::paint(juce::Graphics& g) {
@@ -97,7 +150,7 @@ void ExpressionCurveEditorComponent::paint(juce::Graphics& g) {
     g.setGradientFill(frameGlow);
     g.drawRoundedRectangle(innerFrame, 3.0f, 1.0f);
 
-    auto titleArea = bounds.removeFromTop((float) headerHeight).reduced(6.0f, 2.0f).withTrimmedRight(78.0f);
+    auto titleArea = bounds.removeFromTop((float) headerHeight).reduced(6.0f, 2.0f).withTrimmedRight((float) ((presetButtonSize + presetButtonGap) * 5 + 4));
     g.setColour(Style::text().withAlpha(0.92f));
     g.setFont(juce::Font(juce::FontOptions(11.0f, juce::Font::plain)));
     g.drawText(labelText, titleArea.toNearestInt(), juce::Justification::centredLeft, 1);
@@ -191,7 +244,13 @@ void ExpressionCurveEditorComponent::paint(juce::Graphics& g) {
 
 void ExpressionCurveEditorComponent::resized() {
     auto header = getLocalBounds().removeFromTop(headerHeight).reduced(6, 2);
-    presetButton.setBounds(header.removeFromRight(72));
+    auto presetArea = header.removeFromRight((presetButtonSize + presetButtonGap) * 5 - presetButtonGap);
+    for (auto i = 0; i < 5; ++i) {
+        auto* button = presetButtons[(size_t)i].get();
+        button->setBounds(presetArea.removeFromLeft(presetButtonSize));
+        if (i < 4)
+            presetArea.removeFromLeft(presetButtonGap);
+    }
 }
 
 juce::Rectangle<float> ExpressionCurveEditorComponent::getPlotArea() const {
