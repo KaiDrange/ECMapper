@@ -22,6 +22,8 @@ void ConfigLookup::updateAll() {
     updateStrips(Zone::Zone1);
     updateStrips(Zone::Zone2);
     updateStrips(Zone::Zone3);
+
+    updateExpressionCurves();
 }
 
 void ConfigLookup::updateKey(juce::ValueTree keytree) {
@@ -174,6 +176,13 @@ void ConfigLookup::updateStrips(Zone zone) {
     strip1[zoneIdx].relMidiValue = ZoneWrapper::getMidiValue(deviceType, zone, ZoneWrapper::id_strip1Rel, ZoneWrapper::default_strip1Rel, pluginState.state);
     strip2[zoneIdx].absMidiValue = ZoneWrapper::getMidiValue(deviceType, zone, ZoneWrapper::id_strip2Abs, ZoneWrapper::default_strip2Abs, pluginState.state);
     strip2[zoneIdx].relMidiValue = ZoneWrapper::getMidiValue(deviceType, zone, ZoneWrapper::id_strip2Rel, ZoneWrapper::default_strip2Rel, pluginState.state);
+}
+
+void ConfigLookup::updateExpressionCurves() {
+    for (int i = 0; i < 6; ++i) {
+        auto target = static_cast<ExpressionCurveTarget>(i);
+        expressionCurves[i] = ExpressionCurve(ExpressionCurveWrapper::getCurve(deviceType, target, pluginState.state).getData());
+    }
 }
 
 } // namespace ecm

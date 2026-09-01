@@ -3,6 +3,8 @@
 #include <JuceHeader.h>
 #include "LayoutWrapper.h"
 #include "ZoneWrapper.h"
+#include "ExpressionCurve.h"
+#include "ExpressionCurveWrapper.h"
 #include "SettingsWrapper.h"
 #include "Enums.h"
 #include "Utils.h"
@@ -18,6 +20,7 @@ public:
     void updateKey(LayoutWrapper::KeyId keyId);
     void updateBreath(Zone zone);
     void updateStrips(Zone zone);
+    void updateExpressionCurves();
 
     struct Key {
         LayoutWrapper::KeyId keyId;
@@ -52,6 +55,7 @@ public:
     Breath breath[3];
     Strip strip1[3];
     Strip strip2[3];
+    ExpressionCurve expressionCurves[6];
     
     bool controlLights = true;
 

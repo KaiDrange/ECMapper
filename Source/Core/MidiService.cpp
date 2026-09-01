@@ -220,7 +220,7 @@ void MidiService::createBreath(int deviceIndex, ConfigLookup& keyLookup, juce::M
     }
 
     for (int z = 0; z < 3; ++z) {
-        addMidiValueMessage(keyLookup.breath[z].channel, val * 3.0f, keyLookup.breath[z].midiValue, 1.0f, 0, buffer, false, eventTime);
+        addMidiValueMessage(static_cast<InstrumentType>(deviceIndex + 1), keyLookup.breath[z].channel, val * 3.0f, keyLookup.breath[z].midiValue, 1.0f, 0, buffer, false, ExpressionCurveTarget::Breath, eventTime);
     }
 }
 
@@ -253,7 +253,7 @@ void MidiService::createNoteOn(ConfigLookup::Key& keyLookup, KeyState* state, ju
         chanNotePri_[state->midiChannel - 1].push_front(keyLookup.keyId);
 
     createNoteHold(keyLookup, state, buffer, eventTime);
-    auto vel = calculateNoteOnVelocity(state);
+    auto vel = calculateNoteOnVelocity(keyLookup.keyId.deviceType, state);
     
     for (int i = 0; i < 4; i++) {
         if (keyLookup.notes[i] > -1) {
@@ -277,7 +277,7 @@ void MidiService::createNoteOff(ConfigLookup::Key& keyLookup, KeyState* state, j
         chanNotePri_[channel - 1].remove_if([&keyLookup](const LayoutWrapper::KeyId& id) { return id == keyLookup.keyId; });
     }
 
-    auto vel = calculateNoteOffVelocity(state);
+    auto vel = calculateNoteOffVelocity(keyLookup.keyId.deviceType, state);
     for (int i = 0; i < 4; i++) {
         if (keyLookup.notes[i] > -1) {
             if (countPlayingNoteMatches(channel, keyLookup.notes[i]) < 2) {
@@ -288,9 +288,9 @@ void MidiService::createNoteOff(ConfigLookup::Key& keyLookup, KeyState* state, j
     }
     
     if (channel > 0 && channel <= 16 && chanNotePri_[channel - 1].empty()) {
-        addMidiValueMessage(channel, 0, keyLookup.pressure, keyLookup.pbRange, keyLookup.notes[0], buffer, false, eventTime);
-        addMidiValueMessage(channel, 0, keyLookup.roll, keyLookup.pbRange, keyLookup.notes[0], buffer, true, eventTime);
-        addMidiValueMessage(channel, 0, keyLookup.yaw, keyLookup.pbRange, keyLookup.notes[0], buffer, true, eventTime);
+        addMidiValueMessage(keyLookup.keyId.deviceType, channel, 0, keyLookup.pressure, keyLookup.pbRange, keyLookup.notes[0], buffer, false, ExpressionCurveTarget::Pressure, eventTime);
+        addMidiValueMessage(keyLookup.keyId.deviceType, channel, 0, keyLookup.roll, keyLookup.pbRange, keyLookup.notes[0], buffer, true, ExpressionCurveTarget::Roll, eventTime);
+        addMidiValueMessage(keyLookup.keyId.deviceType, channel, 0, keyLookup.yaw, keyLookup.pbRange, keyLookup.notes[0], buffer, true, ExpressionCurveTarget::Yaw, eventTime);
     }
     state->status = KeyStatus::Off;
     state->messageCount = 0;
@@ -364,19 +364,20 @@ void MidiService::createAllNotesOff(juce::MidiBuffer& buffer, int eventTime) {
 void MidiService::createNoteHold(ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime) {
     int channel = state->midiChannel;
     if (channel > 0 && channel <= 16 && (chanNotePri_[channel - 1].empty() || chanNotePri_[channel - 1].front() == keyLookup.keyId)) {
-        addMidiValueMessage(channel, state->ehRoll, keyLookup.roll, keyLookup.pbRange, keyLookup.notes[0], buffer, true, eventTime);
-        addMidiValueMessage(channel, state->ehYaw, keyLookup.yaw, keyLookup.pbRange, keyLookup.notes[0], buffer, true, eventTime);
-        addMidiValueMessage(channel, state->ehPressureHistory.back(), keyLookup.pressure, keyLookup.pbRange, keyLookup.notes[0], buffer, false, eventTime);
+        addMidiValueMessage(keyLookup.keyId.deviceType, channel, state->ehRoll, keyLookup.roll, keyLookup.pbRange, keyLookup.notes[0], buffer, true, ExpressionCurveTarget::Roll, eventTime);
+        addMidiValueMessage(keyLookup.keyId.deviceType, channel, state->ehYaw, keyLookup.yaw, keyLookup.pbRange, keyLookup.notes[0], buffer, true, ExpressionCurveTarget::Yaw, eventTime);
+        addMidiValueMessage(keyLookup.keyId.deviceType, channel, state->ehPressureHistory.back(), keyLookup.pressure, keyLookup.pbRange, keyLookup.notes[0], buffer, false, ExpressionCurveTarget::Pressure, eventTime);
     }
     state->messageCount = 0;
 }
 
-void MidiService::addMidiValueMessage(int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, int noteNo, juce::MidiBuffer& buffer, bool isBipolar, int eventTime) {
+void MidiService::addMidiValueMessage(InstrumentType deviceType, int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, int noteNo, juce::MidiBuffer& buffer, bool isBipolar, ExpressionCurveTarget curveTarget, int eventTime) {
     if (midiValue.valueType == MidiValueType::Off || channel < 1 || channel > 16) return;
     
     float gain = 1.7f;
     if (!isBipolar && midiValue.valueType == MidiValueType::CC) gain = 1.0f;
     float normalized = isBipolar ? (std::clamp(ehValue * 1.7f, -1.0f, 1.0f)) : (std::clamp(ehValue * gain, 0.0f, 1.0f));
+    normalized = applyExpressionCurve(deviceType, curveTarget, normalized, isBipolar);
     
     juce::MidiMessage msg;
     if (midiValue.valueType == MidiValueType::Pitchbend) {
@@ -431,21 +432,42 @@ float MidiService::calculatePitchBendCurve(float value) const {
     return std::clamp(std::tan(value) / 3.14159265f * 2.0f, -1.0f, 1.0f);
 }
 
-juce::MPEValue MidiService::calculateNoteOnVelocity(KeyState* state) {
+float MidiService::applyExpressionCurve(InstrumentType deviceType, ExpressionCurveTarget target, float value, bool isBipolar) const {
+    if (deviceType == InstrumentType::None)
+        return value;
+
+    int configIndex = static_cast<int>(deviceType) - 1;
+    if (configIndex < 0 || configIndex > 2)
+        return value;
+
+    const auto& curve = configLookups_[configIndex].expressionCurves[static_cast<int>(target)];
+    if (isBipolar) {
+        float unipolar = (value + 1.0f) * 0.5f;
+        unipolar = curve.getValue(unipolar);
+        return unipolar * 2.0f - 1.0f;
+    }
+
+    return curve.getValue(value);
+}
+
+juce::MPEValue MidiService::calculateNoteOnVelocity(InstrumentType deviceType, KeyState* state) {
     if (state->ehPressureHistory.size() < PRESSURE_HISTORY_LENGTH) return juce::MPEValue::from7BitInt(1);
     
     auto it = state->ehPressureHistory.begin();
     float v1 = (it[1] + it[2]) / 2.0f;
     float v2 = (it[4] + it[5]) / 2.0f;
     float diff = v2 - v1;
-    // We expect diff to be in [0, 1] range roughly. Bezier curve table is 256 entries.
+    diff = std::clamp(diff, 0.0f, 1.0f);
     int tableIndex = std::clamp(static_cast<int>(diff * 4096.0f), 0, BezierCurve::TABLE_LENGTH - 1);
-    return juce::MPEValue::from7BitInt(static_cast<int>(velocityCurve_.getTableValue(tableIndex) * 126 + 1));
+    float baseVelocity = velocityCurve_.getTableValue(tableIndex);
+    baseVelocity = applyExpressionCurve(deviceType, ExpressionCurveTarget::Velocity, baseVelocity, false);
+    return juce::MPEValue::from7BitInt(static_cast<int>(baseVelocity * 126 + 1));
 }
 
-juce::MPEValue MidiService::calculateNoteOffVelocity(KeyState* state) {
+juce::MPEValue MidiService::calculateNoteOffVelocity(InstrumentType deviceType, KeyState* state) {
     if (state->ehPressureHistory.empty()) return juce::MPEValue::from7BitInt(0);
     float norm = std::min(state->ehPressureHistory.front() * 10.0f, 1.0f);
+    norm = applyExpressionCurve(deviceType, ExpressionCurveTarget::ReleaseVelocity, norm, false);
     return juce::MPEValue::from7BitInt(static_cast<int>(norm * 127));
 }
 

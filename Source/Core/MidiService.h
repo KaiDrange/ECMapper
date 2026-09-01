@@ -1,8 +1,8 @@
 #pragma once
 #include <JuceHeader.h>
 #include "ConfigLookup.h"
-#include "OSCMessage.h"
 #include "BezierCurve.h"
+#include "OSCMessage.h"
 #include <deque>
 #include <vector>
 #include <list>
@@ -79,7 +79,7 @@ private:
     void createMidiMsgOff(ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, osc::Message& outgoingOscMsg, const char* devId, int eventTime);
     void createAllNotesOff(juce::MidiBuffer& buffer, int eventTime = 0);
     
-    void addMidiValueMessage(int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, int noteNo, juce::MidiBuffer& buffer, bool isBipolar, int eventTime);
+    void addMidiValueMessage(InstrumentType deviceType, int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, int noteNo, juce::MidiBuffer& buffer, bool isBipolar, ExpressionCurveTarget curveTarget, int eventTime);
     void addStripValueMessage(int channel, float ehValue, ZoneWrapper::MidiValue midiValue, juce::MidiBuffer& buffer, bool isBipolar, int eventTime);
     
     void createBreath(int deviceIndex, ConfigLookup& keyLookup, juce::MidiBuffer& buffer, int eventTime);
@@ -87,8 +87,9 @@ private:
     void createStripRelative(int deviceIndex, int stripIndex, int zoneIndex, ConfigLookup& keyLookup, juce::MidiBuffer& buffer, int eventTime);
 
     float calculatePitchBendCurve(float value) const;
-    juce::MPEValue calculateNoteOnVelocity(KeyState* state);
-    juce::MPEValue calculateNoteOffVelocity(KeyState* state);
+    juce::MPEValue calculateNoteOnVelocity(InstrumentType deviceType, KeyState* state);
+    juce::MPEValue calculateNoteOffVelocity(InstrumentType deviceType, KeyState* state);
+    float applyExpressionCurve(InstrumentType deviceType, ExpressionCurveTarget target, float value, bool isBipolar) const;
     
     struct MidiNote {
         int channel;

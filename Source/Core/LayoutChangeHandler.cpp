@@ -1,4 +1,5 @@
 #include "LayoutChangeHandler.h"
+#include "ExpressionCurveWrapper.h"
 #include "ZoneWrapper.h"
 #include "SettingsWrapper.h"
 
@@ -34,8 +35,18 @@ void LayoutChangeHandler::valueTreePropertyChanged(juce::ValueTree& vTree, const
         if (deviceType != InstrumentType::None) {
             configLookups_[getConfigIndexFromInstrumentType(deviceType)].updateAll();
         }
+    } else if (vTree.getParent().getType().toString().startsWith(ExpressionCurveWrapper::id_expressionCurves.toString())) {
+        deviceType = ExpressionCurveWrapper::getInstrumentTypeFromTree(vTree);
+        if (deviceType != InstrumentType::None) {
+            configLookups_[getConfigIndexFromInstrumentType(deviceType)].updateAll();
+        }
     } else if (typeStr.startsWith(ZoneWrapper::id_zone.toString())) {
         deviceType = ZoneWrapper::getInstrumentTypeFromTree(vTree);
+        if (deviceType != InstrumentType::None) {
+            configLookups_[getConfigIndexFromInstrumentType(deviceType)].updateAll();
+        }
+    } else if (typeStr.startsWith(ExpressionCurveWrapper::id_expressionCurves.toString()) || typeStr.startsWith(ExpressionCurveWrapper::id_curve.toString())) {
+        deviceType = ExpressionCurveWrapper::getInstrumentTypeFromTree(vTree);
         if (deviceType != InstrumentType::None) {
             configLookups_[getConfigIndexFromInstrumentType(deviceType)].updateAll();
         }
@@ -85,6 +96,12 @@ void LayoutChangeHandler::valueTreeChildAdded(juce::ValueTree&, juce::ValueTree&
         LayoutWrapper::LayoutKey layoutKey = LayoutWrapper::getLayoutKeyFromKeyTree(childTree);
         if (layoutKey.keyId.deviceType != InstrumentType::None) {
             sendLEDMsg(layoutKey);
+        }
+    } else if (childTree.getType().toString().startsWith(ExpressionCurveWrapper::id_expressionCurves.toString()) ||
+               childTree.getType().toString().startsWith(ExpressionCurveWrapper::id_curve.toString())) {
+        auto deviceType = ExpressionCurveWrapper::getInstrumentTypeFromTree(childTree);
+        if (deviceType != InstrumentType::None) {
+            configLookups_[getConfigIndexFromInstrumentType(deviceType)].updateAll();
         }
     }
 }
