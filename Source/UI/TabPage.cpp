@@ -108,6 +108,7 @@ void TabPage::setRightPanelView(RightPanelView view)
         zonePanel->setVisible(!showCurves);
 
     resized();
+    refreshFromState();
     repaint();
 }
 
@@ -121,6 +122,18 @@ void TabPage::setActive(bool active)
     } else {
         stopTimer();
         keyboardState.reset();
+    }
+}
+
+void TabPage::refreshFromState()
+{
+    layoutPanel->repaint();
+
+    if (rightPanelView == RightPanelView::Curves) {
+        expressionCurvesComponent->refreshFromState();
+    } else {
+        for (auto& zonePanel : zonePanels)
+            zonePanel->refreshFromState();
     }
 }
 
@@ -173,6 +186,8 @@ void TabPage::timerCallback() {
         if (message.isNoteOn() || message.isNoteOff())
             keyboardState.processNextMidiEvent(message);
     }
+
+    refreshFromState();
 }
 
 } // namespace ecm

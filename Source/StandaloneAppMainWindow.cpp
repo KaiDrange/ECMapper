@@ -1,13 +1,16 @@
 #include "StandaloneAppMainWindow.h"
 
 #include "UI/AboutDialogComponent.h"
+#include "StandaloneApp.h"
 
 StandaloneAppMainWindow::StandaloneAppMainWindow(const juce::String& name)
     : DocumentWindow(name,
                      ecm::Style::background(),
                      DocumentWindow::allButtons),
       menuBarModel(
-          [] { juce::JUCEApplication::getInstance()->systemRequestedQuit(); },
+          [this] { requestQuit(); },
+          [this] { showSavePresetDialog(); },
+          [this] { showPresetBrowser(); },
           [this] { showAudioSettings(); },
           [this] { showAboutDialog(); },
           [] { showOnlineManual(); },
@@ -27,17 +30,17 @@ StandaloneAppMainWindow::StandaloneAppMainWindow(const juce::String& name)
 
     processor = std::make_unique<ECMapperAudioProcessor>();
     processor->setDeviceManager(&deviceManager);
+    processor->loadStandalonePresetBank();
 
     processorPlayer.setProcessor(processor.get());
 
     loadAudioSettings();
+    processor->loadPresetSlot(1);
 
     deviceManager.addAudioCallback(&processorPlayer);
     deviceManager.addMidiInputDeviceCallback({}, &processorPlayer.getMidiMessageCollector());
 
     updateMidiOutput();
-
-    loadPluginState();
 
     deviceManager.addChangeListener(this);
 
@@ -53,7 +56,6 @@ StandaloneAppMainWindow::~StandaloneAppMainWindow()
 {
     setContentOwned(nullptr, true);
     setLookAndFeel(nullptr);
-    savePluginState();
     deviceManager.removeChangeListener(this);
     processorPlayer.setProcessor(nullptr);
     deviceManager.removeMidiInputDeviceCallback({}, &processorPlayer.getMidiMessageCollector());
@@ -67,7 +69,7 @@ StandaloneAppMainWindow::~StandaloneAppMainWindow()
 
 void StandaloneAppMainWindow::closeButtonPressed()
 {
-    juce::JUCEApplication::getInstance()->systemRequestedQuit();
+    requestQuit();
 }
 
 void StandaloneAppMainWindow::changeListenerCallback(juce::ChangeBroadcaster* source)
@@ -128,44 +130,11 @@ void StandaloneAppMainWindow::loadAudioSettings()
     deviceManager.initialiseWithDefaultDevices(0, 2);
 }
 
-void StandaloneAppMainWindow::savePluginState()
-{
-    juce::MemoryBlock data;
-    processor->getStateInformation(data);
-    auto file = getPluginStateFile();
-    if (!file.getParentDirectory().exists())
-        file.getParentDirectory().createDirectory();
-
-    if (file.replaceWithData(data.getData(), data.getSize()))
-        juce::Logger::writeToLog("ECMapper: Saved plugin state to " + file.getFullPathName());
-}
-
-void StandaloneAppMainWindow::loadPluginState()
-{
-    auto file = getPluginStateFile();
-    if (file.existsAsFile())
-    {
-        juce::MemoryBlock data;
-        if (file.loadFileAsData(data))
-        {
-            processor->setStateInformation(data.getData(), (int)data.getSize());
-            juce::Logger::writeToLog("ECMapper: Loaded plugin state from " + file.getFullPathName());
-        }
-    }
-}
-
 juce::File StandaloneAppMainWindow::getAudioSettingsFile()
 {
     return juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
            .getChildFile("ECMapper")
            .getChildFile("audio_settings.xml");
-}
-
-juce::File StandaloneAppMainWindow::getPluginStateFile()
-{
-    return juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
-           .getChildFile("ECMapper")
-           .getChildFile("plugin_state.xml");
 }
 
 void StandaloneAppMainWindow::showAudioSettings()
@@ -181,6 +150,66 @@ void StandaloneAppMainWindow::showAudioSettings()
     options.useNativeTitleBar = true;
     options.resizable = false;
     options.launchAsync();
+}
+
+void StandaloneAppMainWindow::showSavePresetDialog()
+{
+    juce::DialogWindow::LaunchOptions options;
+    options.content.setOwned(new ecm::PresetBrowserComponent(*processor, ecm::PresetBrowserComponent::Mode::Save));
+    options.dialogTitle = "Save Preset";
+    options.dialogBackgroundColour = ecm::Style::background();
+    options.escapeKeyTriggersCloseButton = true;
+    options.useNativeTitleBar = true;
+    options.resizable = true;
+    options.componentToCentreAround = this;
+    options.launchAsync();
+}
+
+void StandaloneAppMainWindow::showPresetBrowser()
+{
+    juce::DialogWindow::LaunchOptions options;
+    options.content.setOwned(new ecm::PresetBrowserComponent(*processor, ecm::PresetBrowserComponent::Mode::Browse));
+    options.dialogTitle = "Presets";
+    options.dialogBackgroundColour = ecm::Style::background();
+    options.escapeKeyTriggersCloseButton = true;
+    options.useNativeTitleBar = true;
+    options.resizable = true;
+    options.componentToCentreAround = this;
+    options.launchAsync();
+}
+
+void StandaloneAppMainWindow::requestQuit()
+{
+    confirmQuit();
+}
+
+void StandaloneAppMainWindow::confirmQuit()
+{
+    if (processor == nullptr || ! processor->hasUnsavedChanges())
+    {
+        if (auto* app = dynamic_cast<ECMapperStandaloneApplication*>(juce::JUCEApplication::getInstance()))
+            app->allowQuitWithoutPromptOnce();
+
+        juce::JUCEApplication::getInstance()->systemRequestedQuit();
+        return;
+    }
+
+    juce::AlertWindow::showAsync(juce::MessageBoxOptions()
+                                     .withIconType(juce::MessageBoxIconType::WarningIcon)
+                                     .withTitle("Quit ECMapper?")
+                                     .withMessage("Current settings have not been saved yet.")
+                                     .withButton("Quit")
+                                     .withButton("Cancel"),
+                                 [this](int result)
+                                 {
+                                     if (result == 0)
+                                         return;
+
+                                     if (auto* app = dynamic_cast<ECMapperStandaloneApplication*>(juce::JUCEApplication::getInstance()))
+                                         app->allowQuitWithoutPromptOnce();
+
+                                     juce::JUCEApplication::getInstance()->systemRequestedQuit();
+                                 });
 }
 
 void StandaloneAppMainWindow::showAboutDialog()

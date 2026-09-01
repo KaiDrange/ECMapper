@@ -156,6 +156,33 @@ void ZonePanelComponent::valueTreePropertyChanged(juce::ValueTree& vTree, const 
     enableZoneButton.setToggleState(ZoneWrapper::getEnabled(deviceType, zone, pluginState.state), juce::dontSendNotification);
 }
 
+void ZonePanelComponent::refreshFromState()
+{
+    enableZoneButton.setToggleState(ZoneWrapper::getEnabled(deviceType, zone, pluginState.state), juce::dontSendNotification);
+    transposeInput.setValue(ZoneWrapper::getTranspose(deviceType, zone, pluginState.state));
+    keyPitchbendRangeInput.setValue(ZoneWrapper::getKeyPitchbend(deviceType, zone, pluginState.state));
+    channelMaxPBInput.setValue(ZoneWrapper::getChannelMaxPitchbend(deviceType, zone, pluginState.state));
+    midiChannelDropdown.setSelectedItemId(static_cast<int>(ZoneWrapper::getMidiChannelType(deviceType, zone, pluginState.state)));
+
+    auto setMidiDropdown = [this](DropdownComponent& dropdown, juce::Identifier treeId, const ZoneWrapper::MidiValue& defaultValue)
+    {
+        auto midiValue = ZoneWrapper::getMidiValue(deviceType, zone, treeId, defaultValue, pluginState.state);
+        if (midiValue.valueType == MidiValueType::CC)
+            dropdown.box.setSelectedItemIndex(midiValue.ccNo);
+        else
+            dropdown.box.setSelectedItemIndex(126 + static_cast<int>(midiValue.valueType));
+    };
+
+    setMidiDropdown(pressureDropdown, ZoneWrapper::id_pressure, ZoneWrapper::default_pressure);
+    setMidiDropdown(yawDropdown, ZoneWrapper::id_yaw, ZoneWrapper::default_yaw);
+    setMidiDropdown(rollDropdown, ZoneWrapper::id_roll, ZoneWrapper::default_roll);
+    setMidiDropdown(strip1RelativeDropdown, ZoneWrapper::id_strip1Rel, ZoneWrapper::default_strip1Rel);
+    setMidiDropdown(strip1AbsoluteDropdown, ZoneWrapper::id_strip1Abs, ZoneWrapper::default_strip1Abs);
+    setMidiDropdown(strip2RelativeDropdown, ZoneWrapper::id_strip2Rel, ZoneWrapper::default_strip2Rel);
+    setMidiDropdown(strip2AbsoluteDropdown, ZoneWrapper::id_strip2Abs, ZoneWrapper::default_strip2Abs);
+    setMidiDropdown(breathDropdown, ZoneWrapper::id_breath, ZoneWrapper::default_breath);
+}
+
 void ZonePanelComponent::setStandardMidiDropdownParams(DropdownComponent& dropdown, juce::Identifier treeId, const ZoneWrapper::MidiValue& defaultValue) {
     for (int i = 0; i < 128; i++) dropdown.addItem("CC #" + juce::String(i), i + 1);
     dropdown.addItem("Pitchbend", 129);

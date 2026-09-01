@@ -56,4 +56,12 @@ void ExpressionCurvesComponent::resized() {
     }
 }
 
+void ExpressionCurvesComponent::refreshFromState()
+{
+    for (auto& editor : editors) {
+        if (editor != nullptr)
+            editor->refreshFromState();
+    }
+}
+
 } // namespace ecm

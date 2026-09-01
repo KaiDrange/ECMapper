@@ -326,6 +326,12 @@ void ExpressionCurveEditorComponent::commitCurve() {
     repaint();
 }
 
+void ExpressionCurveEditorComponent::refreshFromState()
+{
+    curve = ExpressionCurveWrapper::getCurve(deviceType, target, pluginState.state);
+    repaint();
+}
+
 void ExpressionCurveEditorComponent::mouseDown(const juce::MouseEvent& e) {
     activeHandle = pickHandle(e.position);
     mouseDrag(e);

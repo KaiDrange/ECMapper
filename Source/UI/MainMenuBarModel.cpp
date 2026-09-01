@@ -1,8 +1,10 @@
 #include "MainMenuBarModel.h"
 
-MainMenuBarModel::MainMenuBarModel(Action onQuitAction, Action onAudioSettingsAction, Action onAboutAction,
+MainMenuBarModel::MainMenuBarModel(Action onQuitAction, Action onSavePresetAction, Action onBrowsePresetsAction, Action onAudioSettingsAction, Action onAboutAction,
                                    Action onOnlineManualAction, Action onOurMusicAction)
     : onQuit(std::move(onQuitAction)),
+      onSavePreset(std::move(onSavePresetAction)),
+      onBrowsePresets(std::move(onBrowsePresetsAction)),
       onAudioSettings(std::move(onAudioSettingsAction)),
       onAbout(std::move(onAboutAction)),
       onOnlineManual(std::move(onOnlineManualAction)),
@@ -22,6 +24,9 @@ juce::PopupMenu MainMenuBarModel::getMenuForIndex(int topLevelMenuIndex, const j
 
     if (menuName == "File")
     {
+        menu.addItem(2, "Save current settings as preset...");
+        menu.addItem(3, "Browse presets...");
+        menu.addSeparator();
         menu.addItem(1, "Quit");
     }
     else if(menuName == "Options")
@@ -45,6 +50,10 @@ void MainMenuBarModel::menuItemSelected(const int menuItemID, int topLevelMenuIn
 
     if (menuItemID == 1 && onQuit)
         onQuit();
+    else if (menuItemID == 2 && onSavePreset)
+        onSavePreset();
+    else if (menuItemID == 3 && onBrowsePresets)
+        onBrowsePresets();
     else if (menuItemID == 20 && onAudioSettings)
         onAudioSettings();
     else if (menuItemID == 30 && onAbout)

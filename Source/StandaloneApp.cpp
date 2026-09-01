@@ -13,7 +13,17 @@ void ECMapperStandaloneApplication::shutdown()
 
 void ECMapperStandaloneApplication::systemRequestedQuit()
 {
-    quit();
+    if (allowQuitWithoutPromptOnce_)
+    {
+        allowQuitWithoutPromptOnce_ = false;
+        juce::JUCEApplication::systemRequestedQuit();
+        return;
+    }
+
+    if (mainWindow != nullptr)
+        mainWindow->requestQuit();
+    else
+        quit();
 }
 
 void ECMapperStandaloneApplication::anotherInstanceStarted (const juce::String& commandLine)

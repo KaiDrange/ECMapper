@@ -17,6 +17,7 @@ public:
     void paint(juce::Graphics& g) override;
     void resized() override;
     void setActive(bool active);
+    void refreshFromState();
 
 private:
     void timerCallback() override;

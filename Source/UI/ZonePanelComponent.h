@@ -15,6 +15,7 @@ public:
 
     void paint(juce::Graphics& g) override;
     void resized() override;
+    void refreshFromState();
 
 private:
     void valueTreePropertyChanged(juce::ValueTree& vTree, const juce::Identifier& property) override;

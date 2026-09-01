@@ -1,6 +1,7 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
+#include <functional>
 #include "Core/HardwareService.h"
 #include "Core/MidiService.h"
 #include "Core/OSCBridge.h"
@@ -15,6 +16,9 @@ class ECMapperAudioProcessor : public juce::AudioProcessor,
                                public ecm::HardwareService::Listener
 {
 public:
+    static constexpr int numPresetSlots = 32;
+    static inline const juce::String presetSlotParameterId { "presetSlot" };
+
     ECMapperAudioProcessor();
     ~ECMapperAudioProcessor() override;
 
@@ -43,6 +47,18 @@ public:
 
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
+
+    int getCurrentPresetSlot() const noexcept { return currentPresetSlot_; }
+    juce::String getCurrentPresetName() const;
+    juce::String getCurrentPresetDisplayName() const;
+    juce::String getPresetSlotDisplayName(int slot) const;
+    bool hasPresetSlot(int slot) const;
+    bool hasUnsavedChanges() const;
+    bool savePresetSlot(int slot, const juce::String& name);
+    bool deletePresetSlot(int slot);
+    bool loadPresetSlot(int slot);
+    void loadStandalonePresetBank();
+    void saveStandalonePresetBank() const;
 
     // HardwareService::Listener overrides
     void deviceListChanged() override;
@@ -81,11 +97,26 @@ private:
     bool enableCacheInitialised_ = false;
     std::vector<juce::MidiMessage> keyboardSelectionMessages_;
     juce::CriticalSection keyboardSelectionLock_;
+    juce::ValueTree presetBankState_ { "ECMapperPresetBank" };
+    juce::ValueTree factoryDefaultState_;
+    juce::ValueTree currentPresetState_;
+    juce::AudioParameterChoice* presetSlotParameter_ = nullptr;
+    int currentPresetSlot_ = 1;
+    juce::String currentPresetName_ { "Default" };
+    bool ignorePresetParameterUpdate_ = false;
+    int lastPresetParameterIndex_ = 0;
 
     void updateGlobalSettings();
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     void syncZoneParameters(juce::MidiBuffer& midiMessages);
     static int transposeIndex(ecm::InstrumentType deviceType, ecm::Zone zone);
+    juce::ValueTree getPresetNode(int slot) const;
+    juce::ValueTree getPresetSnapshot(int slot) const;
+    void applyPresetState(const juce::ValueTree& snapshot);
+    void setCurrentPresetSelection(int slot, const juce::String& name);
+    void resetPresetBankToDefault();
+    juce::File getStandalonePresetBankFile() const;
+    static juce::ValueTree makeComparableState(juce::ValueTree state);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ECMapperAudioProcessor)
 };

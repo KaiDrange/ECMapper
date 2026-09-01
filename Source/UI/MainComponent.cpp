@@ -1,5 +1,6 @@
 #include "MainComponent.h"
 #include "AppStyle.h"
+#include "../PluginProcessor.h"
 #include "../Core/SettingsWrapper.h"
 
 namespace ecm {
@@ -37,6 +38,22 @@ MainComponent::MainComponent(juce::AudioProcessorValueTreeState& pluginStateToUs
       deviceManager(deviceManagerToUse) {
 
     SettingsWrapper::addListener(this, pluginState.state);
+    presetComboBox.setEditableText(false);
+    presetComboBox.setJustificationType(juce::Justification::centredLeft);
+    presetComboBox.onBrowseRequested = [this]
+    {
+        showPresetBrowser();
+    };
+    presetComboBox.onChange = [this]
+    {
+        if (ignorePresetComboChange_)
+            return;
+
+        handlePresetSelectionChanged();
+    };
+    addAndMakeVisible(presetComboBox);
+    refreshPresetComboBox();
+    startTimerHz(4);
     
     lowerMPEVoiceCount.setValue(SettingsWrapper::getLowerMPEVoiceCount(pluginState.state));
     lowerMPEVoiceCount.input.onFocusLost = [this] {
@@ -134,6 +151,7 @@ MainComponent::MainComponent(juce::AudioProcessorValueTreeState& pluginStateToUs
 }
 
 MainComponent::~MainComponent() {
+    stopTimer();
     pluginState.state.removeListener(this);
 }
 
@@ -158,6 +176,10 @@ void MainComponent::resized() {
 
     auto topRow = header.removeFromTop(30);
     auto bottomRow = header.removeFromTop(34);
+
+    auto presetWidth = juce::jlimit(200, 360, topRow.getWidth() / 3);
+    presetComboBox.setBounds(topRow.removeFromLeft(presetWidth));
+    topRow.removeFromLeft(8);
 
     auto controlArea = topRow;
     controlArea.removeFromLeft(12);
@@ -219,6 +241,67 @@ void MainComponent::selectTab(int index)
     SettingsWrapper::setCurrentTabIndex(index, this->pluginState.state);
     resized();
     repaint();
+}
+
+void MainComponent::refreshPresetComboBox()
+{
+    for (int slot = 1; slot <= ECMapperAudioProcessor::numPresetSlots; ++slot) {
+        auto text = processor.getPresetSlotDisplayName(slot);
+        if (presetComboBox.indexOfItemId(slot) < 0)
+            presetComboBox.addItem(text, slot);
+        else
+            presetComboBox.changeItemText(slot, text);
+    }
+
+    auto selectedSlot = processor.getCurrentPresetSlot();
+    if (presetComboBox.getSelectedId() != selectedSlot) {
+        const juce::ScopedValueSetter<bool> guard(ignorePresetComboChange_, true);
+        presetComboBox.setSelectedId(selectedSlot, juce::dontSendNotification);
+    }
+}
+
+void MainComponent::showPresetBrowser()
+{
+    juce::DialogWindow::LaunchOptions options;
+    options.content.setOwned(new PresetBrowserComponent(processor, PresetBrowserComponent::Mode::Browse));
+    options.dialogTitle = "Presets";
+    options.dialogBackgroundColour = Style::background();
+    options.escapeKeyTriggersCloseButton = true;
+    options.useNativeTitleBar = true;
+    options.resizable = true;
+    options.componentToCentreAround = this;
+    options.launchAsync();
+}
+
+void MainComponent::refreshFromState()
+{
+    lowerMPEVoiceCount.setValue(SettingsWrapper::getLowerMPEVoiceCount(pluginState.state));
+    upperMPEVoiceCount.setValue(SettingsWrapper::getUpperMPEVoiceCount(pluginState.state));
+    lowerMPEPitchbendRange.setValue(SettingsWrapper::getLowerMPEPB(pluginState.state));
+    upperMPEPitchbendRange.setValue(SettingsWrapper::getUpperMPEPB(pluginState.state));
+
+    midi2ModeEnabled = SettingsWrapper::getMidi2Mode(pluginState.state);
+    mpeModeButton.setToggleState(!midi2ModeEnabled, juce::dontSendNotification);
+    midi20ModeButton.setToggleState(midi2ModeEnabled, juce::dontSendNotification);
+    updateMpeControlsEnabled(lowerMPEVoiceCount, !midi2ModeEnabled);
+    updateMpeControlsEnabled(upperMPEVoiceCount, !midi2ModeEnabled);
+    updateMpeControlsEnabled(lowerMPEPitchbendRange, !midi2ModeEnabled);
+    updateMpeControlsEnabled(upperMPEPitchbendRange, !midi2ModeEnabled);
+}
+
+void MainComponent::timerCallback()
+{
+    refreshPresetComboBox();
+    refreshFromState();
+}
+
+void MainComponent::handlePresetSelectionChanged()
+{
+    auto selectedSlot = presetComboBox.getSelectedId();
+    if (selectedSlot >= 1 && selectedSlot <= ECMapperAudioProcessor::numPresetSlots) {
+        processor.loadPresetSlot(selectedSlot);
+        refreshFromState();
+    }
 }
 
 void MainComponent::valueTreePropertyChanged(juce::ValueTree& vTree, const juce::Identifier& property) {

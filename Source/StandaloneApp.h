@@ -17,9 +17,11 @@ public:
     void shutdown() override;
     void systemRequestedQuit() override;
     void anotherInstanceStarted (const juce::String& commandLine) override;
+    void allowQuitWithoutPromptOnce() { allowQuitWithoutPromptOnce_ = true; }
 
 private:
     std::unique_ptr<StandaloneAppMainWindow> mainWindow;
+    bool allowQuitWithoutPromptOnce_ = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ECMapperStandaloneApplication)
 };
