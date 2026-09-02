@@ -126,9 +126,11 @@ void PresetBrowserComponent::refreshSlots()
         auto index = slot - 1;
         auto displayName = processor.getPresetSlotDisplayName(slot);
         auto isCurrent = (slot == selectedSlot);
+        auto slotEnabled = mode == Mode::Save || processor.hasPresetSlot(slot);
 
         slotButtons[(size_t) index].setButtonText(displayName);
         slotButtons[(size_t) index].setToggleState(isCurrent, juce::dontSendNotification);
+        slotButtons[(size_t) index].setEnabled(slotEnabled);
 
         auto deleteEnabled = processor.hasPresetSlot(slot);
         deleteButtons[(size_t) index].setEnabled(deleteEnabled);
