@@ -11,6 +11,8 @@ public:
     LayoutChangeHandler(osc::MessageFifo& oscSendQueue, 
                         juce::ValueTree& state, 
                         ConfigLookup (&configLookups)[3],
+                        juce::CriticalSection& stateLock,
+                        std::function<bool()> shouldSuppressNotificationsCallback,
                         std::function<void(bool)> suspendProcessingCallback,
                         std::function<void(InstrumentType, Zone)> zoneChangeCallback = {});
     
@@ -30,10 +32,16 @@ private:
     osc::MessageFifo& oscSendQueue_;
     juce::ValueTree& state_;
     ConfigLookup (&configLookups_)[3];
+    juce::CriticalSection& stateLock_;
+    std::function<bool()> shouldSuppressNotificationsCallback_;
     std::function<void(bool)> suspendProcessingCallback_;
     std::function<void(InstrumentType, Zone)> zoneChangeCallback_;
     
-    int getConfigIndexFromInstrumentType(InstrumentType type) { return static_cast<int>(type) - 1; }
+    int getConfigIndexFromInstrumentType(InstrumentType type) {
+        auto index = static_cast<int>(type) - 1;
+        jassert(index >= 0 && index < 3);
+        return index;
+    }
     static Zone getZoneFromTree(juce::ValueTree& vTree);
 };
 

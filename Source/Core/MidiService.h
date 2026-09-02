@@ -13,7 +13,7 @@ class HardwareService;
 
 class MidiService {
 public:
-    MidiService(ConfigLookup (&configLookups)[3]);
+    MidiService(ConfigLookup (&configLookups)[3], juce::CriticalSection& stateLock);
     ~MidiService();
     
     void start(juce::AudioProcessorValueTreeState& pluginState, HardwareService* hs = nullptr);
@@ -65,6 +65,7 @@ private:
     juce::MPEZoneLayout mpeZone_;
     
     ConfigLookup (&configLookups_)[3];
+    juce::CriticalSection& stateLock_;
     osc::MessageFifo* oscBroadcastQueue_ = nullptr;
     HardwareService* hardwareService_ = nullptr;
     juce::AudioProcessorValueTreeState* pluginState_ = nullptr;

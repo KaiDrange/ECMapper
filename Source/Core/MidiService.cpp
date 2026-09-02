@@ -4,8 +4,8 @@
 
 namespace ecm {
 
-MidiService::MidiService(ConfigLookup (&configLookups)[3])
-    : configLookups_(configLookups) {
+MidiService::MidiService(ConfigLookup (&configLookups)[3], juce::CriticalSection& stateLock)
+    : configLookups_(configLookups), stateLock_(stateLock) {
 }
 
 MidiService::~MidiService() {
@@ -13,6 +13,7 @@ MidiService::~MidiService() {
 }
 
 void MidiService::start(juce::AudioProcessorValueTreeState& pluginState, HardwareService* hs) {
+    const juce::ScopedLock stateGuard(stateLock_);
     hardwareService_ = hs;
     pluginState_ = &pluginState;
     int lowerChannelCount = SettingsWrapper::getLowerMPEVoiceCount(pluginState.state);
@@ -56,14 +57,17 @@ void MidiService::stop() {
 
 void MidiService::processMessage(osc::Message& oscMsg, osc::Message& outgoingOscMsg, juce::MidiBuffer& midiBuffer, int eventTime) {
     if (!initialized_) return;
+
+    const juce::ScopedLock stateGuard(stateLock_);
     
     std::strncpy(outgoingOscMsg.devId, oscMsg.devId, 63);
     outgoingOscMsg.device = oscMsg.device;
 
     int deviceIndex = static_cast<int>(oscMsg.device) - 1;
+    jassert(deviceIndex >= 0 && deviceIndex < 3);
     if (deviceIndex < 0 || deviceIndex > 2) {
         if (oscMsg.type == osc::MessageType::Key && oscMsg.active)
-            juce::Logger::writeToLog("MidiService: Invalid device index: " + juce::String(deviceIndex + 1));
+             juce::Logger::writeToLog("MidiService: Invalid device index: " + juce::String(deviceIndex + 1));
         return;
     }
 
@@ -179,6 +183,7 @@ void MidiService::drainPendingMidiMessages(juce::MidiBuffer& buffer, int eventTi
 
 void MidiService::resendLEDs(const char* devId, InstrumentType type, osc::MessageFifo* targetQueue, bool onlyNonOff) {
     if (!initialized_) return;
+    const juce::ScopedLock stateGuard(stateLock_);
     int deviceIndex = static_cast<int>(type) - 1;
     if (deviceIndex < 0 || deviceIndex > 2) return;
     
@@ -219,6 +224,7 @@ void MidiService::resendLEDs(const char* devId, InstrumentType type, osc::Messag
 }
 
 void MidiService::reduceBreath(juce::MidiBuffer& buffer, int eventTime) {
+    const juce::ScopedLock stateGuard(stateLock_);
     for (int i = 0; i < 3; i++) {
         const juce::ScopedLock sl(configLookups_[i].getLock());
         if (ehBreath_[i] <= 0.0f) continue;
@@ -387,7 +393,10 @@ void MidiService::queueTransposeChangeFlush(InstrumentType deviceType, Zone zone
     if (!initialized_ || pluginState_ == nullptr || deviceType == InstrumentType::None || zone == Zone::NoZone)
         return;
 
+    const juce::ScopedLock stateGuard(stateLock_);
+
     int deviceIndex = static_cast<int>(deviceType) - 1;
+    jassert(deviceIndex >= 0 && deviceIndex < 3);
     if (deviceIndex < 0 || deviceIndex > 2)
         return;
 

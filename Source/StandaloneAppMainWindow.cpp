@@ -180,36 +180,10 @@ void StandaloneAppMainWindow::showPresetBrowser()
 
 void StandaloneAppMainWindow::requestQuit()
 {
-    confirmQuit();
-}
+    if (auto* app = dynamic_cast<ECMapperStandaloneApplication*>(juce::JUCEApplication::getInstance()))
+        app->allowQuitWithoutPromptOnce();
 
-void StandaloneAppMainWindow::confirmQuit()
-{
-    if (processor == nullptr || ! processor->hasUnsavedChanges())
-    {
-        if (auto* app = dynamic_cast<ECMapperStandaloneApplication*>(juce::JUCEApplication::getInstance()))
-            app->allowQuitWithoutPromptOnce();
-
-        juce::JUCEApplication::getInstance()->systemRequestedQuit();
-        return;
-    }
-
-    juce::AlertWindow::showAsync(juce::MessageBoxOptions()
-                                     .withIconType(juce::MessageBoxIconType::WarningIcon)
-                                     .withTitle("Quit ECMapper?")
-                                     .withMessage("Current settings have not been saved yet.")
-                                     .withButton("Quit")
-                                     .withButton("Cancel"),
-                                 [this](int result)
-                                 {
-                                     if (result == 0)
-                                         return;
-
-                                     if (auto* app = dynamic_cast<ECMapperStandaloneApplication*>(juce::JUCEApplication::getInstance()))
-                                         app->allowQuitWithoutPromptOnce();
-
-                                     juce::JUCEApplication::getInstance()->systemRequestedQuit();
-                                 });
+    juce::JUCEApplication::getInstance()->systemRequestedQuit();
 }
 
 void StandaloneAppMainWindow::showAboutDialog()

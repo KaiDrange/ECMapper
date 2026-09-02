@@ -16,28 +16,49 @@ int getTransposeForZone(InstrumentType deviceType, Zone zone, juce::AudioProcess
 
 }
 
-ConfigLookup::ConfigLookup(InstrumentType deviceType, juce::AudioProcessorValueTreeState& pluginState)
-    : pluginState(pluginState), deviceType(deviceType) {
+ConfigLookup::ConfigLookup(InstrumentType deviceType, juce::AudioProcessorValueTreeState& pluginState, juce::CriticalSection& stateLock)
+    : stateLock_(stateLock), pluginState(pluginState), deviceType(deviceType) {
+}
+
+ConfigLookup::ConfigLookup(const ConfigLookup& other)
+    : stateLock_(other.stateLock_), pluginState(other.pluginState), deviceType(other.deviceType)
+{
+    controlLights = other.controlLights;
+    for (int course = 0; course < 3; ++course) {
+        for (int keyNo = 0; keyNo < 120; ++keyNo)
+            keys[course][keyNo] = other.keys[course][keyNo];
+    }
+
+    for (int zone = 0; zone < 3; ++zone) {
+        breath[zone] = other.breath[zone];
+        strip1[zone] = other.strip1[zone];
+        strip2[zone] = other.strip2[zone];
+    }
+
+    for (int i = 0; i < 6; ++i)
+        expressionCurves[i] = other.expressionCurves[i];
 }
 
 void ConfigLookup::updateAll() {
+    const juce::ScopedLock stateGuard(stateLock_);
     const juce::ScopedLock sl(lock_);
+    jassert(deviceType != InstrumentType::None);
     this->controlLights = true;
 
     for (int course = 0; course < 3; ++course) {
         for (int keyNo = 0; keyNo < 120; ++keyNo) {
-            updateKey({course, keyNo, deviceType});
+            updateKeyUnlocked({course, keyNo, deviceType});
         }
     }
-    updateBreath(Zone::Zone1);
-    updateBreath(Zone::Zone2);
-    updateBreath(Zone::Zone3);
+    updateBreathUnlocked(Zone::Zone1);
+    updateBreathUnlocked(Zone::Zone2);
+    updateBreathUnlocked(Zone::Zone3);
     
-    updateStrips(Zone::Zone1);
-    updateStrips(Zone::Zone2);
-    updateStrips(Zone::Zone3);
+    updateStripsUnlocked(Zone::Zone1);
+    updateStripsUnlocked(Zone::Zone2);
+    updateStripsUnlocked(Zone::Zone3);
 
-    updateExpressionCurves();
+    updateExpressionCurvesUnlocked();
 }
 
 void ConfigLookup::updateKey(juce::ValueTree keytree) {
@@ -52,8 +73,16 @@ void ConfigLookup::updateKey(juce::ValueTree keytree) {
 }
 
 void ConfigLookup::updateKey(LayoutWrapper::KeyId keyId) {
+    const juce::ScopedLock stateGuard(stateLock_);
     const juce::ScopedLock sl(lock_);
+    jassert(keyId.deviceType != InstrumentType::None);
+    updateKeyUnlocked(keyId);
+}
+
+void ConfigLookup::updateKeyUnlocked(LayoutWrapper::KeyId keyId) {
     LayoutWrapper::LayoutKey layoutKey = LayoutWrapper::getLayoutKey(keyId, pluginState.state);
+    jassert(layoutKey.keyId.course >= 0 && layoutKey.keyId.course < 3);
+    jassert(layoutKey.keyId.keyNo >= 0 && layoutKey.keyId.keyNo < 120);
     
     bool setKeyToDefault = false;
     if (layoutKey.keyMappingType == KeyMappingType::None)
@@ -141,8 +170,15 @@ void ConfigLookup::updateKey(LayoutWrapper::KeyId keyId) {
 }
 
 void ConfigLookup::updateBreath(Zone zone) {
+    const juce::ScopedLock stateGuard(stateLock_);
     const juce::ScopedLock sl(lock_);
+    jassert(zone != Zone::NoZone);
+    updateBreathUnlocked(zone);
+}
+
+void ConfigLookup::updateBreathUnlocked(Zone zone) {
     int zoneIdx = (int)zone - 1;
+    jassert(zoneIdx >= 0 && zoneIdx < 3);
     if (zoneIdx < 0 || zoneIdx > 2) return;
 
     if (!ZoneWrapper::getEnabled(deviceType, zone, pluginState.state)) {
@@ -163,8 +199,15 @@ void ConfigLookup::updateBreath(Zone zone) {
 }
 
 void ConfigLookup::updateStrips(Zone zone) {
+    const juce::ScopedLock stateGuard(stateLock_);
     const juce::ScopedLock sl(lock_);
+    jassert(zone != Zone::NoZone);
+    updateStripsUnlocked(zone);
+}
+
+void ConfigLookup::updateStripsUnlocked(Zone zone) {
     int zoneIdx = (int)zone - 1;
+    jassert(zoneIdx >= 0 && zoneIdx < 3);
     if (zoneIdx < 0 || zoneIdx > 2) return;
 
     if (!ZoneWrapper::getEnabled(deviceType, zone, pluginState.state)) {
@@ -193,6 +236,12 @@ void ConfigLookup::updateStrips(Zone zone) {
 }
 
 void ConfigLookup::updateExpressionCurves() {
+    const juce::ScopedLock stateGuard(stateLock_);
+    const juce::ScopedLock sl(lock_);
+    updateExpressionCurvesUnlocked();
+}
+
+void ConfigLookup::updateExpressionCurvesUnlocked() {
     for (int i = 0; i < 6; ++i) {
         auto target = static_cast<ExpressionCurveTarget>(i);
         expressionCurves[i] = ExpressionCurve(ExpressionCurveWrapper::getCurve(deviceType, target, pluginState.state).getData());

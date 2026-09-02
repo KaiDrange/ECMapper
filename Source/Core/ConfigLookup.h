@@ -13,7 +13,11 @@ namespace ecm {
 
 class ConfigLookup {
 public:
-    ConfigLookup(InstrumentType deviceType, juce::AudioProcessorValueTreeState& pluginState);
+    ConfigLookup(InstrumentType deviceType, juce::AudioProcessorValueTreeState& pluginState, juce::CriticalSection& stateLock);
+    ConfigLookup(const ConfigLookup& other);
+    ConfigLookup& operator=(const ConfigLookup&) = delete;
+    ConfigLookup(ConfigLookup&&) = delete;
+    ConfigLookup& operator=(ConfigLookup&&) = delete;
     
     void updateAll();
     void updateKey(juce::ValueTree keytree);
@@ -63,8 +67,14 @@ public:
 
 private:
     juce::CriticalSection lock_;
+    juce::CriticalSection& stateLock_;
     InstrumentType deviceType;
     juce::AudioProcessorValueTreeState& pluginState;
+
+    void updateKeyUnlocked(LayoutWrapper::KeyId keyId);
+    void updateBreathUnlocked(Zone zone);
+    void updateStripsUnlocked(Zone zone);
+    void updateExpressionCurvesUnlocked();
 };
 
 } // namespace ecm

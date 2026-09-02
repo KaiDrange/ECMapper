@@ -53,7 +53,6 @@ public:
     juce::String getCurrentPresetDisplayName() const;
     juce::String getPresetSlotDisplayName(int slot) const;
     bool hasPresetSlot(int slot) const;
-    bool hasUnsavedChanges() const;
     bool savePresetSlot(int slot, const juce::String& name);
     bool deletePresetSlot(int slot);
     bool loadPresetSlot(int slot);
@@ -79,6 +78,7 @@ private:
     ecm::osc::MessageFifo hardwareToMapperQueue;
     ecm::osc::MessageFifo mapperToHardwareQueue;
     ecm::osc::MessageFifo outgoingOSCQueue;
+    mutable juce::CriticalSection presetStateLock_;
 
     ecm::ConfigLookup configLookups[3];
     ecm::HardwareService hardwareService;
@@ -98,13 +98,12 @@ private:
     std::vector<juce::MidiMessage> keyboardSelectionMessages_;
     juce::CriticalSection keyboardSelectionLock_;
     juce::ValueTree presetBankState_ { "ECMapperPresetBank" };
-    juce::ValueTree factoryDefaultState_;
-    juce::ValueTree currentPresetState_;
     juce::AudioParameterChoice* presetSlotParameter_ = nullptr;
     int currentPresetSlot_ = 1;
-    juce::String currentPresetName_ { "Default" };
+    juce::String currentPresetName_ { "Init" };
     bool ignorePresetParameterUpdate_ = false;
     int lastPresetParameterIndex_ = 0;
+    bool presetBatchInProgress_ = false;
 
     void updateGlobalSettings();
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
@@ -113,8 +112,9 @@ private:
     juce::ValueTree getPresetNode(int slot) const;
     juce::ValueTree getPresetSnapshot(int slot) const;
     void applyPresetState(const juce::ValueTree& snapshot);
+    void refreshDerivedStateAfterPresetChange();
     void setCurrentPresetSelection(int slot, const juce::String& name);
-    void resetPresetBankToDefault();
+    void ensureInitPresetExists();
     juce::File getStandalonePresetBankFile() const;
     static juce::ValueTree makeComparableState(juce::ValueTree state);
 

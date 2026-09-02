@@ -149,10 +149,11 @@ void PresetBrowserComponent::handleSlotSelected(int slot)
         return;
     }
 
-    if (processor.loadPresetSlot(slot))
+    closeDialog();
+    juce::MessageManager::callAsync([processor = &processor, slot]
     {
-        refreshSlots();
-    }
+        processor->loadPresetSlot(slot);
+    });
 }
 
 void PresetBrowserComponent::requestDeleteSlot(int slot)
@@ -200,6 +201,7 @@ void PresetBrowserComponent::savePresetToSlot(int slot, const juce::String& name
         if (processor.savePresetSlot(slot, name))
         {
             refreshSlots();
+            closeDialog();
         }
     };
 
@@ -224,6 +226,14 @@ void PresetBrowserComponent::savePresetToSlot(int slot, const juce::String& name
     }
 
     saveNow();
+}
+
+void PresetBrowserComponent::closeDialog()
+{
+    if (auto* dialog = findParentComponentOfClass<juce::DialogWindow>())
+        dialog->exitModalState(0);
+    else if (auto* window = findParentComponentOfClass<juce::DocumentWindow>())
+        window->exitModalState(0);
 }
 
 } // namespace ecm

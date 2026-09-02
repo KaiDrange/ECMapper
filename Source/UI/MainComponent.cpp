@@ -300,7 +300,9 @@ void MainComponent::handlePresetSelectionChanged()
     auto selectedSlot = presetComboBox.getSelectedId();
     if (selectedSlot >= 1 && selectedSlot <= ECMapperAudioProcessor::numPresetSlots) {
         processor.loadPresetSlot(selectedSlot);
+        refreshPresetComboBox();
         refreshFromState();
+        repaint();
     }
 }
 

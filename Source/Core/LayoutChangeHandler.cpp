@@ -5,12 +5,14 @@
 
 namespace ecm {
 
-LayoutChangeHandler::LayoutChangeHandler(osc::MessageFifo& oscSendQueue, 
-                                        juce::ValueTree& state, 
-                                        ConfigLookup (&configLookups)[3],
-                                        std::function<void(bool)> suspendProcessingCallback,
-                                        std::function<void(InstrumentType, Zone)> zoneChangeCallback)
-    : oscSendQueue_(oscSendQueue), state_(state), configLookups_(configLookups), suspendProcessingCallback_(suspendProcessingCallback), zoneChangeCallback_(zoneChangeCallback) {
+LayoutChangeHandler::LayoutChangeHandler(osc::MessageFifo& oscSendQueue,
+                                         juce::ValueTree& state,
+                                         ConfigLookup (&configLookups)[3],
+                                         juce::CriticalSection& stateLock,
+                                         std::function<bool()> shouldSuppressNotificationsCallback,
+                                         std::function<void(bool)> suspendProcessingCallback,
+                                         std::function<void(InstrumentType, Zone)> zoneChangeCallback)
+    : oscSendQueue_(oscSendQueue), state_(state), configLookups_(configLookups), stateLock_(stateLock), shouldSuppressNotificationsCallback_(shouldSuppressNotificationsCallback), suspendProcessingCallback_(suspendProcessingCallback), zoneChangeCallback_(zoneChangeCallback) {
 }
 
 Zone LayoutChangeHandler::getZoneFromTree(juce::ValueTree& vTree) {
@@ -22,6 +24,10 @@ Zone LayoutChangeHandler::getZoneFromTree(juce::ValueTree& vTree) {
 }
 
 void LayoutChangeHandler::valueTreePropertyChanged(juce::ValueTree& vTree, const juce::Identifier& property) {
+    const juce::ScopedLock stateGuard(stateLock_);
+    if (shouldSuppressNotificationsCallback_ && shouldSuppressNotificationsCallback_())
+        return;
+
     if (suspendProcessingCallback_) suspendProcessingCallback_(true);
     
     InstrumentType deviceType = InstrumentType::None;
@@ -93,6 +99,7 @@ void LayoutChangeHandler::sendLEDMsg(LayoutWrapper::LayoutKey layoutKey) {
 }
 
 void LayoutChangeHandler::sendLEDMsgForAllKeys(InstrumentType deviceType) {
+    const juce::ScopedLock stateGuard(stateLock_);
     if (deviceType == InstrumentType::None) return;
 
     int configIndex = getConfigIndexFromInstrumentType(deviceType);
@@ -113,6 +120,10 @@ void LayoutChangeHandler::sendLEDMsgForAllKeys(InstrumentType deviceType) {
 }
 
 void LayoutChangeHandler::valueTreeChildAdded(juce::ValueTree&, juce::ValueTree& childTree) {
+    const juce::ScopedLock stateGuard(stateLock_);
+    if (shouldSuppressNotificationsCallback_ && shouldSuppressNotificationsCallback_())
+        return;
+
     if (childTree.getType().toString().startsWith(LayoutWrapper::id_key.toString() + "_")) {
         LayoutWrapper::LayoutKey layoutKey = LayoutWrapper::getLayoutKeyFromKeyTree(childTree);
         if (layoutKey.keyId.deviceType != InstrumentType::None) {
@@ -128,6 +139,10 @@ void LayoutChangeHandler::valueTreeChildAdded(juce::ValueTree&, juce::ValueTree&
 }
 
 void LayoutChangeHandler::valueTreeRedirected(juce::ValueTree&) {
+    const juce::ScopedLock stateGuard(stateLock_);
+    if (shouldSuppressNotificationsCallback_ && shouldSuppressNotificationsCallback_())
+        return;
+
     for (int i = 0; i < 3; i++) {
         configLookups_[i].updateAll();
     }

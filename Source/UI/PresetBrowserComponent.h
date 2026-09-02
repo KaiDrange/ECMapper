@@ -32,6 +32,7 @@ private:
     void requestDeleteSlot(int slot);
     void requestSave();
     void savePresetToSlot(int slot, const juce::String& name);
+    void closeDialog();
 
     ECMapperAudioProcessor& processor;
     Mode mode;

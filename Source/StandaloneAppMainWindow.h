@@ -30,7 +30,6 @@ private:
     void saveAudioSettings();
     void loadAudioSettings();
     juce::File getAudioSettingsFile();
-    void confirmQuit();
 
     std::unique_ptr<ECMapperAudioProcessor> processor;
     
