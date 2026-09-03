@@ -17,36 +17,31 @@ void configureDeleteButton(juce::TextButton& button)
 {
     button.setColour(juce::TextButton::buttonColourId, Style::danger());
     button.setColour(juce::TextButton::buttonOnColourId, Style::danger().brighter(0.2f));
-    button.setColour(juce::TextButton::textColourOffId, Style::background());
-    button.setColour(juce::TextButton::textColourOnId, Style::background());
+    button.setColour(juce::TextButton::textColourOffId, Style::text());
+    button.setColour(juce::TextButton::textColourOnId, Style::text());
+}
+
+void configureSaveButton(juce::TextButton& button)
+{
+    button.setColour(juce::TextButton::buttonColourId, Style::accent().darker(0.5f));
+    button.setColour(juce::TextButton::buttonOnColourId, Style::accent().darker(0.3f));
+    button.setColour(juce::TextButton::textColourOffId, Style::text());
+    button.setColour(juce::TextButton::textColourOnId, Style::text());
 }
 
 }
 
-PresetBrowserComponent::PresetBrowserComponent(ECMapperAudioProcessor& processorToUse, Mode modeToUse)
-    : processor(processorToUse),
-      mode(modeToUse)
+PresetBrowserComponent::PresetBrowserComponent(ECMapperAudioProcessor& processorToUse)
+    : processor(processorToUse)
 {
     setOpaque(true);
     setSize(860, 620);
-    if (mode == Mode::Save)
-        selectedSlot = processor.getCurrentPresetSlot();
+    selectedSlot = processor.getCurrentPresetSlot();
 
-    headerLabel.setText(mode == Mode::Save ? "Save preset" : "Presets", juce::dontSendNotification);
+    headerLabel.setText("Presets", juce::dontSendNotification);
     headerLabel.setJustificationType(juce::Justification::centredLeft);
     headerLabel.setColour(juce::Label::textColourId, Style::text());
     addAndMakeVisible(headerLabel);
-
-    if (mode == Mode::Save)
-    {
-        presetNameEditor.setText(processor.getCurrentPresetName());
-        presetNameEditor.setTextToShowWhenEmpty("Preset name", Style::mutedText());
-        addAndMakeVisible(presetNameEditor);
-
-        saveButton.onClick = [this] { requestSave(); };
-        configurePresetActionButton(saveButton);
-        addAndMakeVisible(saveButton);
-    }
 
     for (int slot = 1; slot <= slotCount; ++slot)
     {
@@ -56,6 +51,12 @@ PresetBrowserComponent::PresetBrowserComponent(ECMapperAudioProcessor& processor
         configurePresetActionButton(slotButtons[(size_t) index]);
         slotButtons[(size_t) index].onClick = [this, slot] { handleSlotSelected(slot); };
         addAndMakeVisible(slotButtons[(size_t) index]);
+
+        configureSaveButton(saveButtons[(size_t) index]);
+        saveButtons[(size_t) index].setButtonText(""); // We will draw the icon in LookAndFeel
+        saveButtons[(size_t) index].getProperties().set("isSaveButton", true);
+        saveButtons[(size_t) index].onClick = [this, slot] { requestSaveToSlot(slot); };
+        addAndMakeVisible(saveButtons[(size_t) index]);
 
         configureDeleteButton(deleteButtons[(size_t) index]);
         deleteButtons[(size_t) index].setButtonText("X");
@@ -74,22 +75,8 @@ void PresetBrowserComponent::paint(juce::Graphics& g)
 void PresetBrowserComponent::resized()
 {
     auto area = getLocalBounds().reduced(12);
-
-    if (mode == Mode::Save)
-    {
-        auto header = area.removeFromTop(34);
-        headerLabel.setBounds(header.removeFromLeft(120));
-        header.removeFromLeft(8);
-        saveButton.setBounds(header.removeFromRight(92));
-        header.removeFromRight(8);
-        presetNameEditor.setBounds(header);
-        area.removeFromTop(10);
-    }
-    else
-    {
-        headerLabel.setBounds(area.removeFromTop(24));
-        area.removeFromTop(4);
-    }
+    headerLabel.setBounds(area.removeFromTop(24));
+    area.removeFromTop(4);
 
     auto columnWidth = (area.getWidth() - 12) / 2;
     auto rowHeight = 28;
@@ -105,8 +92,11 @@ void PresetBrowserComponent::resized()
             auto slot = column * rowsPerColumn + row + 1;
             auto rowArea = columnArea.removeFromTop(rowHeight);
 
-            auto deleteWidth = 28;
+            auto deleteWidth = 36;
+            auto saveWidth = 36;
             deleteButtons[(size_t) (slot - 1)].setBounds(rowArea.removeFromRight(deleteWidth));
+            rowArea.removeFromRight(4);
+            saveButtons[(size_t) (slot - 1)].setBounds(rowArea.removeFromRight(saveWidth));
             rowArea.removeFromRight(6);
             slotButtons[(size_t) (slot - 1)].setBounds(rowArea);
         }
@@ -116,21 +106,19 @@ void PresetBrowserComponent::resized()
 void PresetBrowserComponent::refreshSlots()
 {
     auto currentSlot = processor.getCurrentPresetSlot();
-    if (mode == Mode::Save)
-        selectedSlot = juce::jlimit(1, slotCount, selectedSlot);
-    else
-        selectedSlot = juce::jlimit(1, slotCount, currentSlot);
+    selectedSlot = juce::jlimit(1, slotCount, currentSlot);
 
     for (int slot = 1; slot <= slotCount; ++slot)
     {
         auto index = slot - 1;
         auto displayName = processor.getPresetSlotDisplayName(slot);
         auto isCurrent = (slot == selectedSlot);
-        auto slotEnabled = mode == Mode::Save || processor.hasPresetSlot(slot);
 
         slotButtons[(size_t) index].setButtonText(displayName);
         slotButtons[(size_t) index].setToggleState(isCurrent, juce::dontSendNotification);
-        slotButtons[(size_t) index].setEnabled(slotEnabled);
+        slotButtons[(size_t) index].setEnabled(processor.hasPresetSlot(slot));
+
+        saveButtons[(size_t) index].setEnabled(true);
 
         auto deleteEnabled = processor.hasPresetSlot(slot);
         deleteButtons[(size_t) index].setEnabled(deleteEnabled);
@@ -144,12 +132,8 @@ void PresetBrowserComponent::handleSlotSelected(int slot)
     if (slot < 1 || slot > slotCount)
         return;
 
-    if (mode == Mode::Save)
-    {
-        selectedSlot = slot;
-        refreshSlots();
+    if (!processor.hasPresetSlot(slot))
         return;
-    }
 
     closeDialog();
     juce::MessageManager::callAsync([processor = &processor, slot]
@@ -184,13 +168,34 @@ void PresetBrowserComponent::requestDeleteSlot(int slot)
         });
 }
 
-void PresetBrowserComponent::requestSave()
+void PresetBrowserComponent::requestSaveToSlot(int slot)
 {
-    auto name = presetNameEditor.getText().trim();
-    if (name.isEmpty())
-        name = "Preset " + juce::String(selectedSlot);
+    if (slot < 1 || slot > slotCount)
+        return;
 
-    savePresetToSlot(selectedSlot, name);
+    auto currentName = processor.hasPresetSlot(slot) ? processor.getPresetNode(slot).getProperty("name", "").toString() 
+                                                     : processor.getCurrentPresetName();
+    if (currentName.isEmpty())
+        currentName = "Preset " + juce::String(slot);
+
+    auto safeThis = juce::Component::SafePointer<PresetBrowserComponent>(this);
+    
+    auto* alert = new juce::AlertWindow("Save Preset", "Enter name for preset " + juce::String(slot), juce::MessageBoxIconType::NoIcon);
+    alert->addTextEditor("name", currentName, "Preset name");
+    alert->addButton("Save", 1, juce::KeyPress(juce::KeyPress::returnKey));
+    alert->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    
+    alert->enterModalState(true, juce::ModalCallbackFunction::create([safeThis, slot, alert](int result) {
+        if (result == 1 && safeThis != nullptr)
+        {
+            auto name = alert->getTextEditorContents("name").trim();
+            if (name.isEmpty())
+                name = "Preset " + juce::String(slot);
+            
+            safeThis->savePresetToSlot(slot, name);
+        }
+        delete alert;
+    }), true);
 }
 
 void PresetBrowserComponent::savePresetToSlot(int slot, const juce::String& name)
@@ -203,7 +208,6 @@ void PresetBrowserComponent::savePresetToSlot(int slot, const juce::String& name
         if (processor.savePresetSlot(slot, name))
         {
             refreshSlots();
-            closeDialog();
         }
     };
 

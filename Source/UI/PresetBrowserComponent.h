@@ -12,13 +12,7 @@ namespace ecm {
 class PresetBrowserComponent : public juce::Component
 {
 public:
-    enum class Mode
-    {
-        Browse,
-        Save
-    };
-
-    PresetBrowserComponent(ECMapperAudioProcessor& processorToUse, Mode modeToUse);
+    PresetBrowserComponent(ECMapperAudioProcessor& processorToUse);
 
     void paint(juce::Graphics& g) override;
     void resized() override;
@@ -30,20 +24,18 @@ private:
     void refreshSlots();
     void handleSlotSelected(int slot);
     void requestDeleteSlot(int slot);
-    void requestSave();
+    void requestSaveToSlot(int slot);
     void savePresetToSlot(int slot, const juce::String& name);
     void closeDialog();
 
     ECMapperAudioProcessor& processor;
-    Mode mode;
     int selectedSlot = 1;
 
     juce::Label headerLabel;
-    juce::TextEditor presetNameEditor;
-    juce::TextButton saveButton { "Save" };
 
     std::array<juce::TextButton, slotCount> slotButtons {};
     std::array<juce::TextButton, slotCount> deleteButtons {};
+    std::array<juce::TextButton, slotCount> saveButtons {};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PresetBrowserComponent)
 };

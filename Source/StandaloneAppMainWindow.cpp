@@ -9,7 +9,7 @@ StandaloneAppMainWindow::StandaloneAppMainWindow(const juce::String& name)
                      DocumentWindow::allButtons),
       menuBarModel(
           [this] { requestQuit(); },
-          [this] { showSavePresetDialog(); },
+          nullptr,
           [this] { showPresetBrowser(); },
           [this] { showAudioSettings(); },
           [this] { showAboutDialog(); },
@@ -18,6 +18,7 @@ StandaloneAppMainWindow::StandaloneAppMainWindow(const juce::String& name)
       )
 {
     setLookAndFeel(&lookAndFeel);
+    juce::LookAndFeel::setDefaultLookAndFeel(&lookAndFeel);
     setUsingNativeTitleBar(true);
 #if JUCE_MAC
     juce::MenuBarModel::setMacMainMenu(&menuBarModel);
@@ -56,6 +57,7 @@ StandaloneAppMainWindow::~StandaloneAppMainWindow()
 {
     setContentOwned(nullptr, true);
     setLookAndFeel(nullptr);
+    juce::LookAndFeel::setDefaultLookAndFeel(nullptr);
     deviceManager.removeChangeListener(this);
     processorPlayer.setProcessor(nullptr);
     deviceManager.removeMidiInputDeviceCallback({}, &processorPlayer.getMidiMessageCollector());
@@ -152,23 +154,10 @@ void StandaloneAppMainWindow::showAudioSettings()
     options.launchAsync();
 }
 
-void StandaloneAppMainWindow::showSavePresetDialog()
-{
-    juce::DialogWindow::LaunchOptions options;
-    options.content.setOwned(new ecm::PresetBrowserComponent(*processor, ecm::PresetBrowserComponent::Mode::Save));
-    options.dialogTitle = "Save Preset";
-    options.dialogBackgroundColour = ecm::Style::background();
-    options.escapeKeyTriggersCloseButton = true;
-    options.useNativeTitleBar = true;
-    options.resizable = true;
-    options.componentToCentreAround = this;
-    options.launchAsync();
-}
-
 void StandaloneAppMainWindow::showPresetBrowser()
 {
     juce::DialogWindow::LaunchOptions options;
-    options.content.setOwned(new ecm::PresetBrowserComponent(*processor, ecm::PresetBrowserComponent::Mode::Browse));
+    options.content.setOwned(new ecm::PresetBrowserComponent(*processor));
     options.dialogTitle = "Presets";
     options.dialogBackgroundColour = ecm::Style::background();
     options.escapeKeyTriggersCloseButton = true;

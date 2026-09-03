@@ -104,9 +104,12 @@ AppLookAndFeel::AppLookAndFeel()
     setColour(juce::TooltipWindow::outlineColourId, Style::border());
 }
 
-juce::Font AppLookAndFeel::getTextButtonFont(juce::TextButton&, int buttonHeight)
+juce::Font AppLookAndFeel::getTextButtonFont(juce::TextButton& button, int buttonHeight)
 {
-    return juce::Font(juce::FontOptions(juce::jmin(14.0f, buttonHeight * 0.58f), juce::Font::plain));
+    float size = juce::jmin(14.0f, static_cast<float>(buttonHeight) * 0.58f);
+    if (button.getWidth() > 0 && button.getWidth() < 40)
+        size = juce::jmin(size, 11.0f);
+    return juce::Font(juce::FontOptions(size, juce::Font::plain));
 }
 
 void AppLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& button, const juce::Colour& backgroundColour,
@@ -143,14 +146,62 @@ void AppLookAndFeel::drawButtonText(juce::Graphics& g, juce::TextButton& button,
 {
     juce::ignoreUnused(shouldDrawButtonAsHighlighted, shouldDrawButtonAsDown);
 
+    auto color = button.findColour(button.getToggleState() ? juce::TextButton::textColourOnId
+                                                          : juce::TextButton::textColourOffId)
+                    .withMultipliedAlpha(button.isEnabled() ? 1.0f : 0.55f);
+    g.setColour(color);
+
+    auto padding = (button.getWidth() < 40) ? 0 : juce::jmin(10, button.getWidth() / 6);
+    auto textArea = button.getLocalBounds().reduced(padding, 0);
+
+    if (button.getProperties().contains("isSaveButton"))
+    {
+        auto size = juce::jmin(textArea.getWidth(), textArea.getHeight()) * 0.72f;
+        auto r = textArea.toFloat().withSizeKeepingCentre(size, size);
+
+        juce::Path p;
+        const float b = r.getWidth() * 0.22f;
+        p.startNewSubPath(r.getX(), r.getBottom());
+        p.lineTo(r.getX(), r.getY());
+        p.lineTo(r.getRight() - b, r.getY());
+        p.lineTo(r.getRight(), r.getY() + b);
+        p.lineTo(r.getRight(), r.getBottom());
+        p.closeSubPath();
+        g.fillPath(p);
+
+        g.setColour(button.findColour(juce::TextButton::buttonColourId));
+        
+        // Shutter area (top)
+        auto s = juce::Rectangle<float>(r.getX() + r.getWidth() * 0.2f, r.getY() + r.getHeight() * 0.06f, 
+                                        r.getWidth() * 0.52f, r.getHeight() * 0.35f);
+        g.fillRect(s);
+        
+        // Label area (bottom)
+        g.fillRect(r.getX() + r.getWidth() * 0.15f, r.getBottom() - r.getHeight() * 0.46f, 
+                   r.getWidth() * 0.7f, r.getHeight() * 0.42f);
+        
+        // Shutter sliding piece
+        g.setColour(color);
+        g.fillRect(s.getX() + s.getWidth() * 0.65f, s.getY() + s.getHeight() * 0.15f, 
+                   s.getWidth() * 0.2f, s.getHeight() * 0.65f);
+        
+        return;
+    }
+
     auto font = getTextButtonFont(button, button.getHeight());
     g.setFont(font);
-    g.setColour(button.findColour(button.getToggleState() ? juce::TextButton::textColourOnId
-                                                          : juce::TextButton::textColourOffId)
-                    .withMultipliedAlpha(button.isEnabled() ? 1.0f : 0.55f));
-
-    auto textArea = button.getLocalBounds().reduced(10, 0);
-    g.drawFittedText(button.getButtonText(), textArea, juce::Justification::centred, 1);
+    
+    // For small buttons or icons, we use a wider virtual area to prevent JUCE from 
+    // adding ellipses, then rely on the graphics context's clipping.
+    if (button.getButtonText().length() < 8 || button.getWidth() < 40)
+    {
+        auto largeArea = textArea.expanded(20, 0);
+        g.drawText(button.getButtonText(), largeArea, juce::Justification::centred, false);
+    }
+    else
+    {
+        g.drawFittedText(button.getButtonText(), textArea, juce::Justification::centred, 1);
+    }
 }
 
 void AppLookAndFeel::fillTextEditorBackground(juce::Graphics& g, int width, int height, juce::TextEditor& editor)
@@ -181,6 +232,9 @@ void AppLookAndFeel::drawComboBox(juce::Graphics& g, int width, int height, bool
     g.setColour(box.findColour(juce::ComboBox::outlineColourId));
     g.drawRoundedRectangle(bounds, 5.0f, 1.0f);
 
+    if (box.getProperties().contains("hideArrow"))
+        return;
+
     g.setColour(Style::border().withAlpha(0.8f));
     g.drawLine(static_cast<float>(buttonX), 3.0f, static_cast<float>(buttonX), static_cast<float>(height - 3), 1.0f);
 
@@ -202,7 +256,8 @@ juce::Font AppLookAndFeel::getComboBoxFont(juce::ComboBox&)
 
 void AppLookAndFeel::positionComboBoxText(juce::ComboBox& box, juce::Label& label)
 {
-    auto textWidth = juce::jmax(0, box.getWidth() - juce::jmax(22, box.getHeight()));
+    auto buttonWidth = box.getProperties().contains("hideArrow") ? 0 : juce::jmax(22, box.getHeight());
+    auto textWidth = juce::jmax(0, box.getWidth() - buttonWidth);
     label.setBounds(juce::Rectangle<int>(4, 1, textWidth, box.getHeight() - 2));
     label.setFont(getComboBoxFont(box));
     label.setJustificationType(juce::Justification::centredLeft);

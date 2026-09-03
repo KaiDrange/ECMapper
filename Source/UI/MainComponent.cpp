@@ -40,6 +40,7 @@ MainComponent::MainComponent(juce::AudioProcessorValueTreeState& pluginStateToUs
     SettingsWrapper::addListener(this, pluginState.state);
     presetComboBox.setEditableText(false);
     presetComboBox.setJustificationType(juce::Justification::centredLeft);
+    presetComboBox.getProperties().set("hideArrow", true);
     presetComboBox.onBrowseRequested = [this]
     {
         showPresetBrowser();
@@ -177,8 +178,8 @@ void MainComponent::resized() {
     auto topRow = header.removeFromTop(30);
     auto bottomRow = header.removeFromTop(34);
 
-    auto presetWidth = juce::jlimit(200, 360, topRow.getWidth() / 3);
-    presetComboBox.setBounds(topRow.removeFromLeft(presetWidth));
+    auto presetWidth = juce::jlimit(160, 360, topRow.getWidth() / 4);
+    presetComboBox.setBounds(topRow.removeFromLeft(presetWidth).withHeight(28));
     topRow.removeFromLeft(8);
 
     auto controlArea = topRow;
@@ -263,14 +264,18 @@ void MainComponent::refreshPresetComboBox()
 void MainComponent::showPresetBrowser()
 {
     juce::DialogWindow::LaunchOptions options;
-    options.content.setOwned(new PresetBrowserComponent(processor, PresetBrowserComponent::Mode::Browse));
+    auto* browser = new PresetBrowserComponent(processor);
+    browser->setLookAndFeel(&getLookAndFeel());
+    options.content.setOwned(browser);
     options.dialogTitle = "Presets";
     options.dialogBackgroundColour = Style::background();
     options.escapeKeyTriggersCloseButton = true;
     options.useNativeTitleBar = true;
     options.resizable = true;
     options.componentToCentreAround = this;
-    options.launchAsync();
+    
+    if (auto* dw = options.launchAsync())
+        dw->setLookAndFeel(&getLookAndFeel());
 }
 
 void MainComponent::refreshFromState()

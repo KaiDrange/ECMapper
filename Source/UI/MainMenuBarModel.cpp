@@ -24,7 +24,6 @@ juce::PopupMenu MainMenuBarModel::getMenuForIndex(int topLevelMenuIndex, const j
 
     if (menuName == "File")
     {
-        menu.addItem(2, "Save current settings as preset...");
         menu.addItem(3, "Browse presets...");
         menu.addSeparator();
         menu.addItem(1, "Quit");

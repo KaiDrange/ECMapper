@@ -73,6 +73,7 @@ public:
     void queueKeyboardSelectionMessage(const juce::MidiMessage& message);
     void drainKeyboardSelectionMessages(std::vector<juce::MidiMessage>& messages);
     void clearKeyboardSelectionMessages();
+    juce::ValueTree getPresetNode(int slot) const;
 
 private:
     void handleAsyncUpdate() override;
@@ -113,7 +114,6 @@ private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     void syncZoneParameters(juce::MidiBuffer& midiMessages);
     static int transposeIndex(ecm::InstrumentType deviceType, ecm::Zone zone);
-    juce::ValueTree getPresetNode(int slot) const;
     juce::ValueTree getPresetSnapshot(int slot) const;
     void applyPresetState(const juce::ValueTree& snapshot);
     void refreshDerivedStateAfterPresetChange();

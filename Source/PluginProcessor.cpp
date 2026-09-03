@@ -294,8 +294,11 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& audioBuffer,
                                                           : (currentPresetSlot_ == 1 ? juce::String("Init") : juce::String("Empty"));
                 ignorePresetParameterUpdate_ = false;
             } else if (selectedIndex != lastPresetParameterIndex_) {
+                auto slot = selectedIndex + 1;
+                if (slot >= 1 && slot <= numPresetSlots && hasPresetSlot(slot))
+                    slotToLoad = slot;
+                
                 lastPresetParameterIndex_ = selectedIndex;
-                slotToLoad = selectedIndex + 1;
             }
         }
 
@@ -303,7 +306,7 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& audioBuffer,
             auto msg = metadata.getMessage();
             if (msg.isProgramChange()) {
                 auto slot = msg.getProgramChangeNumber() + 1;
-                if (slot >= 1 && slot <= numPresetSlots)
+                if (slot >= 1 && slot <= numPresetSlots && hasPresetSlot(slot))
                     slotToLoad = slot;
             }
         }
