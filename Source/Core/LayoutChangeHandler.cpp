@@ -10,9 +10,8 @@ LayoutChangeHandler::LayoutChangeHandler(osc::MessageFifo& oscSendQueue,
                                          ConfigLookup (&configLookups)[3],
                                          juce::CriticalSection& stateLock,
                                          std::function<bool()> shouldSuppressNotificationsCallback,
-                                         std::function<void(bool)> suspendProcessingCallback,
                                          std::function<void(InstrumentType, Zone)> zoneChangeCallback)
-    : oscSendQueue_(oscSendQueue), state_(state), configLookups_(configLookups), stateLock_(stateLock), shouldSuppressNotificationsCallback_(shouldSuppressNotificationsCallback), suspendProcessingCallback_(suspendProcessingCallback), zoneChangeCallback_(zoneChangeCallback) {
+    : oscSendQueue_(oscSendQueue), state_(state), configLookups_(configLookups), stateLock_(stateLock), shouldSuppressNotificationsCallback_(shouldSuppressNotificationsCallback), zoneChangeCallback_(zoneChangeCallback) {
 }
 
 Zone LayoutChangeHandler::getZoneFromTree(juce::ValueTree& vTree) {
@@ -28,8 +27,6 @@ void LayoutChangeHandler::valueTreePropertyChanged(juce::ValueTree& vTree, const
     if (shouldSuppressNotificationsCallback_ && shouldSuppressNotificationsCallback_())
         return;
 
-    if (suspendProcessingCallback_) suspendProcessingCallback_(true);
-    
     InstrumentType deviceType = InstrumentType::None;
     auto typeStr = vTree.getType().toString();
     
@@ -79,7 +76,6 @@ void LayoutChangeHandler::valueTreePropertyChanged(juce::ValueTree& vTree, const
         }
     }
 
-    if (suspendProcessingCallback_) suspendProcessingCallback_(false);
 }
 
 void LayoutChangeHandler::sendLEDMsg(LayoutWrapper::LayoutKey layoutKey) {

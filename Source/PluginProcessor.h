@@ -13,7 +13,8 @@
 #include <vector>
 
 class ECMapperAudioProcessor : public juce::AudioProcessor,
-                               public ecm::HardwareService::Listener
+                               public ecm::HardwareService::Listener,
+                               private juce::AsyncUpdater
 {
 public:
     static constexpr int numPresetSlots = 32;
@@ -74,6 +75,8 @@ public:
     void clearKeyboardSelectionMessages();
 
 private:
+    void handleAsyncUpdate() override;
+
     ecm::Logger logger { false, true };
     ecm::osc::MessageFifo hardwareToMapperQueue;
     ecm::osc::MessageFifo mapperToHardwareQueue;
@@ -104,6 +107,7 @@ private:
     bool ignorePresetParameterUpdate_ = false;
     int lastPresetParameterIndex_ = 0;
     bool presetBatchInProgress_ = false;
+    std::atomic<int> slotToLoadAsync_ { -1 };
 
     void updateGlobalSettings();
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();

@@ -11,7 +11,8 @@ OSCBridge::OSCBridge(HardwareService& hardwareService,
       hardwareToMapperQueue_(hardwareToMapperQueue),
       mapperToHardwareQueue_(mapperToHardwareQueue),
       outgoingOSCQueue_(outgoingOSCQueue),
-      logger_(logger) {
+      logger_(logger),
+      juce::Thread("OSCBridge") {
     instanceId_ = juce::Uuid().toString();
     hardwareService_.addListener(this);
     discoverySender_.connect("127.0.0.1", 12121);
@@ -19,7 +20,7 @@ OSCBridge::OSCBridge(HardwareService& hardwareService,
 
 OSCBridge::~OSCBridge() {
     hardwareService_.removeListener(this);
-    stopTimer();
+    stopThread(2000);
     const juce::ScopedLock sl(connectionsLock_);
     connections_.clear();
 }
@@ -51,15 +52,16 @@ void OSCBridge::updateClientReceiver() {
 }
 
 void OSCBridge::updateConnections() {
-    const juce::ScopedLock sl(connectionsLock_);
-    connections_.clear();
-    
     if (!hostEnabled_) {
+        const juce::ScopedLock sl(connectionsLock_);
+        connections_.clear();
         stopTimer();
         return;
     }
     
     auto devices = hardwareService_.getConnectedDevices();
+    
+    std::vector<std::unique_ptr<Connection>> newConnections;
     for (const auto& d : devices) {
         if (d.mode == ecm::DeviceMode::Local) continue;
         
@@ -104,14 +106,18 @@ void OSCBridge::updateConnections() {
                 logger_.log("OSC Receiver using global client receiver for " + d.dev);
             }
             
-            connections_.push_back(std::move(conn));
+            newConnections.push_back(std::move(conn));
         }
     }
     
-    if (hostEnabled_) {
-        if (!isTimerRunning()) startTimer(100);
-    } else {
-        stopTimer();
+    {
+        const juce::ScopedLock sl(connectionsLock_);
+        connections_ = std::move(newConnections);
+        if (hostEnabled_) {
+            if (!isTimerRunning()) startTimer(100);
+        } else {
+            stopTimer();
+        }
     }
 }
 
@@ -127,6 +133,11 @@ void OSCBridge::setSenderEnabled(bool enabled) {
     if (hostEnabled_ == enabled) return;
     hostEnabled_ = enabled;
     updateConnections();
+    
+    if (hostEnabled_)
+        startThread();
+    else
+        stopThread(1000);
 }
 
 void OSCBridge::setReceiverEnabled(bool enabled) {
@@ -156,35 +167,47 @@ void OSCBridge::setReceiverPort(int port) {
 }
 
 void OSCBridge::timerCallback() {
-    const juce::ScopedLock sl(connectionsLock_);
-    for (auto& conn : connections_) {
-        sendPing(conn.get());
-    }
-    
-    // Periodic discovery broadcast (every 2 seconds)
-    static int discoveryCounter = 0;
-    if (++discoveryCounter >= 20) {
-        discoveryCounter = 0;
-        auto devices = hardwareService_.getConnectedDevices();
-        for (const auto& d : devices) {
-            if (!d.isRemote && d.mode == ecm::DeviceMode::TransmitOSC) {
-                juce::String localIP = juce::IPAddress::getLocalAddress().toString();
-                int port = d.oscTargets.empty() ? 12130 : d.oscTargets[0].port;
-                
-                // Send to global discovery port
-                discoverySender_.send("/EigenCore/device", (int)d.type, localIP, port, instanceId_, juce::String(d.dev));
+}
 
-                // Also send to all active Transmit connections
-                for (auto& conn : connections_) {
-                    if (conn->mode == ecm::DeviceMode::TransmitOSC) {
-                        conn->sender->send("/EigenCore/device", (int)d.type, localIP, port, instanceId_, juce::String(d.dev));
+void OSCBridge::run() {
+    int discoveryCounter = 0;
+    
+    while (!threadShouldExit()) {
+        {
+            const juce::ScopedLock sl(connectionsLock_);
+            for (auto& conn : connections_) {
+                sendPing(conn.get());
+            }
+        }
+        
+        if (++discoveryCounter >= 20) {
+            discoveryCounter = 0;
+            auto devices = hardwareService_.getConnectedDevices();
+            
+            const juce::ScopedLock sl(connectionsLock_);
+            for (const auto& d : devices) {
+                if (!d.isRemote && d.mode == ecm::DeviceMode::TransmitOSC) {
+                    juce::String localIP = juce::IPAddress::getLocalAddress().toString();
+                    int port = d.oscTargets.empty() ? 12130 : d.oscTargets[0].port;
+                    
+                    discoverySender_.send("/EigenCore/device", (int)d.type, localIP, port, instanceId_, juce::String(d.dev));
+
+                    for (auto& conn : connections_) {
+                        if (conn->mode == ecm::DeviceMode::TransmitOSC) {
+                            conn->sender->send("/EigenCore/device", (int)d.type, localIP, port, instanceId_, juce::String(d.dev));
+                        }
                     }
                 }
             }
         }
+        
+        // Process outgoing messages more frequently than pings
+        for (int i = 0; i < 10; ++i) {
+            sendOutgoingMessages();
+            wait(10);
+            if (threadShouldExit()) break;
+        }
     }
-    
-    sendOutgoingMessages();
 }
 
 void OSCBridge::sendPing(Connection* conn) {
@@ -194,6 +217,7 @@ void OSCBridge::sendPing(Connection* conn) {
 }
 
 void OSCBridge::sendOutgoingMessages() {
+    const juce::ScopedLock sl(connectionsLock_);
     osc::Message msg;
     while (outgoingOSCQueue_.read(msg)) {
         if (msg.type == osc::MessageType::Device) {
@@ -214,7 +238,6 @@ void OSCBridge::sendOutgoingMessages() {
             }
         }
         
-        const juce::ScopedLock sl(connectionsLock_);
         for (auto& conn : connections_) {
             bool isPerformanceMsg = (msg.type == osc::MessageType::Key || 
                                      msg.type == osc::MessageType::Breath || 

@@ -66,6 +66,8 @@ std::vector<ConnectedDevice> HardwareService::getConnectedDevices() {
 }
 
 void HardwareService::setDeviceMode(const std::string& dev, ecm::DeviceMode mode) {
+    bool needsSync = false;
+    std::string syncDev;
     {
         const juce::ScopedLock sl(deviceListLock_);
         for (auto& d : connectedDevices_) {
@@ -81,7 +83,8 @@ void HardwareService::setDeviceMode(const std::string& dev, ecm::DeviceMode mode
                 if (state_) SettingsWrapper::saveDeviceSettings(d, *state_);
                 
                 if (d.mode == ecm::DeviceMode::Local) {
-                    syncLEDs(d.dev);
+                    needsSync = true;
+                    syncDev = d.dev;
                 } else if (d.mode == ecm::DeviceMode::TransmitOSC) {
                     if (oldMode != ecm::DeviceMode::TransmitOSC) {
                         turnOffDeviceLEDs(d.dev);
@@ -99,6 +102,7 @@ void HardwareService::setDeviceMode(const std::string& dev, ecm::DeviceMode mode
         }
     }
     listeners_.call(&Listener::deviceListChanged);
+    if (needsSync) syncLEDs(syncDev);
 }
 
 ecm::DeviceMode HardwareService::getDeviceMode(const std::string& devId) const {
@@ -147,6 +151,8 @@ void HardwareService::removeDeviceOSCTarget(const std::string& dev, int targetIn
 }
 
 void HardwareService::updateDeviceOSCTarget(const std::string& dev, int targetIndex, const juce::String& ip, int port, bool receiveLEDs) {
+    bool needsSync = false;
+    std::string syncDev;
     {
         const juce::ScopedLock sl(deviceListLock_);
         for (auto& d : connectedDevices_) {
@@ -157,7 +163,8 @@ void HardwareService::updateDeviceOSCTarget(const std::string& dev, int targetIn
                     if (state_) SettingsWrapper::saveDeviceSettings(d, *state_);
                     
                     if (receiveLEDs && !wasOn) {
-                        syncLEDs(d.dev);
+                        needsSync = true;
+                        syncDev = d.dev;
                     }
                 }
                 break;
@@ -165,6 +172,7 @@ void HardwareService::updateDeviceOSCTarget(const std::string& dev, int targetIn
         }
     }
     listeners_.call(&Listener::deviceListChanged);
+    if (needsSync) syncLEDs(syncDev);
 }
 
 bool HardwareService::isDeviceTypeInReceiveOSCMode(ecm::InstrumentType type) {
@@ -325,23 +333,25 @@ void HardwareService::connected(const char* dev, EigenApi::DeviceType dt) {
         case EigenApi::ALPHA: devType = InstrumentType::Alpha; break;
     }
     
-    const juce::ScopedLock sl(deviceListLock_);
-    connectedDevices_.erase(std::remove_if(connectedDevices_.begin(), connectedDevices_.end(),
-        [dev](const ConnectedDevice& d) { return d.dev == dev; }), connectedDevices_.end());
-    
     ConnectedDevice newDev;
-    newDev.dev = dev;
-    newDev.type = devType;
-    if (state_) SettingsWrapper::loadDeviceSettings(newDev, *state_);
-    
-    // Sanitize mode based on role
-    if (appRole_ == AppRole::Host && newDev.mode == ecm::DeviceMode::ReceiveOSC) {
-        newDev.mode = ecm::DeviceMode::Local;
-    } else if (appRole_ == AppRole::Client) {
-        newDev.mode = ecm::DeviceMode::ReceiveOSC;
-    }
+    {
+        const juce::ScopedLock sl(deviceListLock_);
+        connectedDevices_.erase(std::remove_if(connectedDevices_.begin(), connectedDevices_.end(),
+            [dev](const ConnectedDevice& d) { return d.dev == dev; }), connectedDevices_.end());
+        
+        newDev.dev = dev;
+        newDev.type = devType;
+        if (state_) SettingsWrapper::loadDeviceSettings(newDev, *state_);
+        
+        // Sanitize mode based on role
+        if (appRole_ == AppRole::Host && newDev.mode == ecm::DeviceMode::ReceiveOSC) {
+            newDev.mode = ecm::DeviceMode::Local;
+        } else if (appRole_ == AppRole::Client) {
+            newDev.mode = ecm::DeviceMode::ReceiveOSC;
+        }
 
-    connectedDevices_.push_back(newDev);
+        connectedDevices_.push_back(newDev);
+    }
     
     listeners_.call(&Listener::deviceListChanged);
     syncLEDs(newDev.dev);
@@ -356,9 +366,11 @@ void HardwareService::connected(const char* dev, EigenApi::DeviceType dt) {
 }
 
 void HardwareService::disconnected(const char* dev) {
-    const juce::ScopedLock sl(deviceListLock_);
-    connectedDevices_.erase(std::remove_if(connectedDevices_.begin(), connectedDevices_.end(),
-        [dev](const ConnectedDevice& d) { return d.dev == dev; }), connectedDevices_.end());
+    {
+        const juce::ScopedLock sl(deviceListLock_);
+        connectedDevices_.erase(std::remove_if(connectedDevices_.begin(), connectedDevices_.end(),
+            [dev](const ConnectedDevice& d) { return d.dev == dev; }), connectedDevices_.end());
+    }
     listeners_.call(&Listener::deviceListChanged);
 }
 
@@ -483,83 +495,126 @@ void HardwareService::pedal(const char* dev, unsigned long long t, unsigned peda
 void HardwareService::handleRemoteDeviceConnection(ecm::InstrumentType type, const juce::String& remoteIP, const juce::String& remoteDevId, int port) {
     std::string stdRemoteDevId = remoteDevId.toStdString();
     
-    const juce::ScopedLock sl(deviceListLock_);
-    
-    // Check if we already have this device
-    for (auto& d : connectedDevices_) {
-        if (d.isRemote && d.remoteOriginalDevId == stdRemoteDevId) {
-            auto currentTime = juce::Time::getMillisecondCounter();
-            bool wasTimedOut = (currentTime - d.lastMessageTime > 2000);
-            d.lastMessageTime = currentTime;
-            
-            bool changed = false;
-            // If we have a real IP now and previously it was "Unknown", update it
-            if (remoteIP != "Unknown" && (d.oscTargets.empty() || d.oscTargets[0].ip == "Unknown")) {
-                if (d.oscTargets.empty()) {
-                    d.oscTargets.push_back({remoteIP, port, true});
-                } else {
-                    d.oscTargets[0].ip = remoteIP;
-                    d.oscTargets[0].port = port;
-                }
-                d.dev = "Remote-" + stdRemoteDevId + "@" + remoteIP.toStdString();
-                changed = true;
-            }
-            if (port > 0 && (d.oscTargets.empty() || d.oscTargets[0].port != port)) {
-                if (d.oscTargets.empty()) {
-                    d.oscTargets.push_back({remoteIP, port, true});
-                } else {
-                    d.oscTargets[0].port = port;
-                }
-                changed = true;
-            }
-            
-            if (wasTimedOut || changed) {
-                listeners_.call(&Listener::deviceNeedsLEDSync, d.dev, d.type, false);
-            }
+    bool changed = false;
+    bool needsSync = false;
+    std::string targetDev;
 
-            if (changed) {
-                listeners_.call(&Listener::deviceListChanged);
+    {
+        const juce::ScopedLock sl(deviceListLock_);
+        
+        // Check if we already have this device
+        for (auto& d : connectedDevices_) {
+            if (d.isRemote && d.remoteOriginalDevId == stdRemoteDevId) {
+                auto currentTime = juce::Time::getMillisecondCounter();
+                bool wasTimedOut = (currentTime - d.lastMessageTime > 2000);
+                d.lastMessageTime = currentTime;
+                
+                // If we have a real IP now and previously it was "Unknown", update it
+                if (remoteIP != "Unknown" && (d.oscTargets.empty() || d.oscTargets[0].ip == "Unknown")) {
+                    if (d.oscTargets.empty()) {
+                        d.oscTargets.push_back({remoteIP, port, true});
+                    } else {
+                        d.oscTargets[0].ip = remoteIP;
+                        d.oscTargets[0].port = port;
+                    }
+                    d.dev = "Remote-" + stdRemoteDevId + "@" + remoteIP.toStdString();
+                    changed = true;
+                }
+                if (port > 0 && (d.oscTargets.empty() || d.oscTargets[0].port != port)) {
+                    if (d.oscTargets.empty()) {
+                        d.oscTargets.push_back({remoteIP, port, true});
+                    } else {
+                        d.oscTargets[0].port = port;
+                    }
+                    changed = true;
+                }
+                
+                if (wasTimedOut || changed) {
+                    needsSync = true;
+                    targetDev = d.dev;
+                }
+
+                if (needsSync || changed) {
+                    // break out and handle callbacks
+                } else {
+                    return;
+                }
+                
+                // Refactor: break and handle callbacks outside
+                goto handle_callbacks;
             }
-            return;
         }
+        
+        std::string fullRemoteDevId = "Remote-" + stdRemoteDevId + "@" + remoteIP.toStdString();
+        
+        ConnectedDevice newDev;
+        newDev.dev = fullRemoteDevId;
+        newDev.remoteOriginalDevId = stdRemoteDevId;
+        newDev.type = type;
+        newDev.isRemote = true;
+        if (state_) SettingsWrapper::loadDeviceSettings(newDev, *state_);
+        if (newDev.oscTargets.empty()) {
+            newDev.oscTargets.push_back({remoteIP, port > 0 ? port : 12120, true});
+        }
+        newDev.mode = ecm::DeviceMode::ReceiveOSC; // Default for remote devices
+        newDev.lastMessageTime = juce::Time::getMillisecondCounter();
+        connectedDevices_.push_back(newDev);
+        
+        changed = true;
+        needsSync = true;
+        targetDev = newDev.dev;
     }
     
-    std::string fullRemoteDevId = "Remote-" + stdRemoteDevId + "@" + remoteIP.toStdString();
-    
-    ConnectedDevice newDev;
-    newDev.dev = fullRemoteDevId;
-    newDev.remoteOriginalDevId = stdRemoteDevId;
-    newDev.type = type;
-    newDev.isRemote = true;
-    if (state_) SettingsWrapper::loadDeviceSettings(newDev, *state_);
-    if (newDev.oscTargets.empty()) {
-        newDev.oscTargets.push_back({remoteIP, port > 0 ? port : 12120, true});
+handle_callbacks:
+    if (changed) {
+        listeners_.call(&Listener::deviceListChanged);
     }
-    newDev.mode = ecm::DeviceMode::ReceiveOSC; // Default for remote devices
-    newDev.lastMessageTime = juce::Time::getMillisecondCounter();
-    connectedDevices_.push_back(newDev);
-    
-    listeners_.call(&Listener::deviceListChanged);
-    listeners_.call(&Listener::deviceNeedsLEDSync, newDev.dev, newDev.type, false);
+    if (needsSync) {
+        listeners_.call(&Listener::deviceNeedsLEDSync, targetDev, type, false);
+    }
 }
 
 void HardwareService::syncLEDs(const std::string& devId) {
-    const juce::ScopedLock sl(deviceListLock_);
-    for (auto& d : connectedDevices_) {
-        if (d.dev == devId) {
-            listeners_.call(&Listener::deviceNeedsLEDSync, d.dev, d.type, false);
-            break;
+    std::string dDev;
+    InstrumentType dType = InstrumentType::None;
+    bool found = false;
+
+    {
+        const juce::ScopedLock sl(deviceListLock_);
+        for (auto& d : connectedDevices_) {
+            if (d.dev == devId) {
+                dDev = d.dev;
+                dType = d.type;
+                found = true;
+                break;
+            }
         }
+    }
+
+    if (found) {
+        listeners_.call(&Listener::deviceNeedsLEDSync, dDev, dType, false);
     }
 }
 
 void HardwareService::handleLEDRequest(const std::string& devId) {
-    const juce::ScopedLock sl(deviceListLock_);
-    for (auto& d : connectedDevices_) {
-        if (d.dev == devId || d.remoteOriginalDevId == devId) {
-            listeners_.call(&Listener::deviceNeedsLEDSync, d.dev, d.type, true);
-            break;
+    std::string dDev;
+    InstrumentType dType = InstrumentType::None;
+    bool found = false;
+
+    {
+        const juce::ScopedLock sl(deviceListLock_);
+        for (auto& d : connectedDevices_) {
+            if (d.dev == devId || d.remoteOriginalDevId == devId) {
+                dDev = d.dev;
+                dType = d.type;
+                found = true;
+                break;
+            }
         }
+    }
+
+    if (found) {
+        listeners_.call(&Listener::deviceNeedsLEDSync, dDev, dType, true);
     }
 }
 
@@ -583,17 +638,19 @@ void HardwareService::updateDeviceLastMessageTime(const std::string& devId) {
 }
 
 void HardwareService::checkStaleDevices() {
-    const juce::ScopedLock sl(deviceListLock_);
-    auto currentTime = juce::Time::getMillisecondCounter();
-    
     bool changed = false;
-    for (int i = (int)connectedDevices_.size(); --i >= 0;) {
-        auto& d = connectedDevices_[i];
-        if (d.isRemote) {
-            // If no message for 60 seconds, remove
-            if (currentTime - d.lastMessageTime > 60000) {
-                connectedDevices_.erase(connectedDevices_.begin() + i);
-                changed = true;
+    {
+        const juce::ScopedLock sl(deviceListLock_);
+        auto currentTime = juce::Time::getMillisecondCounter();
+        
+        for (int i = (int)connectedDevices_.size(); --i >= 0;) {
+            auto& d = connectedDevices_[i];
+            if (d.isRemote) {
+                // If no message for 60 seconds, remove
+                if (currentTime - d.lastMessageTime > 60000) {
+                    connectedDevices_.erase(connectedDevices_.begin() + i);
+                    changed = true;
+                }
             }
         }
     }
@@ -643,15 +700,20 @@ void HardwareService::setAppRole(AppRole role) {
     
     startService(state_);
     
+    std::vector<std::string> devicesToSync;
     if (appRole_ == AppRole::Host) {
         const juce::ScopedLock sl(deviceListLock_);
         for (auto& d : connectedDevices_) {
             if (d.mode == ecm::DeviceMode::Local) {
-                syncLEDs(d.dev);
+                devicesToSync.push_back(d.dev);
             } else if (d.mode == ecm::DeviceMode::TransmitOSC) {
                 requestRemoteLEDs(d.dev);
             }
         }
+    }
+    
+    for (const auto& devId : devicesToSync) {
+        syncLEDs(devId);
     }
     
     listeners_.call(&Listener::deviceListChanged);

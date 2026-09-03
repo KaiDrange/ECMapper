@@ -13,7 +13,6 @@ public:
                         ConfigLookup (&configLookups)[3],
                         juce::CriticalSection& stateLock,
                         std::function<bool()> shouldSuppressNotificationsCallback,
-                        std::function<void(bool)> suspendProcessingCallback,
                         std::function<void(InstrumentType, Zone)> zoneChangeCallback = {});
     
     void sendLEDMsg(LayoutWrapper::LayoutKey layoutKey);
@@ -34,7 +33,6 @@ private:
     ConfigLookup (&configLookups_)[3];
     juce::CriticalSection& stateLock_;
     std::function<bool()> shouldSuppressNotificationsCallback_;
-    std::function<void(bool)> suspendProcessingCallback_;
     std::function<void(InstrumentType, Zone)> zoneChangeCallback_;
     
     int getConfigIndexFromInstrumentType(InstrumentType type) {

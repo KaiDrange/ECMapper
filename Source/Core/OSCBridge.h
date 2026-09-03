@@ -9,7 +9,8 @@ namespace ecm {
 
 class OSCBridge : public HardwareService::Listener,
                   private juce::OSCReceiver::Listener<juce::OSCReceiver::MessageLoopCallback>, 
-                  private juce::Timer {
+                  private juce::Timer,
+                  private juce::Thread {
 public:
     OSCBridge(HardwareService& hardwareService,
               osc::MessageFifo& hardwareToMapperQueue, 
@@ -38,6 +39,7 @@ private:
     void oscMessageReceived(const juce::OSCMessage& message) override;
     void oscBundleReceived(const juce::OSCBundle& bundle) override {}
     void timerCallback() override;
+    void run() override;
     
     void updateConnections();
     void updateClientReceiver();
