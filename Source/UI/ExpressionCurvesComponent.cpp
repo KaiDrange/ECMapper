@@ -21,7 +21,7 @@ juce::String labelForTarget(ExpressionCurveTarget target)
 
 } // namespace
 
-ExpressionCurvesComponent::ExpressionCurvesComponent(InstrumentType deviceType, juce::AudioProcessorValueTreeState& pluginState)
+ExpressionCurvesComponent::ExpressionCurvesComponent(InstrumentType deviceType, juce::AudioProcessorValueTreeState& pluginState, MidiService& midiService)
 {
     const std::array<ExpressionCurveTarget, 6> targets {
         ExpressionCurveTarget::Breath,
@@ -33,7 +33,7 @@ ExpressionCurvesComponent::ExpressionCurvesComponent(InstrumentType deviceType, 
     };
 
     for (int i = 0; i < 6; ++i) {
-        editors[i] = std::make_unique<ExpressionCurveEditorComponent>(deviceType, targets[(size_t)i], pluginState, labelForTarget(targets[(size_t)i]));
+        editors[i] = std::make_unique<ExpressionCurveEditorComponent>(deviceType, targets[(size_t)i], pluginState, midiService, labelForTarget(targets[(size_t)i]));
         addAndMakeVisible(editors[i].get());
     }
 }

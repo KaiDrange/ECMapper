@@ -4,10 +4,11 @@
 #include "ExpressionCurveEditorComponent.h"
 
 namespace ecm {
+class MidiService;
 
 class ExpressionCurvesComponent : public juce::Component {
 public:
-    ExpressionCurvesComponent(InstrumentType deviceType, juce::AudioProcessorValueTreeState& pluginState);
+    ExpressionCurvesComponent(InstrumentType deviceType, juce::AudioProcessorValueTreeState& pluginState, MidiService& midiService);
     void resized() override;
     void refreshFromState();
 

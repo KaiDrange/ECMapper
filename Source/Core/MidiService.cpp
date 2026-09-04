@@ -44,6 +44,11 @@ void MidiService::start(juce::AudioProcessorValueTreeState& pluginState, Hardwar
     }
 
     ehBreath_[0] = ehBreath_[1] = ehBreath_[2] = 0.0f;
+    for (int i = 0; i < 3; ++i) {
+        for (int t = 0; t < 6; ++t) {
+            recentVisualEvents_[i][t].clear();
+        }
+    }
     for (int i = 0; i < 16; ++i) {
         currentStripPBperChannel_[i] = 0;
         currentKeyPBperChannel_[i] = 0;
@@ -603,6 +608,71 @@ void MidiService::addMidiValueMessage(InstrumentType deviceType, int channel, fl
         buffer.addEvent(msg, eventTime);
 }
 
+void MidiService::recordVisualEvent(InstrumentType deviceType, ExpressionCurveTarget target, float value, int keyId) {
+    int deviceIndex = static_cast<int>(deviceType) - 1;
+    int targetIndex = static_cast<int>(target);
+    if (deviceIndex < 0 || deviceIndex > 2 || targetIndex < 0 || targetIndex > 5) return;
+    
+    const juce::ScopedLock sl(visualEventsLock_);
+    auto& events = recentVisualEvents_[deviceIndex][targetIndex];
+    
+    juce::uint32 now = juce::Time::getMillisecondCounter();
+    events.push_back({value, now, keyId});
+    
+    if (events.size() > 20) {
+        events.erase(events.begin());
+    }
+}
+
+std::vector<MidiService::VisualMarker> MidiService::getVisualMarkers(InstrumentType deviceType, ExpressionCurveTarget target) const {
+    std::vector<VisualMarker> markers;
+    int deviceIndex = static_cast<int>(deviceType) - 1;
+    if (deviceIndex < 0 || deviceIndex > 2) return markers;
+
+    juce::uint32 now = juce::Time::getMillisecondCounter();
+
+    if (target == ExpressionCurveTarget::Pressure || target == ExpressionCurveTarget::Yaw || target == ExpressionCurveTarget::Roll) {
+        const juce::ScopedLock stateGuard(stateLock_);
+        for (int c = 0; c < 3; ++c) {
+            for (int k = 0; k < 120; ++k) {
+                const auto& state = keyStates_[deviceIndex][c][k];
+                if (state.status == KeyStatus::Active) {
+                    float val = 0.0f;
+                    if (target == ExpressionCurveTarget::Pressure) {
+                        if (!state.ehPressureHistory.empty()) val = state.ehPressureHistory.back();
+                    } else if (target == ExpressionCurveTarget::Yaw) {
+                        val = state.ehYaw;
+                    } else if (target == ExpressionCurveTarget::Roll) {
+                        val = state.ehRoll;
+                    }
+                    
+                    float gain = 1.7f;
+                    bool isBipolar = (target == ExpressionCurveTarget::Yaw || target == ExpressionCurveTarget::Roll);
+                    float normalized = isBipolar ? (std::clamp(val * 1.7f, -1.0f, 1.0f)) : (std::clamp(val * gain, 0.0f, 1.0f));
+                    
+                    markers.push_back({normalized, now, c * 1000 + k});
+                }
+            }
+        }
+    } else if (target == ExpressionCurveTarget::Breath) {
+        float val = (ehBreath_[deviceIndex] < breathZeroThreshold_[deviceIndex]) 
+                           ? 0.0f : ehBreath_[deviceIndex] - breathZeroThreshold_[deviceIndex];
+        if (val > 0.0f) {
+            val = val / (1.0f - breathZeroThreshold_[deviceIndex]);
+        }
+        markers.push_back({val, now, -1});
+    } else {
+        const juce::ScopedLock sl(visualEventsLock_);
+        for (const auto& m : recentVisualEvents_[deviceIndex][static_cast<int>(target)]) {
+            if ((now - m.timestamp) <= 1500) {
+                markers.push_back(m);
+            }
+        }
+    }
+    
+    return markers;
+}
+
 void MidiService::addStripValueMessage(int channel, float ehValue, ZoneWrapper::MidiValue midiValue, juce::MidiBuffer& buffer, bool isBipolar, int eventTime) {
     if (midiValue.valueType == MidiValueType::Off || channel < 1 || channel > 16) return;
     
@@ -664,6 +734,7 @@ juce::MPEValue MidiService::calculateNoteOnVelocity(InstrumentType deviceType, K
     diff = std::clamp(diff, 0.0f, 1.0f);
     int tableIndex = std::clamp(static_cast<int>(diff * 4096.0f), 0, BezierCurve::TABLE_LENGTH - 1);
     float baseVelocity = velocityCurve_.getTableValue(tableIndex);
+    recordVisualEvent(deviceType, ExpressionCurveTarget::Velocity, baseVelocity);
     baseVelocity = applyExpressionCurve(deviceType, ExpressionCurveTarget::Velocity, baseVelocity, false);
     return juce::MPEValue::from7BitInt(static_cast<int>(baseVelocity * 126 + 1));
 }
@@ -671,6 +742,7 @@ juce::MPEValue MidiService::calculateNoteOnVelocity(InstrumentType deviceType, K
 juce::MPEValue MidiService::calculateNoteOffVelocity(InstrumentType deviceType, KeyState* state) {
     if (state->ehPressureHistory.empty()) return juce::MPEValue::from7BitInt(0);
     float norm = std::min(state->ehPressureHistory.front() * 10.0f, 1.0f);
+    recordVisualEvent(deviceType, ExpressionCurveTarget::ReleaseVelocity, norm);
     norm = applyExpressionCurve(deviceType, ExpressionCurveTarget::ReleaseVelocity, norm, false);
     return juce::MPEValue::from7BitInt(static_cast<int>(norm * 127));
 }

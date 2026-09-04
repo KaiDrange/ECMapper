@@ -1,4 +1,5 @@
 #include "ExpressionCurveEditorComponent.h"
+#include "../Core/MidiService.h"
 
 #include <algorithm>
 #include <array>
@@ -109,10 +110,11 @@ void ExpressionCurveEditorComponent::PresetSwatchButton::paintButton(juce::Graph
     juce::ignoreUnused(presetId);
 }
 
-ExpressionCurveEditorComponent::ExpressionCurveEditorComponent(InstrumentType deviceType, ExpressionCurveTarget target, juce::AudioProcessorValueTreeState& pluginState, juce::String labelText)
+ExpressionCurveEditorComponent::ExpressionCurveEditorComponent(InstrumentType deviceType, ExpressionCurveTarget target, juce::AudioProcessorValueTreeState& pluginState, MidiService& midiService, juce::String labelText)
     : deviceType(deviceType),
       target(target),
       pluginState(pluginState),
+      midiService(midiService),
       labelText(labelText.isEmpty() ? getDefaultCurveLabel(target) : labelText),
       curve(ExpressionCurveWrapper::getCurve(deviceType, target, pluginState.state)) {
     auto deviceTabIndex = static_cast<int>(deviceType) - 1;
@@ -238,6 +240,33 @@ void ExpressionCurveEditorComponent::paint(juce::Graphics& g) {
 
             g.setColour(outline);
             g.drawEllipse(handleBounds, selected ? 1.7f : 1.1f);
+        }
+    }
+
+    // Draw performance markers
+    auto markers = midiService.getVisualMarkers(deviceType, target);
+    juce::uint32 now = juce::Time::getMillisecondCounter();
+
+    for (const auto& marker : markers) {
+        float x = marker.value;
+        if (target == ExpressionCurveTarget::Yaw || target == ExpressionCurveTarget::Roll) {
+            x = (x + 1.0f) * 0.5f;
+        }
+        
+        float y = curve.getValue(x);
+        auto screen = toScreen({x, y});
+        
+        float alpha = 1.0f;
+        if (target == ExpressionCurveTarget::Velocity || target == ExpressionCurveTarget::ReleaseVelocity) {
+            float age = (now - marker.timestamp) / 1000.0f;
+            alpha = std::clamp(1.0f - age / 1.5f, 0.0f, 1.0f);
+        }
+
+        if (alpha > 0.0f) {
+            g.setColour(juce::Colours::white.withAlpha(alpha * 0.9f));
+            g.fillEllipse(screen.x - 3.5f, screen.y - 3.5f, 7.0f, 7.0f);
+            g.setColour(curveColour.withAlpha(alpha * 0.8f));
+            g.drawEllipse(screen.x - 3.5f, screen.y - 3.5f, 7.0f, 7.0f, 1.5f);
         }
     }
 }

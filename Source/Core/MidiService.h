@@ -32,6 +32,14 @@ public:
 
     bool isInitialized() const { return initialized_; }
 
+    struct VisualMarker {
+        float value;
+        juce::uint32 timestamp;
+        int keyId = -1;
+    };
+
+    std::vector<VisualMarker> getVisualMarkers(InstrumentType deviceType, ExpressionCurveTarget target) const;
+
 private:
     enum class KeyStatus {
         Off = 0,
@@ -121,6 +129,10 @@ private:
     void appendPendingMidiMessage(const juce::MidiMessage& message, int eventTime);
     
     std::list<LayoutWrapper::KeyId> chanNotePri_[16];
+
+    std::vector<VisualMarker> recentVisualEvents_[3][6];
+    mutable juce::CriticalSection visualEventsLock_;
+    void recordVisualEvent(InstrumentType deviceType, ExpressionCurveTarget target, float value, int keyId = -1);
 };
 
 } // namespace ecm

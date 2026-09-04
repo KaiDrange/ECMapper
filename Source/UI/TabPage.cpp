@@ -29,7 +29,7 @@ TabPage::TabPage(int tabIndex, InstrumentType deviceType, juce::AudioProcessorVa
     layoutPanel = std::make_unique<LayoutComponent>(deviceType, 0.4f, 1.0f, pluginState);
     addAndMakeVisible(layoutPanel.get());
 
-    expressionCurvesComponent = std::make_unique<ExpressionCurvesComponent>(deviceType, pluginState);
+    expressionCurvesComponent = std::make_unique<ExpressionCurvesComponent>(deviceType, pluginState, processor.getMidiService());
     addAndMakeVisible(expressionCurvesComponent.get());
     
     for (int i = 0; i < 3; i++) {

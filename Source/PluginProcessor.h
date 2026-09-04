@@ -66,6 +66,7 @@ public:
 
     juce::AudioProcessorValueTreeState state;
     ecm::HardwareService& getHardwareService() { return hardwareService; }
+    ecm::MidiService& getMidiService() { return midiService; }
     
     void setDeviceManager(juce::AudioDeviceManager* manager) { deviceManager = manager; }
     juce::AudioDeviceManager* getDeviceManager() { return deviceManager; }

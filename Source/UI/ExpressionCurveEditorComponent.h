@@ -6,10 +6,11 @@
 #include "AppStyle.h"
 
 namespace ecm {
+class MidiService;
 
 class ExpressionCurveEditorComponent : public juce::Component {
 public:
-    ExpressionCurveEditorComponent(InstrumentType deviceType, ExpressionCurveTarget target, juce::AudioProcessorValueTreeState& pluginState, juce::String labelText);
+    ExpressionCurveEditorComponent(InstrumentType deviceType, ExpressionCurveTarget target, juce::AudioProcessorValueTreeState& pluginState, MidiService& midiService, juce::String labelText);
 
     void paint(juce::Graphics& g) override;
     void resized() override;
@@ -43,6 +44,7 @@ private:
     InstrumentType deviceType;
     ExpressionCurveTarget target;
     juce::AudioProcessorValueTreeState& pluginState;
+    MidiService& midiService;
     juce::String labelText;
     ExpressionCurve curve;
     Handle activeHandle = Handle::None;
