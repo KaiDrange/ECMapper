@@ -2,6 +2,7 @@
 #include "PluginEditor.h"
 #include "Core/SettingsWrapper.h"
 #include <cmath>
+#include <string_view>
 
 namespace {
 
@@ -224,9 +225,9 @@ ECMapperAudioProcessor::ECMapperAudioProcessor() :
 
     presetSlotParameter_ = dynamic_cast<juce::AudioParameterChoice*>(state.getParameter(presetSlotParameterId));
     jassert(presetSlotParameter_ != nullptr);
-    currentPresetSlot_ = 1;
+    currentPresetSlot_.store(1);
     currentPresetName_ = "Init";
-    lastPresetParameterIndex_ = presetSlotParameter_->getIndex();
+    lastPresetParameterIndex_.store(presetSlotParameter_->getIndex());
     
     layoutChangeHandler = std::make_unique<ecm::LayoutChangeHandler>(
         mapperToHardwareQueue,
@@ -248,12 +249,10 @@ void ECMapperAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBloc
     logger.log("prepareToPlay() called.");
     
     updateGlobalSettings();
-    {
-        const juce::ScopedLock stateGuard(presetStateLock_);
-        juce::MidiBuffer emptyMidi;
-        syncZoneParameters(emptyMidi);
-    }
+    juce::MidiBuffer emptyMidi;
+    syncZoneParameters(emptyMidi);
     midiService.start(state, &hardwareService);
+    publishRuntimeConfigSnapshot();
     hardwareService.startService(&state.state);
     oscBridge.setSenderEnabled(true);
     oscBridge.setReceiverEnabled(true);
@@ -283,125 +282,141 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& audioBuffer,
         audioBuffer.clear();
 
     int slotToLoad = -1;
-    {
-        const juce::ScopedLock stateGuard(presetStateLock_);
-        if (presetSlotParameter_ != nullptr) {
-            auto selectedIndex = presetSlotParameter_->getIndex();
-            if (ignorePresetParameterUpdate_) {
-                lastPresetParameterIndex_ = selectedIndex;
-                currentPresetSlot_ = juce::jlimit(1, numPresetSlots, selectedIndex + 1);
-                auto presetNode = getPresetNode(currentPresetSlot_);
-                currentPresetName_ = presetNode.isValid() ? presetNode.getProperty("name", juce::String()).toString()
-                                                          : (currentPresetSlot_ == 1 ? juce::String("Init") : juce::String("Empty"));
-                ignorePresetParameterUpdate_ = false;
-            } else if (selectedIndex != lastPresetParameterIndex_) {
-                auto slot = selectedIndex + 1;
-                if (slot >= 1 && slot <= numPresetSlots && hasPresetSlot(slot))
-                    slotToLoad = slot;
-                
-                lastPresetParameterIndex_ = selectedIndex;
-            }
-        }
+    collectPresetSlotLoadRequests(midiMessages, slotToLoad);
+    const auto timing = calculateBlockTiming(audioBuffer);
+    prepareMidiMessagesForBlock(midiMessages);
+    processHardwareMessagesForBlock(timing, midiMessages, slotToLoad);
+    dispatchPresetSlotLoad(slotToLoad);
+    midiService.reduceBreath(midiMessages, timing.numSamples - 1);
+}
 
-        for (const auto metadata : midiMessages) {
-            auto msg = metadata.getMessage();
-            if (msg.isProgramChange()) {
-                auto slot = msg.getProgramChangeNumber() + 1;
-                if (slot >= 1 && slot <= numPresetSlots && hasPresetSlot(slot))
-                    slotToLoad = slot;
-            }
-        }
-    }
+ECMapperAudioProcessor::BlockTiming ECMapperAudioProcessor::calculateBlockTiming(const juce::AudioBuffer<float>& audioBuffer)
+{
+    BlockTiming timing;
+    timing.numSamples = audioBuffer.getNumSamples();
+    timing.sampleRate = getSampleRate();
+    timing.blockDurationUs = 1000000.0 * timing.numSamples / timing.sampleRate;
+    timing.nowUs = juce::Time::highResolutionTicksToSeconds(juce::Time::getHighResolutionTicks()) * 1000000.0;
 
-    const juce::ScopedLock stateGuard(presetStateLock_);
-
-    const int numSamples = audioBuffer.getNumSamples();
-    const double sampleRate = getSampleRate();
-    const double blockDurationUs = 1000000.0 * numSamples / sampleRate;
-    const double nowUs = juce::Time::highResolutionTicksToSeconds(juce::Time::getHighResolutionTicks()) * 1000000.0;
-    
-    // If this is the first block, or if there's a huge gap, reset our timeline
-    if (lastBlockEndUs == 0.0 || std::abs(nowUs - lastBlockEndUs) > 500000.0) {
-        lastBlockEndUs = nowUs - blockDurationUs;
+    if (lastBlockEndUs == 0.0 || std::abs(timing.nowUs - lastBlockEndUs) > 500000.0) {
+        lastBlockEndUs = timing.nowUs - timing.blockDurationUs;
         localClockOffset = 0.0;
         remoteClockOffsets.clear();
     }
 
-    const double blockStartUs = lastBlockEndUs;
-    const double blockEndUs = blockStartUs + blockDurationUs;
-    
-    // Update for next time
-    lastBlockEndUs = blockEndUs;
+    timing.blockStartUs = lastBlockEndUs;
+    lastBlockEndUs = timing.blockStartUs + timing.blockDurationUs;
+    return timing;
+}
 
+void ECMapperAudioProcessor::prepareMidiMessagesForBlock(juce::MidiBuffer& midiMessages)
+{
     syncZoneParameters(midiMessages);
 
     for (const auto metadata : midiMessages) {
-        auto msg = metadata.getMessage();
+        const auto msg = metadata.getMessage();
         if (msg.isNoteOn() || msg.isNoteOff())
             queueKeyboardSelectionMessage(msg);
     }
 
     midiMessages.clear();
-    
+
     if (!layoutChangeHandler->layoutMidiRPNSent) {
         midiService.createLayoutRPNs(midiMessages);
         layoutChangeHandler->layoutMidiRPNSent = true;
     }
 
     midiService.drainPendingMidiMessages(midiMessages, 0);
-    
+}
+
+void ECMapperAudioProcessor::processHardwareMessagesForBlock(const BlockTiming& timing, juce::MidiBuffer& midiMessages, int& slotToLoad)
+{
     ecm::osc::Message msg;
-    ecm::osc::Message outgoingMsg;
-    
+
     while (hardwareToMapperQueue.read(msg)) {
-        if (msg.type == ecm::osc::MessageType::Device) {
-            layoutChangeHandler->sendLEDMsgForAllKeys(msg.device);
+        handleHardwareMessage(msg, timing, midiMessages, slotToLoad);
+    }
+}
+
+void ECMapperAudioProcessor::handleHardwareMessage(const ecm::osc::Message& msg, const BlockTiming& timing, juce::MidiBuffer& midiMessages, int& slotToLoad)
+{
+    if (msg.type == ecm::osc::MessageType::Device) {
+        layoutChangeHandler->sendLEDMsgForAllKeys(msg.device);
+        return;
+    }
+
+    int sampleOffset = 0;
+    if (msg.timestamp > 0) {
+        auto localMsgTime = static_cast<double>(msg.timestamp);
+
+        if (msg.isRemote) {
+            const std::string_view devId { msg.devId };
+            auto it = remoteClockOffsets.find(devId);
+            if (it == remoteClockOffsets.end()) {
+                it = remoteClockOffsets.emplace(std::string(devId), timing.nowUs - static_cast<double>(msg.timestamp)).first;
+            }
+            localMsgTime += it->second;
         } else {
-            int sampleOffset = 0;
-            if (msg.timestamp > 0) {
-                auto localMsgTime = static_cast<double>(msg.timestamp);
-                
-                if (msg.isRemote) {
-                    juce::String devId(msg.devId);
-                    if (!remoteClockOffsets.contains(devId)) {
-                        remoteClockOffsets[devId] = nowUs - static_cast<double>(msg.timestamp);
-                    }
-                    localMsgTime += remoteClockOffsets[devId];
-                } else {
-                    if (localClockOffset == 0.0) {
-                        localClockOffset = nowUs - static_cast<double>(msg.timestamp);
-                    }
-                    localMsgTime += localClockOffset;
-                }
+            if (localClockOffset == 0.0)
+                localClockOffset = timing.nowUs - static_cast<double>(msg.timestamp);
+            localMsgTime += localClockOffset;
+        }
 
-                // Map hardware timestamp to sample offset within the block
-                const double offsetUs = localMsgTime - blockStartUs;
-                sampleOffset = static_cast<int>(offsetUs * sampleRate / 1000000.0);
-                sampleOffset = std::clamp(sampleOffset, 0, numSamples - 1);
-            }
+        const double offsetUs = localMsgTime - timing.blockStartUs;
+        sampleOffset = static_cast<int>(offsetUs * timing.sampleRate / 1000000.0);
+        sampleOffset = std::clamp(sampleOffset, 0, timing.numSamples - 1);
+    }
 
-            outgoingMsg.type = ecm::osc::MessageType::Undefined;
-            midiService.processMessage(msg, outgoingMsg, midiMessages, sampleOffset);
-            if (outgoingMsg.type == ecm::osc::MessageType::LED) {
-                if (hardwareService.getDeviceMode(msg.devId) == ecm::DeviceMode::Local) {
-                    mapperToHardwareQueue.add(outgoingMsg);
-                }
-            } else if (outgoingMsg.type == ecm::osc::MessageType::AppCtrl) {
-                if (outgoingMsg.course == 1) { // Preset
-                    const int slot = static_cast<int>(outgoingMsg.value);
-                    if (slot >= 1 && slot <= numPresetSlots && hasPresetSlot(slot))
-                        slotToLoad = slot;
-                }
-            }
+    ecm::osc::Message outgoingMsg;
+    outgoingMsg.type = ecm::osc::MessageType::Undefined;
+    int presetSlotRequest = -1;
+    midiService.processMessage(msg, outgoingMsg, midiMessages, sampleOffset, &presetSlotRequest);
+
+    if (outgoingMsg.type == ecm::osc::MessageType::LED) {
+        if (hardwareService.getDeviceMode(msg.devId) == ecm::DeviceMode::Local)
+            mapperToHardwareQueue.add(outgoingMsg);
+    } else {
+        queuePresetSlotLoad(presetSlotRequest, slotToLoad);
+    }
+}
+
+void ECMapperAudioProcessor::dispatchPresetSlotLoad(const int slotToLoad)
+{
+    if (slotToLoad == -1)
+        return;
+
+    slotToLoadAsync_ = slotToLoad;
+    triggerAsyncUpdate();
+}
+
+void ECMapperAudioProcessor::publishRuntimeConfigSnapshot()
+{
+    midiService.setRuntimeConfigSnapshot(std::make_shared<ecm::MidiService::RuntimeConfigSnapshot>(configLookups));
+}
+
+void ECMapperAudioProcessor::collectPresetSlotLoadRequests(const juce::MidiBuffer& midiMessages, int& slotToLoad)
+{
+    if (presetSlotParameter_ != nullptr) {
+        const auto selectedIndex = presetSlotParameter_->getIndex();
+        if (ignorePresetParameterUpdate_.exchange(false)) {
+            lastPresetParameterIndex_.store(selectedIndex);
+        } else if (selectedIndex != lastPresetParameterIndex_.load()) {
+            queuePresetSlotLoad(selectedIndex + 1, slotToLoad);
+            lastPresetParameterIndex_.store(selectedIndex);
         }
     }
 
-    if (slotToLoad != -1) {
-        slotToLoadAsync_ = slotToLoad;
-        triggerAsyncUpdate();
+    for (const auto metadata : midiMessages) {
+        const auto msg = metadata.getMessage();
+        if (msg.isProgramChange())
+            queuePresetSlotLoad(msg.getProgramChangeNumber() + 1, slotToLoad);
     }
-    
-    midiService.reduceBreath(midiMessages, numSamples - 1);
+}
+
+void ECMapperAudioProcessor::queuePresetSlotLoad(const int slot, int& slotToLoad) const
+{
+    if (slot >= 1 && slot <= numPresetSlots)
+        slotToLoad = slot;
 }
 
 juce::AudioProcessorEditor* ECMapperAudioProcessor::createEditor() {
@@ -438,22 +453,23 @@ void ECMapperAudioProcessor::setStateInformation(const void* data, const int siz
             if (bankState.isValid())
                 presetBankState_ = bankState;
         } else if (tree.hasType(state.state.getType())) {
-            const juce::ScopedValueSetter<bool> batchGuard(presetBatchInProgress_, true);
+            const juce::ScopedValueSetter batchGuard(presetBatchInProgress_, true);
             state.replaceState(tree);
         }
 
         presetSlotParameter_ = dynamic_cast<juce::AudioParameterChoice*>(state.getParameter(presetSlotParameterId));
-        lastPresetParameterIndex_ = presetSlotParameter_ != nullptr ? presetSlotParameter_->getIndex() : 0;
-        currentPresetSlot_ = juce::jlimit(1, numPresetSlots, lastPresetParameterIndex_ + 1);
+        const auto lastPresetIndex = presetSlotParameter_ != nullptr ? presetSlotParameter_->getIndex() : 0;
+        lastPresetParameterIndex_.store(lastPresetIndex);
+        currentPresetSlot_.store(juce::jlimit(1, numPresetSlots, lastPresetIndex + 1));
         {
-            const auto presetNode = getPresetNode(currentPresetSlot_);
+            const auto presetNode = getPresetNode(currentPresetSlot_.load());
             currentPresetName_ = presetNode.isValid() ? presetNode.getProperty("name", juce::String()).toString()
-                                                      : (currentPresetSlot_ == 1 ? juce::String("Init") : juce::String("Empty"));
+                                                      : (currentPresetSlot_.load() == 1 ? juce::String("Init") : juce::String("Empty"));
         }
         ensureInitPresetExists();
-        ignorePresetParameterUpdate_ = true;
+        ignorePresetParameterUpdate_.store(true);
         {
-            const juce::ScopedValueSetter<bool> batchGuard(presetBatchInProgress_, true);
+            const juce::ScopedValueSetter batchGuard(presetBatchInProgress_, true);
             refreshDerivedStateAfterPresetChange();
         }
     }
@@ -501,7 +517,7 @@ juce::String ECMapperAudioProcessor::getCurrentPresetName() const
 juce::String ECMapperAudioProcessor::getCurrentPresetDisplayName() const
 {
     const juce::ScopedLock stateGuard(presetStateLock_);
-    return getPresetSlotDisplayName(currentPresetSlot_);
+    return getPresetSlotDisplayName(currentPresetSlot_.load());
 }
 
 juce::String ECMapperAudioProcessor::getPresetSlotDisplayName(const int slot) const
@@ -579,16 +595,17 @@ juce::ValueTree ECMapperAudioProcessor::getPresetSnapshot(const int slot) const
 void ECMapperAudioProcessor::setCurrentPresetSelection(const int slot, const juce::String& name)
 {
     const juce::ScopedLock stateGuard(presetStateLock_);
-    currentPresetSlot_ = juce::jlimit(1, numPresetSlots, slot);
+    currentPresetSlot_.store(juce::jlimit(1, numPresetSlots, slot));
     currentPresetName_ = name;
 
     if (presetSlotParameter_ != nullptr) {
-        const auto index = currentPresetSlot_ - 1;
+        const auto index = currentPresetSlot_.load() - 1;
         if (presetSlotParameter_->getIndex() != index) {
-            const juce::ScopedValueSetter guard(ignorePresetParameterUpdate_, true);
+            ignorePresetParameterUpdate_.store(true);
             presetSlotParameter_->setValueNotifyingHost(presetSlotParameter_->convertTo0to1(static_cast<float>(index)));
+            ignorePresetParameterUpdate_.store(false);
         }
-        lastPresetParameterIndex_ = index;
+        lastPresetParameterIndex_.store(index);
     }
 }
 
@@ -672,6 +689,7 @@ void ECMapperAudioProcessor::refreshDerivedStateAfterPresetChange()
 
     transposeCacheInitialised_ = true;
     enableCacheInitialised_ = true;
+    publishRuntimeConfigSnapshot();
 }
 
 juce::ValueTree ECMapperAudioProcessor::makeComparableState(juce::ValueTree stateTree)
@@ -693,6 +711,9 @@ void ECMapperAudioProcessor::handleAsyncUpdate()
     const int slot = slotToLoadAsync_.exchange(-1);
     if (slot != -1)
         loadPresetSlot(slot);
+
+    if (runtimeConfigRefreshRequested_.exchange(false))
+        publishRuntimeConfigSnapshot();
 }
 
 void ECMapperAudioProcessor::loadStandalonePresetBank()
@@ -793,7 +814,7 @@ bool ECMapperAudioProcessor::deletePresetSlot(const int slot)
 
         ensureInitPresetExists();
 
-        if (currentPresetSlot_ == slot)
+        if (currentPresetSlot_.load() == slot)
         {
             const auto initSnapshot = getPresetSnapshot(1);
             if (initSnapshot.isValid())
@@ -967,8 +988,11 @@ void ECMapperAudioProcessor::syncZoneParameters(const juce::MidiBuffer& midiMess
     }
 
     for (int device = 0; device < 3; ++device) {
-        if (deviceNeedsUpdate[device])
-            configLookups[device].updateAll();
+        if (deviceNeedsUpdate[device]) {
+            runtimeConfigRefreshRequested_.store(true);
+            triggerAsyncUpdate();
+            break;
+        }
     }
 }
 
@@ -1034,7 +1058,7 @@ void ECMapperAudioProcessor::ensureInitPresetExists()
     preset.addChild(snapshot, -1, nullptr);
     presetBankState_.addChild(preset, -1, nullptr);
 
-    if (currentPresetSlot_ == 1)
+    if (currentPresetSlot_.load() == 1)
         currentPresetName_ = "Init";
 }
 

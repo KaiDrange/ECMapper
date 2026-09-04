@@ -3,7 +3,9 @@
 #include "ConfigLookup.h"
 #include "BezierCurve.h"
 #include "OSCMessage.h"
+#include <atomic>
 #include <deque>
+#include <memory>
 #include <vector>
 #include <list>
 
@@ -13,19 +15,26 @@ class HardwareService;
 
 class MidiService {
 public:
+    struct RuntimeConfigSnapshot {
+        std::array<ConfigLookup, 3> configLookups;
+        RuntimeConfigSnapshot(const ConfigLookup (&source)[3])
+            : configLookups { source[0], source[1], source[2] } {}
+    };
+
     MidiService(ConfigLookup (&configLookups)[3], juce::CriticalSection& stateLock);
     ~MidiService();
     
     void start(juce::AudioProcessorValueTreeState& pluginState, HardwareService* hs = nullptr);
     void stop();
     
-    void processMessage(osc::Message& oscMsg, osc::Message& outgoingOscMsg, juce::MidiBuffer& midiBuffer, int eventTime = 0);
+    void processMessage(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, juce::MidiBuffer& midiBuffer, int eventTime = 0, int* presetSlotRequest = nullptr);
     void handleRemotePerformanceData(osc::Message& oscMsg, juce::MidiBuffer& midiBuffer, int eventTime = 0);
     void resendLEDs(const char* devId, InstrumentType type, osc::MessageFifo* targetQueue = nullptr, bool onlyNonOff = false);
     void reduceBreath(juce::MidiBuffer& buffer, int eventTime = 0);
     void createLayoutRPNs(juce::MidiBuffer& buffer);
     void queueTransposeChangeFlush(InstrumentType deviceType, Zone zone);
     void drainPendingMidiMessages(juce::MidiBuffer& buffer, int eventTime = 0);
+    void setRuntimeConfigSnapshot(std::shared_ptr<RuntimeConfigSnapshot> snapshot);
 
     void setOSCBroadcastQueue(osc::MessageFifo* queue) { oscBroadcastQueue_ = queue; }
     void setLocalHardwareQueue(osc::MessageFifo* queue) { localHardwareQueue_ = queue; }
@@ -78,6 +87,7 @@ private:
     
     ConfigLookup (&configLookups_)[3];
     juce::CriticalSection& stateLock_;
+    std::atomic<std::shared_ptr<RuntimeConfigSnapshot>> runtimeConfigSnapshot_;
     osc::MessageFifo* oscBroadcastQueue_ = nullptr;
     osc::MessageFifo* localHardwareQueue_ = nullptr;
     HardwareService* hardwareService_ = nullptr;
@@ -85,24 +95,24 @@ private:
     BezierCurve velocityCurve_ { 0.0f, 0.0f, 0.0f, 1.0f, 0.5f, 0.6f, 1.0f, 1.0f };
     bool initialized_ = false;
 
-    void processNoteKey(osc::Message& oscMsg, ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime);
-    void processCmdKey(osc::Message& oscMsg, osc::Message& outgoingOscMsg, ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime);
-    void processAppCtrlKey(osc::Message& oscMsg, osc::Message& outgoingOscMsg, ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime);
+    void processNoteKey(const osc::Message& oscMsg, const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime);
+    void processCmdKey(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime);
+    void processAppCtrlKey(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime, int* presetSlotRequest);
     
-    void createNoteOn(ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime);
-    void createNoteOff(ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime);
-    void createNoteHold(ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime);
+    void createNoteOn(const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime);
+    void createNoteOff(const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime);
+    void createNoteHold(const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime);
     
-    void createMidiMsgOn(ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, osc::Message& outgoingOscMsg, const char* devId, int eventTime);
-    void createMidiMsgOff(ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, osc::Message& outgoingOscMsg, const char* devId, int eventTime);
+    void createMidiMsgOn(const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, osc::Message& outgoingOscMsg, const char* devId, int eventTime);
+    void createMidiMsgOff(const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, osc::Message& outgoingOscMsg, const char* devId, int eventTime);
     void createAllNotesOff(juce::MidiBuffer& buffer, int eventTime = 0);
     
     void addMidiValueMessage(InstrumentType deviceType, int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, int noteNo, juce::MidiBuffer& buffer, bool isBipolar, ExpressionCurveTarget curveTarget, int eventTime);
     void addStripValueMessage(int channel, float ehValue, ZoneWrapper::MidiValue midiValue, juce::MidiBuffer& buffer, bool isBipolar, int eventTime);
     
-    void createBreath(int deviceIndex, ConfigLookup& keyLookup, juce::MidiBuffer& buffer, int eventTime);
-    void createStripAbsolute(int deviceIndex, int stripIndex, int zoneIndex, ConfigLookup& keyLookup, juce::MidiBuffer& buffer, int eventTime);
-    void createStripRelative(int deviceIndex, int stripIndex, int zoneIndex, ConfigLookup& keyLookup, juce::MidiBuffer& buffer, int eventTime);
+    void createBreath(int deviceIndex, const ConfigLookup& keyLookup, juce::MidiBuffer& buffer, int eventTime);
+    void createStripAbsolute(int deviceIndex, int stripIndex, int zoneIndex, const ConfigLookup& keyLookup, juce::MidiBuffer& buffer, int eventTime);
+    void createStripRelative(int deviceIndex, int stripIndex, int zoneIndex, const ConfigLookup& keyLookup, juce::MidiBuffer& buffer, int eventTime);
 
     void clearAllAppCtrlTransposes(int deviceIndex);
 

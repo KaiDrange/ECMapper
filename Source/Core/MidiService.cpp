@@ -70,10 +70,19 @@ void MidiService::stop() {
     }
 }
 
-void MidiService::processMessage(osc::Message& oscMsg, osc::Message& outgoingOscMsg, juce::MidiBuffer& midiBuffer, int eventTime) {
+void MidiService::setRuntimeConfigSnapshot(std::shared_ptr<RuntimeConfigSnapshot> snapshot)
+{
+    runtimeConfigSnapshot_.store(std::move(snapshot), std::memory_order_release);
+}
+
+void MidiService::processMessage(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, juce::MidiBuffer& midiBuffer, int eventTime, int* presetSlotRequest) {
     if (!initialized_) return;
 
-    const juce::ScopedLock stateGuard(stateLock_);
+    auto snapshot = runtimeConfigSnapshot_.load(std::memory_order_acquire);
+    if (snapshot == nullptr)
+        return;
+
+    const auto& runtimeLookups = snapshot->configLookups;
     
     std::strncpy(outgoingOscMsg.devId, oscMsg.devId, 63);
     outgoingOscMsg.device = oscMsg.device;
@@ -86,8 +95,8 @@ void MidiService::processMessage(osc::Message& oscMsg, osc::Message& outgoingOsc
         return;
     }
 
-    const juce::ScopedLock sl(configLookups_[deviceIndex].getLock());
-    
+    const auto& deviceLookups = runtimeLookups[(size_t)deviceIndex];
+
     switch (oscMsg.type) {
         case osc::MessageType::Key: {
             if (oscMsg.course >= 3 || oscMsg.key >= 120) break;
@@ -98,7 +107,7 @@ void MidiService::processMessage(osc::Message& oscMsg, osc::Message& outgoingOsc
             while (keyState->ehPressureHistory.size() > PRESSURE_HISTORY_LENGTH)
                 keyState->ehPressureHistory.pop_front();
 
-            ConfigLookup::Key& keyLookup = configLookups_[deviceIndex].keys[oscMsg.course][oscMsg.key];
+            const ConfigLookup::Key& keyLookup = deviceLookups.keys[oscMsg.course][oscMsg.key];
             if (keyLookup.output == MidiChannelType::Undefined) {
                 if (oscMsg.active)
                      juce::Logger::writeToLog("MidiService: Key press on undefined mapping - Course: " + juce::String(oscMsg.course) + ", Key: " + juce::String(oscMsg.key) + " for device " + juce::String(deviceIndex + 1));
@@ -110,7 +119,7 @@ void MidiService::processMessage(osc::Message& oscMsg, osc::Message& outgoingOsc
             else if (keyLookup.mapType == KeyMappingType::MidiMsg)
                 processCmdKey(oscMsg, outgoingOscMsg, keyLookup, keyState, midiBuffer, eventTime);
             else if (keyLookup.mapType == KeyMappingType::AppCtrl)
-                processAppCtrlKey(oscMsg, outgoingOscMsg, keyLookup, keyState, midiBuffer, eventTime);
+                processAppCtrlKey(oscMsg, outgoingOscMsg, keyLookup, keyState, midiBuffer, eventTime, presetSlotRequest);
             break;
         }
         case osc::MessageType::Breath: {
@@ -118,15 +127,15 @@ void MidiService::processMessage(osc::Message& oscMsg, osc::Message& outgoingOsc
             ehBreath_[deviceIndex] = std::abs(oscMsg.value);
             if ((ehBreath_[deviceIndex] > breathZeroThreshold_[deviceIndex]) || 
                 (ehBreath_[deviceIndex] < breathZeroThreshold_[deviceIndex] && prevBreathValue > 0.0f)) {
-                createBreath(deviceIndex, configLookups_[deviceIndex], midiBuffer, eventTime);
+                createBreath(deviceIndex, deviceLookups, midiBuffer, eventTime);
             }
             break;
         }
         case osc::MessageType::Strip: {
-            int stripIndex = static_cast<int>(oscMsg.strip) - 1;
+            const int stripIndex = static_cast<int>(oscMsg.strip) - 1;
             if (stripIndex < 0 || stripIndex > 1) break;
-            
-            bool stripOff = !oscMsg.active;
+
+            const bool stripOff = !oscMsg.active;
             ehStrips_[stripIndex][deviceIndex] = stripOff ? 0.0f : std::max((oscMsg.value - stripZeroThreshold_[deviceIndex]) * stripGain_[deviceIndex], 0.0f);
             
             if (stripOff) {
@@ -137,16 +146,16 @@ void MidiService::processMessage(osc::Message& oscMsg, osc::Message& outgoingOsc
 
             for (int i = 0; i < 3; i++) {
                 if (!stripOff) {
-                    createStripAbsolute(deviceIndex, stripIndex, i, configLookups_[deviceIndex], midiBuffer, eventTime);
+                    createStripAbsolute(deviceIndex, stripIndex, i, deviceLookups, midiBuffer, eventTime);
                 }
-                createStripRelative(deviceIndex, stripIndex, i, configLookups_[deviceIndex], midiBuffer, eventTime);
+                createStripRelative(deviceIndex, stripIndex, i, deviceLookups, midiBuffer, eventTime);
             }
             break;
         }
         default: break;
     }
 
-    bool controlLights = configLookups_[deviceIndex].controlLights;
+    bool controlLights = deviceLookups.controlLights;
     if (controlLights && hardwareService_ && std::strlen(outgoingOscMsg.devId) > 0) {
         controlLights = hardwareService_->isDeviceAuthorizedForLEDs(outgoingOscMsg.devId);
     }
@@ -155,7 +164,7 @@ void MidiService::processMessage(osc::Message& oscMsg, osc::Message& outgoingOsc
         outgoingOscMsg.type = osc::MessageType::Undefined;
 }
 
-void MidiService::processNoteKey(osc::Message& oscMsg, ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime) {
+void MidiService::processNoteKey(const osc::Message& oscMsg, const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime) {
     state->messageCount++;
 
     if (!oscMsg.active) {
@@ -169,7 +178,7 @@ void MidiService::processNoteKey(osc::Message& oscMsg, ConfigLookup::Key& keyLoo
     }
 }
 
-void MidiService::processCmdKey(osc::Message& oscMsg, osc::Message& outgoingOscMsg, ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime) {
+void MidiService::processCmdKey(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime) {
     if (!oscMsg.active) {
         if (keyLookup.cmdType == 2) // Momentary
             createMidiMsgOff(keyLookup, state, buffer, outgoingOscMsg, oscMsg.devId, eventTime);
@@ -182,15 +191,14 @@ void MidiService::processCmdKey(osc::Message& oscMsg, osc::Message& outgoingOscM
     state->status = oscMsg.active ? KeyStatus::Active : KeyStatus::Off;
 }
 
-void MidiService::processAppCtrlKey(osc::Message& oscMsg, osc::Message& outgoingOscMsg, ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime) {
+void MidiService::processAppCtrlKey(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime, int* presetSlotRequest) {
     int deviceIndex = static_cast<int>(keyLookup.keyId.deviceType) - 1;
     if (deviceIndex < 0 || deviceIndex > 2) return;
 
     if (keyLookup.appCtrlType == 1) { // Preset
         if (oscMsg.active && state->status == KeyStatus::Off) {
-            outgoingOscMsg.type = osc::MessageType::AppCtrl;
-            outgoingOscMsg.course = 1;
-            outgoingOscMsg.value = (float)keyLookup.appCtrlValue;
+            if (presetSlotRequest != nullptr)
+                *presetSlotRequest = keyLookup.appCtrlValue;
         }
     } else if (keyLookup.appCtrlType == 2) { // Transpose
         int mode = keyLookup.cmdType; // 1 = Latch, 2 = Momentary, 3 = Trigger
@@ -250,7 +258,7 @@ void MidiService::clearAllAppCtrlTransposes(int deviceIndex) {
 
 void MidiService::handleRemotePerformanceData(osc::Message& oscMsg, juce::MidiBuffer& midiBuffer, int eventTime) {
     osc::Message outgoingMsg;
-    processMessage(oscMsg, outgoingMsg, midiBuffer, eventTime);
+    processMessage(oscMsg, outgoingMsg, midiBuffer, eventTime, nullptr);
 }
 
 void MidiService::drainPendingMidiMessages(juce::MidiBuffer& buffer, int eventTime) {
@@ -324,16 +332,19 @@ void MidiService::resendLEDs(const char* devId, InstrumentType type, osc::Messag
 }
 
 void MidiService::reduceBreath(juce::MidiBuffer& buffer, int eventTime) {
-    const juce::ScopedLock stateGuard(stateLock_);
+    auto snapshot = runtimeConfigSnapshot_.load(std::memory_order_acquire);
+    if (snapshot == nullptr)
+        return;
+
+    const auto& runtimeLookups = snapshot->configLookups;
     for (int i = 0; i < 3; i++) {
-        const juce::ScopedLock sl(configLookups_[i].getLock());
         if (ehBreath_[i] <= 0.0f) continue;
         ehBreath_[i] = (ehBreath_[i] > breathZeroThreshold_[i]) ? ehBreath_[i] - 0.005f : 0.0f;
-        createBreath(i, configLookups_[i], buffer, eventTime);
+        createBreath(i, runtimeLookups[i], buffer, eventTime);
     }
 }
 
-void MidiService::createBreath(int deviceIndex, ConfigLookup& keyLookup, juce::MidiBuffer& buffer, int eventTime) {
+void MidiService::createBreath(int deviceIndex, const ConfigLookup& keyLookup, juce::MidiBuffer& buffer, int eventTime) {
     float val = (ehBreath_[deviceIndex] < breathZeroThreshold_[deviceIndex]) 
                        ? 0.0f : ehBreath_[deviceIndex] - breathZeroThreshold_[deviceIndex];
     
@@ -347,12 +358,12 @@ void MidiService::createBreath(int deviceIndex, ConfigLookup& keyLookup, juce::M
     }
 }
 
-void MidiService::createStripAbsolute(int deviceIndex, int stripIndex, int zoneIndex, ConfigLookup& keyLookup, juce::MidiBuffer& buffer, int eventTime) {
+void MidiService::createStripAbsolute(int deviceIndex, int stripIndex, int zoneIndex, const ConfigLookup& keyLookup, juce::MidiBuffer& buffer, int eventTime) {
     auto& strip = (stripIndex == 0) ? keyLookup.strip1[zoneIndex] : keyLookup.strip2[zoneIndex];
     addStripValueMessage(strip.channel, ehStrips_[stripIndex][deviceIndex], strip.absMidiValue, buffer, false, eventTime);
 }
 
-void MidiService::createStripRelative(int deviceIndex, int stripIndex, int zoneIndex, ConfigLookup& keyLookup, juce::MidiBuffer& buffer, int eventTime) {
+void MidiService::createStripRelative(int deviceIndex, int stripIndex, int zoneIndex, const ConfigLookup& keyLookup, juce::MidiBuffer& buffer, int eventTime) {
     auto& strip = (stripIndex == 0) ? keyLookup.strip1[zoneIndex] : keyLookup.strip2[zoneIndex];
     float relValue = (relStart_ehStrips_[stripIndex][deviceIndex] < 0.0f) 
                    ? 0.0f : relStart_ehStrips_[stripIndex][deviceIndex] - ehStrips_[stripIndex][deviceIndex];
@@ -364,7 +375,7 @@ void MidiService::createStripRelative(int deviceIndex, int stripIndex, int zoneI
     addStripValueMessage(strip.channel, relValue, strip.relMidiValue, buffer, true, eventTime);
 }
 
-void MidiService::createNoteOn(ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime) {
+void MidiService::createNoteOn(const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime) {
     int deviceIndex = static_cast<int>(keyLookup.keyId.deviceType) - 1;
     int totalTranspose = (deviceIndex >= 0 && deviceIndex < 3) ? (latchTranspose_[deviceIndex] + momentaryTranspose_[deviceIndex]) : 0;
 
@@ -403,7 +414,7 @@ void MidiService::createNoteOn(ConfigLookup::Key& keyLookup, KeyState* state, ju
     state->status = KeyStatus::Active;
 }
 
-void MidiService::createNoteOff(ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime) {
+void MidiService::createNoteOff(const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime) {
     int channel = state->midiChannel;
     if (keyLookup.output == MidiChannelType::MPE_Low && lowerChanAssigner_)
         lowerChanAssigner_->noteOff(keyLookup.notes[0], channel);
@@ -435,7 +446,7 @@ void MidiService::createNoteOff(ConfigLookup::Key& keyLookup, KeyState* state, j
     state->messageCount = 0;
 }
 
-void MidiService::createMidiMsgOn(ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, osc::Message& outgoingOscMsg, const char* devId, int eventTime) {
+void MidiService::createMidiMsgOn(const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, osc::Message& outgoingOscMsg, const char* devId, int eventTime) {
     state->isLatchOn = true;
     state->midiChannel = (keyLookup.output == MidiChannelType::MPE_Low) ? 1 : 
                          (keyLookup.output == MidiChannelType::MPE_High) ? 16 : static_cast<int>(keyLookup.output);
@@ -463,7 +474,7 @@ void MidiService::createMidiMsgOn(ConfigLookup::Key& keyLookup, KeyState* state,
     }
 }
 
-void MidiService::createMidiMsgOff(ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, osc::Message& outgoingOscMsg, const char* devId, int eventTime) {
+void MidiService::createMidiMsgOff(const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, osc::Message& outgoingOscMsg, const char* devId, int eventTime) {
     if (keyLookup.cmdType != 3) { // Not Trigger
         if (keyLookup.msgType == 4) {
             createAllNotesOff(buffer, eventTime);
@@ -570,7 +581,7 @@ void MidiService::queueTransposeChangeFlush(InstrumentType deviceType, Zone zone
     }
 }
 
-void MidiService::createNoteHold(ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime) {
+void MidiService::createNoteHold(const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime) {
     int channel = state->midiChannel;
     if (channel > 0 && channel <= 16 && (chanNotePri_[channel - 1].empty() || chanNotePri_[channel - 1].front() == keyLookup.keyId)) {
         addMidiValueMessage(keyLookup.keyId.deviceType, channel, state->ehRoll, keyLookup.roll, keyLookup.pbRange, state->activeNotes[0], buffer, true, ExpressionCurveTarget::Roll, eventTime);

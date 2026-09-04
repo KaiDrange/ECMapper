@@ -9,7 +9,10 @@
 #include "Core/LayoutChangeHandler.h"
 #include "Core/Logger.h"
 #include <array>
+#include <atomic>
+#include <functional>
 #include <map>
+#include <string>
 #include <vector>
 
 class ECMapperAudioProcessor : public juce::AudioProcessor,
@@ -46,7 +49,7 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
-    int getCurrentPresetSlot() const noexcept { return currentPresetSlot_; }
+    int getCurrentPresetSlot() const noexcept { return currentPresetSlot_.load(); }
     juce::String getCurrentPresetName() const;
     juce::String getCurrentPresetDisplayName() const;
     juce::String getPresetSlotDisplayName(int slot) const;
@@ -97,7 +100,7 @@ private:
     juce::AudioDeviceManager* deviceManager = nullptr;
     double lastBlockEndUs = 0.0;
     double localClockOffset = 0.0;
-    std::map<juce::String, double> remoteClockOffsets;
+    std::map<std::string, double, std::less<>> remoteClockOffsets;
     std::array<int, 9> transposeCache_ {};
     std::array<int, 9> enableCache_ {};
     bool transposeCacheInitialised_ = false;
@@ -106,12 +109,13 @@ private:
     juce::CriticalSection keyboardSelectionLock_;
     juce::ValueTree presetBankState_ { "ECMapperPresetBank" };
     juce::AudioParameterChoice* presetSlotParameter_ = nullptr;
-    int currentPresetSlot_ = 1;
+    std::atomic<int> currentPresetSlot_ { 1 };
     juce::String currentPresetName_ { "Init" };
-    bool ignorePresetParameterUpdate_ = false;
-    int lastPresetParameterIndex_ = 0;
+    std::atomic<bool> ignorePresetParameterUpdate_ { false };
+    std::atomic<int> lastPresetParameterIndex_ { 0 };
     bool presetBatchInProgress_ = false;
     std::atomic<int> slotToLoadAsync_ { -1 };
+    std::atomic<bool> runtimeConfigRefreshRequested_ { false };
 
     void updateGlobalSettings();
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
@@ -124,6 +128,23 @@ private:
     void ensureInitPresetExists();
     static juce::File getStandalonePresetBankFile();
     static juce::ValueTree makeComparableState(juce::ValueTree state);
+
+    struct BlockTiming {
+        int numSamples = 0;
+        double sampleRate = 0.0;
+        double blockDurationUs = 0.0;
+        double nowUs = 0.0;
+        double blockStartUs = 0.0;
+    };
+
+    BlockTiming calculateBlockTiming(const juce::AudioBuffer<float>& audioBuffer);
+    void prepareMidiMessagesForBlock(juce::MidiBuffer& midiMessages);
+    void processHardwareMessagesForBlock(const BlockTiming& timing, juce::MidiBuffer& midiMessages, int& slotToLoad);
+    void handleHardwareMessage(const ecm::osc::Message& msg, const BlockTiming& timing, juce::MidiBuffer& midiMessages, int& slotToLoad);
+    void dispatchPresetSlotLoad(int slotToLoad);
+    void collectPresetSlotLoadRequests(const juce::MidiBuffer& midiMessages, int& slotToLoad);
+    void queuePresetSlotLoad(int slot, int& slotToLoad) const;
+    void publishRuntimeConfigSnapshot();
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ECMapperAudioProcessor)
 };
