@@ -164,6 +164,20 @@ void ConfigLookup::updateKeyUnlocked(LayoutWrapper::KeyId keyId) {
                 key.cmdOn = cmdParts[4].getIntValue();
             }
         }
+
+        if (key.mapType != KeyMappingType::AppCtrl) {
+            key.appCtrlType = 0;
+            key.appCtrlValue = 0;
+        }
+        else {
+            juce::StringArray appCtrlParts;
+            Utils::splitString(layoutKey.mappingValue, ";", appCtrlParts);
+            if (appCtrlParts.size() == 2) {
+                if (appCtrlParts[0] == "Preset") key.appCtrlType = 1;
+                else if (appCtrlParts[0] == "Transpose") key.appCtrlType = 2;
+                key.appCtrlValue = appCtrlParts[1].getIntValue();
+            }
+        }
     }
     if (layoutKey.keyId.course < 3 && layoutKey.keyId.keyNo < 120)
         keys[layoutKey.keyId.course][layoutKey.keyId.keyNo] = key;

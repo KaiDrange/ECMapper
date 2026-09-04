@@ -94,6 +94,8 @@ void MidiService::processMessage(osc::Message& oscMsg, osc::Message& outgoingOsc
                 processNoteKey(oscMsg, keyLookup, keyState, midiBuffer, eventTime);
             else if (keyLookup.mapType == KeyMappingType::MidiMsg)
                 processCmdKey(oscMsg, outgoingOscMsg, keyLookup, keyState, midiBuffer, eventTime);
+            else if (keyLookup.mapType == KeyMappingType::AppCtrl)
+                processAppCtrlKey(oscMsg, outgoingOscMsg, keyLookup, keyState, midiBuffer, eventTime);
             break;
         }
         case osc::MessageType::Breath: {
@@ -161,6 +163,15 @@ void MidiService::processCmdKey(osc::Message& oscMsg, osc::Message& outgoingOscM
             createMidiMsgOff(keyLookup, state, buffer, outgoingOscMsg, oscMsg.devId, eventTime);
         else
             createMidiMsgOn(keyLookup, state, buffer, outgoingOscMsg, oscMsg.devId, eventTime);
+    }
+    state->status = oscMsg.active ? KeyStatus::Active : KeyStatus::Off;
+}
+
+void MidiService::processAppCtrlKey(osc::Message& oscMsg, osc::Message& outgoingOscMsg, ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime) {
+    if (oscMsg.active && state->status == KeyStatus::Off) {
+        outgoingOscMsg.type = osc::MessageType::AppCtrl;
+        outgoingOscMsg.course = keyLookup.appCtrlType; // 1 = Preset, 2 = Transpose
+        outgoingOscMsg.value = (float)keyLookup.appCtrlValue;
     }
     state->status = oscMsg.active ? KeyStatus::Active : KeyStatus::Off;
 }

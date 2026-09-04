@@ -312,11 +312,6 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& audioBuffer,
         }
     }
 
-    if (slotToLoad != -1) {
-        slotToLoadAsync_ = slotToLoad;
-        triggerAsyncUpdate();
-    }
-
     const juce::ScopedLock stateGuard(presetStateLock_);
 
     int numSamples = audioBuffer.getNumSamples();
@@ -392,8 +387,22 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& audioBuffer,
                 if (hardwareService.getDeviceMode(msg.devId) == ecm::DeviceMode::Local) {
                     mapperToHardwareQueue.add(outgoingMsg);
                 }
+            } else if (outgoingMsg.type == ecm::osc::MessageType::AppCtrl) {
+                if (outgoingMsg.course == 1) { // Preset
+                    int slot = (int)outgoingMsg.value;
+                    if (slot >= 1 && slot <= numPresetSlots && hasPresetSlot(slot))
+                        slotToLoad = slot;
+                } else if (outgoingMsg.course == 2) { // Transpose
+                    // TODO: Implement actual transpose logic as requested in more detail
+                    juce::Logger::writeToLog("AppCtrl: Transpose " + juce::String((int)outgoingMsg.value) + " semi-tones (logic deferred)");
+                }
             }
         }
+    }
+
+    if (slotToLoad != -1) {
+        slotToLoadAsync_ = slotToLoad;
+        triggerAsyncUpdate();
     }
     
     midiService.reduceBreath(midiMessages, numSamples - 1);

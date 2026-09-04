@@ -24,6 +24,7 @@ LayoutComponent::LayoutComponent(InstrumentType deviceType, float widthFactor, f
         menu.addItem("Note", [this] { LayoutWrapper::setKeyMappingType(activeKeyId, KeyMappingType::Note, this->pluginState.state); showHidePanels(); repaint(); });
         menu.addItem("Chord", [this] { LayoutWrapper::setKeyMappingType(activeKeyId, KeyMappingType::Chord, this->pluginState.state); showHidePanels(); repaint(); });
         menu.addItem("Midi msg", [this] { LayoutWrapper::setKeyMappingType(activeKeyId, KeyMappingType::MidiMsg, this->pluginState.state); showHidePanels(); repaint(); });
+        menu.addItem("App Ctrl", [this] { LayoutWrapper::setKeyMappingType(activeKeyId, KeyMappingType::AppCtrl, this->pluginState.state); showHidePanels(); repaint(); });
         menu.showMenuAsync(juce::PopupMenu::Options{}.withTargetComponent(mapTypeMenuButton));
     };
 
@@ -59,6 +60,9 @@ LayoutComponent::LayoutComponent(InstrumentType deviceType, float widthFactor, f
     addAndMakeVisible(chordSectionComponent);
     chordSectionComponent.addListener(this);
 
+    addAndMakeVisible(appCtrlSectionComponent);
+    appCtrlSectionComponent.addListener(this);
+
     showHidePanels();
     enableDisableMenuButtons(false);
 }
@@ -77,6 +81,7 @@ void LayoutComponent::resized() {
     
     menuArea.removeFromTop(15);
     chordSectionComponent.setBounds(menuArea);
+    appCtrlSectionComponent.setBounds(menuArea);
     midiMessageSectionComponent.setBounds(menuArea.removeFromTop(area.getHeight()));
 
     auto keyWidth = area.getWidth() / 8.0f;
@@ -145,13 +150,21 @@ void LayoutComponent::showHidePanels() {
         midiMessageSectionComponent.updatePanelFromMessageString(layoutKey.mappingValue);
         midiMessageSectionComponent.setVisible(true);
         chordSectionComponent.setVisible(false);
+        appCtrlSectionComponent.setVisible(false);
     } else if (layoutKey.keyMappingType == KeyMappingType::Chord) {
         chordSectionComponent.updatePanelFromMessageString(layoutKey.mappingValue);
         midiMessageSectionComponent.setVisible(false);
         chordSectionComponent.setVisible(true);
+        appCtrlSectionComponent.setVisible(false);
+    } else if (layoutKey.keyMappingType == KeyMappingType::AppCtrl) {
+        appCtrlSectionComponent.updatePanelFromMessageString(layoutKey.mappingValue);
+        midiMessageSectionComponent.setVisible(false);
+        chordSectionComponent.setVisible(false);
+        appCtrlSectionComponent.setVisible(true);
     } else {
         midiMessageSectionComponent.setVisible(false);
         chordSectionComponent.setVisible(false);
+        appCtrlSectionComponent.setVisible(false);
     }
 }
 
@@ -172,6 +185,7 @@ void LayoutComponent::deselectAllKeys() {
     }
     midiMessageSectionComponent.setVisible(false);
     chordSectionComponent.setVisible(false);
+    appCtrlSectionComponent.setVisible(false);
 }
 
 void LayoutComponent::createKeys() {
@@ -304,6 +318,12 @@ void LayoutComponent::valuesChanged(MidiMessageSectionComponent*) {
 void LayoutComponent::valuesChanged(ChordSectionComponent*) {
     LayoutWrapper::setKeyMappingValue(activeKeyId, chordSectionComponent.getMessageString(), pluginState.state);
     chordSectionComponent.updatePanelFromMessageString(LayoutWrapper::getLayoutKey(activeKeyId, pluginState.state).mappingValue);
+    repaint();
+}
+
+void LayoutComponent::valuesChanged(AppCtrlSectionComponent*) {
+    LayoutWrapper::setKeyMappingValue(activeKeyId, appCtrlSectionComponent.getMessageString(), pluginState.state);
+    appCtrlSectionComponent.updatePanelFromMessageString(LayoutWrapper::getLayoutKey(activeKeyId, pluginState.state).mappingValue);
     repaint();
 }
 

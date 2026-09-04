@@ -116,6 +116,15 @@ void KeyConfigComponent::paint(juce::Graphics& g) {
             else if (midiMsgParts[1] == "AllNotesOff") keyText = "!";
             else keyText = midiMsgParts[1];
         }
+    } else if (layoutKey.keyMappingType == KeyMappingType::AppCtrl) {
+        juce::StringArray parts;
+        Utils::splitString(keyText, ";", parts);
+        if (parts.size() > 1) {
+            if (parts[0] == "Preset") keyText = "P" + parts[1];
+            else if (parts[0] == "Transpose") keyText = (parts[1].getIntValue() > 0 ? "+" : "") + parts[1];
+        } else {
+            keyText = "App";
+        }
     } else {
         keyText = "";
     }

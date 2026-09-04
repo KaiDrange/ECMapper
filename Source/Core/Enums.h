@@ -16,7 +16,8 @@ enum class KeyMappingType {
     Note = 10,
     MidiMsg = 20,
     Internal = 30,
-    Chord = 40
+    Chord = 40,
+    AppCtrl = 50
 };
 
 enum class EigenharpKeyType {

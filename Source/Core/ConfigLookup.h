@@ -41,6 +41,8 @@ public:
         int cmdOff = 0;
         int cmdType = 0; // none = 0, latch = 1, momentary = 2, trigger = 3
         int msgType = 0; // none = 0, CC = 1, PC = 2, Realtime = 3, AllNotesOff = 4
+        int appCtrlType = 0; // none = 0, preset = 1, transpose = 2
+        int appCtrlValue = 0;
         KeyColour keyColour = KeyColour::Off;
     };
     

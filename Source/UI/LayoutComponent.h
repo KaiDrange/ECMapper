@@ -5,6 +5,7 @@
 #include "KeyConfigComponent.h"
 #include "MidiMessageSectionComponent.h"
 #include "ChordSectionComponent.h"
+#include "AppCtrlSectionComponent.h"
 
 namespace ecm {
 
@@ -12,7 +13,8 @@ class LayoutComponent : public PanelComponent,
                         public juce::MidiKeyboardStateListener, 
                         public juce::KeyListener, 
                         public MidiMessageSectionComponent::Listener, 
-                        public ChordSectionComponent::Listener {
+                        public ChordSectionComponent::Listener,
+                        public AppCtrlSectionComponent::Listener {
 public:
     LayoutComponent(InstrumentType model, float widthFactor, float heightFactor, juce::AudioProcessorValueTreeState& pluginState);
     ~LayoutComponent() override;
@@ -46,9 +48,11 @@ private:
     juce::TextButton mapTypeMenuButton { "Type" };
     
     MidiMessageSectionComponent midiMessageSectionComponent;
+    AppCtrlSectionComponent appCtrlSectionComponent;
     
     void valuesChanged(MidiMessageSectionComponent*) override;
     void valuesChanged(ChordSectionComponent*) override;
+    void valuesChanged(AppCtrlSectionComponent*) override;
 
     std::unique_ptr<juce::DrawablePath> createBtnImage(juce::Colour colour);
     void enableDisableMenuButtons(bool enable);
