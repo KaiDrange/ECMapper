@@ -5,7 +5,7 @@ namespace ecm {
 
 AppCtrlSectionComponent::AppCtrlSectionComponent() :
     presetNumber("Preset #", 2, 1, 32, false),
-    transposeSemiTones("Semi-tones", 3, -96, 96, false)
+    transposeSemitones("Semitones", 3, -96, 96, false)
 {
     typeRadioGroup.setText("App Ctrl Type");
     addAndMakeVisible(typeRadioGroup);
@@ -15,12 +15,13 @@ AppCtrlSectionComponent::AppCtrlSectionComponent() :
     typePreset.setToggleState(true, juce::dontSendNotification);
     addAndMakeVisible(typePreset);
     typePreset.onClick = [this] { 
-        presetNumber.setEnabled(true);
-        transposeSemiTones.setEnabled(false);
+        presetNumber.setVisible(true);
+        transposeSemitones.setVisible(false);
         modeRadioGroup.setVisible(false);
         modeLatch.setVisible(false);
         modeMomentary.setVisible(false);
         modeTrigger.setVisible(false);
+        resized();
         sendChangeMessage(); 
     };
 
@@ -29,12 +30,13 @@ AppCtrlSectionComponent::AppCtrlSectionComponent() :
     typeTranspose.setToggleState(false, juce::dontSendNotification);
     addAndMakeVisible(typeTranspose);
     typeTranspose.onClick = [this] { 
-        presetNumber.setEnabled(false);
-        transposeSemiTones.setEnabled(true);
+        presetNumber.setVisible(false);
+        transposeSemitones.setVisible(true);
         modeRadioGroup.setVisible(true);
         modeLatch.setVisible(true);
         modeMomentary.setVisible(true);
         modeTrigger.setVisible(true);
+        resized();
         sendChangeMessage(); 
     };
 
@@ -61,11 +63,11 @@ AppCtrlSectionComponent::AppCtrlSectionComponent() :
 
     addAndMakeVisible(presetNumber);
     presetNumber.addListener(this);
-    addAndMakeVisible(transposeSemiTones);
-    transposeSemiTones.addListener(this);
+    addAndMakeVisible(transposeSemitones);
+    transposeSemitones.addListener(this);
 
-    presetNumber.setEnabled(true);
-    transposeSemiTones.setEnabled(false);
+    presetNumber.setVisible(true);
+    transposeSemitones.setVisible(false);
     
     modeRadioGroup.setVisible(false);
     modeLatch.setVisible(false);
@@ -85,17 +87,21 @@ void AppCtrlSectionComponent::resized() {
     typeTranspose.setBounds(groupArea.removeFromTop(static_cast<int>(lineHeight)));
 
     area.removeFromTop(static_cast<int>(lineHeight));
-    presetNumber.setBounds(area.removeFromTop(static_cast<int>(lineHeight)));
-    transposeSemiTones.setBounds(area.removeFromTop(static_cast<int>(lineHeight)));
+    auto inputArea = area.removeFromTop(static_cast<int>(lineHeight));
+    if (presetNumber.isVisible()) presetNumber.setBounds(inputArea);
+    if (transposeSemitones.isVisible()) transposeSemitones.setBounds(inputArea);
     
-    area.removeFromTop(static_cast<int>(lineHeight));
-    auto modeArea = area.removeFromTop(static_cast<int>(lineHeight * 6));
-    modeRadioGroup.setBounds(modeArea);
-    modeArea.reduce(static_cast<int>(modeArea.getWidth() * 0.1f), static_cast<int>(lineHeight));
-    modeArea.removeFromTop(static_cast<int>(lineHeight));
-    modeLatch.setBounds(modeArea.removeFromTop(static_cast<int>(lineHeight)));
-    modeMomentary.setBounds(modeArea.removeFromTop(static_cast<int>(lineHeight)));
-    modeTrigger.setBounds(modeArea.removeFromTop(static_cast<int>(lineHeight)));
+    if (modeRadioGroup.isVisible())
+    {
+        area.removeFromTop(static_cast<int>(lineHeight));
+        auto modeArea = area.removeFromTop(static_cast<int>(lineHeight * 6));
+        modeRadioGroup.setBounds(modeArea);
+        modeArea.reduce(static_cast<int>(modeArea.getWidth() * 0.1f), static_cast<int>(lineHeight));
+        modeArea.removeFromTop(static_cast<int>(lineHeight));
+        modeLatch.setBounds(modeArea.removeFromTop(static_cast<int>(lineHeight)));
+        modeMomentary.setBounds(modeArea.removeFromTop(static_cast<int>(lineHeight)));
+        modeTrigger.setBounds(modeArea.removeFromTop(static_cast<int>(lineHeight)));
+    }
 }
 
 juce::String AppCtrlSectionComponent::getMessageString() {
@@ -105,7 +111,7 @@ juce::String AppCtrlSectionComponent::getMessageString() {
         juce::String mode = "Latch";
         if (modeMomentary.getToggleState()) mode = "Momentary";
         else if (modeTrigger.getToggleState()) mode = "Trigger";
-        return "Transpose;" + mode + ";" + juce::String(transposeSemiTones.getValue());
+        return "Transpose;" + mode + ";" + juce::String(transposeSemitones.getValue());
     }
 }
 
@@ -117,9 +123,9 @@ void AppCtrlSectionComponent::updatePanelFromMessageString(const juce::String& m
         typePreset.setToggleState(true, juce::dontSendNotification);
         typeTranspose.setToggleState(false, juce::dontSendNotification);
         presetNumber.setValue(1);
-        transposeSemiTones.setValue(0);
-        presetNumber.setEnabled(true);
-        transposeSemiTones.setEnabled(false);
+        transposeSemitones.setValue(0);
+        presetNumber.setVisible(true);
+        transposeSemitones.setVisible(false);
         modeRadioGroup.setVisible(false);
         return;
     }
@@ -130,13 +136,13 @@ void AppCtrlSectionComponent::updatePanelFromMessageString(const juce::String& m
     
     if (isPreset) {
         presetNumber.setValue(tokens[1].getIntValue());
-        transposeSemiTones.setValue(0);
+        transposeSemitones.setValue(0);
         modeRadioGroup.setVisible(false);
         modeLatch.setVisible(false);
         modeMomentary.setVisible(false);
         modeTrigger.setVisible(false);
     } else {
-        transposeSemiTones.setValue(tokens.size() == 3 ? tokens[2].getIntValue() : tokens[1].getIntValue());
+        transposeSemitones.setValue(tokens.size() == 3 ? tokens[2].getIntValue() : tokens[1].getIntValue());
         
         juce::String mode = tokens.size() == 3 ? tokens[1] : "Latch";
         modeLatch.setToggleState(mode == "Latch", juce::dontSendNotification);
@@ -150,8 +156,9 @@ void AppCtrlSectionComponent::updatePanelFromMessageString(const juce::String& m
         modeTrigger.setVisible(true);
     }
 
-    presetNumber.setEnabled(isPreset);
-    transposeSemiTones.setEnabled(!isPreset);
+    presetNumber.setVisible(isPreset);
+    transposeSemitones.setVisible(!isPreset);
+    resized();
 }
 
 void AppCtrlSectionComponent::sendChangeMessage() {

@@ -395,7 +395,7 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& audioBuffer,
                         slotToLoad = slot;
                 } else if (outgoingMsg.course == 2) { // Transpose
                     // TODO: Implement actual transpose logic as requested in more detail
-                    juce::Logger::writeToLog("AppCtrl: Transpose " + juce::String((int)outgoingMsg.value) + " semi-tones (logic deferred)");
+                    juce::Logger::writeToLog("AppCtrl: Transpose " + juce::String((int)outgoingMsg.value) + " semitones (logic deferred)");
                 }
             }
         }

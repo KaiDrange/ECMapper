@@ -35,7 +35,7 @@ private:
     juce::ToggleButton modeTrigger;
 
     NumberInputComponent presetNumber;
-    NumberInputComponent transposeSemiTones;
+    NumberInputComponent transposeSemitones;
 
     juce::ListenerList<Listener> listeners;
     
