@@ -168,14 +168,30 @@ void ConfigLookup::updateKeyUnlocked(LayoutWrapper::KeyId keyId) {
         if (key.mapType != KeyMappingType::AppCtrl) {
             key.appCtrlType = 0;
             key.appCtrlValue = 0;
+            key.cmdType = 0;
         }
         else {
             juce::StringArray appCtrlParts;
             Utils::splitString(layoutKey.mappingValue, ";", appCtrlParts);
-            if (appCtrlParts.size() == 2) {
-                if (appCtrlParts[0] == "Preset") key.appCtrlType = 1;
-                else if (appCtrlParts[0] == "Transpose") key.appCtrlType = 2;
-                key.appCtrlValue = appCtrlParts[1].getIntValue();
+            if (appCtrlParts.size() >= 2) {
+                if (appCtrlParts[0] == "Preset") {
+                    key.appCtrlType = 1;
+                    key.appCtrlValue = appCtrlParts[1].getIntValue();
+                    key.cmdType = 0;
+                } else if (appCtrlParts[0] == "Transpose") {
+                    key.appCtrlType = 2;
+                    if (appCtrlParts.size() == 3) {
+                        if (appCtrlParts[1] == "Latch") key.cmdType = 1;
+                        else if (appCtrlParts[1] == "Momentary") key.cmdType = 2;
+                        else if (appCtrlParts[1] == "Trigger") key.cmdType = 3;
+                        else key.cmdType = 1;
+
+                        key.appCtrlValue = appCtrlParts[2].getIntValue();
+                    } else {
+                        key.cmdType = 1;
+                        key.appCtrlValue = appCtrlParts[1].getIntValue();
+                    }
+                }
             }
         }
     }

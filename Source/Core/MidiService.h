@@ -28,6 +28,7 @@ public:
     void drainPendingMidiMessages(juce::MidiBuffer& buffer, int eventTime = 0);
 
     void setOSCBroadcastQueue(osc::MessageFifo* queue) { oscBroadcastQueue_ = queue; }
+    void setLocalHardwareQueue(osc::MessageFifo* queue) { localHardwareQueue_ = queue; }
 
     bool isInitialized() const { return initialized_; }
 
@@ -46,9 +47,12 @@ private:
         int midiChannel = 1;
         int messageCount = 0;
         bool isLatchOn = false;
+        int activeNotes[4] = { -1, -1, -1, -1 };
     };
     
     KeyState keyStates_[3][3][120];
+    int latchTranspose_[3] = { 0, 0, 0 };
+    int momentaryTranspose_[3] = { 0, 0, 0 };
     float ehBreath_[3] = { 0.0f, 0.0f, 0.0f };
     float ehStrips_[2][3] = { {0.0f,0.0f,0.0f}, {0.0f,0.0f,0.0f} };
     float relStart_ehStrips_[2][3] = { {-1.0f,-1.0f,-1.0f}, {-1.0f,-1.0f,-1.0f} };
@@ -67,6 +71,7 @@ private:
     ConfigLookup (&configLookups_)[3];
     juce::CriticalSection& stateLock_;
     osc::MessageFifo* oscBroadcastQueue_ = nullptr;
+    osc::MessageFifo* localHardwareQueue_ = nullptr;
     HardwareService* hardwareService_ = nullptr;
     juce::AudioProcessorValueTreeState* pluginState_ = nullptr;
     BezierCurve velocityCurve_ { 0.0f, 0.0f, 0.0f, 1.0f, 0.5f, 0.6f, 1.0f, 1.0f };
@@ -90,6 +95,8 @@ private:
     void createBreath(int deviceIndex, ConfigLookup& keyLookup, juce::MidiBuffer& buffer, int eventTime);
     void createStripAbsolute(int deviceIndex, int stripIndex, int zoneIndex, ConfigLookup& keyLookup, juce::MidiBuffer& buffer, int eventTime);
     void createStripRelative(int deviceIndex, int stripIndex, int zoneIndex, ConfigLookup& keyLookup, juce::MidiBuffer& buffer, int eventTime);
+
+    void clearAllAppCtrlTransposes(int deviceIndex);
 
     float calculatePitchBendCurve(float value) const;
     juce::MPEValue calculateNoteOnVelocity(InstrumentType deviceType, KeyState* state);

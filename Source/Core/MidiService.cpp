@@ -31,6 +31,16 @@ void MidiService::start(juce::AudioProcessorValueTreeState& pluginState, Hardwar
     
     for (int i = 0; i < 3; ++i) {
         configLookups_[i].updateAll();
+        latchTranspose_[i] = 0;
+        momentaryTranspose_[i] = 0;
+        for (int c = 0; c < 3; ++c) {
+            for (int k = 0; k < 120; ++k) {
+                keyStates_[i][c][k].isLatchOn = false;
+                keyStates_[i][c][k].status = KeyStatus::Off;
+                for (int n = 0; n < 4; ++n)
+                    keyStates_[i][c][k].activeNotes[n] = -1;
+            }
+        }
     }
 
     ehBreath_[0] = ehBreath_[1] = ehBreath_[2] = 0.0f;
@@ -168,12 +178,69 @@ void MidiService::processCmdKey(osc::Message& oscMsg, osc::Message& outgoingOscM
 }
 
 void MidiService::processAppCtrlKey(osc::Message& oscMsg, osc::Message& outgoingOscMsg, ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime) {
-    if (oscMsg.active && state->status == KeyStatus::Off) {
-        outgoingOscMsg.type = osc::MessageType::AppCtrl;
-        outgoingOscMsg.course = keyLookup.appCtrlType; // 1 = Preset, 2 = Transpose
-        outgoingOscMsg.value = (float)keyLookup.appCtrlValue;
+    int deviceIndex = static_cast<int>(keyLookup.keyId.deviceType) - 1;
+    if (deviceIndex < 0 || deviceIndex > 2) return;
+
+    if (keyLookup.appCtrlType == 1) { // Preset
+        if (oscMsg.active && state->status == KeyStatus::Off) {
+            outgoingOscMsg.type = osc::MessageType::AppCtrl;
+            outgoingOscMsg.course = 1;
+            outgoingOscMsg.value = (float)keyLookup.appCtrlValue;
+        }
+    } else if (keyLookup.appCtrlType == 2) { // Transpose
+        int mode = keyLookup.cmdType; // 1 = Latch, 2 = Momentary, 3 = Trigger
+        int value = keyLookup.appCtrlValue;
+
+        if (mode == 1) { // Latch
+            if (oscMsg.active && state->status == KeyStatus::Off) {
+                if (state->isLatchOn) {
+                    state->isLatchOn = false;
+                    latchTranspose_[deviceIndex] = 0;
+                } else {
+                    clearAllAppCtrlTransposes(deviceIndex);
+                    state->isLatchOn = true;
+                    latchTranspose_[deviceIndex] = value;
+                }
+                
+                // Immediate feedback for the current key
+                outgoingOscMsg.type = osc::MessageType::LED;
+                outgoingOscMsg.device = keyLookup.keyId.deviceType;
+                std::strncpy(outgoingOscMsg.devId, oscMsg.devId, 63);
+                outgoingOscMsg.course = keyLookup.keyId.course;
+                outgoingOscMsg.key = keyLookup.keyId.keyNo;
+                outgoingOscMsg.value = state->isLatchOn ? static_cast<float>(KeyColour::Yellow) : static_cast<float>(keyLookup.keyColour);
+
+                resendLEDs(oscMsg.devId, keyLookup.keyId.deviceType);
+            }
+        } else if (mode == 2) { // Momentary
+            if (oscMsg.active && state->status == KeyStatus::Off) {
+                momentaryTranspose_[deviceIndex] += value;
+            } else if (!oscMsg.active && state->status != KeyStatus::Off) {
+                momentaryTranspose_[deviceIndex] -= value;
+            }
+        } else if (mode == 3) { // Trigger
+            if (oscMsg.active && state->status == KeyStatus::Off) {
+                clearAllAppCtrlTransposes(deviceIndex);
+                latchTranspose_[deviceIndex] = value;
+                resendLEDs(oscMsg.devId, keyLookup.keyId.deviceType);
+            }
+        }
     }
     state->status = oscMsg.active ? KeyStatus::Active : KeyStatus::Off;
+}
+
+void MidiService::clearAllAppCtrlTransposes(int deviceIndex) {
+    if (deviceIndex < 0 || deviceIndex > 2) return;
+    
+    latchTranspose_[deviceIndex] = 0;
+    for (int c = 0; c < 3; ++c) {
+        for (int k = 0; k < 120; ++k) {
+            auto& keyLookup = configLookups_[deviceIndex].keys[c][k];
+            if (keyLookup.mapType == KeyMappingType::AppCtrl && keyLookup.appCtrlType == 2 && keyLookup.cmdType == 1) {
+                keyStates_[deviceIndex][c][k].isLatchOn = false;
+            }
+        }
+    }
 }
 
 void MidiService::handleRemotePerformanceData(osc::Message& oscMsg, juce::MidiBuffer& midiBuffer, int eventTime) {
@@ -198,7 +265,17 @@ void MidiService::resendLEDs(const char* devId, InstrumentType type, osc::Messag
     int deviceIndex = static_cast<int>(type) - 1;
     if (deviceIndex < 0 || deviceIndex > 2) return;
     
-    osc::MessageFifo* queue = targetQueue ? targetQueue : oscBroadcastQueue_;
+    if (!configLookups_[deviceIndex].controlLights) return;
+    if (hardwareService_ && !hardwareService_->isDeviceAuthorizedForLEDs(devId)) return;
+
+    osc::MessageFifo* queue = targetQueue;
+    if (!queue) {
+        if (hardwareService_ && hardwareService_->getDeviceMode(devId) == ecm::DeviceMode::Local)
+            queue = localHardwareQueue_;
+        else
+            queue = oscBroadcastQueue_;
+    }
+    
     if (!queue) return;
     
     const juce::ScopedLock sl(configLookups_[deviceIndex].getLock());
@@ -210,6 +287,13 @@ void MidiService::resendLEDs(const char* devId, InstrumentType type, osc::Messag
             
             if (keyLookup.mapType == KeyMappingType::MidiMsg && keyLookup.cmdType == 1) {
                 // Command Latch
+                if (keyStates_[deviceIndex][course][keyNo].isLatchOn) {
+                    colour = (unsigned int)KeyColour::Yellow;
+                } else {
+                    colour = (unsigned int)keyLookup.keyColour;
+                }
+            } else if (keyLookup.mapType == KeyMappingType::AppCtrl && keyLookup.appCtrlType == 2 && keyLookup.cmdType == 1) {
+                // App Ctrl Transpose Latch
                 if (keyStates_[deviceIndex][course][keyNo].isLatchOn) {
                     colour = (unsigned int)KeyColour::Yellow;
                 } else {
@@ -276,6 +360,9 @@ void MidiService::createStripRelative(int deviceIndex, int stripIndex, int zoneI
 }
 
 void MidiService::createNoteOn(ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime) {
+    int deviceIndex = static_cast<int>(keyLookup.keyId.deviceType) - 1;
+    int totalTranspose = (deviceIndex >= 0 && deviceIndex < 3) ? (latchTranspose_[deviceIndex] + momentaryTranspose_[deviceIndex]) : 0;
+
     if (keyLookup.output == MidiChannelType::MPE_Low && lowerChanAssigner_)
         state->midiChannel = lowerChanAssigner_->findMidiChannelForNewNote(keyLookup.notes[0]);
     else if (keyLookup.output == MidiChannelType::MPE_High && upperChanAssigner_)
@@ -286,15 +373,26 @@ void MidiService::createNoteOn(ConfigLookup::Key& keyLookup, KeyState* state, ju
     if (state->midiChannel > 0 && state->midiChannel <= 16)
         chanNotePri_[state->midiChannel - 1].push_front(keyLookup.keyId);
 
+    // Prepare activeNotes BEFORE calling createNoteHold if it depends on them, 
+    // but createNoteHold usually just sends expression data.
+    for (int i = 0; i < 4; i++) {
+        if (keyLookup.notes[i] > -1) {
+            state->activeNotes[i] = std::clamp(keyLookup.notes[i] + totalTranspose, 0, 127);
+        } else {
+            state->activeNotes[i] = -1;
+        }
+    }
+
     createNoteHold(keyLookup, state, buffer, eventTime);
     auto vel = calculateNoteOnVelocity(keyLookup.keyId.deviceType, state);
     
     for (int i = 0; i < 4; i++) {
-        if (keyLookup.notes[i] > -1) {
-            if (countPlayingNoteMatches(state->midiChannel, keyLookup.notes[i]) == 0) {
-                buffer.addEvent(juce::MidiMessage::noteOn(state->midiChannel, keyLookup.notes[i], vel.asUnsignedFloat()), eventTime);
+        int noteNo = state->activeNotes[i];
+        if (noteNo > -1) {
+            if (countPlayingNoteMatches(state->midiChannel, noteNo) == 0) {
+                buffer.addEvent(juce::MidiMessage::noteOn(state->midiChannel, noteNo, vel.asUnsignedFloat()), eventTime);
             }
-            playingNotes_.push_back({state->midiChannel, keyLookup.notes[i]});
+            playingNotes_.push_back({state->midiChannel, noteNo});
         }
     }
     state->status = KeyStatus::Active;
@@ -313,11 +411,13 @@ void MidiService::createNoteOff(ConfigLookup::Key& keyLookup, KeyState* state, j
 
     auto vel = calculateNoteOffVelocity(keyLookup.keyId.deviceType, state);
     for (int i = 0; i < 4; i++) {
-        if (keyLookup.notes[i] > -1) {
-            if (countPlayingNoteMatches(channel, keyLookup.notes[i]) < 2) {
-                buffer.addEvent(juce::MidiMessage::noteOff(channel, keyLookup.notes[i], vel.asUnsignedFloat()), eventTime);
+        int noteToTurnOff = state->activeNotes[i];
+        if (noteToTurnOff > -1) {
+            if (countPlayingNoteMatches(channel, noteToTurnOff) < 2) {
+                buffer.addEvent(juce::MidiMessage::noteOff(channel, noteToTurnOff, vel.asUnsignedFloat()), eventTime);
             }
-            removeOneNoteMatch(channel, keyLookup.notes[i]);
+            removeOneNoteMatch(channel, noteToTurnOff);
+            state->activeNotes[i] = -1;
         }
     }
     
@@ -468,9 +568,9 @@ void MidiService::queueTransposeChangeFlush(InstrumentType deviceType, Zone zone
 void MidiService::createNoteHold(ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime) {
     int channel = state->midiChannel;
     if (channel > 0 && channel <= 16 && (chanNotePri_[channel - 1].empty() || chanNotePri_[channel - 1].front() == keyLookup.keyId)) {
-        addMidiValueMessage(keyLookup.keyId.deviceType, channel, state->ehRoll, keyLookup.roll, keyLookup.pbRange, keyLookup.notes[0], buffer, true, ExpressionCurveTarget::Roll, eventTime);
-        addMidiValueMessage(keyLookup.keyId.deviceType, channel, state->ehYaw, keyLookup.yaw, keyLookup.pbRange, keyLookup.notes[0], buffer, true, ExpressionCurveTarget::Yaw, eventTime);
-        addMidiValueMessage(keyLookup.keyId.deviceType, channel, state->ehPressureHistory.back(), keyLookup.pressure, keyLookup.pbRange, keyLookup.notes[0], buffer, false, ExpressionCurveTarget::Pressure, eventTime);
+        addMidiValueMessage(keyLookup.keyId.deviceType, channel, state->ehRoll, keyLookup.roll, keyLookup.pbRange, state->activeNotes[0], buffer, true, ExpressionCurveTarget::Roll, eventTime);
+        addMidiValueMessage(keyLookup.keyId.deviceType, channel, state->ehYaw, keyLookup.yaw, keyLookup.pbRange, state->activeNotes[0], buffer, true, ExpressionCurveTarget::Yaw, eventTime);
+        addMidiValueMessage(keyLookup.keyId.deviceType, channel, state->ehPressureHistory.back(), keyLookup.pressure, keyLookup.pbRange, state->activeNotes[0], buffer, false, ExpressionCurveTarget::Pressure, eventTime);
     }
     state->messageCount = 0;
 }

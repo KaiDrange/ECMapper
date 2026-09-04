@@ -17,6 +17,10 @@ AppCtrlSectionComponent::AppCtrlSectionComponent() :
     typePreset.onClick = [this] { 
         presetNumber.setEnabled(true);
         transposeSemiTones.setEnabled(false);
+        modeRadioGroup.setVisible(false);
+        modeLatch.setVisible(false);
+        modeMomentary.setVisible(false);
+        modeTrigger.setVisible(false);
         sendChangeMessage(); 
     };
 
@@ -27,8 +31,33 @@ AppCtrlSectionComponent::AppCtrlSectionComponent() :
     typeTranspose.onClick = [this] { 
         presetNumber.setEnabled(false);
         transposeSemiTones.setEnabled(true);
+        modeRadioGroup.setVisible(true);
+        modeLatch.setVisible(true);
+        modeMomentary.setVisible(true);
+        modeTrigger.setVisible(true);
         sendChangeMessage(); 
     };
+
+    modeRadioGroup.setText("Mode");
+    addAndMakeVisible(modeRadioGroup);
+
+    modeLatch.setButtonText("Latch");
+    modeLatch.setRadioGroupId(101);
+    modeLatch.setToggleState(true, juce::dontSendNotification);
+    addAndMakeVisible(modeLatch);
+    modeLatch.onClick = [this] { sendChangeMessage(); };
+
+    modeMomentary.setButtonText("Momentary");
+    modeMomentary.setRadioGroupId(101);
+    modeMomentary.setToggleState(false, juce::dontSendNotification);
+    addAndMakeVisible(modeMomentary);
+    modeMomentary.onClick = [this] { sendChangeMessage(); };
+
+    modeTrigger.setButtonText("Trigger");
+    modeTrigger.setRadioGroupId(101);
+    modeTrigger.setToggleState(false, juce::dontSendNotification);
+    addAndMakeVisible(modeTrigger);
+    modeTrigger.onClick = [this] { sendChangeMessage(); };
 
     addAndMakeVisible(presetNumber);
     presetNumber.addListener(this);
@@ -37,6 +66,11 @@ AppCtrlSectionComponent::AppCtrlSectionComponent() :
 
     presetNumber.setEnabled(true);
     transposeSemiTones.setEnabled(false);
+    
+    modeRadioGroup.setVisible(false);
+    modeLatch.setVisible(false);
+    modeMomentary.setVisible(false);
+    modeTrigger.setVisible(false);
 }
 
 void AppCtrlSectionComponent::resized() {
@@ -53,25 +87,40 @@ void AppCtrlSectionComponent::resized() {
     area.removeFromTop(static_cast<int>(lineHeight));
     presetNumber.setBounds(area.removeFromTop(static_cast<int>(lineHeight)));
     transposeSemiTones.setBounds(area.removeFromTop(static_cast<int>(lineHeight)));
+    
+    area.removeFromTop(static_cast<int>(lineHeight));
+    auto modeArea = area.removeFromTop(static_cast<int>(lineHeight * 6));
+    modeRadioGroup.setBounds(modeArea);
+    modeArea.reduce(static_cast<int>(modeArea.getWidth() * 0.1f), static_cast<int>(lineHeight));
+    modeArea.removeFromTop(static_cast<int>(lineHeight));
+    modeLatch.setBounds(modeArea.removeFromTop(static_cast<int>(lineHeight)));
+    modeMomentary.setBounds(modeArea.removeFromTop(static_cast<int>(lineHeight)));
+    modeTrigger.setBounds(modeArea.removeFromTop(static_cast<int>(lineHeight)));
 }
 
 juce::String AppCtrlSectionComponent::getMessageString() {
-    juce::String type = typePreset.getToggleState() ? "Preset" : "Transpose";
-    int val = typePreset.getToggleState() ? presetNumber.getValue() : transposeSemiTones.getValue();
-    return type + ";" + juce::String(val);
+    if (typePreset.getToggleState()) {
+        return "Preset;" + juce::String(presetNumber.getValue());
+    } else {
+        juce::String mode = "Latch";
+        if (modeMomentary.getToggleState()) mode = "Momentary";
+        else if (modeTrigger.getToggleState()) mode = "Trigger";
+        return "Transpose;" + mode + ";" + juce::String(transposeSemiTones.getValue());
+    }
 }
 
 void AppCtrlSectionComponent::updatePanelFromMessageString(const juce::String& msgString) {
     juce::StringArray tokens;
     tokens.addTokens(msgString, ";", "\"");
     
-    if (tokens.size() != 2) {
+    if (tokens.size() < 2) {
         typePreset.setToggleState(true, juce::dontSendNotification);
         typeTranspose.setToggleState(false, juce::dontSendNotification);
         presetNumber.setValue(1);
         transposeSemiTones.setValue(0);
         presetNumber.setEnabled(true);
         transposeSemiTones.setEnabled(false);
+        modeRadioGroup.setVisible(false);
         return;
     }
 
@@ -82,9 +131,23 @@ void AppCtrlSectionComponent::updatePanelFromMessageString(const juce::String& m
     if (isPreset) {
         presetNumber.setValue(tokens[1].getIntValue());
         transposeSemiTones.setValue(0);
+        modeRadioGroup.setVisible(false);
+        modeLatch.setVisible(false);
+        modeMomentary.setVisible(false);
+        modeTrigger.setVisible(false);
     } else {
-        transposeSemiTones.setValue(tokens[1].getIntValue());
+        transposeSemiTones.setValue(tokens.size() == 3 ? tokens[2].getIntValue() : tokens[1].getIntValue());
+        
+        juce::String mode = tokens.size() == 3 ? tokens[1] : "Latch";
+        modeLatch.setToggleState(mode == "Latch", juce::dontSendNotification);
+        modeMomentary.setToggleState(mode == "Momentary", juce::dontSendNotification);
+        modeTrigger.setToggleState(mode == "Trigger", juce::dontSendNotification);
+        
         presetNumber.setValue(1);
+        modeRadioGroup.setVisible(true);
+        modeLatch.setVisible(true);
+        modeMomentary.setVisible(true);
+        modeTrigger.setVisible(true);
     }
 
     presetNumber.setEnabled(isPreset);

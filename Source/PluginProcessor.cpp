@@ -220,6 +220,7 @@ ECMapperAudioProcessor::ECMapperAudioProcessor() :
     hardwareService.addListener(this);
     hardwareService.setOSCBroadcastQueue(&outgoingOSCQueue);
     midiService.setOSCBroadcastQueue(&outgoingOSCQueue);
+    midiService.setLocalHardwareQueue(&mapperToHardwareQueue);
 
     presetSlotParameter_ = dynamic_cast<juce::AudioParameterChoice*>(state.getParameter(presetSlotParameterId));
     jassert(presetSlotParameter_ != nullptr);

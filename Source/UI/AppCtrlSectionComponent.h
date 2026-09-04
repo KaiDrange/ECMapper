@@ -29,6 +29,11 @@ private:
     juce::ToggleButton typePreset;
     juce::ToggleButton typeTranspose;
 
+    juce::GroupComponent modeRadioGroup;
+    juce::ToggleButton modeLatch;
+    juce::ToggleButton modeMomentary;
+    juce::ToggleButton modeTrigger;
+
     NumberInputComponent presetNumber;
     NumberInputComponent transposeSemiTones;
 
