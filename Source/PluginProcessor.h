@@ -17,7 +17,8 @@
 
 class ECMapperAudioProcessor : public juce::AudioProcessor,
                                public ecm::HardwareService::Listener,
-                               private juce::AsyncUpdater
+                               private juce::AsyncUpdater,
+                               private juce::AudioProcessorValueTreeState::Listener
 {
 public:
     static constexpr int numPresetSlots = 32;
@@ -64,6 +65,7 @@ public:
     void deviceListChanged() override;
     void deviceNeedsLEDSync(const std::string& devId, ecm::InstrumentType type, bool isRequest) override;
     void handleAsyncUpdate() override;
+    void parameterChanged(const juce::String& parameterID, float newValue) override;
 
     juce::AudioProcessorValueTreeState state;
     ecm::HardwareService& getHardwareService() { return hardwareService; }
@@ -119,7 +121,12 @@ private:
 
     void updateGlobalSettings();
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
-    void syncZoneParameters(const juce::MidiBuffer& midiMessages);
+    bool applyZoneControlMessages(const juce::MidiBuffer& midiMessages) const;
+    void refreshZoneRuntimeStateFromParameters();
+    void requestRuntimeConfigRefresh();
+    void registerZoneParameterListeners();
+    void unregisterZoneParameterListeners();
+    static bool isZoneRuntimeParameter(const juce::String& parameterID);
     static int transposeIndex(ecm::InstrumentType deviceType, ecm::Zone zone);
     juce::ValueTree getPresetSnapshot(int slot) const;
     void applyPresetState(const juce::ValueTree& snapshot);
@@ -143,7 +150,7 @@ private:
     void handleHardwareMessage(const ecm::osc::Message& msg, const BlockTiming& timing, juce::MidiBuffer& midiMessages, int& slotToLoad);
     void dispatchPresetSlotLoad(int slotToLoad);
     void collectPresetSlotLoadRequests(const juce::MidiBuffer& midiMessages, int& slotToLoad);
-    void queuePresetSlotLoad(int slot, int& slotToLoad) const;
+    static void queuePresetSlotLoad(int slot, int& slotToLoad);
     void publishRuntimeConfigSnapshot();
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ECMapperAudioProcessor)
