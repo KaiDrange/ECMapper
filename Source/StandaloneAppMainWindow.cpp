@@ -2,13 +2,14 @@
 
 #include "UI/AboutDialogComponent.h"
 #include "StandaloneApp.h"
+#include "UI/PresetBrowserComponent.h"
 
 StandaloneAppMainWindow::StandaloneAppMainWindow(const juce::String& name)
     : DocumentWindow(name,
                      ecm::Style::background(),
                      DocumentWindow::allButtons),
       menuBarModel(
-          [this] { requestQuit(); },
+          [] { requestQuit(); },
           nullptr,
           [this] { showPresetBrowser(); },
           [this] { showAudioSettings(); },
@@ -45,10 +46,10 @@ StandaloneAppMainWindow::StandaloneAppMainWindow(const juce::String& name)
 
     deviceManager.addChangeListener(this);
 
-    setContentOwned(processor->createEditor(), true);
+    setContentOwned(processor->createUI(), true);
 
     centreWithSize(1000, 700);
-    setVisible(true);
+    Component::setVisible(true);
 
     saveAudioSettings();
 }
@@ -108,8 +109,10 @@ void StandaloneAppMainWindow::saveAudioSettings()
     {
         auto file = getAudioSettingsFile();
         if (!file.getParentDirectory().exists())
+            // ReSharper disable once CppExpressionWithoutSideEffects
             file.getParentDirectory().createDirectory();
 
+        // ReSharper disable once CppExpressionWithoutSideEffects
         xml->writeTo(file);
     }
 }

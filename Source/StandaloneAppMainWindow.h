@@ -3,7 +3,6 @@
 #include <juceheader.h>
 #include "PluginProcessor.h"
 #include "UI/AppStyle.h"
-#include "UI/PresetBrowserComponent.h"
 #include "UI/MainMenuBarModel.h"
 
 class StandaloneAppMainWindow : public juce::DocumentWindow,
@@ -16,12 +15,11 @@ public:
     void closeButtonPressed() override;
 
     void showAudioSettings();
-    void showSavePresetDialog();
     void showPresetBrowser();
     void showAboutDialog();
     static void showOnlineManual();
     static void showOurMusic();
-    void requestQuit();
+    static void requestQuit();
     void changeListenerCallback (juce::ChangeBroadcaster* source) override;
 
 private:
@@ -29,7 +27,7 @@ private:
     
     void saveAudioSettings();
     void loadAudioSettings();
-    juce::File getAudioSettingsFile();
+    static juce::File getAudioSettingsFile();
 
     std::unique_ptr<ECMapperAudioProcessor> processor;
     

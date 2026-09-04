@@ -21,7 +21,7 @@ void ECMapperStandaloneApplication::systemRequestedQuit()
     }
 
     if (mainWindow != nullptr)
-        mainWindow->requestQuit();
+        StandaloneAppMainWindow::requestQuit();
     else
         quit();
 }

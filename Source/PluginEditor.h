@@ -6,7 +6,7 @@
 
 class ECMapperAudioProcessorEditor : public juce::AudioProcessorEditor {
 public:
-    ECMapperAudioProcessorEditor (ECMapperAudioProcessor&);
+    explicit ECMapperAudioProcessorEditor (ECMapperAudioProcessor&);
     ~ECMapperAudioProcessorEditor() override;
 
     void paint (juce::Graphics&) override;

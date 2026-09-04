@@ -26,11 +26,8 @@ public:
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
     void releaseResources() override;
 
-    bool isBusesLayoutSupported (const BusesLayout& layouts) const override;
-
     void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
 
-    juce::AudioProcessorEditor* createEditor() override;
     bool hasEditor() const override { return true; }
 
     const juce::String getName() const override { return "ECMapper"; }
@@ -63,21 +60,26 @@ public:
     // HardwareService::Listener overrides
     void deviceListChanged() override;
     void deviceNeedsLEDSync(const std::string& devId, ecm::InstrumentType type, bool isRequest) override;
+    void handleAsyncUpdate() override;
 
     juce::AudioProcessorValueTreeState state;
     ecm::HardwareService& getHardwareService() { return hardwareService; }
     ecm::MidiService& getMidiService() { return midiService; }
-    
+
     void setDeviceManager(juce::AudioDeviceManager* manager) { deviceManager = manager; }
-    juce::AudioDeviceManager* getDeviceManager() { return deviceManager; }
+    juce::AudioDeviceManager* getDeviceManager() const { return deviceManager; }
 
     void queueKeyboardSelectionMessage(const juce::MidiMessage& message);
     void drainKeyboardSelectionMessages(std::vector<juce::MidiMessage>& messages);
     void clearKeyboardSelectionMessages();
     juce::ValueTree getPresetNode(int slot) const;
+    juce::AudioProcessorEditor* createUI() { return createEditor(); }
+
+protected:
+    bool isBusesLayoutSupported (const BusesLayout& layouts) const override;
 
 private:
-    void handleAsyncUpdate() override;
+    juce::AudioProcessorEditor* createEditor() override;
 
     ecm::Logger logger { false, true };
     ecm::osc::MessageFifo hardwareToMapperQueue;
@@ -113,14 +115,14 @@ private:
 
     void updateGlobalSettings();
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
-    void syncZoneParameters(juce::MidiBuffer& midiMessages);
+    void syncZoneParameters(const juce::MidiBuffer& midiMessages);
     static int transposeIndex(ecm::InstrumentType deviceType, ecm::Zone zone);
     juce::ValueTree getPresetSnapshot(int slot) const;
     void applyPresetState(const juce::ValueTree& snapshot);
     void refreshDerivedStateAfterPresetChange();
     void setCurrentPresetSelection(int slot, const juce::String& name);
     void ensureInitPresetExists();
-    juce::File getStandalonePresetBankFile() const;
+    static juce::File getStandalonePresetBankFile();
     static juce::ValueTree makeComparableState(juce::ValueTree state);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ECMapperAudioProcessor)

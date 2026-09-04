@@ -16,7 +16,7 @@ struct DeviceKeyCounts
     int buttons = 0;
 };
 
-DeviceKeyCounts getDeviceKeyCounts(ecm::InstrumentType deviceType)
+DeviceKeyCounts getDeviceKeyCounts(const ecm::InstrumentType deviceType)
 {
     switch (deviceType) {
         case ecm::InstrumentType::Alpha: return { 120, 12, 0 };
@@ -67,11 +67,11 @@ void applyGlobalSettingsPreset(juce::ValueTree& liveRoot, const juce::ValueTree&
     copyProperty(ecm::SettingsWrapper::id_upperMPEPB);
 }
 
-void materializeLayoutKeysForDevice(ecm::InstrumentType deviceType, juce::ValueTree& rootState)
+void materializeLayoutKeysForDevice(const ecm::InstrumentType deviceType, juce::ValueTree& rootState)
 {
     auto counts = getDeviceKeyCounts(deviceType);
 
-    auto materializeKey = [&](ecm::LayoutWrapper::KeyId keyId)
+    auto materializeKey = [&](const ecm::LayoutWrapper::KeyId& keyId)
     {
         auto key = ecm::LayoutWrapper::getLayoutKey(keyId, rootState);
         ecm::LayoutWrapper::setLayoutKey(key, rootState);
@@ -100,7 +100,7 @@ void materializeLayoutKeysForDevice(ecm::InstrumentType deviceType, juce::ValueT
     }
 }
 
-void materializeZoneState(ecm::InstrumentType deviceType, ecm::Zone zone, juce::ValueTree& rootState)
+void materializeZoneState(const ecm::InstrumentType deviceType, const ecm::Zone zone, juce::ValueTree& rootState)
 {
     ecm::ZoneWrapper::setEnabled(deviceType, zone, ecm::ZoneWrapper::getEnabled(deviceType, zone, rootState), rootState);
     ecm::ZoneWrapper::setTranspose(deviceType, zone, ecm::ZoneWrapper::getTranspose(deviceType, zone, rootState), rootState);
@@ -108,7 +108,7 @@ void materializeZoneState(ecm::InstrumentType deviceType, ecm::Zone zone, juce::
     ecm::ZoneWrapper::setChannelMaxPitchbend(deviceType, zone, ecm::ZoneWrapper::getChannelMaxPitchbend(deviceType, zone, rootState), rootState);
     ecm::ZoneWrapper::setMidiChannelType(deviceType, zone, ecm::ZoneWrapper::getMidiChannelType(deviceType, zone, rootState), rootState);
 
-    auto setMidiValue = [&](juce::Identifier childId, ecm::ZoneWrapper::MidiValue defaultValue)
+    auto setMidiValue = [&](const juce::Identifier& childId, const ecm::ZoneWrapper::MidiValue defaultValue)
     {
         ecm::ZoneWrapper::setMidiValue(deviceType, zone, childId, ecm::ZoneWrapper::getMidiValue(deviceType, zone, childId, defaultValue, rootState), rootState);
     };
@@ -134,10 +134,10 @@ void materializeCurveState(ecm::InstrumentType deviceType, juce::ValueTree& root
 
 void materializePresetState(juce::ValueTree& rootState)
 {
-    for (int device = (int) ecm::InstrumentType::Alpha; device <= (int) ecm::InstrumentType::Pico; ++device) {
-        auto deviceType = static_cast<ecm::InstrumentType>(device);
+    for (int device = static_cast<int>(ecm::InstrumentType::Alpha); device <= static_cast<int>(ecm::InstrumentType::Pico); ++device) {
+        const auto deviceType = static_cast<ecm::InstrumentType>(device);
         materializeLayoutKeysForDevice(deviceType, rootState);
-        for (int zone = (int) ecm::Zone::Zone1; zone <= (int) ecm::Zone::Zone3; ++zone)
+        for (int zone = static_cast<int>(ecm::Zone::Zone1); zone <= static_cast<int>(ecm::Zone::Zone3); ++zone)
             materializeZoneState(deviceType, static_cast<ecm::Zone>(zone), rootState);
         materializeCurveState(deviceType, rootState);
     }
@@ -186,13 +186,13 @@ juce::AudioProcessorValueTreeState::ParameterLayout createTransposeParameters()
         presetChoices,
         kPresetParameterDefaultIndex));
 
-    for (int device = (int) ecm::InstrumentType::Alpha; device <= (int) ecm::InstrumentType::Pico; ++device) {
-        for (int zone = (int) ecm::Zone::Zone1; zone <= (int) ecm::Zone::Zone3; ++zone) {
-            auto paramId = ecm::ZoneWrapper::getTransposeParameterID((ecm::InstrumentType) device, (ecm::Zone) zone);
+    for (int device = static_cast<int>(ecm::InstrumentType::Alpha); device <= static_cast<int>(ecm::InstrumentType::Pico); ++device) {
+        for (int zone = static_cast<int>(ecm::Zone::Zone1); zone <= static_cast<int>(ecm::Zone::Zone3); ++zone) {
+            auto paramId = ecm::ZoneWrapper::getTransposeParameterID(static_cast<ecm::InstrumentType>(device), static_cast<ecm::Zone>(zone));
             auto paramName = juce::String::formatted("Transpose %d-%d", device, zone);
             layout.add(std::make_unique<juce::AudioParameterInt>(juce::ParameterID { paramId, 1 }, paramName, -96, 96, 0));
 
-            auto enabledParamId = ecm::ZoneWrapper::getEnabledParameterID((ecm::InstrumentType) device, (ecm::Zone) zone);
+            auto enabledParamId = ecm::ZoneWrapper::getEnabledParameterID(static_cast<ecm::InstrumentType>(device), static_cast<ecm::Zone>(zone));
             auto enabledParamName = juce::String::formatted("Enable %d-%d", device, zone);
             layout.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID { enabledParamId, 1 }, enabledParamName, true));
         }
@@ -226,7 +226,7 @@ ECMapperAudioProcessor::ECMapperAudioProcessor() :
     jassert(presetSlotParameter_ != nullptr);
     currentPresetSlot_ = 1;
     currentPresetName_ = "Init";
-    lastPresetParameterIndex_ = presetSlotParameter_ != nullptr ? presetSlotParameter_->getIndex() : 0;
+    lastPresetParameterIndex_ = presetSlotParameter_->getIndex();
     
     layoutChangeHandler = std::make_unique<ecm::LayoutChangeHandler>(
         mapperToHardwareQueue,
@@ -315,10 +315,10 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& audioBuffer,
 
     const juce::ScopedLock stateGuard(presetStateLock_);
 
-    int numSamples = audioBuffer.getNumSamples();
-    double sampleRate = getSampleRate();
-    double blockDurationUs = 1000000.0 * numSamples / sampleRate;
-    double nowUs = juce::Time::highResolutionTicksToSeconds(juce::Time::getHighResolutionTicks()) * 1000000.0;
+    const int numSamples = audioBuffer.getNumSamples();
+    const double sampleRate = getSampleRate();
+    const double blockDurationUs = 1000000.0 * numSamples / sampleRate;
+    const double nowUs = juce::Time::highResolutionTicksToSeconds(juce::Time::getHighResolutionTicks()) * 1000000.0;
     
     // If this is the first block, or if there's a huge gap, reset our timeline
     if (lastBlockEndUs == 0.0 || std::abs(nowUs - lastBlockEndUs) > 500000.0) {
@@ -326,9 +326,9 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& audioBuffer,
         localClockOffset = 0.0;
         remoteClockOffsets.clear();
     }
-    
-    double blockStartUs = lastBlockEndUs;
-    double blockEndUs = blockStartUs + blockDurationUs;
+
+    const double blockStartUs = lastBlockEndUs;
+    const double blockEndUs = blockStartUs + blockDurationUs;
     
     // Update for next time
     lastBlockEndUs = blockEndUs;
@@ -359,13 +359,11 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& audioBuffer,
         } else {
             int sampleOffset = 0;
             if (msg.timestamp > 0) {
-                double localMsgTime = static_cast<double>(msg.timestamp);
+                auto localMsgTime = static_cast<double>(msg.timestamp);
                 
                 if (msg.isRemote) {
                     juce::String devId(msg.devId);
-                    if (remoteClockOffsets.find(devId) == remoteClockOffsets.end()) {
-                        // Initialize offset for this remote device
-                        // We assume the message just arrived, so its local time is 'now'
+                    if (!remoteClockOffsets.contains(devId)) {
                         remoteClockOffsets[devId] = nowUs - static_cast<double>(msg.timestamp);
                     }
                     localMsgTime += remoteClockOffsets[devId];
@@ -377,7 +375,7 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& audioBuffer,
                 }
 
                 // Map hardware timestamp to sample offset within the block
-                double offsetUs = localMsgTime - blockStartUs;
+                const double offsetUs = localMsgTime - blockStartUs;
                 sampleOffset = static_cast<int>(offsetUs * sampleRate / 1000000.0);
                 sampleOffset = std::clamp(sampleOffset, 0, numSamples - 1);
             }
@@ -390,12 +388,9 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& audioBuffer,
                 }
             } else if (outgoingMsg.type == ecm::osc::MessageType::AppCtrl) {
                 if (outgoingMsg.course == 1) { // Preset
-                    int slot = (int)outgoingMsg.value;
+                    const int slot = static_cast<int>(outgoingMsg.value);
                     if (slot >= 1 && slot <= numPresetSlots && hasPresetSlot(slot))
                         slotToLoad = slot;
-                } else if (outgoingMsg.course == 2) { // Transpose
-                    // TODO: Implement actual transpose logic as requested in more detail
-                    juce::Logger::writeToLog("AppCtrl: Transpose " + juce::String((int)outgoingMsg.value) + " semitones (logic deferred)");
                 }
             }
         }
@@ -418,28 +413,28 @@ void ECMapperAudioProcessor::getStateInformation(juce::MemoryBlock& destData) {
     juce::ValueTree bundle("ECMapperStateBundle");
     bundle.addChild(state.copyState(), -1, nullptr);
     bundle.addChild(presetBankState_.createCopy(), -1, nullptr);
-    std::unique_ptr<juce::XmlElement> xml(bundle.createXml());
+    const std::unique_ptr xml(bundle.createXml());
     copyXmlToBinary(*xml, destData);
 }
 
-void ECMapperAudioProcessor::setStateInformation(const void* data, int sizeInBytes) {
+void ECMapperAudioProcessor::setStateInformation(const void* data, const int sizeInBytes) {
     {
         const juce::ScopedLock stateGuard(presetStateLock_);
-        std::unique_ptr<juce::XmlElement> xmlState(getXmlFromBinary(data, sizeInBytes));
+        const std::unique_ptr xmlState(getXmlFromBinary(data, sizeInBytes));
         if (xmlState == nullptr)
             return;
 
-        auto tree = juce::ValueTree::fromXml(*xmlState);
+        const auto tree = juce::ValueTree::fromXml(*xmlState);
         if (!tree.isValid())
             return;
 
         if (tree.hasType("ECMapperStateBundle")) {
             const juce::ScopedValueSetter<bool> batchGuard(presetBatchInProgress_, true);
-            auto liveState = tree.getChildWithName(state.state.getType());
+            const auto liveState = tree.getChildWithName(state.state.getType());
             if (liveState.isValid())
                 state.replaceState(liveState);
 
-            auto bankState = tree.getChildWithName(presetBankState_.getType());
+            const auto bankState = tree.getChildWithName(presetBankState_.getType());
             if (bankState.isValid())
                 presetBankState_ = bankState;
         } else if (tree.hasType(state.state.getType())) {
@@ -451,7 +446,7 @@ void ECMapperAudioProcessor::setStateInformation(const void* data, int sizeInByt
         lastPresetParameterIndex_ = presetSlotParameter_ != nullptr ? presetSlotParameter_->getIndex() : 0;
         currentPresetSlot_ = juce::jlimit(1, numPresetSlots, lastPresetParameterIndex_ + 1);
         {
-            auto presetNode = getPresetNode(currentPresetSlot_);
+            const auto presetNode = getPresetNode(currentPresetSlot_);
             currentPresetName_ = presetNode.isValid() ? presetNode.getProperty("name", juce::String()).toString()
                                                       : (currentPresetSlot_ == 1 ? juce::String("Init") : juce::String("Empty"));
         }
@@ -481,7 +476,6 @@ void ECMapperAudioProcessor::updateGlobalSettings() {
             role = ecm::AppRole::Client;
         }
 
-        // Ensure state matches the role we decided on
         if (ecm::SettingsWrapper::getAppRole(state.state) != role)
             ecm::SettingsWrapper::setAppRole(role, state.state);
 
@@ -510,14 +504,14 @@ juce::String ECMapperAudioProcessor::getCurrentPresetDisplayName() const
     return getPresetSlotDisplayName(currentPresetSlot_);
 }
 
-juce::String ECMapperAudioProcessor::getPresetSlotDisplayName(int slot) const
+juce::String ECMapperAudioProcessor::getPresetSlotDisplayName(const int slot) const
 {
     const juce::ScopedLock stateGuard(presetStateLock_);
     if (slot < 1 || slot > numPresetSlots)
         return {};
 
-    auto label = juce::String(slot) + ": ";
-    auto preset = getPresetNode(slot);
+    const auto label = juce::String(slot) + ": ";
+    const auto preset = getPresetNode(slot);
     auto presetName = preset.isValid() ? preset.getProperty("name", juce::String()).toString() : juce::String();
 
     if (slot == 1)
@@ -537,23 +531,23 @@ juce::String ECMapperAudioProcessor::getPresetSlotDisplayName(int slot) const
     return label + "Empty";
 }
 
-bool ECMapperAudioProcessor::hasPresetSlot(int slot) const
+bool ECMapperAudioProcessor::hasPresetSlot(const int slot) const
 {
     const juce::ScopedLock stateGuard(presetStateLock_);
     if (slot < 1 || slot > numPresetSlots)
         return false;
 
-    auto slotValue = slot;
+    const auto slotValue = slot;
     for (int i = 0; i < presetBankState_.getNumChildren(); ++i) {
         auto preset = presetBankState_.getChild(i);
-        if ((int) preset.getProperty("slot", 0) == slotValue)
+        if (static_cast<int>(preset.getProperty("slot", 0)) == slotValue)
             return true;
     }
 
     return false;
 }
 
-juce::ValueTree ECMapperAudioProcessor::getPresetNode(int slot) const
+juce::ValueTree ECMapperAudioProcessor::getPresetNode(const int slot) const
 {
     const juce::ScopedLock stateGuard(presetStateLock_);
     if (slot < 1 || slot > numPresetSlots)
@@ -561,14 +555,14 @@ juce::ValueTree ECMapperAudioProcessor::getPresetNode(int slot) const
 
     for (int i = 0; i < presetBankState_.getNumChildren(); ++i) {
         auto preset = presetBankState_.getChild(i);
-        if ((int) preset.getProperty("slot", 0) == slot)
+        if (static_cast<int>(preset.getProperty("slot", 0)) == slot)
             return preset;
     }
 
     return {};
 }
 
-juce::ValueTree ECMapperAudioProcessor::getPresetSnapshot(int slot) const
+juce::ValueTree ECMapperAudioProcessor::getPresetSnapshot(const int slot) const
 {
     const juce::ScopedLock stateGuard(presetStateLock_);
     auto preset = getPresetNode(slot);
@@ -582,17 +576,17 @@ juce::ValueTree ECMapperAudioProcessor::getPresetSnapshot(int slot) const
     return {};
 }
 
-void ECMapperAudioProcessor::setCurrentPresetSelection(int slot, const juce::String& name)
+void ECMapperAudioProcessor::setCurrentPresetSelection(const int slot, const juce::String& name)
 {
     const juce::ScopedLock stateGuard(presetStateLock_);
     currentPresetSlot_ = juce::jlimit(1, numPresetSlots, slot);
     currentPresetName_ = name;
 
     if (presetSlotParameter_ != nullptr) {
-        auto index = currentPresetSlot_ - 1;
+        const auto index = currentPresetSlot_ - 1;
         if (presetSlotParameter_->getIndex() != index) {
-            const juce::ScopedValueSetter<bool> guard(ignorePresetParameterUpdate_, true);
-            presetSlotParameter_->setValueNotifyingHost(presetSlotParameter_->convertTo0to1((float) index));
+            const juce::ScopedValueSetter guard(ignorePresetParameterUpdate_, true);
+            presetSlotParameter_->setValueNotifyingHost(presetSlotParameter_->convertTo0to1(static_cast<float>(index)));
         }
         lastPresetParameterIndex_ = index;
     }
@@ -605,7 +599,7 @@ void ECMapperAudioProcessor::applyPresetState(const juce::ValueTree& snapshot)
 
     const juce::ScopedLock stateGuard(presetStateLock_);
     {
-        const juce::ScopedValueSetter<bool> batchGuard(presetBatchInProgress_, true);
+        const juce::ScopedValueSetter batchGuard(presetBatchInProgress_, true);
         auto& liveState = state.state;
         mergeTreeIntoLive(liveState, snapshot);
 
@@ -616,26 +610,26 @@ void ECMapperAudioProcessor::applyPresetState(const juce::ValueTree& snapshot)
             applyGlobalSettingsPreset(liveState, juce::ValueTree());
         }
 
-        for (int device = (int) ecm::InstrumentType::Alpha; device <= (int) ecm::InstrumentType::Pico; ++device) {
-            for (int zone = (int) ecm::Zone::Zone1; zone <= (int) ecm::Zone::Zone3; ++zone) {
-                auto deviceType = static_cast<ecm::InstrumentType>(device);
-                auto zoneType = static_cast<ecm::Zone>(zone);
+        for (int device = static_cast<int>(ecm::InstrumentType::Alpha); device <= static_cast<int>(ecm::InstrumentType::Pico); ++device) {
+            for (int zone = static_cast<int>(ecm::Zone::Zone1); zone <= static_cast<int>(ecm::Zone::Zone3); ++zone) {
+                const auto deviceType = static_cast<ecm::InstrumentType>(device);
+                const auto zoneType = static_cast<ecm::Zone>(zone);
 
                 auto transposeId = ecm::ZoneWrapper::getTransposeParameterID(deviceType, zoneType);
                 if (auto* param = dynamic_cast<juce::AudioParameterInt*>(state.getParameter(transposeId))) {
-                    auto transposeValue = ecm::ZoneWrapper::getTranspose(deviceType, zoneType, liveState);
-                    if (auto* raw = state.getRawParameterValue(transposeId)) {
-                        auto currentValue = (int) std::lround(raw->load());
+                    const auto transposeValue = ecm::ZoneWrapper::getTranspose(deviceType, zoneType, liveState);
+                    if (const auto* raw = state.getRawParameterValue(transposeId)) {
+                        auto currentValue = static_cast<int>(std::lround(raw->load()));
                         if (currentValue != transposeValue)
-                            param->setValueNotifyingHost(param->getNormalisableRange().convertTo0to1((float) transposeValue));
+                            param->setValueNotifyingHost(param->getNormalisableRange().convertTo0to1(static_cast<float>(transposeValue)));
                     }
                 }
 
                 auto enabledId = ecm::ZoneWrapper::getEnabledParameterID(deviceType, zoneType);
                 if (auto* param = dynamic_cast<juce::AudioParameterBool*>(state.getParameter(enabledId))) {
-                    auto enabledValue = ecm::ZoneWrapper::getEnabled(deviceType, zoneType, liveState);
-                    if (auto* raw = state.getRawParameterValue(enabledId)) {
-                        auto currentValue = raw->load() > 0.5f;
+                    const auto enabledValue = ecm::ZoneWrapper::getEnabled(deviceType, zoneType, liveState);
+                    if (const auto* raw = state.getRawParameterValue(enabledId)) {
+                        const auto currentValue = raw->load() > 0.5f;
                         if (currentValue != enabledValue)
                             param->setValueNotifyingHost(enabledValue ? 1.0f : 0.0f);
                     }
@@ -652,29 +646,26 @@ void ECMapperAudioProcessor::refreshDerivedStateAfterPresetChange()
     const juce::ScopedLock stateGuard(presetStateLock_);
     auto& liveState = state.state;
 
-    for (int device = (int) ecm::InstrumentType::Alpha; device <= (int) ecm::InstrumentType::Pico; ++device) {
-        auto deviceType = static_cast<ecm::InstrumentType>(device);
-        auto deviceIndex = device - 1;
-        jassert(deviceIndex >= 0 && deviceIndex < 3);
+    for (int device = static_cast<int>(ecm::InstrumentType::Alpha); device <= static_cast<int>(ecm::InstrumentType::Pico); ++device) {
+        const auto deviceType = static_cast<ecm::InstrumentType>(device);
+        const auto deviceIndex = device - 1;
+        for (int zone = static_cast<int>(ecm::Zone::Zone1); zone <= static_cast<int>(ecm::Zone::Zone3); ++zone) {
+            const auto zoneType = static_cast<ecm::Zone>(zone);
+            const auto idx = transposeIndex(deviceType, zoneType);
 
-        for (int zone = (int) ecm::Zone::Zone1; zone <= (int) ecm::Zone::Zone3; ++zone) {
-            auto zoneType = static_cast<ecm::Zone>(zone);
-            auto idx = transposeIndex(deviceType, zoneType);
-
-            int transposeValue = ecm::ZoneWrapper::getTranspose(deviceType, zoneType, liveState);
+            const int transposeValue = ecm::ZoneWrapper::getTranspose(deviceType, zoneType, liveState);
             if (transposeCacheInitialised_ && transposeCache_[idx] != transposeValue) {
                 midiService.queueTransposeChangeFlush(deviceType, zoneType);
             }
             transposeCache_[idx] = transposeValue;
 
-            int enabledValue = ecm::ZoneWrapper::getEnabled(deviceType, zoneType, liveState) ? 1 : 0;
+            const int enabledValue = ecm::ZoneWrapper::getEnabled(deviceType, zoneType, liveState) ? 1 : 0;
             enableCache_[idx] = enabledValue;
         }
 
         if (!midiService.isInitialized())
             continue;
 
-        jassert(deviceIndex >= 0 && deviceIndex < 3);
         configLookups[deviceIndex].updateAll();
         layoutChangeHandler->sendLEDMsgForAllKeys(deviceType);
     }
@@ -699,7 +690,7 @@ juce::ValueTree ECMapperAudioProcessor::makeComparableState(juce::ValueTree stat
 
 void ECMapperAudioProcessor::handleAsyncUpdate()
 {
-    int slot = slotToLoadAsync_.exchange(-1);
+    const int slot = slotToLoadAsync_.exchange(-1);
     if (slot != -1)
         loadPresetSlot(slot);
 }
@@ -710,25 +701,25 @@ void ECMapperAudioProcessor::loadStandalonePresetBank()
     if (!juce::JUCEApplicationBase::isStandaloneApp())
         return;
 
-    auto file = getStandalonePresetBankFile();
+    const auto file = getStandalonePresetBankFile();
     if (!file.existsAsFile()) {
         ensureInitPresetExists();
         saveStandalonePresetBank();
         return;
     }
 
-    auto xml = juce::XmlDocument::parse(file);
+    const auto xml = juce::XmlDocument::parse(file);
     if (xml == nullptr)
         return;
 
-    auto bundle = juce::ValueTree::fromXml(*xml);
+    const auto bundle = juce::ValueTree::fromXml(*xml);
     if (!bundle.isValid())
         return;
 
     if (bundle.hasType("ECMapperPresetBank")) {
         presetBankState_ = bundle;
     } else if (bundle.hasType("ECMapperStateBundle")) {
-        auto bank = bundle.getChildWithName(presetBankState_.getType());
+        const auto bank = bundle.getChildWithName(presetBankState_.getType());
         if (bank.isValid())
             presetBankState_ = bank;
     }
@@ -742,30 +733,32 @@ void ECMapperAudioProcessor::saveStandalonePresetBank() const
     if (!juce::JUCEApplicationBase::isStandaloneApp())
         return;
 
-    auto file = getStandalonePresetBankFile();
+    const auto file = getStandalonePresetBankFile();
     if (!file.getParentDirectory().exists())
+        // ReSharper disable once CppExpressionWithoutSideEffects
         file.getParentDirectory().createDirectory();
 
-    juce::ValueTree bankCopy = presetBankState_.createCopy();
-    std::unique_ptr<juce::XmlElement> xml(bankCopy.createXml());
+    const juce::ValueTree bankCopy = presetBankState_.createCopy();
+    const std::unique_ptr xml(bankCopy.createXml());
     if (xml != nullptr)
+        // ReSharper disable once CppExpressionWithoutSideEffects
         xml->writeTo(file);
 }
 
-juce::File ECMapperAudioProcessor::getStandalonePresetBankFile() const
+juce::File ECMapperAudioProcessor::getStandalonePresetBankFile()
 {
     return juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
         .getChildFile("ECMapper")
         .getChildFile("preset_bank.xml");
 }
 
-bool ECMapperAudioProcessor::savePresetSlot(int slot, const juce::String& name)
+bool ECMapperAudioProcessor::savePresetSlot(const int slot, const juce::String& name)
 {
     const juce::ScopedLock stateGuard(presetStateLock_);
     if (slot < 1 || slot > numPresetSlots)
         return false;
 
-    auto snapshot = makeComparableState(state.state.createCopy());
+    const auto snapshot = makeComparableState(state.state.createCopy());
 
     auto preset = getPresetNode(slot);
     if (preset.isValid()) {
@@ -785,14 +778,14 @@ bool ECMapperAudioProcessor::savePresetSlot(int slot, const juce::String& name)
     return true;
 }
 
-bool ECMapperAudioProcessor::deletePresetSlot(int slot)
+bool ECMapperAudioProcessor::deletePresetSlot(const int slot)
 {
     {
         const juce::ScopedLock stateGuard(presetStateLock_);
         if (slot < 1 || slot > numPresetSlots)
             return false;
 
-        auto preset = getPresetNode(slot);
+        const auto preset = getPresetNode(slot);
         if (!preset.isValid())
             return false;
 
@@ -802,7 +795,7 @@ bool ECMapperAudioProcessor::deletePresetSlot(int slot)
 
         if (currentPresetSlot_ == slot)
         {
-            auto initSnapshot = getPresetSnapshot(1);
+            const auto initSnapshot = getPresetSnapshot(1);
             if (initSnapshot.isValid())
                 applyPresetState(initSnapshot);
             setCurrentPresetSelection(1, "Init");
@@ -814,7 +807,7 @@ bool ECMapperAudioProcessor::deletePresetSlot(int slot)
     return true;
 }
 
-bool ECMapperAudioProcessor::loadPresetSlot(int slot)
+bool ECMapperAudioProcessor::loadPresetSlot(const int slot)
 {
     bool success = false;
     {
@@ -822,10 +815,10 @@ bool ECMapperAudioProcessor::loadPresetSlot(int slot)
         if (slot < 1 || slot > numPresetSlots)
             return false;
 
-        auto snapshot = getPresetSnapshot(slot);
+        const auto snapshot = getPresetSnapshot(slot);
         if (snapshot.isValid()) {
             applyPresetState(snapshot);
-            auto preset = getPresetNode(slot);
+            const auto preset = getPresetNode(slot);
             auto name = preset.getProperty("name", juce::String()).toString();
             if (name.isEmpty())
                 name = "Preset " + juce::String(slot);
@@ -833,11 +826,11 @@ bool ECMapperAudioProcessor::loadPresetSlot(int slot)
             success = true;
         } else if (slot == 1) {
             ensureInitPresetExists();
-            auto preset = getPresetNode(1);
+            const auto preset = getPresetNode(1);
             auto name = preset.isValid() ? preset.getProperty("name", juce::String()).toString() : juce::String("Init");
             if (name.isEmpty())
                 name = "Init";
-            auto initSnapshot = getPresetSnapshot(1);
+            const auto initSnapshot = getPresetSnapshot(1);
             if (initSnapshot.isValid())
                 applyPresetState(initSnapshot);
             setCurrentPresetSelection(1, name);
@@ -859,43 +852,41 @@ static int transposeFromCc(int ccValue)
         return 0;
 
     if (ccValue < 64)
-        return juce::jlimit(-96, 0, juce::roundToInt(juce::jmap((float) ccValue, 0.0f, 63.0f, -96.0f, -1.0f)));
+        return juce::jlimit(-96, 0, juce::roundToInt(juce::jmap(static_cast<float>(ccValue), 0.0f, 63.0f, -96.0f, -1.0f)));
 
-    return juce::jlimit(0, 96, juce::roundToInt(juce::jmap((float) ccValue, 65.0f, 127.0f, 1.0f, 96.0f)));
+    return juce::jlimit(0, 96, juce::roundToInt(juce::jmap(static_cast<float>(ccValue), 65.0f, 127.0f, 1.0f, 96.0f)));
 }
 
-static bool enableFromCc(int ccValue)
+static bool enableFromCc(const int ccValue)
 {
     return juce::jlimit(0, 127, ccValue) >= 64;
 }
 
 int ECMapperAudioProcessor::transposeIndex(ecm::InstrumentType deviceType, ecm::Zone zone)
 {
-    auto deviceIndex = (int) deviceType - 1;
-    auto zoneIndex = (int) zone - 1;
-    jassert(deviceIndex >= 0 && deviceIndex < 3);
-    jassert(zoneIndex >= 0 && zoneIndex < 3);
+    const auto deviceIndex = static_cast<int>(deviceType) - 1;
+    const auto zoneIndex = static_cast<int>(zone) - 1;
     return deviceIndex * 3 + zoneIndex;
 }
 
-void ECMapperAudioProcessor::syncZoneParameters(juce::MidiBuffer& midiMessages)
+void ECMapperAudioProcessor::syncZoneParameters(const juce::MidiBuffer& midiMessages)
 {
     if (!transposeCacheInitialised_) {
-        for (int device = (int) ecm::InstrumentType::Alpha; device <= (int) ecm::InstrumentType::Pico; ++device) {
-            for (int zone = (int) ecm::Zone::Zone1; zone <= (int) ecm::Zone::Zone3; ++zone) {
-                auto idx = transposeIndex((ecm::InstrumentType) device, (ecm::Zone) zone);
-                if (auto* raw = state.getRawParameterValue(ecm::ZoneWrapper::getTransposeParameterID((ecm::InstrumentType) device, (ecm::Zone) zone)))
-                    transposeCache_[idx] = (int) std::lround(raw->load());
+        for (int device = static_cast<int>(ecm::InstrumentType::Alpha); device <= static_cast<int>(ecm::InstrumentType::Pico); ++device) {
+            for (int zone = static_cast<int>(ecm::Zone::Zone1); zone <= static_cast<int>(ecm::Zone::Zone3); ++zone) {
+                const auto idx = transposeIndex(static_cast<ecm::InstrumentType>(device), static_cast<ecm::Zone>(zone));
+                if (const auto* raw = state.getRawParameterValue(ecm::ZoneWrapper::getTransposeParameterID(static_cast<ecm::InstrumentType>(device), static_cast<ecm::Zone>(zone))))
+                    transposeCache_[idx] = static_cast<int>(std::lround(raw->load()));
             }
         }
         transposeCacheInitialised_ = true;
     }
 
     if (!enableCacheInitialised_) {
-        for (int device = (int) ecm::InstrumentType::Alpha; device <= (int) ecm::InstrumentType::Pico; ++device) {
-            for (int zone = (int) ecm::Zone::Zone1; zone <= (int) ecm::Zone::Zone3; ++zone) {
-                auto idx = transposeIndex((ecm::InstrumentType) device, (ecm::Zone) zone);
-                if (auto* raw = state.getRawParameterValue(ecm::ZoneWrapper::getEnabledParameterID((ecm::InstrumentType) device, (ecm::Zone) zone)))
+        for (int device = static_cast<int>(ecm::InstrumentType::Alpha); device <= static_cast<int>(ecm::InstrumentType::Pico); ++device) {
+            for (int zone = static_cast<int>(ecm::Zone::Zone1); zone <= static_cast<int>(ecm::Zone::Zone3); ++zone) {
+                const auto idx = transposeIndex(static_cast<ecm::InstrumentType>(device), static_cast<ecm::Zone>(zone));
+                if (const auto* raw = state.getRawParameterValue(ecm::ZoneWrapper::getEnabledParameterID(static_cast<ecm::InstrumentType>(device), static_cast<ecm::Zone>(zone))))
                     enableCache_[idx] = raw->load() > 0.5f ? 1 : 0;
             }
         }
@@ -914,15 +905,15 @@ void ECMapperAudioProcessor::syncZoneParameters(juce::MidiBuffer& midiMessages)
             continue;
 
         if (msg.getControllerNumber() == kTransposeCcNumber) {
-            for (int device = (int) ecm::InstrumentType::Alpha; device <= (int) ecm::InstrumentType::Pico; ++device) {
-                for (int zone = (int) ecm::Zone::Zone1; zone <= (int) ecm::Zone::Zone3; ++zone) {
+            for (int device = static_cast<int>(ecm::InstrumentType::Alpha); device <= static_cast<int>(ecm::InstrumentType::Pico); ++device) {
+                for (int zone = static_cast<int>(ecm::Zone::Zone1); zone <= static_cast<int>(ecm::Zone::Zone3); ++zone) {
                     if (channel != 4 && zone != channel)
                         continue;
 
-                    auto transposeValue = transposeFromCc(msg.getControllerValue());
-                    auto paramId = ecm::ZoneWrapper::getTransposeParameterID((ecm::InstrumentType) device, (ecm::Zone) zone);
+                    const auto transposeValue = transposeFromCc(msg.getControllerValue());
+                    auto paramId = ecm::ZoneWrapper::getTransposeParameterID(static_cast<ecm::InstrumentType>(device), static_cast<ecm::Zone>(zone));
                     if (auto* param = dynamic_cast<juce::AudioParameterInt*>(state.getParameter(paramId)))
-                        param->setValueNotifyingHost(param->getNormalisableRange().convertTo0to1((float) transposeValue));
+                        param->setValueNotifyingHost(param->getNormalisableRange().convertTo0to1(static_cast<float>(transposeValue)));
                 }
             }
             continue;
@@ -931,29 +922,29 @@ void ECMapperAudioProcessor::syncZoneParameters(juce::MidiBuffer& midiMessages)
         if (msg.getControllerNumber() != kZoneEnableCcNumber)
             continue;
 
-        bool enabled = enableFromCc(msg.getControllerValue());
+        const bool enabled = enableFromCc(msg.getControllerValue());
 
-        for (int device = (int) ecm::InstrumentType::Alpha; device <= (int) ecm::InstrumentType::Pico; ++device) {
-            for (int zone = (int) ecm::Zone::Zone1; zone <= (int) ecm::Zone::Zone3; ++zone) {
+        for (int device = static_cast<int>(ecm::InstrumentType::Alpha); device <= static_cast<int>(ecm::InstrumentType::Pico); ++device) {
+            for (int zone = static_cast<int>(ecm::Zone::Zone1); zone <= static_cast<int>(ecm::Zone::Zone3); ++zone) {
                 if (channel != 4 && zone != channel)
                     continue;
 
-                auto paramId = ecm::ZoneWrapper::getEnabledParameterID((ecm::InstrumentType) device, (ecm::Zone) zone);
+                auto paramId = ecm::ZoneWrapper::getEnabledParameterID(static_cast<ecm::InstrumentType>(device), static_cast<ecm::Zone>(zone));
                 if (auto* param = dynamic_cast<juce::AudioParameterBool*>(state.getParameter(paramId)))
                     param->setValueNotifyingHost(enabled);
             }
         }
     }
 
-    for (int device = (int) ecm::InstrumentType::Alpha; device <= (int) ecm::InstrumentType::Pico; ++device) {
-        for (int zone = (int) ecm::Zone::Zone1; zone <= (int) ecm::Zone::Zone3; ++zone) {
-            auto deviceType = (ecm::InstrumentType) device;
-            auto zoneType = (ecm::Zone) zone;
-            auto idx = transposeIndex(deviceType, zoneType);
+    for (int device = static_cast<int>(ecm::InstrumentType::Alpha); device <= static_cast<int>(ecm::InstrumentType::Pico); ++device) {
+        for (int zone = static_cast<int>(ecm::Zone::Zone1); zone <= static_cast<int>(ecm::Zone::Zone3); ++zone) {
+            const auto deviceType = static_cast<ecm::InstrumentType>(device);
+            const auto zoneType = static_cast<ecm::Zone>(zone);
+            const auto idx = transposeIndex(deviceType, zoneType);
             auto paramId = ecm::ZoneWrapper::getTransposeParameterID(deviceType, zoneType);
             int currentValue = transposeCache_[idx];
-            if (auto* raw = state.getRawParameterValue(paramId))
-                currentValue = (int) std::lround(raw->load());
+            if (const auto* raw = state.getRawParameterValue(paramId))
+                currentValue = static_cast<int>(std::lround(raw->load()));
 
             if (currentValue != transposeCache_[idx]) {
                 midiService.queueTransposeChangeFlush(deviceType, zoneType);
@@ -962,11 +953,11 @@ void ECMapperAudioProcessor::syncZoneParameters(juce::MidiBuffer& midiMessages)
             }
 
             int enabledValue = enableCache_[idx];
-            if (auto* raw = state.getRawParameterValue(ecm::ZoneWrapper::getEnabledParameterID(deviceType, zoneType)))
+            if (const auto* raw = state.getRawParameterValue(ecm::ZoneWrapper::getEnabledParameterID(deviceType, zoneType)))
                 enabledValue = raw->load() > 0.5f ? 1 : 0;
 
             if (enabledValue != enableCache_[idx]) {
-                auto enabled = enabledValue != 0;
+                const auto enabled = enabledValue != 0;
                 if (ecm::ZoneWrapper::getEnabled(deviceType, zoneType, state.state) != enabled)
                     ecm::ZoneWrapper::setEnabled(deviceType, zoneType, enabled, state.state);
                 enableCache_[idx] = enabledValue;
@@ -976,7 +967,6 @@ void ECMapperAudioProcessor::syncZoneParameters(juce::MidiBuffer& midiMessages)
     }
 
     for (int device = 0; device < 3; ++device) {
-        jassert(device >= 0 && device < 3);
         if (deviceNeedsUpdate[device])
             configLookups[device].updateAll();
     }
@@ -984,7 +974,7 @@ void ECMapperAudioProcessor::syncZoneParameters(juce::MidiBuffer& midiMessages)
 
 void ECMapperAudioProcessor::deviceListChanged() {}
 
-void ECMapperAudioProcessor::deviceNeedsLEDSync(const std::string& devId, ecm::InstrumentType type, bool isRequest) {
+void ECMapperAudioProcessor::deviceNeedsLEDSync(const std::string& devId, const ecm::InstrumentType type, const bool isRequest) {
     if (hardwareService.getAppRole() == ecm::AppRole::Client) {
         // Only return if Control LEDs is on
         if (hardwareService.isDeviceAuthorizedForLEDs(devId)) {
@@ -994,7 +984,7 @@ void ECMapperAudioProcessor::deviceNeedsLEDSync(const std::string& devId, ecm::I
         // If it's a local device, send to mapperToHardwareQueue
         // We know it's a Host, so if it's not a remote device, it's local.
         bool isRemote = false;
-        auto devices = hardwareService.getConnectedDevices();
+        const auto devices = hardwareService.getConnectedDevices();
         for (const auto& d : devices) {
             if (d.dev == devId) {
                 isRemote = d.isRemote;
@@ -1037,7 +1027,7 @@ void ECMapperAudioProcessor::ensureInitPresetExists()
     if (hasPresetSlot(1))
         return;
 
-    auto snapshot = makeComparableState(state.state.createCopy());
+    const auto snapshot = makeComparableState(state.state.createCopy());
     auto preset = juce::ValueTree("ECMapperPreset");
     preset.setProperty("slot", 1, nullptr);
     preset.setProperty("name", "Init", nullptr);
