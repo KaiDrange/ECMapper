@@ -74,6 +74,8 @@ public:
     void setDeviceManager(juce::AudioDeviceManager* manager) { deviceManager = manager; }
     juce::AudioDeviceManager* getDeviceManager() const { return deviceManager; }
 
+    void setMidiOutput(juce::MidiOutput* output) { midiService.setMidiOutput(output); }
+
     void queueKeyboardSelectionMessage(const juce::MidiMessage& message);
     void drainKeyboardSelectionMessages(std::vector<juce::MidiMessage>& messages);
     void clearKeyboardSelectionMessages();

@@ -1,5 +1,5 @@
 #pragma once
-#include <JuceHeader.h>
+#include <juce_audio_devices/juce_audio_devices.h>
 #include "ConfigLookup.h"
 #include "BezierCurve.h"
 #include "OSCMessage.h"
@@ -8,21 +8,23 @@
 #include <memory>
 #include <vector>
 #include <list>
+#include "MidiProtocol.h"
 
 namespace ecm {
 
 class HardwareService;
 
-class MidiService {
+class MidiService : public juce::ValueTree::Listener {
 public:
     struct RuntimeConfigSnapshot {
         std::array<ConfigLookup, 3> configLookups;
-        RuntimeConfigSnapshot(const ConfigLookup (&source)[3])
-            : configLookups { source[0], source[1], source[2] } {}
+        std::shared_ptr<MidiProtocol> protocol;
+        RuntimeConfigSnapshot(const ConfigLookup (&source)[3], std::shared_ptr<MidiProtocol> p)
+            : configLookups { source[0], source[1], source[2] }, protocol(std::move(p)) {}
     };
 
     MidiService(ConfigLookup (&configLookups)[3], juce::CriticalSection& stateLock);
-    ~MidiService();
+    ~MidiService() override;
     
     void start(juce::AudioProcessorValueTreeState& pluginState, HardwareService* hs = nullptr);
     void stop();
@@ -34,13 +36,19 @@ public:
     void createLayoutRPNs(juce::MidiBuffer& buffer);
     void queueTransposeChangeFlush(InstrumentType deviceType, Zone zone);
     void drainPendingMidiMessages(juce::MidiBuffer& buffer, int eventTime = 0);
+    void drainDirectUMPs(juce::MidiBuffer& buffer);
+    void setMidiOutput(juce::MidiOutput* output);
     void setRuntimeConfigSnapshot(std::unique_ptr<RuntimeConfigSnapshot> snapshot);
     void finishedBlock();
+
+    void valueTreePropertyChanged(juce::ValueTree& treeWhosePropertyHasChanged, const juce::Identifier& property) override;
+    void valueTreeRedirected(juce::ValueTree& treeWhichHasBeenChanged) override;
 
     void setOSCBroadcastQueue(osc::MessageFifo* queue) { oscBroadcastQueue_ = queue; }
     void setLocalHardwareQueue(osc::MessageFifo* queue) { localHardwareQueue_ = queue; }
 
     bool isInitialized() const { return initialized_; }
+    std::shared_ptr<MidiProtocol> getProtocol() { return protocol_; }
 
     struct VisualMarker {
         float value;
@@ -104,26 +112,27 @@ private:
     HardwareService* hardwareService_ = nullptr;
     juce::AudioProcessorValueTreeState* pluginState_ = nullptr;
     BezierCurve velocityCurve_ { 0.0f, 0.0f, 0.0f, 1.0f, 0.5f, 0.6f, 1.0f, 1.0f };
+    std::shared_ptr<MidiProtocol> protocol_;
     bool initialized_ = false;
 
-    void processNoteKey(const osc::Message& oscMsg, const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime);
-    void processCmdKey(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime);
+    void processNoteKey(const osc::Message& oscMsg, const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime, MidiProtocol* protocol);
+    void processCmdKey(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime, MidiProtocol* protocol);
     void processAppCtrlKey(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime, int* presetSlotRequest);
     
-    void createNoteOn(const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime);
-    void createNoteOff(const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime);
-    void createNoteHold(const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime);
+    void createNoteOn(const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime, MidiProtocol* protocol);
+    void createNoteOff(const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime, MidiProtocol* protocol);
+    void createNoteHold(const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime, MidiProtocol* protocol);
     
-    void createMidiMsgOn(const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, osc::Message& outgoingOscMsg, const char* devId, int eventTime);
-    void createMidiMsgOff(const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, osc::Message& outgoingOscMsg, const char* devId, int eventTime);
-    void createAllNotesOff(juce::MidiBuffer& buffer, int eventTime = 0);
+    void createMidiMsgOn(const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, osc::Message& outgoingOscMsg, const char* devId, int eventTime, MidiProtocol* protocol);
+    void createMidiMsgOff(const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, osc::Message& outgoingOscMsg, const char* devId, int eventTime, MidiProtocol* protocol);
+    void createAllNotesOff(juce::MidiBuffer& buffer, int eventTime, MidiProtocol* protocol);
     
-    void addMidiValueMessage(InstrumentType deviceType, int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, int noteNo, juce::MidiBuffer& buffer, bool isBipolar, ExpressionCurveTarget curveTarget, int eventTime);
-    void addStripValueMessage(int channel, float ehValue, ZoneWrapper::MidiValue midiValue, juce::MidiBuffer& buffer, bool isBipolar, int eventTime);
+    void addMidiValueMessage(InstrumentType deviceType, int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, int noteNo, juce::MidiBuffer& buffer, bool isBipolar, ExpressionCurveTarget curveTarget, int eventTime, MidiProtocol* protocol);
+    void addStripValueMessage(int channel, float ehValue, ZoneWrapper::MidiValue midiValue, juce::MidiBuffer& buffer, bool isBipolar, int eventTime, MidiProtocol* protocol);
     
-    void createBreath(int deviceIndex, const ConfigLookup& keyLookup, juce::MidiBuffer& buffer, int eventTime);
-    void createStripAbsolute(int deviceIndex, int stripIndex, int zoneIndex, const ConfigLookup& keyLookup, juce::MidiBuffer& buffer, int eventTime);
-    void createStripRelative(int deviceIndex, int stripIndex, int zoneIndex, const ConfigLookup& keyLookup, juce::MidiBuffer& buffer, int eventTime);
+    void createBreath(int deviceIndex, const ConfigLookup& keyLookup, juce::MidiBuffer& buffer, int eventTime, MidiProtocol* protocol);
+    void createStripAbsolute(int deviceIndex, int stripIndex, int zoneIndex, const ConfigLookup& keyLookup, juce::MidiBuffer& buffer, int eventTime, MidiProtocol* protocol);
+    void createStripRelative(int deviceIndex, int stripIndex, int zoneIndex, const ConfigLookup& keyLookup, juce::MidiBuffer& buffer, int eventTime, MidiProtocol* protocol);
 
     void clearAllAppCtrlTransposes(int deviceIndex);
 
@@ -138,12 +147,13 @@ private:
     };
     std::vector<MidiNote> playingNotes_;
     
-    struct PendingMidiMessage {
-        juce::MidiMessage message;
-        int eventTime = 0;
-    };
     juce::CriticalSection pendingMessageLock_;
-    std::vector<PendingMidiMessage> pendingMidiMessages_;
+    juce::MidiBuffer pendingMidiBuffer_;
+
+    std::optional<juce::universal_midi_packets::Session> umpSession_;
+    juce::universal_midi_packets::Output umpOutput_;
+    uint8_t umpGroup_ = 0;
+    bool isMidi2Mode_ = false;
 
     int countPlayingNoteMatches(int channel, int noteNumber) const;
     void removeOneNoteMatch(int channel, int noteNumber);

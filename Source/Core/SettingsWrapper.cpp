@@ -77,6 +77,7 @@ int SettingsWrapper::getUpperMPEPB(juce::ValueTree& rootState) {
 void SettingsWrapper::setMidi2Mode(bool enabled, juce::ValueTree& rootState) {
     auto vTree = getSettingsTree(rootState);
     vTree.setProperty(id_midi2Mode, enabled, nullptr);
+    juce::Logger::writeToLog("SettingsWrapper: setMidi2Mode to " + juce::String((int)enabled));
 }
 
 bool SettingsWrapper::getMidi2Mode(juce::ValueTree& rootState) {

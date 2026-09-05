@@ -47,6 +47,8 @@ public:
     static void saveDeviceSettings(const ConnectedDevice& device, juce::ValueTree& rootState);
     static void loadDeviceSettings(ConnectedDevice& device, juce::ValueTree& rootState);
     
+    static juce::ValueTree getSettingsTree(juce::ValueTree& rootState);
+
 private:
     static inline const juce::Identifier id_devices { "devices" };
     static inline const juce::Identifier id_mode { "mode" };
@@ -65,7 +67,6 @@ private:
     static constexpr int default_activeTab = 0;
 
     static void cleanupLegacyDeviceNodes(juce::ValueTree& devicesNode);
-    static juce::ValueTree getSettingsTree(juce::ValueTree& rootState);
 };
 
 } // namespace ecm

@@ -40,40 +40,44 @@ void LayoutChangeHandler::valueTreePropertyChanged(juce::ValueTree& vTree, const
                 sendLEDMsg(layoutKey);
             } else {
                 configLookups_[configIndex].updateKey(vTree);
+                if (zoneChangeCallback_)
+                    zoneChangeCallback_(deviceType, Zone::NoZone);
             }
         }
     } else if (vTree.getParent().getType().toString().startsWith(ZoneWrapper::id_zone.toString())) {
         deviceType = ZoneWrapper::getInstrumentTypeFromTree(vTree);
         if (deviceType != InstrumentType::None) {
             auto zone = getZoneFromTree(vTree);
-            if ((property == ZoneWrapper::id_transpose ||
-                 (property == ZoneWrapper::id_enabled && !ZoneWrapper::getEnabled(deviceType, zone, state_))) &&
-                zoneChangeCallback_) {
+            if (zoneChangeCallback_)
                 zoneChangeCallback_(deviceType, zone);
-            }
             configLookups_[getConfigIndexFromInstrumentType(deviceType)].updateAll();
         }
     } else if (vTree.getParent().getType().toString().startsWith(ExpressionCurveWrapper::id_expressionCurves.toString())) {
         deviceType = ExpressionCurveWrapper::getInstrumentTypeFromTree(vTree);
         if (deviceType != InstrumentType::None) {
             configLookups_[getConfigIndexFromInstrumentType(deviceType)].updateAll();
+            if (zoneChangeCallback_)
+                zoneChangeCallback_(deviceType, Zone::NoZone);
         }
     } else if (typeStr.startsWith(ZoneWrapper::id_zone.toString())) {
         deviceType = ZoneWrapper::getInstrumentTypeFromTree(vTree);
         if (deviceType != InstrumentType::None) {
             auto zone = getZoneFromTree(vTree);
-            if ((property == ZoneWrapper::id_transpose ||
-                 (property == ZoneWrapper::id_enabled && !ZoneWrapper::getEnabled(deviceType, zone, state_))) &&
-                zoneChangeCallback_) {
+            if (zoneChangeCallback_)
                 zoneChangeCallback_(deviceType, zone);
-            }
             configLookups_[getConfigIndexFromInstrumentType(deviceType)].updateAll();
         }
     } else if (typeStr.startsWith(ExpressionCurveWrapper::id_expressionCurves.toString()) || typeStr.startsWith(ExpressionCurveWrapper::id_curve.toString())) {
         deviceType = ExpressionCurveWrapper::getInstrumentTypeFromTree(vTree);
         if (deviceType != InstrumentType::None) {
             configLookups_[getConfigIndexFromInstrumentType(deviceType)].updateAll();
+            if (zoneChangeCallback_)
+                zoneChangeCallback_(deviceType, Zone::NoZone);
         }
+    } else if (property == SettingsWrapper::id_midi2Mode) {
+        // Trigger a global refresh when MIDI mode changes
+        if (zoneChangeCallback_)
+            zoneChangeCallback_(InstrumentType::None, Zone::NoZone);
     }
 
 }
@@ -130,6 +134,8 @@ void LayoutChangeHandler::valueTreeChildAdded(juce::ValueTree&, juce::ValueTree&
         auto deviceType = ExpressionCurveWrapper::getInstrumentTypeFromTree(childTree);
         if (deviceType != InstrumentType::None) {
             configLookups_[getConfigIndexFromInstrumentType(deviceType)].updateAll();
+            if (zoneChangeCallback_)
+                zoneChangeCallback_(deviceType, Zone::NoZone);
         }
     }
 }
@@ -142,6 +148,9 @@ void LayoutChangeHandler::valueTreeRedirected(juce::ValueTree&) {
     for (int i = 0; i < 3; i++) {
         configLookups_[i].updateAll();
     }
+
+    if (zoneChangeCallback_)
+        zoneChangeCallback_(InstrumentType::None, Zone::NoZone);
 }
 
 } // namespace ecm

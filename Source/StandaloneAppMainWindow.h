@@ -28,6 +28,10 @@ private:
     void saveAudioSettings();
     void loadAudioSettings();
     static juce::File getAudioSettingsFile();
+    
+    void saveAppState();
+    void loadAppState();
+    static juce::File getAppStateFile();
 
     std::unique_ptr<ECMapperAudioProcessor> processor;
     

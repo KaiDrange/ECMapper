@@ -84,6 +84,7 @@ MainComponent::MainComponent(juce::AudioProcessorValueTreeState& pluginStateToUs
     mpeModeButton.setButtonText("MPE");
     midi20ModeButton.setButtonText("MIDI 2.0");
     mpeModeButton.onClick = [this] {
+        juce::Logger::writeToLog("MainComponent: MPE button clicked");
         if (!mpeModeButton.getToggleState())
             return;
         midi2ModeEnabled = false;
@@ -95,6 +96,7 @@ MainComponent::MainComponent(juce::AudioProcessorValueTreeState& pluginStateToUs
         repaint();
     };
     midi20ModeButton.onClick = [this] {
+        juce::Logger::writeToLog("MainComponent: MIDI 2.0 button clicked");
         if (!midi20ModeButton.getToggleState())
             return;
         midi2ModeEnabled = true;
@@ -313,6 +315,7 @@ void MainComponent::handlePresetSelectionChanged()
 
 void MainComponent::valueTreePropertyChanged(juce::ValueTree& vTree, const juce::Identifier& property) {
     juce::ignoreUnused(vTree);
+    juce::Logger::writeToLog("MainComponent: Property changed: " + property.toString());
 
     if (property == SettingsWrapper::id_midi2Mode)
     {

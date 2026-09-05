@@ -1,6 +1,7 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 #include "Core/SettingsWrapper.h"
+#include "Core/Midi2Protocol.h"
 #include <cmath>
 #include <string_view>
 
@@ -50,7 +51,8 @@ bool isPresetMpeProperty(const juce::Identifier& property)
     return property == ecm::SettingsWrapper::id_lowerMPEVoiceCount
         || property == ecm::SettingsWrapper::id_upperMPEVoiceCount
         || property == ecm::SettingsWrapper::id_lowerMPEPB
-        || property == ecm::SettingsWrapper::id_upperMPEPB;
+        || property == ecm::SettingsWrapper::id_upperMPEPB
+        || property == ecm::SettingsWrapper::id_midi2Mode;
 }
 
 void pruneGlobalSettingsForPreset(juce::ValueTree& globalSettings)
@@ -84,6 +86,7 @@ void applyGlobalSettingsPreset(juce::ValueTree& liveRoot, const juce::ValueTree&
     copyProperty(ecm::SettingsWrapper::id_upperMPEVoiceCount);
     copyProperty(ecm::SettingsWrapper::id_lowerMPEPB);
     copyProperty(ecm::SettingsWrapper::id_upperMPEPB);
+    copyProperty(ecm::SettingsWrapper::id_midi2Mode);
 }
 
 void materializeLayoutKeysForDevice(const ecm::InstrumentType deviceType, juce::ValueTree& rootState)
@@ -165,6 +168,7 @@ void materializePresetState(juce::ValueTree& rootState)
     ecm::SettingsWrapper::setUpperMPEVoiceCount(ecm::SettingsWrapper::getUpperMPEVoiceCount(rootState), rootState);
     ecm::SettingsWrapper::setLowerMPEPB(ecm::SettingsWrapper::getLowerMPEPB(rootState), rootState);
     ecm::SettingsWrapper::setUpperMPEPB(ecm::SettingsWrapper::getUpperMPEPB(rootState), rootState);
+    ecm::SettingsWrapper::setMidi2Mode(ecm::SettingsWrapper::getMidi2Mode(rootState), rootState);
 }
 
 void mergeTreeIntoLive(juce::ValueTree& liveTree, const juce::ValueTree& snapshotTree)
@@ -254,7 +258,11 @@ ECMapperAudioProcessor::ECMapperAudioProcessor() :
         configLookups,
         presetStateLock_,
         [this]() { return presetBatchInProgress_; },
-        [this](ecm::InstrumentType deviceType, ecm::Zone zone) { midiService.queueTransposeChangeFlush(deviceType, zone); });
+        [this](ecm::InstrumentType deviceType, ecm::Zone zone) { 
+            if (deviceType != ecm::InstrumentType::None)
+                midiService.queueTransposeChangeFlush(deviceType, zone);
+            requestRuntimeConfigRefresh();
+        });
     state.state.addListener(layoutChangeHandler.get());
 }
 
@@ -299,15 +307,28 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& audioBuffer,
     if (juce::JUCEApplicationBase::isStandaloneApp())
         audioBuffer.clear();
 
+    juce::MidiBuffer* targetBuffer = &midiMessages;
+    juce::MidiBuffer tempBuffer;
+    bool useDirect = ecm::SettingsWrapper::getMidi2Mode(state.state) && juce::JUCEApplicationBase::isStandaloneApp();
+    
+    if (useDirect)
+        targetBuffer = &tempBuffer;
+
     int slotToLoad = -1;
     collectPresetSlotLoadRequests(midiMessages, slotToLoad);
     const auto timing = calculateBlockTiming(audioBuffer);
     if (applyZoneControlMessages(midiMessages))
         requestRuntimeConfigRefresh();
-    prepareMidiMessagesForBlock(midiMessages);
-    processHardwareMessagesForBlock(timing, midiMessages, slotToLoad);
+    prepareMidiMessagesForBlock(*targetBuffer);
+    processHardwareMessagesForBlock(timing, *targetBuffer, slotToLoad);
     dispatchPresetSlotLoad(slotToLoad);
-    midiService.reduceBreath(midiMessages, timing.numSamples - 1);
+    midiService.reduceBreath(*targetBuffer, timing.numSamples - 1);
+    
+    if (useDirect) {
+        midiService.drainDirectUMPs(tempBuffer);
+        midiMessages.clear();
+    }
+    
     midiService.finishedBlock();
 }
 
@@ -410,7 +431,8 @@ void ECMapperAudioProcessor::dispatchPresetSlotLoad(const int slotToLoad)
 
 void ECMapperAudioProcessor::publishRuntimeConfigSnapshot()
 {
-    midiService.setRuntimeConfigSnapshot(std::make_unique<ecm::MidiService::RuntimeConfigSnapshot>(configLookups));
+    logger.log("publishRuntimeConfigSnapshot: Updating snapshot with protocol " + juce::String(midiService.getProtocol() ? (std::dynamic_pointer_cast<ecm::Midi2Protocol>(midiService.getProtocol()) ? "MIDI 2.0" : "MIDI 1.0") : "None"));
+    midiService.setRuntimeConfigSnapshot(std::make_unique<ecm::MidiService::RuntimeConfigSnapshot>(configLookups, midiService.getProtocol()));
 }
 
 bool ECMapperAudioProcessor::applyZoneControlMessages(const juce::MidiBuffer& midiMessages) const
@@ -611,14 +633,14 @@ void ECMapperAudioProcessor::setStateInformation(const void* data, const int siz
             const juce::ScopedValueSetter<bool> batchGuard(presetBatchInProgress_, true);
             const auto liveState = tree.getChildWithName(state.state.getType());
             if (liveState.isValid())
-                state.replaceState(liveState);
+                mergeTreeIntoLive(state.state, liveState);
 
             const auto bankState = tree.getChildWithName(presetBankState_.getType());
             if (bankState.isValid())
                 presetBankState_ = bankState;
         } else if (tree.hasType(state.state.getType())) {
             const juce::ScopedValueSetter batchGuard(presetBatchInProgress_, true);
-            state.replaceState(tree);
+            mergeTreeIntoLive(state.state, tree);
         }
 
         presetSlotParameter_ = dynamic_cast<juce::AudioParameterChoice*>(state.getParameter(presetSlotParameterId));
@@ -661,6 +683,9 @@ void ECMapperAudioProcessor::updateGlobalSettings() {
 
         clientIP = ecm::SettingsWrapper::getClientListenIP(state.state);
         clientPort = ecm::SettingsWrapper::getClientListenPort(state.state);
+        
+        const bool midi2 = ecm::SettingsWrapper::getMidi2Mode(state.state);
+        logger.log("updateGlobalSettings: MIDI 2.0 Mode is " + juce::String(midi2 ? "Enabled" : "Disabled"));
     }
 
     hardwareService.setAppRole(role);

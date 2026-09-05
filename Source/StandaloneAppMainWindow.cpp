@@ -32,12 +32,14 @@ StandaloneAppMainWindow::StandaloneAppMainWindow(const juce::String& name)
 
     processor = std::make_unique<ECMapperAudioProcessor>();
     processor->setDeviceManager(&deviceManager);
-    processor->loadStandalonePresetBank();
+    
+    loadAppState();
+    if (!processor->hasPresetSlot(1))
+        processor->loadStandalonePresetBank();
 
     processorPlayer.setProcessor(processor.get());
 
     loadAudioSettings();
-    processor->loadPresetSlot(1);
 
     deviceManager.addAudioCallback(&processorPlayer);
     deviceManager.addMidiInputDeviceCallback({}, &processorPlayer.getMidiMessageCollector());
@@ -56,6 +58,8 @@ StandaloneAppMainWindow::StandaloneAppMainWindow(const juce::String& name)
 
 StandaloneAppMainWindow::~StandaloneAppMainWindow()
 {
+    saveAppState();
+    saveAudioSettings();
     setContentOwned(nullptr, true);
     setLookAndFeel(nullptr);
     juce::LookAndFeel::setDefaultLookAndFeel(nullptr);
@@ -100,6 +104,7 @@ void StandaloneAppMainWindow::updateMidiOutput()
     }
 
     processorPlayer.setMidiOutput(currentOutput);
+    processor->setMidiOutput(currentOutput);
 }
 
 void StandaloneAppMainWindow::saveAudioSettings()
@@ -140,6 +145,38 @@ juce::File StandaloneAppMainWindow::getAudioSettingsFile()
     return juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
            .getChildFile("ECMapper")
            .getChildFile("audio_settings.xml");
+}
+
+void StandaloneAppMainWindow::saveAppState()
+{
+    juce::MemoryBlock data;
+    processor->getStateInformation(data);
+    
+    auto file = getAppStateFile();
+    if (!file.getParentDirectory().exists())
+        file.getParentDirectory().createDirectory();
+        
+    file.replaceWithData(data.getData(), data.getSize());
+}
+
+void StandaloneAppMainWindow::loadAppState()
+{
+    auto file = getAppStateFile();
+    if (file.existsAsFile())
+    {
+        juce::MemoryBlock data;
+        if (file.loadFileAsData(data))
+        {
+            processor->setStateInformation(data.getData(), (int)data.getSize());
+        }
+    }
+}
+
+juce::File StandaloneAppMainWindow::getAppStateFile()
+{
+    return juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
+           .getChildFile("ECMapper")
+           .getChildFile("app_state.bin");
 }
 
 void StandaloneAppMainWindow::showAudioSettings()
