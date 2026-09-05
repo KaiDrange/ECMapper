@@ -170,3 +170,27 @@ if(ECMAPPER_BUILD_PLUGIN)
     endif()
 endif()
 
+# ------------------------------------------------------------------------------
+# MIDI Receiver Utility
+# ------------------------------------------------------------------------------
+
+juce_add_console_app(MidiReceiver
+    PRODUCT_NAME "MidiReceiver"
+    VERSION "1.0.0"
+    COMPANY_NAME "Tic Tech"
+)
+
+target_sources(MidiReceiver PRIVATE Source/Utility/MidiReceiver/Main.cpp)
+target_link_libraries(MidiReceiver PRIVATE
+    juce::juce_audio_devices
+    juce::juce_audio_basics
+    juce::juce_gui_basics
+    juce::juce_events
+    juce::juce_core
+    juce::juce_recommended_config_flags
+    juce::juce_recommended_lto_flags
+    juce::juce_recommended_warning_flags
+)
+target_compile_definitions(MidiReceiver PRIVATE JUCE_MODAL_LOOPS_PERMITTED=1)
+juce_generate_juce_header(MidiReceiver)
+
