@@ -308,6 +308,7 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& audioBuffer,
     processHardwareMessagesForBlock(timing, midiMessages, slotToLoad);
     dispatchPresetSlotLoad(slotToLoad);
     midiService.reduceBreath(midiMessages, timing.numSamples - 1);
+    midiService.finishedBlock();
 }
 
 ECMapperAudioProcessor::BlockTiming ECMapperAudioProcessor::calculateBlockTiming(const juce::AudioBuffer<float>& audioBuffer)
@@ -409,7 +410,7 @@ void ECMapperAudioProcessor::dispatchPresetSlotLoad(const int slotToLoad)
 
 void ECMapperAudioProcessor::publishRuntimeConfigSnapshot()
 {
-    midiService.setRuntimeConfigSnapshot(std::make_shared<ecm::MidiService::RuntimeConfigSnapshot>(configLookups));
+    midiService.setRuntimeConfigSnapshot(std::make_unique<ecm::MidiService::RuntimeConfigSnapshot>(configLookups));
 }
 
 bool ECMapperAudioProcessor::applyZoneControlMessages(const juce::MidiBuffer& midiMessages) const

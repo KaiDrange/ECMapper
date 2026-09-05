@@ -34,7 +34,8 @@ public:
     void createLayoutRPNs(juce::MidiBuffer& buffer);
     void queueTransposeChangeFlush(InstrumentType deviceType, Zone zone);
     void drainPendingMidiMessages(juce::MidiBuffer& buffer, int eventTime = 0);
-    void setRuntimeConfigSnapshot(std::shared_ptr<RuntimeConfigSnapshot> snapshot);
+    void setRuntimeConfigSnapshot(std::unique_ptr<RuntimeConfigSnapshot> snapshot);
+    void finishedBlock();
 
     void setOSCBroadcastQueue(osc::MessageFifo* queue) { oscBroadcastQueue_ = queue; }
     void setLocalHardwareQueue(osc::MessageFifo* queue) { localHardwareQueue_ = queue; }
@@ -87,7 +88,17 @@ private:
     
     ConfigLookup (&configLookups_)[3];
     juce::CriticalSection& stateLock_;
-    std::atomic<std::shared_ptr<RuntimeConfigSnapshot>> runtimeConfigSnapshot_;
+    
+    std::atomic<RuntimeConfigSnapshot*> activeSnapshot_{ nullptr };
+    
+    struct DeferredSnapshot {
+        std::unique_ptr<RuntimeConfigSnapshot> snapshot;
+        uint64_t blockId;
+    };
+    std::atomic<uint64_t> currentBlockId_{ 0 };
+    std::vector<DeferredSnapshot> deletionQueue_;
+    juce::CriticalSection deletionQueueLock_;
+
     osc::MessageFifo* oscBroadcastQueue_ = nullptr;
     osc::MessageFifo* localHardwareQueue_ = nullptr;
     HardwareService* hardwareService_ = nullptr;

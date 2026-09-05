@@ -1,6 +1,7 @@
 #include "MidiService.h"
 #include "HardwareService.h"
 #include <cmath>
+#include <algorithm>
 
 namespace ecm {
 
@@ -10,6 +11,12 @@ MidiService::MidiService(ConfigLookup (&configLookups)[3], juce::CriticalSection
 
 MidiService::~MidiService() {
     stop();
+    
+    auto* snap = activeSnapshot_.exchange(nullptr);
+    delete snap;
+
+    const juce::ScopedLock sl(deletionQueueLock_);
+    deletionQueue_.clear();
 }
 
 void MidiService::start(juce::AudioProcessorValueTreeState& pluginState, HardwareService* hs) {
@@ -70,15 +77,37 @@ void MidiService::stop() {
     }
 }
 
-void MidiService::setRuntimeConfigSnapshot(std::shared_ptr<RuntimeConfigSnapshot> snapshot)
+void MidiService::setRuntimeConfigSnapshot(std::unique_ptr<RuntimeConfigSnapshot> snapshot)
 {
-    runtimeConfigSnapshot_.store(std::move(snapshot), std::memory_order_release);
+    RuntimeConfigSnapshot* newPtr = snapshot.release();
+    RuntimeConfigSnapshot* oldPtr = activeSnapshot_.exchange(newPtr, std::memory_order_acq_rel);
+
+    if (oldPtr != nullptr)
+    {
+        const juce::ScopedLock sl(deletionQueueLock_);
+        deletionQueue_.push_back({ std::unique_ptr<RuntimeConfigSnapshot>(oldPtr), currentBlockId_.load(std::memory_order_acquire) });
+    }
+
+    // Prune deletion queue
+    {
+        const juce::ScopedLock sl(deletionQueueLock_);
+        const uint64_t completedId = currentBlockId_.load(std::memory_order_acquire);
+        deletionQueue_.erase(std::remove_if(deletionQueue_.begin(), deletionQueue_.end(),
+            [completedId](const DeferredSnapshot& d) {
+                return d.blockId < completedId;
+            }), deletionQueue_.end());
+    }
+}
+
+void MidiService::finishedBlock()
+{
+    currentBlockId_.fetch_add(1, std::memory_order_release);
 }
 
 void MidiService::processMessage(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, juce::MidiBuffer& midiBuffer, int eventTime, int* presetSlotRequest) {
     if (!initialized_) return;
 
-    auto snapshot = runtimeConfigSnapshot_.load(std::memory_order_acquire);
+    auto* snapshot = activeSnapshot_.load(std::memory_order_acquire);
     if (snapshot == nullptr)
         return;
 
@@ -332,7 +361,7 @@ void MidiService::resendLEDs(const char* devId, InstrumentType type, osc::Messag
 }
 
 void MidiService::reduceBreath(juce::MidiBuffer& buffer, int eventTime) {
-    auto snapshot = runtimeConfigSnapshot_.load(std::memory_order_acquire);
+    auto* snapshot = activeSnapshot_.load(std::memory_order_acquire);
     if (snapshot == nullptr)
         return;
 
