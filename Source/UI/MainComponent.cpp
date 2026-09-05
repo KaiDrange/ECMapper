@@ -83,6 +83,7 @@ MainComponent::MainComponent(juce::AudioProcessorValueTreeState& pluginStateToUs
     midi20ModeButton.setConnectedEdges(juce::Button::ConnectedOnLeft);
     mpeModeButton.setButtonText("MPE");
     midi20ModeButton.setButtonText("MIDI 2.0");
+
     mpeModeButton.onClick = [this] {
         juce::Logger::writeToLog("MainComponent: MPE button clicked");
         if (!mpeModeButton.getToggleState())
@@ -202,6 +203,7 @@ void MainComponent::resized() {
     midi20ModeButton.setBounds(controlArea.removeFromRight(modeWidth).withSizeKeepingCentre(modeWidth, 24));
     controlArea.removeFromRight(modeGap);
     mpeModeButton.setBounds(controlArea.removeFromRight(modeWidth).withSizeKeepingCentre(modeWidth, 24));
+    
 
     auto tabArea = bottomRow.reduced(0, 1);
     auto tabWidth = tabArea.getWidth() / 4;

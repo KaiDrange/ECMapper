@@ -9,12 +9,14 @@
 #include <vector>
 #include <list>
 #include "MidiProtocol.h"
+#include "MidiMonitor.h"
 
 namespace ecm {
 
 class HardwareService;
 
-class MidiService : public juce::ValueTree::Listener {
+class MidiService : public juce::ValueTree::Listener,
+                    public juce::universal_midi_packets::EndpointsListener {
 public:
     struct RuntimeConfigSnapshot {
         std::array<ConfigLookup, 3> configLookups;
@@ -38,11 +40,17 @@ public:
     void drainPendingMidiMessages(juce::MidiBuffer& buffer, int eventTime = 0);
     void drainDirectUMPs(juce::MidiBuffer& buffer);
     void setMidiOutput(juce::MidiOutput* output);
+    void logMidiMessages(const juce::MidiBuffer& buffer, bool isMidi2);
     void setRuntimeConfigSnapshot(std::unique_ptr<RuntimeConfigSnapshot> snapshot);
     void finishedBlock();
 
     void valueTreePropertyChanged(juce::ValueTree& treeWhosePropertyHasChanged, const juce::Identifier& property) override;
     void valueTreeRedirected(juce::ValueTree& treeWhichHasBeenChanged) override;
+    void endpointsChanged() override;
+
+    void updateVirtualOutput();
+    bool isVirtualOutputActive() const;
+    bool isUsingUMPPath() const;
 
     void setOSCBroadcastQueue(osc::MessageFifo* queue) { oscBroadcastQueue_ = queue; }
     void setLocalHardwareQueue(osc::MessageFifo* queue) { localHardwareQueue_ = queue; }
@@ -115,6 +123,7 @@ private:
     std::shared_ptr<MidiProtocol> protocol_;
     bool initialized_ = false;
 
+    juce::universal_midi_packets::EndpointId getCorrectedEndpointId(juce::universal_midi_packets::EndpointId id, const juce::String& name);
     void processNoteKey(const osc::Message& oscMsg, const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime, MidiProtocol* protocol);
     void processCmdKey(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime, MidiProtocol* protocol);
     void processAppCtrlKey(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime, int* presetSlotRequest);
@@ -152,8 +161,17 @@ private:
 
     std::optional<juce::universal_midi_packets::Session> umpSession_;
     juce::universal_midi_packets::Output umpOutput_;
+    juce::universal_midi_packets::Output directUmpOutput_;
+    std::optional<juce::universal_midi_packets::LegacyVirtualOutput> virtualUmpOutput_;
+    std::optional<juce::universal_midi_packets::LegacyVirtualInput> virtualUmpInputMirror_;
+    std::unique_ptr<juce::InterProcessLock> virtualMidiLock_;
+    juce::CriticalSection umpOutputLock_;
+    bool isFirstInstance_ = false;
+    juce::universal_midi_packets::EndpointId lastEndpointId_;
     uint8_t umpGroup_ = 0;
     bool isMidi2Mode_ = false;
+    bool isVirtualTarget_ = false;
+    juce::String midiOutputName_ = "None";
 
     int countPlayingNoteMatches(int channel, int noteNumber) const;
     void removeOneNoteMatch(int channel, int noteNumber);

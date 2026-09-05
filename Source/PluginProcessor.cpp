@@ -264,6 +264,9 @@ ECMapperAudioProcessor::ECMapperAudioProcessor() :
             requestRuntimeConfigRefresh();
         });
     state.state.addListener(layoutChangeHandler.get());
+
+    if (juce::JUCEApplicationBase::isStandaloneApp())
+        midiService.updateVirtualOutput();
 }
 
 ECMapperAudioProcessor::~ECMapperAudioProcessor() {
@@ -309,7 +312,8 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& audioBuffer,
 
     juce::MidiBuffer* targetBuffer = &midiMessages;
     juce::MidiBuffer tempBuffer;
-    bool useDirect = ecm::SettingsWrapper::getMidi2Mode(state.state) && juce::JUCEApplicationBase::isStandaloneApp();
+    bool useDirect = (ecm::SettingsWrapper::getMidi2Mode(state.state) || midiService.isUsingUMPPath()) 
+                     && juce::JUCEApplicationBase::isStandaloneApp();
     
     if (useDirect)
         targetBuffer = &tempBuffer;
@@ -324,6 +328,14 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& audioBuffer,
     dispatchPresetSlotLoad(slotToLoad);
     midiService.reduceBreath(*targetBuffer, timing.numSamples - 1);
     
+    if (!targetBuffer->isEmpty()) {
+        static int debugCounter = 0;
+        if (++debugCounter % 100 == 0)
+            juce::Logger::writeToLog("PluginProcessor: targetBuffer has " + juce::String(targetBuffer->getNumEvents()) + " events. useDirect=" + juce::String((int)useDirect));
+    }
+
+    midiService.logMidiMessages(*targetBuffer, ecm::SettingsWrapper::getMidi2Mode(state.state));
+
     if (useDirect) {
         midiService.drainDirectUMPs(tempBuffer);
         midiMessages.clear();

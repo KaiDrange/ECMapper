@@ -3,6 +3,7 @@
 #include "UI/AboutDialogComponent.h"
 #include "StandaloneApp.h"
 #include "UI/PresetBrowserComponent.h"
+#include "UI/MidiMonitorComponent.h"
 
 StandaloneAppMainWindow::StandaloneAppMainWindow(const juce::String& name)
     : DocumentWindow(name,
@@ -13,6 +14,7 @@ StandaloneAppMainWindow::StandaloneAppMainWindow(const juce::String& name)
           nullptr,
           [this] { showPresetBrowser(); },
           [this] { showAudioSettings(); },
+          [this] { showMidiMonitor(); },
           [this] { showAboutDialog(); },
           [] { showOnlineManual(); },
           [] { showOurMusic(); }
@@ -38,6 +40,9 @@ StandaloneAppMainWindow::StandaloneAppMainWindow(const juce::String& name)
         processor->loadStandalonePresetBank();
 
     processorPlayer.setProcessor(processor.get());
+    
+    ecm::SettingsWrapper::addListener(this, processor->state.state);
+    juce::universal_midi_packets::Endpoints::getInstance()->addListener(*this);
 
     loadAudioSettings();
 
@@ -58,6 +63,11 @@ StandaloneAppMainWindow::StandaloneAppMainWindow(const juce::String& name)
 
 StandaloneAppMainWindow::~StandaloneAppMainWindow()
 {
+    juce::universal_midi_packets::Endpoints::getInstance()->removeListener(*this);
+
+    if (processor != nullptr)
+        processor->state.state.removeListener(this);
+        
     saveAppState();
     saveAudioSettings();
     setContentOwned(nullptr, true);
@@ -90,9 +100,41 @@ void StandaloneAppMainWindow::changeListenerCallback(juce::ChangeBroadcaster* so
     }
 }
 
+void StandaloneAppMainWindow::valueTreePropertyChanged(juce::ValueTree& treeWhosePropertyHasChanged, const juce::Identifier& property)
+{
+    juce::ignoreUnused(treeWhosePropertyHasChanged, property);
+}
+
+void StandaloneAppMainWindow::endpointsChanged()
+{
+    updateMidiOutput();
+}
+
 void StandaloneAppMainWindow::updateMidiOutput()
 {
-    auto* currentOutput = deviceManager.getDefaultMidiOutput();
+    juce::Logger::writeToLog("StandaloneAppMainWindow::updateMidiOutput() called.");
+    auto availableOutputs = juce::MidiOutput::getAvailableDevices();
+    juce::Logger::writeToLog("ECMapper: Available MIDI Outputs: " + juce::String(availableOutputs.size()));
+    for (auto& device : availableOutputs)
+        juce::Logger::writeToLog("  - " + device.name + " [" + device.identifier + "]");
+
+    juce::MidiOutput* currentOutput = deviceManager.getDefaultMidiOutput();
+    
+#if JUCE_MAC
+    if (currentOutput == nullptr || currentOutput->getName() == "None")
+    {
+        for (auto& device : availableOutputs)
+        {
+            if (device.name == "ECMapper Virtual Out")
+            {
+                juce::Logger::writeToLog("ECMapper: Found virtual output in list, selecting it as default.");
+                deviceManager.setDefaultMidiOutputDevice(device.identifier);
+                currentOutput = deviceManager.getDefaultMidiOutput();
+                break;
+            }
+        }
+    }
+#endif
 
     if (currentOutput != nullptr)
     {
@@ -103,8 +145,11 @@ void StandaloneAppMainWindow::updateMidiOutput()
         juce::Logger::writeToLog("ECMapper: No MIDI Output selected.");
     }
 
-    processorPlayer.setMidiOutput(currentOutput);
-    processor->setMidiOutput(currentOutput);
+    if (processor != nullptr)
+    {
+        processorPlayer.setMidiOutput(currentOutput);
+        processor->setMidiOutput(currentOutput);
+    }
 }
 
 void StandaloneAppMainWindow::saveAudioSettings()
@@ -205,6 +250,22 @@ void StandaloneAppMainWindow::showPresetBrowser()
     options.resizable = true;
     options.componentToCentreAround = this;
     options.launchAsync();
+}
+
+void StandaloneAppMainWindow::showMidiMonitor()
+{
+    juce::DialogWindow::LaunchOptions options;
+    options.content.setOwned(new ecm::MidiMonitorComponent());
+    options.dialogTitle = "Midi Monitor";
+    options.dialogBackgroundColour = ecm::Style::background();
+    options.escapeKeyTriggersCloseButton = true;
+    options.useNativeTitleBar = true;
+    options.resizable = true;
+    options.componentToCentreAround = this;
+    
+    auto* dw = options.launchAsync();
+    if (dw != nullptr)
+        dw->centreWithSize(600, 400);
 }
 
 void StandaloneAppMainWindow::requestQuit()

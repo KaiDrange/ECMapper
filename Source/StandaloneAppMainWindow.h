@@ -1,12 +1,14 @@
 #pragma once
 
-#include <juceheader.h>
+#include <JuceHeader.h>
 #include "PluginProcessor.h"
 #include "UI/AppStyle.h"
 #include "UI/MainMenuBarModel.h"
 
 class StandaloneAppMainWindow : public juce::DocumentWindow,
-                                private juce::ChangeListener
+                                private juce::ChangeListener,
+                                private juce::ValueTree::Listener,
+                                private juce::universal_midi_packets::EndpointsListener
 {
 public:
     explicit StandaloneAppMainWindow (const juce::String& name);
@@ -16,11 +18,14 @@ public:
 
     void showAudioSettings();
     void showPresetBrowser();
+    void showMidiMonitor();
     void showAboutDialog();
     static void showOnlineManual();
     static void showOurMusic();
     static void requestQuit();
     void changeListenerCallback (juce::ChangeBroadcaster* source) override;
+    void valueTreePropertyChanged (juce::ValueTree& treeWhosePropertyHasChanged, const juce::Identifier& property) override;
+    void endpointsChanged() override;
 
 private:
     void updateMidiOutput();
@@ -37,6 +42,7 @@ private:
     
     juce::AudioDeviceManager deviceManager;
     juce::AudioProcessorPlayer processorPlayer;
+    
     ecm::AppLookAndFeel lookAndFeel;
     MainMenuBarModel menuBarModel;
 
