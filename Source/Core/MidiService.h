@@ -41,6 +41,7 @@ public:
     void drainDirectUMPs(juce::MidiBuffer& buffer);
     void setMidiOutput(juce::MidiOutput* output);
     void logMidiMessages(const juce::MidiBuffer& buffer, bool isMidi2);
+    void sendIdentification();
     void setRuntimeConfigSnapshot(std::unique_ptr<RuntimeConfigSnapshot> snapshot);
     void finishedBlock();
 
@@ -90,16 +91,14 @@ private:
     float ehBreath_[3] = { 0.0f, 0.0f, 0.0f };
     float ehStrips_[2][3] = { {0.0f,0.0f,0.0f}, {0.0f,0.0f,0.0f} };
     float relStart_ehStrips_[2][3] = { {-1.0f,-1.0f,-1.0f}, {-1.0f,-1.0f,-1.0f} };
-    int currentKeyPBperChannel_[16] = {0};
-    int currentStripPBperChannel_[16] = {0};
+    float currentKeyPBperChannel_[16] = {0.0f};
+    float currentStripPBperChannel_[16] = {0.0f};
     
     static constexpr int PRESSURE_HISTORY_LENGTH = 6;
     static constexpr float breathZeroThreshold_[3] = {0.03125f, 0.03125f, 0.125f};
     static constexpr float stripZeroThreshold_[3] = {0.0366f, 0.0366f, 0.12f};
     static constexpr float stripGain_[3] = {1.3f, 1.3f, 1.2f};
     
-    std::unique_ptr<juce::MPEChannelAssigner> lowerChanAssigner_;
-    std::unique_ptr<juce::MPEChannelAssigner> upperChanAssigner_;
     juce::MPEZoneLayout mpeZone_;
     
     ConfigLookup (&configLookups_)[3];
@@ -146,8 +145,8 @@ private:
     void clearAllAppCtrlTransposes(int deviceIndex);
 
     float calculatePitchBendCurve(float value) const;
-    juce::MPEValue calculateNoteOnVelocity(InstrumentType deviceType, KeyState* state);
-    juce::MPEValue calculateNoteOffVelocity(InstrumentType deviceType, KeyState* state);
+    float calculateNoteOnVelocity(InstrumentType deviceType, KeyState* state);
+    float calculateNoteOffVelocity(InstrumentType deviceType, KeyState* state);
     float applyExpressionCurve(InstrumentType deviceType, ExpressionCurveTarget target, float value, bool isBipolar) const;
     
     struct MidiNote {

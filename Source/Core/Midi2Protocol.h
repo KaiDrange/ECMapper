@@ -23,6 +23,11 @@ public:
     void addMidiContinue(juce::MidiBuffer& buffer, int eventTime) override;
 
     void setup(juce::MidiBuffer& buffer, const juce::MPEZoneLayout& layout) override;
+    
+    void addIdentification(juce::MidiBuffer& buffer, int eventTime) override;
+
+    int findMidiChannelForNewNote(MidiChannelType outputType, int noteNumber) override;
+    void releaseMidiChannel(MidiChannelType outputType, int noteNumber, int channel) override;
 
 private:
     uint8_t group_ = 0;

@@ -1,5 +1,6 @@
 #pragma once
 #include <JuceHeader.h>
+#include "Enums.h"
 
 namespace ecm {
 
@@ -23,6 +24,11 @@ public:
     virtual void addMidiContinue(juce::MidiBuffer& buffer, int eventTime) = 0;
 
     virtual void setup(juce::MidiBuffer& buffer, const juce::MPEZoneLayout& layout) = 0;
+    
+    virtual void addIdentification(juce::MidiBuffer& buffer, int eventTime) = 0;
+
+    virtual int findMidiChannelForNewNote(MidiChannelType outputType, int noteNumber) = 0;
+    virtual void releaseMidiChannel(MidiChannelType outputType, int noteNumber, int channel) = 0;
 };
 
 }

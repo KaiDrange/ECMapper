@@ -98,4 +98,34 @@ void Midi2Protocol::addMidiContinue(juce::MidiBuffer& buffer, int eventTime) {
 void Midi2Protocol::setup(juce::MidiBuffer&, const juce::MPEZoneLayout&) {
 }
 
+void Midi2Protocol::addIdentification(juce::MidiBuffer& buffer, int eventTime) {
+    EndpointInfo info;
+    info = info.withVersion(1, 1)
+               .withMidi1Support(true)
+               .withMidi2Support(true)
+               .withStaticFunctionBlocks(true)
+               .withNumFunctionBlocks(0);
+    
+    auto infoPkt = Factory::makeEndpointInfoNotification(info);
+    addToBuffer(buffer, infoPkt.data(), (int)infoPkt.size(), eventTime);
+
+    Factory::makeEndpointNameNotification("ECMapper Direct", [&](const View& view) {
+        addToBuffer(buffer, view.data(), (int)view.size(), eventTime);
+    });
+    
+    StreamConfiguration config;
+    config = config.withProtocol(PacketProtocol::MIDI_2_0);
+    auto configPkt = Factory::makeStreamConfigurationNotification(config);
+    addToBuffer(buffer, configPkt.data(), (int)configPkt.size(), eventTime);
+}
+
+int Midi2Protocol::findMidiChannelForNewNote(MidiChannelType outputType, int /*noteNumber*/) {
+    if (outputType == MidiChannelType::MPE_Low) return 1;
+    if (outputType == MidiChannelType::MPE_High) return 16;
+    return static_cast<int>(outputType);
+}
+
+void Midi2Protocol::releaseMidiChannel(MidiChannelType /*outputType*/, int /*noteNumber*/, int /*channel*/) {
+}
+
 }

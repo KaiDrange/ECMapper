@@ -15,14 +15,8 @@ void Midi1Protocol::addNoteOff(juce::MidiBuffer& buffer, int channel, int noteNu
 }
 
 void Midi1Protocol::addPitchBend(juce::MidiBuffer& buffer, int channel, int noteNumber, float value, int eventTime) {
-    // value is expected to be in range [0, 1] for unipolar or combined, but MidiMessage::pitchWheel takes 0-16383
-    // MidiService currently calculates totalPB as 0-16383.
-    // Wait, I should decide if the protocol takes float or int.
-    // If I use float [0, 1], I need to map it.
-    // Actually, MidiService was doing:
-    // int totalPB = std::clamp(currentKeyPBperChannel_[channel - 1] + currentStripPBperChannel_[channel - 1] + 8192, 0, 16383);
-    // So if I pass this value as a float [0, 1], it would be (totalPB / 16383.0f).
-    
+    // value is expected to be in range [0, 1] (where 0.5 is center)
+    // MIDI 1.0 Pitch Wheel is 14-bit: 0 to 16383
     int pb = std::clamp(static_cast<int>(value * 16383.0f), 0, 16383);
     buffer.addEvent(juce::MidiMessage::pitchWheel(channel, pb), eventTime);
 }
@@ -48,6 +42,8 @@ void Midi1Protocol::addProgramChange(juce::MidiBuffer& buffer, int channel, int 
 
 void Midi1Protocol::addAllNotesOff(juce::MidiBuffer& buffer, int channel, int eventTime) {
     buffer.addEvent(juce::MidiMessage::allNotesOff(channel), eventTime);
+    if (lowerChanAssigner_) lowerChanAssigner_->allNotesOff();
+    if (upperChanAssigner_) upperChanAssigner_->allNotesOff();
 }
 
 void Midi1Protocol::addMidiStart(juce::MidiBuffer& buffer, int eventTime) {
@@ -65,6 +61,37 @@ void Midi1Protocol::addMidiContinue(juce::MidiBuffer& buffer, int eventTime) {
 void Midi1Protocol::setup(juce::MidiBuffer& buffer, const juce::MPEZoneLayout& layout) {
     auto buff = juce::MPEMessages::setZoneLayout(layout);
     buffer.addEvents(buff, 0, -1, 0);
+    
+    lowerChanAssigner_ = std::make_unique<juce::MPEChannelAssigner>(layout.getLowerZone());
+    if (layout.getUpperZone().numMemberChannels > 0)
+        upperChanAssigner_ = std::make_unique<juce::MPEChannelAssigner>(layout.getUpperZone());
+    else
+        upperChanAssigner_.reset();
+}
+
+void Midi1Protocol::addIdentification(juce::MidiBuffer&, int) {
+}
+
+int Midi1Protocol::findMidiChannelForNewNote(MidiChannelType outputType, int noteNumber) {
+    if (outputType == MidiChannelType::MPE_Low) {
+        if (lowerChanAssigner_ && noteNumber != -1)
+            return lowerChanAssigner_->findMidiChannelForNewNote(noteNumber);
+        return 1;
+    }
+    if (outputType == MidiChannelType::MPE_High) {
+        if (upperChanAssigner_ && noteNumber != -1)
+            return upperChanAssigner_->findMidiChannelForNewNote(noteNumber);
+        return 16;
+    }
+    
+    return static_cast<int>(outputType);
+}
+
+void Midi1Protocol::releaseMidiChannel(MidiChannelType outputType, int noteNumber, int channel) {
+    if (outputType == MidiChannelType::MPE_Low && lowerChanAssigner_ && noteNumber != -1)
+        lowerChanAssigner_->noteOff(noteNumber, channel);
+    else if (outputType == MidiChannelType::MPE_High && upperChanAssigner_ && noteNumber != -1)
+        upperChanAssigner_->noteOff(noteNumber, channel);
 }
 
 }
