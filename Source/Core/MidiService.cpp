@@ -259,7 +259,8 @@ void MidiService::processNoteKey(const osc::Message& oscMsg, const ConfigLookup:
     } else if (state->messageCount == PRESSURE_HISTORY_LENGTH && state->status == KeyStatus::Pending) {
         createNoteOn(keyLookup, state, buffer, eventTime, protocol);
     } else if (state->status == KeyStatus::Active) {
-        createNoteHold(keyLookup, state, buffer, eventTime, protocol);
+        if (state->messageCount >= 64)
+            createNoteHold(keyLookup, state, buffer, eventTime, protocol);
     }
 }
 
@@ -375,8 +376,7 @@ void MidiService::drainPendingMidiMessages(juce::MidiBuffer& buffer, int eventTi
 
 void MidiService::drainDirectUMPs(juce::MidiBuffer& buffer)
 {
-    const juce::ScopedTryLock sl(umpOutputLock_);
-    if (!sl.isLocked()) return;
+    const juce::ScopedLock sl(umpOutputLock_);
 
     auto& output = isVirtualTarget_ ? directUmpOutput_ : umpOutput_;
 

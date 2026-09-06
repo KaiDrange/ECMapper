@@ -17,11 +17,12 @@ static void addToBuffer(juce::MidiBuffer& buffer, const uint32_t* data, int numW
     // Manual search for insertion point to keep MidiBuffer sorted
     const uint8_t* b = buffer.data.begin();
     const uint8_t* e = buffer.data.end();
-    while (b < e) {
+    while (b + (int)sizeof(juce::int32) + (int)sizeof(juce::uint16) <= e) {
         int eventTime = juce::readUnaligned<juce::int32>(b);
         if (eventTime > sampleNumber) break;
         int size = juce::readUnaligned<juce::uint16>(b + sizeof(juce::int32));
         int total = (int)sizeof(juce::int32) + (int)sizeof(juce::uint16) + size;
+        if (b + total > e) break;
         offset += total;
         b += total;
     }
