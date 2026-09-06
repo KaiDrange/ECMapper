@@ -16,23 +16,23 @@ void Midi1Protocol::addNoteOff(juce::MidiBuffer& buffer, int channel, int noteNu
 
 void Midi1Protocol::addPitchBend(juce::MidiBuffer& buffer, int channel, int noteNumber, float value, int eventTime) {
     // value is expected to be in range [0, 1] (where 0.5 is center)
-    // MIDI 1.0 Pitch Wheel is 14-bit: 0 to 16383
-    int pb = std::clamp(static_cast<int>(value * 16383.0f), 0, 16383);
+    // MIDI 1.0 Pitch Wheel is 14-bit: 0 to 16383. Center is 8192.
+    int pb = std::clamp(static_cast<int>(value * 16384.0f), 0, 16383);
     buffer.addEvent(juce::MidiMessage::pitchWheel(channel, pb), eventTime);
 }
 
-void Midi1Protocol::addChannelPressure(juce::MidiBuffer& buffer, int channel, float value, int eventTime) {
-    int val = std::clamp(static_cast<int>(value * 127.0f), 0, 127);
+void Midi1Protocol::addChannelPressure(juce::MidiBuffer& buffer, int channel, int /*noteNumber*/, float value, int eventTime) {
+    int val = std::clamp(static_cast<int>(value * 128.0f), 0, 127);
     buffer.addEvent(juce::MidiMessage::channelPressureChange(channel, val), eventTime);
 }
 
 void Midi1Protocol::addPolyAftertouch(juce::MidiBuffer& buffer, int channel, int noteNumber, float value, int eventTime) {
-    int val = std::clamp(static_cast<int>(value * 127.0f), 0, 127);
+    int val = std::clamp(static_cast<int>(value * 128.0f), 0, 127);
     buffer.addEvent(juce::MidiMessage::aftertouchChange(channel, noteNumber, val), eventTime);
 }
 
-void Midi1Protocol::addCC(juce::MidiBuffer& buffer, int channel, int ccNumber, float value, int eventTime) {
-    int val = std::clamp(static_cast<int>(value * 127.0f), 0, 127);
+void Midi1Protocol::addCC(juce::MidiBuffer& buffer, int channel, int /*noteNumber*/, int ccNumber, float value, int eventTime) {
+    int val = std::clamp(static_cast<int>(value * 128.0f), 0, 127);
     buffer.addEvent(juce::MidiMessage::controllerEvent(channel, ccNumber, val), eventTime);
 }
 

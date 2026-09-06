@@ -111,10 +111,21 @@ public:
             const auto type = juce::universal_midi_packets::Utils::getMessageType(packet[0]);
             const auto group = juce::universal_midi_packets::Utils::getGroup(packet[0]);
             
+            auto printHeader = [&]() {
+                std::cout << "[" << std::fixed << std::setprecision(3) << time << "] "
+                          << "G" << std::setw(2) << std::setfill('0') << (int)(group + 1) << " "
+                          << "Ch" << std::setw(2) << std::setfill('0') << (int)juce::universal_midi_packets::Utils::getChannel(packet[0]) + 1 << " ";
+            };
+
+            auto shouldLog = [&](uint8_t status, int note, int index, int interval = 32) {
+                const auto channel = juce::universal_midi_packets::Utils::getChannel(packet[0]);
+                uint32_t key = ((uint32_t)status << 24) | ((uint32_t)group << 20) | ((uint32_t)channel << 16) | ((uint32_t)(note & 0xFF) << 8) | (uint32_t)(index & 0xFF);
+                return ++messageCounters[key] % interval == 1;
+            };
+
             // Handle MIDI 2.0 Channel Voice Messages (Type 4)
             if (type == juce::universal_midi_packets::Utils::MessageKind::channelVoice2)
             {
-                const auto channel = juce::universal_midi_packets::Utils::getChannel(packet[0]);
                 const auto status = (uint8_t) juce::universal_midi_packets::Utils::getStatus(packet[0]);
                 
                 if (status == 0x8 || status == 0x9) // Note Off / Note On
@@ -122,29 +133,100 @@ public:
                     const int note = (packet[0] >> 8) & 0xFF;
                     const uint16_t velocity = (uint16_t)(packet[1] >> 16);
                     
-                    std::cout << "[" << std::fixed << std::setprecision(3) << time << "] "
-                              << "G" << std::setw(2) << std::setfill('0') << (int)(group + 1) << " "
-                              << "Ch" << std::setw(2) << std::setfill('0') << (int)(channel + 1) << " "
-                              << (status == 0x9 ? "Note On  " : "Note Off ")
+                    printHeader();
+                    std::cout << (status == 0x9 ? "Note On          " : "Note Off         ")
                               << "Note: " << std::setw(3) << std::setfill(' ') << std::dec << note 
                               << " Vel: " << std::setw(5) << velocity << std::endl;
                     continue;
                 }
                 
+                if (status == 0xA) // Poly Pressure
+                {
+                    const int note = (packet[0] >> 8) & 0xFF;
+                    const uint32_t value = packet[1];
+                    if (shouldLog(status, note, 0))
+                    {
+                        printHeader();
+                        std::cout << "Poly Pressure    "
+                                  << "Note: " << std::setw(3) << std::dec << note << " "
+                                  << "Val: " << std::setw(10) << value << " (filtered)" << std::endl;
+                    }
+                    continue;
+                }
+
                 if (status == 0xB) // Control Change
                 {
                     const int index = (packet[0] >> 8) & 0xFF;
                     const uint32_t value = packet[1];
-                    const uint32_t key = ((uint32_t)group << 16) | ((uint32_t)channel << 8) | (uint32_t)index;
                     
-                    if (++ccCounters[key] % 64 == 1)
+                    if (shouldLog(status, -1, index, 64))
                     {
-                        std::cout << "[" << std::fixed << std::setprecision(3) << time << "] "
-                                  << "G" << std::setw(2) << std::setfill('0') << (int)(group + 1) << " "
-                                  << "Ch" << std::setw(2) << std::setfill('0') << (int)(channel + 1) << " "
-                                  << "CC " << std::setw(3) << std::setfill(' ') << std::dec << index << " "
-                                  << "Val: " << std::setw(10) << value << " (filtered 1/64)" << std::endl;
+                        printHeader();
+                        std::cout << "CC " << std::setw(3) << std::setfill(' ') << std::dec << index << "           "
+                                  << "Val: " << std::setw(10) << value << " (filtered)" << std::endl;
                     }
+                    continue;
+                }
+
+                if (status == 0xD) // Channel Pressure
+                {
+                    const uint32_t value = packet[1];
+                    if (shouldLog(status, -1, 0))
+                    {
+                        printHeader();
+                        std::cout << "Channel Pressure "
+                                  << "Val: " << std::setw(10) << value << " (filtered)" << std::endl;
+                    }
+                    continue;
+                }
+
+                if (status == 0xE) // Pitch Bend
+                {
+                    const uint32_t value = packet[1];
+                    if (shouldLog(status, -1, 0))
+                    {
+                        printHeader();
+                        std::cout << "Pitch Bend       "
+                                  << "Val: " << std::setw(10) << value << " (filtered)" << std::endl;
+                    }
+                    continue;
+                }
+
+                if (status == 0x6) // Per-Note Pitch Bend
+                {
+                    const int note = (packet[0] >> 8) & 0xFF;
+                    const uint32_t value = packet[1];
+                    if (shouldLog(status, note, 0))
+                    {
+                        printHeader();
+                        std::cout << "PN Pitch Bend    "
+                                  << "Note: " << std::setw(3) << std::dec << note << " "
+                                  << "Val: " << std::setw(10) << value << " (filtered)" << std::endl;
+                    }
+                    continue;
+                }
+
+                if (status == 0x1) // Per-Note Assignable Controller
+                {
+                    const int note = (packet[0] >> 8) & 0xFF;
+                    const int index = packet[0] & 0xFF;
+                    const uint32_t value = packet[1];
+                    if (shouldLog(status, note, index))
+                    {
+                        printHeader();
+                        std::cout << "PN Assign CC " << std::setw(3) << index << " "
+                                  << "Note: " << std::setw(3) << std::dec << note << " "
+                                  << "Val: " << std::setw(10) << value << " (filtered)" << std::endl;
+                    }
+                    continue;
+                }
+
+                if (status == 0xC) // Program Change
+                {
+                    const int program = (packet[1] >> 24) & 0x7F;
+                    printHeader();
+                    std::cout << "Program Change   "
+                              << "Prog: " << std::setw(3) << program << std::endl;
                     continue;
                 }
             }
@@ -152,7 +234,6 @@ public:
             // Handle MIDI 1.0 Channel Voice Messages (Type 2) for consistency
             if (type == juce::universal_midi_packets::Utils::MessageKind::channelVoice1)
             {
-                const auto channel = juce::universal_midi_packets::Utils::getChannel(packet[0]);
                 const auto status = (uint8_t) juce::universal_midi_packets::Utils::getStatus(packet[0]);
                 
                 if (status == 0x8 || status == 0x9)
@@ -160,31 +241,39 @@ public:
                     const int note = (packet[0] >> 8) & 0xFF;
                     const int velocity = packet[0] & 0xFF;
                     
-                    std::cout << "[" << std::fixed << std::setprecision(3) << time << "] "
-                              << "G" << std::setw(2) << std::setfill('0') << (int)(group + 1) << " "
-                              << "Ch" << std::setw(2) << std::setfill('0') << (int)(channel + 1) << " "
-                              << (status == 0x9 ? "Note On  " : "Note Off ")
+                    printHeader();
+                    std::cout << (status == 0x9 ? "Note On          " : "Note Off         ")
                               << "Note: " << std::setw(3) << std::setfill(' ') << std::dec << note 
                               << " Vel: " << std::setw(3) << velocity << " (MIDI 1.0)" << std::endl;
                     continue;
                 }
+
+                if (status == 0xB) // CC
+                {
+                    const int index = (packet[0] >> 8) & 0xFF;
+                    const int value = packet[0] & 0xFF;
+                    if (shouldLog(status, -1, index, 64))
+                    {
+                        printHeader();
+                        std::cout << "CC " << std::setw(3) << index << "           "
+                                  << "Val: " << std::setw(3) << value << " (MIDI 1.0 filtered)" << std::endl;
+                    }
+                    continue;
+                }
             }
 
-            std::cout << "[" << std::fixed << std::setprecision(3) << time << "] ";
-            std::cout << "G" << std::setw(2) << (int)(group + 1) << " ";
+            printHeader();
             std::cout << "UMP Type " << std::hex << (int)type << std::dec << " (";
             
             if (type == juce::universal_midi_packets::Utils::MessageKind::channelVoice1)
             {
-                const auto channel = juce::universal_midi_packets::Utils::getChannel(packet[0]);
                 const auto status = (int)juce::universal_midi_packets::Utils::getStatus(packet[0]);
-                std::cout << "MIDI 1.0 Ch" << std::setw(2) << (int)(channel + 1) << " Stat " << std::hex << status << std::dec;
+                std::cout << "MIDI 1.0 Stat " << std::hex << status << std::dec;
             }
             else if (type == juce::universal_midi_packets::Utils::MessageKind::channelVoice2)
             {
-                const auto channel = juce::universal_midi_packets::Utils::getChannel(packet[0]);
                 const auto status = (int)juce::universal_midi_packets::Utils::getStatus(packet[0]);
-                std::cout << "MIDI 2.0 Ch" << std::setw(2) << (int)(channel + 1) << " Stat " << std::hex << status << std::dec;
+                std::cout << "MIDI 2.0 Stat " << std::hex << status << std::dec;
             }
             else if (type == juce::universal_midi_packets::Utils::MessageKind::utility)       std::cout << "Utility";
             else if (type == juce::universal_midi_packets::Utils::MessageKind::commonRealtime) std::cout << "Common/Realtime";
@@ -212,7 +301,7 @@ public:
 private:
     std::optional<juce::universal_midi_packets::Session> session;
     std::vector<juce::universal_midi_packets::Input> inputs;
-    std::map<uint32_t, int> ccCounters;
+    std::map<uint32_t, int> messageCounters;
 };
 
 int main(int /*argc*/, char* /*argv*/[])

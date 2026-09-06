@@ -29,11 +29,11 @@ void MidiService::start(juce::AudioProcessorValueTreeState& pluginState, Hardwar
     hardwareService_ = hs;
     pluginState_ = &pluginState;
     int lowerChannelCount = SettingsWrapper::getLowerMPEVoiceCount(pluginState.state);
-    mpeZone_.setLowerZone(lowerChannelCount, 2, SettingsWrapper::getLowerMPEPB(pluginState.state));
+    mpeZone_.setLowerZone(lowerChannelCount, 1, SettingsWrapper::getLowerMPEPB(pluginState.state));
     
     if (lowerChannelCount < 14) {
         int upperChannelCount = SettingsWrapper::getUpperMPEVoiceCount(pluginState.state);
-        mpeZone_.setUpperZone(upperChannelCount, 2, SettingsWrapper::getUpperMPEPB(pluginState.state));
+        mpeZone_.setUpperZone(upperChannelCount, 16, SettingsWrapper::getUpperMPEPB(pluginState.state));
     }
     
     for (int i = 0; i < 3; ++i) {
@@ -78,6 +78,11 @@ void MidiService::start(juce::AudioProcessorValueTreeState& pluginState, Hardwar
         protocol_ = std::make_shared<Midi2Protocol>();
     else
         protocol_ = std::make_shared<Midi1Protocol>();
+    
+    {
+        const juce::ScopedLock sl(pendingMessageLock_);
+        protocol_->setup(pendingMidiBuffer_, mpeZone_);
+    }
     
     updateVirtualOutput();
     sendIdentification();
@@ -173,11 +178,16 @@ void MidiService::valueTreePropertyChanged(juce::ValueTree& tree, const juce::Id
     {
         const juce::ScopedLock stateGuard(stateLock_);
         int lowerChannelCount = SettingsWrapper::getLowerMPEVoiceCount(tree);
-        mpeZone_.setLowerZone(lowerChannelCount, 2, SettingsWrapper::getLowerMPEPB(tree));
+        mpeZone_.setLowerZone(lowerChannelCount, 1, SettingsWrapper::getLowerMPEPB(tree));
         
         if (lowerChannelCount < 14) {
             int upperChannelCount = SettingsWrapper::getUpperMPEVoiceCount(tree);
-            mpeZone_.setUpperZone(upperChannelCount, 2, SettingsWrapper::getUpperMPEPB(tree));
+            mpeZone_.setUpperZone(upperChannelCount, 16, SettingsWrapper::getUpperMPEPB(tree));
+        }
+
+        if (protocol_) {
+            juce::MidiBuffer dummy;
+            protocol_->setup(dummy, mpeZone_);
         }
     }
 }
@@ -191,11 +201,16 @@ void MidiService::valueTreeRedirected(juce::ValueTree& tree)
     // Refresh MPE settings
     const juce::ScopedLock stateGuard(stateLock_);
     int lowerChannelCount = SettingsWrapper::getLowerMPEVoiceCount(tree);
-    mpeZone_.setLowerZone(lowerChannelCount, 2, SettingsWrapper::getLowerMPEPB(tree));
+    mpeZone_.setLowerZone(lowerChannelCount, 1, SettingsWrapper::getLowerMPEPB(tree));
     
     if (lowerChannelCount < 14) {
         int upperChannelCount = SettingsWrapper::getUpperMPEVoiceCount(tree);
-        mpeZone_.setUpperZone(upperChannelCount, 2, SettingsWrapper::getUpperMPEPB(tree));
+        mpeZone_.setUpperZone(upperChannelCount, 16, SettingsWrapper::getUpperMPEPB(tree));
+    }
+
+    if (protocol_) {
+        juce::MidiBuffer dummy;
+        protocol_->setup(dummy, mpeZone_);
     }
 }
 
@@ -950,7 +965,7 @@ void MidiService::createMidiMsgOn(const ConfigLookup::Key& keyLookup, KeyState* 
     if (keyLookup.msgType == 4) {
         createAllNotesOff(buffer, eventTime, protocol);
     } else if (keyLookup.msgType == 1) {
-        if (protocol) protocol->addCC(buffer, state->midiChannel, keyLookup.cmdCC, keyLookup.cmdOn / 127.0f, eventTime);
+        if (protocol) protocol->addCC(buffer, state->midiChannel, -1, keyLookup.cmdCC, keyLookup.cmdOn / 127.0f, eventTime);
     } else if (keyLookup.msgType == 2) {
         if (protocol) protocol->addProgramChange(buffer, state->midiChannel, keyLookup.cmdOn, eventTime);
     } else if (keyLookup.msgType == 3) {
@@ -977,7 +992,7 @@ void MidiService::createMidiMsgOff(const ConfigLookup::Key& keyLookup, KeyState*
         if (keyLookup.msgType == 4) {
             createAllNotesOff(buffer, eventTime, protocol);
         } else if (keyLookup.msgType == 1) {
-            if (protocol) protocol->addCC(buffer, state->midiChannel, keyLookup.cmdCC, keyLookup.cmdOff / 127.0f, eventTime);
+            if (protocol) protocol->addCC(buffer, state->midiChannel, -1, keyLookup.cmdCC, keyLookup.cmdOff / 127.0f, eventTime);
         } else if (keyLookup.msgType == 2) {
             if (protocol) protocol->addProgramChange(buffer, state->midiChannel, keyLookup.cmdOff, eventTime);
         } else if (keyLookup.msgType == 3) {
@@ -1063,7 +1078,7 @@ void MidiService::queueTransposeChangeFlush(InstrumentType deviceType, Zone zone
                         currentKeyPBperChannel_[channel - 1] = 0.0f;
                         currentStripPBperChannel_[channel - 1] = 0.0f;
                         if (protocol) {
-                            protocol->addChannelPressure(localMessages, channel, 0.0f, 0);
+                            protocol->addChannelPressure(localMessages, channel, -1, 0.0f, 0);
                             protocol->addPitchBend(localMessages, channel, -1, 0.5f, 0);
                         }
                     }
@@ -1087,7 +1102,7 @@ void MidiService::queueTransposeChangeFlush(InstrumentType deviceType, Zone zone
 
 void MidiService::createNoteHold(const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime, MidiProtocol* protocol) {
     int channel = state->midiChannel;
-    if (channel > 0 && channel <= 16 && (chanNotePri_[channel - 1].empty() || chanNotePri_[channel - 1].front() == keyLookup.keyId)) {
+    if (channel > 0 && channel <= 16 && (isMidi2Mode_ || chanNotePri_[channel - 1].empty() || chanNotePri_[channel - 1].front() == keyLookup.keyId)) {
         addMidiValueMessage(keyLookup.keyId.deviceType, channel, state->ehRoll, keyLookup.roll, keyLookup.pbRange, state->activeNotes[0], buffer, true, ExpressionCurveTarget::Roll, eventTime, protocol);
         addMidiValueMessage(keyLookup.keyId.deviceType, channel, state->ehYaw, keyLookup.yaw, keyLookup.pbRange, state->activeNotes[0], buffer, true, ExpressionCurveTarget::Yaw, eventTime, protocol);
         addMidiValueMessage(keyLookup.keyId.deviceType, channel, state->ehPressureHistory.back(), keyLookup.pressure, keyLookup.pbRange, state->activeNotes[0], buffer, false, ExpressionCurveTarget::Pressure, eventTime, protocol);
@@ -1106,18 +1121,27 @@ void MidiService::addMidiValueMessage(InstrumentType deviceType, int channel, fl
     if (!protocol) return;
 
     if (midiValue.valueType == MidiValueType::Pitchbend) {
-        currentKeyPBperChannel_[channel - 1] = calculatePitchBendCurve(normalized) * pbRange;
-        float totalPB = std::clamp(currentKeyPBperChannel_[channel - 1] + currentStripPBperChannel_[channel - 1], -1.0f, 1.0f);
-        protocol->addPitchBend(buffer, channel, noteNo, totalPB * 0.5f + 0.5f, eventTime);
+        float notePB = calculatePitchBendCurve(normalized);
+        if (!isMidi2Mode_) notePB *= pbRange;
+        
+        if (isMidi2Mode_ && noteNo != -1) {
+            // In MIDI 2.0, per-note pitch bend is additive with channel pitch bend.
+            // We can send it independently without affecting or being affected by the shared channel key PB state.
+            protocol->addPitchBend(buffer, channel, noteNo, notePB * 0.5f + 0.5f, eventTime);
+        } else {
+            currentKeyPBperChannel_[channel - 1] = notePB;
+            float totalPB = std::clamp(currentKeyPBperChannel_[channel - 1] + currentStripPBperChannel_[channel - 1], -1.0f, 1.0f);
+            protocol->addPitchBend(buffer, channel, noteNo, totalPB * 0.5f + 0.5f, eventTime);
+        }
     } else if (midiValue.valueType == MidiValueType::ChannelAftertouch) {
         float val = isBipolar ? (normalized * 0.5f + 0.5f) : normalized;
-        protocol->addChannelPressure(buffer, channel, val, eventTime);
+        protocol->addChannelPressure(buffer, channel, noteNo, val, eventTime);
     } else if (midiValue.valueType == MidiValueType::PolyAftertouch) {
         float val = isBipolar ? (normalized * 0.5f + 0.5f) : normalized;
         protocol->addPolyAftertouch(buffer, channel, noteNo, val, eventTime);
     } else if (midiValue.valueType == MidiValueType::CC) {
         float val = isBipolar ? (normalized * 0.5f + 0.5f) : normalized;
-        protocol->addCC(buffer, channel, midiValue.ccNo, val, eventTime);
+        protocol->addCC(buffer, channel, noteNo, midiValue.ccNo, val, eventTime);
     }
 }
 
@@ -1201,9 +1225,9 @@ void MidiService::addStripValueMessage(int channel, float ehValue, ZoneWrapper::
     } else {
         float val = isBipolar ? (normalized * 0.5f + 0.5f) : normalized;
         if (midiValue.valueType == MidiValueType::ChannelAftertouch)
-            protocol->addChannelPressure(buffer, channel, val, eventTime);
+            protocol->addChannelPressure(buffer, channel, -1, val, eventTime);
         else if (midiValue.valueType == MidiValueType::CC)
-            protocol->addCC(buffer, channel, midiValue.ccNo, val, eventTime);
+            protocol->addCC(buffer, channel, -1, midiValue.ccNo, val, eventTime);
     }
 }
 
