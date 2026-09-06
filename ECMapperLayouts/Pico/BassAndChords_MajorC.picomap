@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<layout>
+  <key_0_0 mappingValue="62"/>
+  <key_0_1 mappingValue="71"/>
+  <key_0_2 mappingValue="55"/>
+  <key_0_3 mappingValue="64"/>
+  <key_0_4 keyMappingType="10" mappingValue="60" keyColour="1"/>
+  <key_0_5 mappingValue="57"/>
+  <key_0_6 mappingValue="65"/>
+  <key_0_7 mappingValue="62"/>
+  <key_0_8 keyMappingType="10" keyColour="0" mappingValue="59"/>
+  <key_0_9 zone="2" keyMappingType="40" mappingValue="Dm;74;77;69;-1"/>
+  <key_0_10 zone="2" keyMappingType="40" mappingValue="Bm;71;74;78;-1"/>
+  <key_0_11 zone="2" keyMappingType="40" mappingValue="G;79;71;74;-1"/>
+  <key_0_12 zone="2" keyMappingType="40" mappingValue="Em;76;79;71;-1"/>
+  <key_0_13 keyColour="1" keyMappingType="40" mappingValue="C;72;76;79;-1"
+            zone="2"/>
+  <key_0_14 keyMappingType="40" mappingValue="Am;81;72;76;-1" zone="2"/>
+  <key_0_15 zone="2" keyMappingType="40" mappingValue="F;77;81;72;-1"/>
+  <key_0_16 zone="2" keyMappingType="40" mappingValue="Dm;74;77;81;-1"/>
+  <key_0_17 zone="2" keyMappingType="40" keyColour="0" mappingValue="Bdim;71;74;77;-1"/>
+  <key_1_0/>
+  <key_1_1/>
+  <key_1_2/>
+  <key_1_3/>
+</layout>

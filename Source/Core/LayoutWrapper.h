@@ -51,6 +51,7 @@ public:
     static InstrumentType getInstrumentTypeFromLayoutTree(juce::ValueTree layoutTree);
 
     static void addListener(InstrumentType deviceType, juce::ValueTree::Listener* listener, juce::ValueTree& rootState);
+    static void clearLayout(InstrumentType deviceType, juce::ValueTree& rootState);
 private:
     static juce::ValueTree getKeyTree(KeyId keyId, juce::ValueTree& rootState);
     static EigenharpKeyType getCorrectDefaultKeyType(InstrumentType deviceType, int course, int keyNo);

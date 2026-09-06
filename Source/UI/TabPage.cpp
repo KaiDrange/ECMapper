@@ -2,6 +2,7 @@
 #include "AppStyle.h"
 #include "../PluginProcessor.h"
 #include "../Core/LayoutWrapper.h"
+#include "../Core/FileUtil.h"
 
 namespace ecm {
 
@@ -61,20 +62,28 @@ TabPage::TabPage(int tabIndex, InstrumentType deviceType, juce::AudioProcessorVa
     keyboardState.addListener(&layoutPanel->chordSectionComponent);
 
     addAndMakeVisible(saveMappingButton);
+    saveMappingButton.setButtonText("Save");
     saveMappingButton.onClick = [this] {
-        // TODO: Port FileUtil mapping save
+        FileUtil::saveLayout(this->deviceType, this->pluginState.state, this);
     };
     
     addAndMakeVisible(loadMappingButton);
+    loadMappingButton.setButtonText("Load");
     loadMappingButton.onClick = [this] {
-        // TODO: Port FileUtil mapping load
+        layoutPanel->deselectAllKeys();
+        FileUtil::loadLayout(this->deviceType, this->pluginState.state, this, [this] {
+            repaint();
+            refreshFromState();
+        });
     };
     
     addAndMakeVisible(clearMappingButton);
+    clearMappingButton.setButtonText("Clear");
     clearMappingButton.onClick = [this] {
         layoutPanel->deselectAllKeys();
-        auto oldTree = LayoutWrapper::getLayoutTree(this->deviceType, this->pluginState.state);
-        // Reset properties to default
+        LayoutWrapper::clearLayout(this->deviceType, this->pluginState.state);
+        repaint();
+        refreshFromState();
     };
     
     addKeyListener(layoutPanel.get());

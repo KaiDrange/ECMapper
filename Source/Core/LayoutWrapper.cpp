@@ -17,6 +17,12 @@ void LayoutWrapper::addListener(InstrumentType deviceType, juce::ValueTree::List
     vTree.addListener(listener);
 }
 
+void LayoutWrapper::clearLayout(InstrumentType deviceType, juce::ValueTree& rootState) {
+    auto layoutTree = getLayoutTree(deviceType, rootState);
+    layoutTree.removeAllChildren(nullptr);
+    layoutTree.removeAllProperties(nullptr);
+}
+
 LayoutWrapper::LayoutKey LayoutWrapper::getLayoutKey(KeyId keyId, juce::ValueTree& rootState) {
     auto keyTree = getKeyTree(keyId, rootState);
     auto defaultKeyType = getCorrectDefaultKeyType(keyId.deviceType, keyId.course, keyId.keyNo);
