@@ -3,7 +3,6 @@
 #include "UI/AboutDialogComponent.h"
 #include "StandaloneApp.h"
 #include "UI/PresetBrowserComponent.h"
-#include "UI/MidiMonitorComponent.h"
 
 StandaloneAppMainWindow::StandaloneAppMainWindow(const juce::String& name)
     : DocumentWindow(name,
@@ -14,7 +13,6 @@ StandaloneAppMainWindow::StandaloneAppMainWindow(const juce::String& name)
           nullptr,
           [this] { showPresetBrowser(); },
           [this] { showAudioSettings(); },
-          [this] { showMidiMonitor(); },
           [this] { showAboutDialog(); },
           [] { showOnlineManual(); },
           [] { showOurMusic(); }
@@ -250,22 +248,6 @@ void StandaloneAppMainWindow::showPresetBrowser()
     options.resizable = true;
     options.componentToCentreAround = this;
     options.launchAsync();
-}
-
-void StandaloneAppMainWindow::showMidiMonitor()
-{
-    juce::DialogWindow::LaunchOptions options;
-    options.content.setOwned(new ecm::MidiMonitorComponent());
-    options.dialogTitle = "Midi Monitor";
-    options.dialogBackgroundColour = ecm::Style::background();
-    options.escapeKeyTriggersCloseButton = true;
-    options.useNativeTitleBar = true;
-    options.resizable = true;
-    options.componentToCentreAround = this;
-    
-    auto* dw = options.launchAsync();
-    if (dw != nullptr)
-        dw->centreWithSize(600, 400);
 }
 
 void StandaloneAppMainWindow::requestQuit()

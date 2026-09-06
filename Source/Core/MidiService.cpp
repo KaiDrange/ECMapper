@@ -395,7 +395,6 @@ void MidiService::drainPendingMidiMessages(juce::MidiBuffer& buffer, int eventTi
 
     if (output.isAlive())
     {
-        logMidiMessages(pendingMidiBuffer_, isMidi2Mode_);
         drainDirectUMPs(pendingMidiBuffer_);
     }
     else
@@ -773,62 +772,6 @@ bool MidiService::isUsingUMPPath() const
 {
     const juce::ScopedLock sl(umpOutputLock_);
     return umpOutput_.isAlive();
-}
-
-void MidiService::logMidiMessages(const juce::MidiBuffer& buffer, bool isMidi2)
-{
-    if (buffer.isEmpty()) return;
-
-    static int logCounter = 0;
-    if (++logCounter % 100 == 0)
-        juce::Logger::writeToLog("MidiService: Logging " + juce::String(buffer.getNumEvents()) + " messages. isMidi2=" + juce::String((int)isMidi2));
-
-    for (const auto metadata : buffer)
-    {
-        juce::String description;
-        if (isMidi2)
-        {
-            const auto* data = reinterpret_cast<const uint32_t*>(metadata.data);
-            const size_t numWords = (size_t)metadata.numBytes / 4;
-            if (numWords > 0)
-            {
-                juce::universal_midi_packets::View view(data);
-                int type = (int)(view[0] >> 28);
-                juce::String typeStr = "UMP Type " + juce::String(type);
-                if (type == 2) typeStr += " (Midi 1.0)";
-                else if (type == 4) typeStr += " (Midi 2.0)";
-                
-                juce::String hex;
-                for (size_t i = 0; i < numWords; ++i)
-                    hex += juce::String::toHexString((int)data[i]).paddedLeft('0', 8) + " ";
-                
-                description = "[" + typeStr + "] [" + hex.trim() + "] " + juce::universal_midi_packets::StringUtils::getDescription(view);
-            }
-        }
-        else
-        {
-            auto msg = metadata.getMessage();
-            auto size = (size_t)msg.getRawDataSize();
-            const uint8_t* data = msg.getRawData();
-
-            bool isValidMidi1 = false;
-            if (size > 0 && size <= 3 && data[0] >= 0x80)
-                isValidMidi1 = true;
-            else if (size >= 2 && data[0] == 0xf0)
-                isValidMidi1 = true;
-
-            if (isValidMidi1)
-            {
-                description = "[" + juce::String::toHexString(data, (int)size) + "] " + msg.getDescription();
-            }
-            else
-            {
-                description = "[Invalid MIDI 1.0] Size=" + juce::String((int)size) + " Status=0x" + juce::String::toHexString(size > 0 ? (int)data[0] : 0);
-            }
-        }
-        
-        MidiMonitor::getInstance().addMessage(midiOutputName_, isMidi2, description);
-    }
 }
 
 void MidiService::resendLEDs(const char* devId, InstrumentType type, osc::MessageFifo* targetQueue, bool onlyNonOff) {

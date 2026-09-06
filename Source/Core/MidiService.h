@@ -9,7 +9,6 @@
 #include <vector>
 #include <list>
 #include "MidiProtocol.h"
-#include "MidiMonitor.h"
 
 namespace ecm {
 
@@ -41,7 +40,6 @@ public:
     void drainPendingMidiMessages(juce::MidiBuffer& buffer, int eventTime = 0);
     void drainDirectUMPs(juce::MidiBuffer& buffer);
     void setMidiOutput(juce::MidiOutput* output);
-    void logMidiMessages(const juce::MidiBuffer& buffer, bool isMidi2);
     void sendIdentification();
     void setRuntimeConfigSnapshot(std::unique_ptr<RuntimeConfigSnapshot> snapshot);
     void finishedBlock();

@@ -1,12 +1,11 @@
 #include "MainMenuBarModel.h"
 
-MainMenuBarModel::MainMenuBarModel(Action onQuitAction, Action onSavePresetAction, Action onBrowsePresetsAction, Action onAudioSettingsAction, Action onMidiMonitorAction, Action onAboutAction,
+MainMenuBarModel::MainMenuBarModel(Action onQuitAction, Action onSavePresetAction, Action onBrowsePresetsAction, Action onAudioSettingsAction, Action onAboutAction,
                                    Action onOnlineManualAction, Action onOurMusicAction)
     : onQuit(std::move(onQuitAction)),
       onSavePreset(std::move(onSavePresetAction)),
       onBrowsePresets(std::move(onBrowsePresetsAction)),
       onAudioSettings(std::move(onAudioSettingsAction)),
-      onMidiMonitor(std::move(onMidiMonitorAction)),
       onAbout(std::move(onAboutAction)),
       onOnlineManual(std::move(onOnlineManualAction)),
       onOurMusic(std::move(onOurMusicAction))
@@ -32,7 +31,6 @@ juce::PopupMenu MainMenuBarModel::getMenuForIndex(int topLevelMenuIndex, const j
     else if(menuName == "Options")
     {
         menu.addItem(20, "Audio/midi settings");
-        menu.addItem(21, "Midi monitor");
     }
     else if (menuName == "Help")
     {
@@ -57,8 +55,6 @@ void MainMenuBarModel::menuItemSelected(const int menuItemID, int topLevelMenuIn
         onBrowsePresets();
     else if (menuItemID == 20 && onAudioSettings)
         onAudioSettings();
-    else if (menuItemID == 21 && onMidiMonitor)
-        onMidiMonitor();
     else if (menuItemID == 30 && onAbout)
         onAbout();
     else if (menuItemID == 31 && onOnlineManual)

@@ -331,8 +331,6 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& audioBuffer,
             juce::Logger::writeToLog("PluginProcessor: targetBuffer has " + juce::String(targetBuffer->getNumEvents()) + " events. useDirect=" + juce::String((int)useDirect));
     }
 
-    midiService.logMidiMessages(*targetBuffer, ecm::SettingsWrapper::getMidi2Mode(state.state));
-
     if (useDirect) {
         midiService.drainDirectUMPs(tempBuffer);
         midiMessages.clear();
