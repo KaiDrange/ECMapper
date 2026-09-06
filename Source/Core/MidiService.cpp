@@ -199,118 +199,8 @@ void MidiService::valueTreeRedirected(juce::ValueTree& tree)
     }
 }
 
-void MidiService::performMidiModeSwitch(bool enabled)
-{
-    if (isMidi2Mode_ != enabled)
-    {
-        juce::Logger::writeToLog("MidiService: performMidiModeSwitch called. New State: " + juce::String(enabled ? "Enabled" : "Disabled"));
-
-        startMajorTransition();
-        isSwitchingMode_ = true;
-
-        // Clear pending messages to avoid protocol mismatch after mode switch
-        {
-            const juce::ScopedLock sl(pendingMessageLock_);
-            pendingMidiBuffer_.clear();
-        }
-
-        // Send all notes off before switching - do this while still in old protocol
-        {
-            juce::MidiBuffer offBuffer;
-            createAllNotesOff(offBuffer, 0, protocol_.get());
-            
-            const juce::ScopedLock sl(umpOutputLock_);
-            auto& output = isVirtualTarget_ ? directUmpOutput_ : umpOutput_;
-            if (output.isAlive())
-            {
-                // Minimal inline send to avoid drainDirectUMPs which has extra checks
-                for (const auto meta : offBuffer)
-                {
-                    if (isMidi2Mode_)
-                    {
-                        const auto* data = reinterpret_cast<const uint32_t*>(meta.data);
-                        const size_t numWords = (size_t)meta.numBytes / 4;
-                        if (numWords > 0 && output.isAlive())
-                        {
-                            juce::universal_midi_packets::Iterator begin(data, numWords);
-                            juce::universal_midi_packets::Iterator end(data + numWords, 0);
-                            output.send(begin, end);
-                        }
-                    }
-                    else
-                    {
-                        auto msg = meta.getMessage();
-                        auto size = (size_t)msg.getRawDataSize();
-                        const uint8_t* data = msg.getRawData();
-
-                        bool isValidMidi1 = false;
-                        if (size > 0 && size <= 3 && data[0] >= 0x80)
-                            isValidMidi1 = true;
-                        else if (size >= 2 && data[0] == 0xf0)
-                            isValidMidi1 = true;
-
-                        if (isValidMidi1)
-                        {
-                            juce::universal_midi_packets::Conversion::toMidi1({ umpGroup_, juce::Span<const std::byte>(reinterpret_cast<const std::byte*>(data), size) }, [&](const juce::universal_midi_packets::View& view) {
-                                if (output.isAlive())
-                                {
-                                    juce::universal_midi_packets::Iterator begin(view.data(), view.size());
-                                    juce::universal_midi_packets::Iterator end(view.data() + view.size(), 0);
-                                    output.send(begin, end);
-                                }
-                            });
-                        }
-                    }
-                }
-            }
-        }
-
-        const juce::ScopedLock stateGuard(stateLock_);
-        {
-            const juce::ScopedLock sl(umpOutputLock_);
-            
-            // Clear existing outputs before changing protocol
-            umpOutput_ = {};
-            directUmpOutput_ = {};
-            
-            isMidi2Mode_ = enabled;
-            
-            if (enabled)
-                protocol_ = std::make_shared<Midi2Protocol>();
-            else
-                protocol_ = std::make_shared<Midi1Protocol>();
-            
-            // Update snapshot immediately to avoid race condition with hardware/audio threads
-            setRuntimeConfigSnapshot(std::make_unique<RuntimeConfigSnapshot>(configLookups_, protocol_));
-
-            // Recreate virtual port if we are the virtual target or first instance
-            if (isFirstInstance_)
-            {
-                virtualEndpoint_ = {};
-                virtualUmpOutput_ = {};
-                virtualUmpInputMirror_ = {};
-                if (virtualUmpInput_.isAlive())
-                {
-                    virtualUmpInput_.removeConsumer(*this);
-                    virtualUmpInput_ = {};
-                }
-                updateVirtualOutput();
-            }
-        }
-
-        isSwitchingMode_ = false;
-        sendIdentification();
-        stopMajorTransition();
-    }
-}
-
 void MidiService::processMessage(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, juce::MidiBuffer& midiBuffer, int eventTime, int* presetSlotRequest) {
     if (!initialized_) return;
-    
-    if (!juce::MessageManager::existsAndIsCurrentThread())
-    {
-        if (isSwitchingMode_ || isMajorTransitionInProgress()) return;
-    }
 
     auto* snapshot = activeSnapshot_.load(std::memory_order_acquire);
     if (snapshot == nullptr)
@@ -498,10 +388,6 @@ void MidiService::handleRemotePerformanceData(osc::Message& oscMsg, juce::MidiBu
 }
 
 void MidiService::drainPendingMidiMessages(juce::MidiBuffer& buffer, int eventTime) {
-    if (!juce::MessageManager::existsAndIsCurrentThread())
-    {
-        if (isSwitchingMode_ || isMajorTransitionInProgress()) return;
-    }
     const juce::ScopedLock sl(pendingMessageLock_);
     const juce::ScopedLock sl2(umpOutputLock_);
     
@@ -522,10 +408,6 @@ void MidiService::drainPendingMidiMessages(juce::MidiBuffer& buffer, int eventTi
 
 void MidiService::drainDirectUMPs(juce::MidiBuffer& buffer)
 {
-    if (!juce::MessageManager::existsAndIsCurrentThread())
-    {
-        if (isSwitchingMode_ || isMajorTransitionInProgress()) return;
-    }
     const juce::ScopedLock sl(umpOutputLock_);
 
     auto& output = isVirtualTarget_ ? directUmpOutput_ : umpOutput_;
@@ -692,8 +574,6 @@ void MidiService::setMidiOutput(juce::MidiOutput* output)
 
 void MidiService::endpointsChanged()
 {
-    if (isSwitchingMode_) return;
-
     const juce::ScopedLock sl(umpOutputLock_);
     if (isVirtualTarget_) return;
 
@@ -1011,10 +891,6 @@ void MidiService::resendLEDs(const char* devId, InstrumentType type, osc::Messag
 }
 
 void MidiService::reduceBreath(juce::MidiBuffer& buffer, int eventTime) {
-    if (!juce::MessageManager::existsAndIsCurrentThread())
-    {
-        if (isSwitchingMode_ || isMajorTransitionInProgress()) return;
-    }
     auto* snapshot = activeSnapshot_.load(std::memory_order_acquire);
     if (snapshot == nullptr)
         return;

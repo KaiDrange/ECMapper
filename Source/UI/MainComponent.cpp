@@ -37,6 +37,12 @@ MainComponent::MainComponent(juce::AudioProcessorValueTreeState& pluginStateToUs
       pluginState(pluginStateToUse),
       deviceManager(deviceManagerToUse) {
 
+    pendingModeMessage.setText("This change will take effect the next time ECMapper is started", juce::dontSendNotification);
+    pendingModeMessage.setJustificationType(juce::Justification::centred);
+    pendingModeMessage.setColour(juce::Label::textColourId, juce::Colours::orange);
+    pendingModeMessage.setVisible(false);
+    addAndMakeVisible(pendingModeMessage);
+
     SettingsWrapper::addListener(this, pluginState.state);
     presetComboBox.setEditableText(false);
     presetComboBox.setJustificationType(juce::Justification::centredLeft);
@@ -77,6 +83,7 @@ MainComponent::MainComponent(juce::AudioProcessorValueTreeState& pluginStateToUs
     };
 
     midi2ModeEnabled = SettingsWrapper::getMidi2Mode(pluginState.state);
+    pendingMidi2Mode = midi2ModeEnabled;
     configureModeButton(mpeModeButton);
     configureModeButton(midi20ModeButton);
     mpeModeButton.setConnectedEdges(juce::Button::ConnectedOnRight);
@@ -88,34 +95,24 @@ MainComponent::MainComponent(juce::AudioProcessorValueTreeState& pluginStateToUs
         juce::Logger::writeToLog("MainComponent: MPE button clicked");
         if (!mpeModeButton.getToggleState())
             return;
-        midi2ModeEnabled = false;
-        SettingsWrapper::setMidi2Mode(midi2ModeEnabled, this->pluginState.state);
-        updateMpeControlsEnabled(lowerMPEVoiceCount, true);
-        updateMpeControlsEnabled(upperMPEVoiceCount, true);
-        updateMpeControlsEnabled(lowerMPEPitchbendRange, true);
-        updateMpeControlsEnabled(upperMPEPitchbendRange, true);
-        repaint();
+        
+        SettingsWrapper::setMidi2Mode(false, this->pluginState.state);
     };
     midi20ModeButton.onClick = [this] {
         juce::Logger::writeToLog("MainComponent: MIDI 2.0 button clicked");
         if (!midi20ModeButton.getToggleState())
             return;
-        midi2ModeEnabled = true;
-        SettingsWrapper::setMidi2Mode(midi2ModeEnabled, this->pluginState.state);
-        updateMpeControlsEnabled(lowerMPEVoiceCount, false);
-        updateMpeControlsEnabled(upperMPEVoiceCount, false);
-        updateMpeControlsEnabled(lowerMPEPitchbendRange, false);
-        updateMpeControlsEnabled(upperMPEPitchbendRange, false);
-        repaint();
+        
+        SettingsWrapper::setMidi2Mode(true, this->pluginState.state);
     };
     addAndMakeVisible(mpeModeButton);
     addAndMakeVisible(midi20ModeButton);
-    mpeModeButton.setToggleState(!midi2ModeEnabled, juce::dontSendNotification);
-    midi20ModeButton.setToggleState(midi2ModeEnabled, juce::dontSendNotification);
-    updateMpeControlsEnabled(lowerMPEVoiceCount, !midi2ModeEnabled);
-    updateMpeControlsEnabled(upperMPEVoiceCount, !midi2ModeEnabled);
-    updateMpeControlsEnabled(lowerMPEPitchbendRange, !midi2ModeEnabled);
-    updateMpeControlsEnabled(upperMPEPitchbendRange, !midi2ModeEnabled);
+    mpeModeButton.setToggleState(!pendingMidi2Mode, juce::dontSendNotification);
+    midi20ModeButton.setToggleState(pendingMidi2Mode, juce::dontSendNotification);
+    updateMpeControlsEnabled(lowerMPEVoiceCount, !pendingMidi2Mode);
+    updateMpeControlsEnabled(upperMPEVoiceCount, !pendingMidi2Mode);
+    updateMpeControlsEnabled(lowerMPEPitchbendRange, !pendingMidi2Mode);
+    updateMpeControlsEnabled(upperMPEPitchbendRange, !pendingMidi2Mode);
     
     corePage = std::make_unique<CorePage>(hardwareService, pluginState.state);
     alphaPage = std::make_unique<TabPage>(0, InstrumentType::Alpha, pluginState, processor);
@@ -165,7 +162,7 @@ void MainComponent::paint(juce::Graphics& g) {
     g.setColour(Style::border());
     g.drawRect(getLocalBounds(), 1);
 
-    auto header = getLocalBounds().removeFromTop(86);
+    auto header = getLocalBounds().removeFromTop(106);
     g.setColour(Style::background().interpolatedWith(Style::surface(), 0.24f));
     g.fillRect(header);
 
@@ -175,10 +172,11 @@ void MainComponent::paint(juce::Graphics& g) {
 
 void MainComponent::resized() {
     auto area = getLocalBounds();
-    auto header = area.removeFromTop(86);
+    auto header = area.removeFromTop(106); // Increased header height from 86 to 106
     header.reduce(10, 8);
 
     auto topRow = header.removeFromTop(30);
+    pendingModeMessage.setBounds(header.removeFromTop(20).reduced(10, 0));
     auto bottomRow = header.removeFromTop(34);
 
     auto presetWidth = juce::jlimit(160, 360, topRow.getWidth() / 4);
@@ -289,13 +287,16 @@ void MainComponent::refreshFromState()
     lowerMPEPitchbendRange.setValue(SettingsWrapper::getLowerMPEPB(pluginState.state));
     upperMPEPitchbendRange.setValue(SettingsWrapper::getUpperMPEPB(pluginState.state));
 
-    midi2ModeEnabled = SettingsWrapper::getMidi2Mode(pluginState.state);
-    mpeModeButton.setToggleState(!midi2ModeEnabled, juce::dontSendNotification);
-    midi20ModeButton.setToggleState(midi2ModeEnabled, juce::dontSendNotification);
-    updateMpeControlsEnabled(lowerMPEVoiceCount, !midi2ModeEnabled);
-    updateMpeControlsEnabled(upperMPEVoiceCount, !midi2ModeEnabled);
-    updateMpeControlsEnabled(lowerMPEPitchbendRange, !midi2ModeEnabled);
-    updateMpeControlsEnabled(upperMPEPitchbendRange, !midi2ModeEnabled);
+    pendingMidi2Mode = SettingsWrapper::getMidi2Mode(pluginState.state);
+    midi2ModeChanged = (pendingMidi2Mode != midi2ModeEnabled);
+    pendingModeMessage.setVisible(midi2ModeChanged);
+
+    mpeModeButton.setToggleState(!pendingMidi2Mode, juce::dontSendNotification);
+    midi20ModeButton.setToggleState(pendingMidi2Mode, juce::dontSendNotification);
+    updateMpeControlsEnabled(lowerMPEVoiceCount, !pendingMidi2Mode);
+    updateMpeControlsEnabled(upperMPEVoiceCount, !pendingMidi2Mode);
+    updateMpeControlsEnabled(lowerMPEPitchbendRange, !pendingMidi2Mode);
+    updateMpeControlsEnabled(upperMPEPitchbendRange, !pendingMidi2Mode);
 }
 
 void MainComponent::timerCallback()
@@ -321,13 +322,16 @@ void MainComponent::valueTreePropertyChanged(juce::ValueTree& vTree, const juce:
 
     if (property == SettingsWrapper::id_midi2Mode)
     {
-        midi2ModeEnabled = SettingsWrapper::getMidi2Mode(pluginState.state);
-        mpeModeButton.setToggleState(!midi2ModeEnabled, juce::dontSendNotification);
-        midi20ModeButton.setToggleState(midi2ModeEnabled, juce::dontSendNotification);
-        updateMpeControlsEnabled(lowerMPEVoiceCount, !midi2ModeEnabled);
-        updateMpeControlsEnabled(upperMPEVoiceCount, !midi2ModeEnabled);
-        updateMpeControlsEnabled(lowerMPEPitchbendRange, !midi2ModeEnabled);
-        updateMpeControlsEnabled(upperMPEPitchbendRange, !midi2ModeEnabled);
+        pendingMidi2Mode = SettingsWrapper::getMidi2Mode(pluginState.state);
+        midi2ModeChanged = (pendingMidi2Mode != midi2ModeEnabled);
+        pendingModeMessage.setVisible(midi2ModeChanged);
+
+        mpeModeButton.setToggleState(!pendingMidi2Mode, juce::dontSendNotification);
+        midi20ModeButton.setToggleState(pendingMidi2Mode, juce::dontSendNotification);
+        updateMpeControlsEnabled(lowerMPEVoiceCount, !pendingMidi2Mode);
+        updateMpeControlsEnabled(upperMPEVoiceCount, !pendingMidi2Mode);
+        updateMpeControlsEnabled(lowerMPEPitchbendRange, !pendingMidi2Mode);
+        updateMpeControlsEnabled(upperMPEPitchbendRange, !pendingMidi2Mode);
         repaint();
     }
 }

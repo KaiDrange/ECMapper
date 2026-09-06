@@ -43,7 +43,6 @@ public:
     void setMidiOutput(juce::MidiOutput* output);
     void logMidiMessages(const juce::MidiBuffer& buffer, bool isMidi2);
     void sendIdentification();
-    void performMidiModeSwitch(bool enabled);
     void setRuntimeConfigSnapshot(std::unique_ptr<RuntimeConfigSnapshot> snapshot);
     void finishedBlock();
 
@@ -60,12 +59,7 @@ public:
     void setLocalHardwareQueue(osc::MessageFifo* queue) { localHardwareQueue_ = queue; }
 
     bool isInitialized() const { return initialized_; }
-    bool isSwitchingMode() const { return isSwitchingMode_.load(std::memory_order_relaxed); }
-    bool isMajorTransitionInProgress() const { return majorTransitionCount_.load(std::memory_order_acquire) > 0; }
     
-    void startMajorTransition() { majorTransitionCount_.fetch_add(1, std::memory_order_release); }
-    void stopMajorTransition() { majorTransitionCount_.fetch_sub(1, std::memory_order_release); }
-
     std::shared_ptr<MidiProtocol> getProtocol() { return protocol_; }
 
     struct VisualMarker {
@@ -178,8 +172,6 @@ private:
     std::unique_ptr<juce::InterProcessLock> virtualMidiLock_;
     juce::CriticalSection umpOutputLock_;
     std::atomic<bool> isFirstInstance_{ false };
-    std::atomic<bool> isSwitchingMode_{ false };
-    std::atomic<int> majorTransitionCount_{ 0 };
     juce::universal_midi_packets::EndpointId lastEndpointId_;
     uint8_t umpGroup_ = 0;
     std::atomic<bool> isMidi2Mode_{ false };

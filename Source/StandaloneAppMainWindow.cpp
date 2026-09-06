@@ -102,32 +102,7 @@ void StandaloneAppMainWindow::changeListenerCallback(juce::ChangeBroadcaster* so
 
 void StandaloneAppMainWindow::valueTreePropertyChanged(juce::ValueTree& treeWhosePropertyHasChanged, const juce::Identifier& property)
 {
-    if (property == ecm::SettingsWrapper::id_midi2Mode)
-    {
-        bool enabled = ecm::SettingsWrapper::getMidi2Mode(treeWhosePropertyHasChanged);
-        juce::Logger::writeToLog("StandaloneAppMainWindow: MIDI 2.0 Mode change detected (" + juce::String(enabled ? "ON" : "OFF") + "), halting audio thread callback.");
-        
-        // Stop the audio callback entirely to avoid any processing during port recreation
-        deviceManager.removeAudioCallback (&processorPlayer);
-
-        if (processor != nullptr)
-        {
-            processor->setMidiOutput(nullptr);
-            processor->getMidiService().performMidiModeSwitch(enabled);
-        }
-        
-        processorPlayer.setMidiOutput(nullptr);
-
-        // Schedule a refresh to find the new port once recreation is complete
-        juce::MessageManager::callAsync([this] { 
-            updateMidiOutput(); 
-            
-            // Re-add the audio callback
-            deviceManager.addAudioCallback (&processorPlayer);
-            
-            juce::Logger::writeToLog("StandaloneAppMainWindow: MIDI 2.0 Mode change complete, resuming audio processing.");
-        });
-    }
+    juce::ignoreUnused(treeWhosePropertyHasChanged, property);
 }
 
 void StandaloneAppMainWindow::endpointsChanged()

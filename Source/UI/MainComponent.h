@@ -59,11 +59,15 @@ private:
     std::unique_ptr<TabPage> picoPage;
     int currentTabIndex = 0;
     bool midi2ModeEnabled = false;
+    bool pendingMidi2Mode = false;
+    bool midi2ModeChanged = false;
     bool ignorePresetComboChange_ = false;
     ECMapperAudioProcessor& processor;
 
     juce::AudioProcessorValueTreeState& pluginState;
     juce::AudioDeviceManager* deviceManager;
+
+    juce::Label pendingModeMessage;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainComponent)
 };

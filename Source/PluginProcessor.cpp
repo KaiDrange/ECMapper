@@ -307,12 +307,6 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& audioBuffer,
     if (juce::JUCEApplicationBase::isStandaloneApp())
         audioBuffer.clear();
 
-    if (midiService.isMajorTransitionInProgress() || midiService.isSwitchingMode()) {
-        midiMessages.clear();
-        midiService.finishedBlock();
-        return;
-    }
-
     juce::MidiBuffer* targetBuffer = &midiMessages;
     juce::MidiBuffer tempBuffer;
     bool useDirect = (ecm::SettingsWrapper::getMidi2Mode(state.state) || midiService.isUsingUMPPath()) 
