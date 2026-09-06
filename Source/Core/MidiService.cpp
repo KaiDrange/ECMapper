@@ -449,14 +449,24 @@ void MidiService::setMidiOutput(juce::MidiOutput* output)
     }
 
     midiOutputName_ = output->getName();
-    isVirtualTarget_ = (midiOutputName_ == "ECMapper Virtual Out");
+    isVirtualTarget_ = (midiOutputName_ == "ECMapper Virtual Out" || midiOutputName_ == "ECMapper Direct");
     
     if (isVirtualTarget_)
     {
-        juce::Logger::writeToLog("MidiService: Selected output is virtual mirror. Using internal direct connection.");
+        juce::Logger::writeToLog("MidiService: Selected output is virtual (" + midiOutputName_ + "). Using internal direct connection.");
         umpOutput_ = {};
         lastEndpointId_ = output->getEndpointId();
         umpGroup_ = output->getGroup();
+        
+        // Ensure directUmpOutput_ is alive if we are the first instance
+        if (isFirstInstance_ && (!directUmpOutput_.isAlive()))
+        {
+            if (virtualUmpOutput_.has_value() && *virtualUmpOutput_)
+            {
+                const juce::ScopedLock sl(umpOutputLock_);
+                directUmpOutput_ = umpSession_->connectOutput(virtualUmpOutput_->getId());
+            }
+        }
         return;
     }
 

@@ -3,6 +3,9 @@
 #include <juce_audio_devices/juce_audio_devices.h>
 #include <iostream>
 #include <iomanip>
+#include <vector>
+#include <algorithm>
+#include <map>
 
 class MidiReceiverApp : public juce::universal_midi_packets::EndpointsListener,
                         public juce::universal_midi_packets::Consumer
@@ -17,42 +20,85 @@ public:
     ~MidiReceiverApp() override
     {
         juce::universal_midi_packets::Endpoints::getInstance()->removeListener(*this);
-        if (input.isAlive())
-            input.removeConsumer(*this);
+        for (auto& input : inputs)
+            if (input.isAlive())
+                input.removeConsumer(*this);
     }
 
     void endpointsChanged() override
     {
-        std::cout << "Endpoints changed, checking connection..." << std::endl;
+        std::cout << "Endpoints changed, checking connections..." << std::endl;
         findAndConnect();
     }
 
     void findAndConnect()
     {
-        if (input.isAlive())
-            return;
-
         auto endpointsList = juce::universal_midi_packets::Endpoints::getInstance()->getEndpoints();
+        bool foundAny = false;
+        
         for (const auto& epId : endpointsList)
         {
             auto ep = juce::universal_midi_packets::Endpoints::getInstance()->getEndpoint(epId);
             if (ep.has_value() && ep->getName().contains("ECMapper Direct"))
             {
-                std::cout << "Found ECMapper Direct source. Connecting..." << std::endl;
+                foundAny = true;
                 
-                input = session->connectInput(epId, juce::universal_midi_packets::PacketProtocol::MIDI_2_0);
+                bool alreadyConnected = false;
+                for (auto& in : inputs)
+                {
+                    if (in.isAlive() && in.getEndpointId() == epId)
+                    {
+                        alreadyConnected = true;
+                        break;
+                    }
+                }
+                
+                if (alreadyConnected)
+                    continue;
+
+                auto reportedProtocol = ep->getProtocol().value_or(juce::universal_midi_packets::PacketProtocol::MIDI_2_0);
+                std::cout << "Found ECMapper Direct source: " << ep->getName() 
+                          << " [" << epId.src << " / " << epId.dst << "]. "
+                          << "Reported Protocol: " << (reportedProtocol == juce::universal_midi_packets::PacketProtocol::MIDI_2_0 ? "MIDI 2.0" : "MIDI 1.0")
+                          << ". Connecting..." << std::endl;
+                
+                // Force MIDI 2.0 connection protocol to ensure UMP delivery on macOS 11+
+                auto input = session->connectInput(epId, juce::universal_midi_packets::PacketProtocol::MIDI_2_0);
+                
+                if (! input.isAlive())
+                {
+                    std::cout << "Failed to connect with MIDI 2.0 protocol, trying reported protocol..." << std::endl;
+                    input = session->connectInput(epId, reportedProtocol);
+                }
                 
                 if (input.isAlive())
                 {
                     input.addConsumer(*this);
-                    std::cout << "Connected to: " << ep->getName() << " [" << epId.src << " / " << epId.dst << "]" << std::endl;
-                    std::cout << "Waiting for MIDI data..." << std::endl;
+                    std::cout << "Connected to: " << ep->getName() << std::endl;
+                    inputs.push_back(std::move(input));
                 }
                 else
                 {
                     std::cout << "Failed to connect to " << ep->getName() << std::endl;
                 }
-                break;
+            }
+        }
+        
+        // Cleanup dead inputs
+        inputs.erase(std::remove_if(inputs.begin(), inputs.end(), [](const auto& in) { return !in.isAlive(); }), inputs.end());
+
+        if (!foundAny && inputs.empty())
+        {
+            static int failCount = 0;
+            if (++failCount % 5 == 0)
+            {
+                std::cout << "Still searching for 'ECMapper Direct'..." << std::endl;
+                std::cout << "Available endpoints:" << std::endl;
+                for (const auto& epId : endpointsList)
+                {
+                    if (auto ep = juce::universal_midi_packets::Endpoints::getInstance()->getEndpoint(epId))
+                        std::cout << "  - " << ep->getName() << " [" << epId.src << " / " << epId.dst << "]" << std::endl;
+                }
             }
         }
     }
@@ -63,12 +109,83 @@ public:
         {
             const auto packet = *it;
             const auto type = juce::universal_midi_packets::Utils::getMessageType(packet[0]);
+            const auto group = juce::universal_midi_packets::Utils::getGroup(packet[0]);
             
+            // Handle MIDI 2.0 Channel Voice Messages (Type 4)
+            if (type == juce::universal_midi_packets::Utils::MessageKind::channelVoice2)
+            {
+                const auto channel = juce::universal_midi_packets::Utils::getChannel(packet[0]);
+                const auto status = (uint8_t) juce::universal_midi_packets::Utils::getStatus(packet[0]);
+                
+                if (status == 0x8 || status == 0x9) // Note Off / Note On
+                {
+                    const int note = (packet[0] >> 8) & 0xFF;
+                    const uint16_t velocity = (uint16_t)(packet[1] >> 16);
+                    
+                    std::cout << "[" << std::fixed << std::setprecision(3) << time << "] "
+                              << "G" << std::setw(2) << std::setfill('0') << (int)(group + 1) << " "
+                              << "Ch" << std::setw(2) << std::setfill('0') << (int)(channel + 1) << " "
+                              << (status == 0x9 ? "Note On  " : "Note Off ")
+                              << "Note: " << std::setw(3) << std::setfill(' ') << std::dec << note 
+                              << " Vel: " << std::setw(5) << velocity << std::endl;
+                    continue;
+                }
+                
+                if (status == 0xB) // Control Change
+                {
+                    const int index = (packet[0] >> 8) & 0xFF;
+                    const uint32_t value = packet[1];
+                    const uint32_t key = ((uint32_t)group << 16) | ((uint32_t)channel << 8) | (uint32_t)index;
+                    
+                    if (++ccCounters[key] % 64 == 1)
+                    {
+                        std::cout << "[" << std::fixed << std::setprecision(3) << time << "] "
+                                  << "G" << std::setw(2) << std::setfill('0') << (int)(group + 1) << " "
+                                  << "Ch" << std::setw(2) << std::setfill('0') << (int)(channel + 1) << " "
+                                  << "CC " << std::setw(3) << std::setfill(' ') << std::dec << index << " "
+                                  << "Val: " << std::setw(10) << value << " (filtered 1/64)" << std::endl;
+                    }
+                    continue;
+                }
+            }
+            
+            // Handle MIDI 1.0 Channel Voice Messages (Type 2) for consistency
+            if (type == juce::universal_midi_packets::Utils::MessageKind::channelVoice1)
+            {
+                const auto channel = juce::universal_midi_packets::Utils::getChannel(packet[0]);
+                const auto status = (uint8_t) juce::universal_midi_packets::Utils::getStatus(packet[0]);
+                
+                if (status == 0x8 || status == 0x9)
+                {
+                    const int note = (packet[0] >> 8) & 0xFF;
+                    const int velocity = packet[0] & 0xFF;
+                    
+                    std::cout << "[" << std::fixed << std::setprecision(3) << time << "] "
+                              << "G" << std::setw(2) << std::setfill('0') << (int)(group + 1) << " "
+                              << "Ch" << std::setw(2) << std::setfill('0') << (int)(channel + 1) << " "
+                              << (status == 0x9 ? "Note On  " : "Note Off ")
+                              << "Note: " << std::setw(3) << std::setfill(' ') << std::dec << note 
+                              << " Vel: " << std::setw(3) << velocity << " (MIDI 1.0)" << std::endl;
+                    continue;
+                }
+            }
+
             std::cout << "[" << std::fixed << std::setprecision(3) << time << "] ";
+            std::cout << "G" << std::setw(2) << (int)(group + 1) << " ";
             std::cout << "UMP Type " << std::hex << (int)type << std::dec << " (";
             
-            if (type == juce::universal_midi_packets::Utils::MessageKind::channelVoice1)      std::cout << "MIDI 1.0";
-            else if (type == juce::universal_midi_packets::Utils::MessageKind::channelVoice2) std::cout << "MIDI 2.0";
+            if (type == juce::universal_midi_packets::Utils::MessageKind::channelVoice1)
+            {
+                const auto channel = juce::universal_midi_packets::Utils::getChannel(packet[0]);
+                const auto status = (int)juce::universal_midi_packets::Utils::getStatus(packet[0]);
+                std::cout << "MIDI 1.0 Ch" << std::setw(2) << (int)(channel + 1) << " Stat " << std::hex << status << std::dec;
+            }
+            else if (type == juce::universal_midi_packets::Utils::MessageKind::channelVoice2)
+            {
+                const auto channel = juce::universal_midi_packets::Utils::getChannel(packet[0]);
+                const auto status = (int)juce::universal_midi_packets::Utils::getStatus(packet[0]);
+                std::cout << "MIDI 2.0 Ch" << std::setw(2) << (int)(channel + 1) << " Stat " << std::hex << status << std::dec;
+            }
             else if (type == juce::universal_midi_packets::Utils::MessageKind::utility)       std::cout << "Utility";
             else if (type == juce::universal_midi_packets::Utils::MessageKind::commonRealtime) std::cout << "Common/Realtime";
             else if (type == juce::universal_midi_packets::Utils::MessageKind::sysex7)        std::cout << "SysEx7";
@@ -85,11 +202,17 @@ public:
         }
     }
 
-    bool isConnected() const { return input.isAlive(); }
+    bool isConnected() const 
+    { 
+        for (const auto& in : inputs)
+            if (in.isAlive()) return true;
+        return false;
+    }
 
 private:
     std::optional<juce::universal_midi_packets::Session> session;
-    juce::universal_midi_packets::Input input;
+    std::vector<juce::universal_midi_packets::Input> inputs;
+    std::map<uint32_t, int> ccCounters;
 };
 
 int main(int /*argc*/, char* /*argv*/[])
