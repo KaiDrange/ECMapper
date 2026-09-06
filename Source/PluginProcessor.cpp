@@ -264,9 +264,6 @@ ECMapperAudioProcessor::ECMapperAudioProcessor() :
             requestRuntimeConfigRefresh();
         });
     state.state.addListener(layoutChangeHandler.get());
-
-    if (juce::JUCEApplicationBase::isStandaloneApp())
-        midiService.updateVirtualOutput();
 }
 
 ECMapperAudioProcessor::~ECMapperAudioProcessor() {

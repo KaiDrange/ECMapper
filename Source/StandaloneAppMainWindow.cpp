@@ -125,9 +125,9 @@ void StandaloneAppMainWindow::updateMidiOutput()
     {
         for (auto& device : availableOutputs)
         {
-            if (device.name == "ECMapper Virtual Out")
+            if (device.name.contains("ECMapper Virtual Out") || device.name.contains("ECMapper Direct"))
             {
-                juce::Logger::writeToLog("ECMapper: Found virtual output in list, selecting it as default.");
+                juce::Logger::writeToLog("ECMapper: Found virtual output in list ('" + device.name + "'), selecting it as default.");
                 deviceManager.setDefaultMidiOutputDevice(device.identifier);
                 currentOutput = deviceManager.getDefaultMidiOutput();
                 break;

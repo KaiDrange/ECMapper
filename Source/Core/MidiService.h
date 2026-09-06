@@ -16,7 +16,8 @@ namespace ecm {
 class HardwareService;
 
 class MidiService : public juce::ValueTree::Listener,
-                    public juce::universal_midi_packets::EndpointsListener {
+                    public juce::universal_midi_packets::EndpointsListener,
+                    public juce::universal_midi_packets::Consumer {
 public:
     struct RuntimeConfigSnapshot {
         std::array<ConfigLookup, 3> configLookups;
@@ -48,6 +49,7 @@ public:
     void valueTreePropertyChanged(juce::ValueTree& treeWhosePropertyHasChanged, const juce::Identifier& property) override;
     void valueTreeRedirected(juce::ValueTree& treeWhichHasBeenChanged) override;
     void endpointsChanged() override;
+    void consume (juce::universal_midi_packets::Iterator b, juce::universal_midi_packets::Iterator e, double time) override;
 
     void updateVirtualOutput();
     bool isVirtualOutputActive() const;
@@ -163,6 +165,8 @@ private:
     juce::universal_midi_packets::Output directUmpOutput_;
     std::optional<juce::universal_midi_packets::LegacyVirtualOutput> virtualUmpOutput_;
     std::optional<juce::universal_midi_packets::LegacyVirtualInput> virtualUmpInputMirror_;
+    juce::universal_midi_packets::VirtualEndpoint virtualEndpoint_;
+    juce::universal_midi_packets::Input virtualUmpInput_;
     std::unique_ptr<juce::InterProcessLock> virtualMidiLock_;
     juce::CriticalSection umpOutputLock_;
     bool isFirstInstance_ = false;

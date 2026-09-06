@@ -99,22 +99,55 @@ void Midi2Protocol::setup(juce::MidiBuffer&, const juce::MPEZoneLayout&) {
 }
 
 void Midi2Protocol::addIdentification(juce::MidiBuffer& buffer, int eventTime) {
+    using namespace juce::universal_midi_packets;
+
+    DeviceInfo devInfo;
+    devInfo.manufacturer = {std::byte{0x7D}, std::byte{0x00}, std::byte{0x00}};
+    devInfo.family = {std::byte{0x01}, std::byte{0x00}};
+    devInfo.modelNumber = {std::byte{0x01}, std::byte{0x00}};
+    devInfo.revision = {std::byte{0x01}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00}};
+
     EndpointInfo info;
     info = info.withVersion(1, 1)
                .withMidi1Support(true)
                .withMidi2Support(true)
                .withStaticFunctionBlocks(true)
-               .withNumFunctionBlocks(0);
+               .withNumFunctionBlocks(1)
+               .withReceiveJRSupport(false)
+               .withTransmitJRSupport(false);
     
     auto infoPkt = Factory::makeEndpointInfoNotification(info);
     addToBuffer(buffer, infoPkt.data(), (int)infoPkt.size(), eventTime);
 
-    Factory::makeEndpointNameNotification("ECMapper Direct", [&](const View& view) {
+    auto idNotification = Factory::makeDeviceIdentityNotification(devInfo);
+    addToBuffer(buffer, idNotification.data(), (int)idNotification.size(), eventTime);
+
+    Factory::makeEndpointNameNotification("ECMapper Direct UMP", [&](const View& view) {
+        addToBuffer(buffer, view.data(), (int)view.size(), eventTime);
+    });
+
+    Factory::makeProductInstanceIdNotification("ECMapper-Direct-UMP", [&](const View& view) {
         addToBuffer(buffer, view.data(), (int)view.size(), eventTime);
     });
     
+    BlockInfo block;
+    block = block.withFirstGroup(0)
+                 .withNumGroups(16)
+                 .withDirection(BlockDirection::bidirectional)
+                 .withUiHint(BlockUiHint::bidirectional)
+                 .withEnabled(true);
+    
+    auto blockPkt = Factory::makeFunctionBlockInfoNotification(0, block);
+    addToBuffer(buffer, blockPkt.data(), (int)blockPkt.size(), eventTime);
+
+    Factory::makeFunctionBlockNameNotification(0, "Main", [&](const View& view) {
+        addToBuffer(buffer, view.data(), (int)view.size(), eventTime);
+    });
+
     StreamConfiguration config;
-    config = config.withProtocol(PacketProtocol::MIDI_2_0);
+    config = config.withProtocol(PacketProtocol::MIDI_2_0)
+                   .withReceiveTimestamp(false)
+                   .withTransmitTimestamp(false);
     auto configPkt = Factory::makeStreamConfigurationNotification(config);
     addToBuffer(buffer, configPkt.data(), (int)configPkt.size(), eventTime);
 }
