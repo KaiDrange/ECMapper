@@ -412,7 +412,7 @@ void HardwareService::key(const char* dev, unsigned long long t, unsigned course
             }
             
             if (a) {
-                juce::Logger::writeToLog("HardwareService: Key Down - Course: " + juce::String(course) + ", Key: " + juce::String(key) + ", Pressure: " + juce::String(p));
+                // juce::Logger::writeToLog("HardwareService: Key Down - Course: " + juce::String(course) + ", Key: " + juce::String(key) + ", Pressure: " + juce::String(p));
             }
             break;
         }

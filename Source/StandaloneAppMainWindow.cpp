@@ -91,6 +91,7 @@ void StandaloneAppMainWindow::changeListenerCallback(juce::ChangeBroadcaster* so
 {
     if (source == &deviceManager && !isUpdatingSettings)
     {
+        juce::Logger::writeToLog("StandaloneAppMainWindow: changeListenerCallback triggered by deviceManager.");
         isUpdatingSettings = true;
         updateMidiOutput();
         saveAudioSettings();
@@ -105,6 +106,7 @@ void StandaloneAppMainWindow::valueTreePropertyChanged(juce::ValueTree& treeWhos
 
 void StandaloneAppMainWindow::endpointsChanged()
 {
+    juce::Logger::writeToLog("StandaloneAppMainWindow: endpointsChanged() triggered by UMP Endpoints broadcast.");
     updateMidiOutput();
 }
 

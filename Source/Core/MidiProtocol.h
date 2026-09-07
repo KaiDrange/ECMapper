@@ -29,6 +29,8 @@ public:
 
     virtual int findMidiChannelForNewNote(MidiChannelType outputType, int noteNumber) = 0;
     virtual void releaseMidiChannel(MidiChannelType outputType, int noteNumber, int channel) = 0;
+    
+    virtual void setRemoteSupportsPerNote(bool supports) = 0;
 };
 
 }

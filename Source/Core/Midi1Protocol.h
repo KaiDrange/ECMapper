@@ -27,6 +27,8 @@ public:
     
     int findMidiChannelForNewNote(MidiChannelType outputType, int noteNumber) override;
     void releaseMidiChannel(MidiChannelType outputType, int noteNumber, int channel) override;
+    
+    void setRemoteSupportsPerNote(bool /*supports*/) override {}
 
 private:
     std::unique_ptr<juce::MPEChannelAssigner> lowerChanAssigner_;

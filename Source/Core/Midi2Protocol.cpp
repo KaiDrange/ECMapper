@@ -88,8 +88,13 @@ void Midi2Protocol::addCC(juce::MidiBuffer& buffer, int channel, int noteNumber,
         auto ump = Factory::makeControlChangeV2(group_, (uint8_t)(channel - 1), (uint8_t)ccNumber, scaleTo32Bit(value));
         addToBuffer(buffer, ump.data(), (int)ump.size(), eventTime);
     } else {
-        auto ump = Factory::makeAssignablePerNoteControllerV2(group_, (uint8_t)(channel - 1), (uint8_t)noteNumber, (uint8_t)ccNumber, scaleTo32Bit(value));
-        addToBuffer(buffer, ump.data(), (int)ump.size(), eventTime);
+        if (ccNumber == 74 || ccNumber == 71 || ccNumber == 1 || ccNumber == 2 || ccNumber == 7 || ccNumber == 10 || ccNumber == 11) {
+            auto ump = Factory::makeRegisteredPerNoteControllerV2(group_, (uint8_t)(channel - 1), (uint8_t)noteNumber, (uint8_t)ccNumber, scaleTo32Bit(value));
+            addToBuffer(buffer, ump.data(), (int)ump.size(), eventTime);
+        } else {
+            auto ump = Factory::makeAssignablePerNoteControllerV2(group_, (uint8_t)(channel - 1), (uint8_t)noteNumber, (uint8_t)ccNumber, scaleTo32Bit(value));
+            addToBuffer(buffer, ump.data(), (int)ump.size(), eventTime);
+        }
     }
 }
 
@@ -117,7 +122,12 @@ void Midi2Protocol::addMidiContinue(juce::MidiBuffer& buffer, int eventTime) {
     addToBuffer(buffer, ump.data(), (int)ump.size(), eventTime);
 }
 
-void Midi2Protocol::setup(juce::MidiBuffer&, const juce::MPEZoneLayout&) {
+void Midi2Protocol::setup(juce::MidiBuffer&, const juce::MPEZoneLayout& layout) {
+    lowerChanAssigner_ = std::make_unique<juce::MPEChannelAssigner>(layout.getLowerZone());
+    if (layout.getUpperZone().numMemberChannels > 0)
+        upperChanAssigner_ = std::make_unique<juce::MPEChannelAssigner>(layout.getUpperZone());
+    else
+        upperChanAssigner_.reset();
 }
 
 void Midi2Protocol::addIdentification(juce::MidiBuffer& buffer, int eventTime) {
@@ -174,14 +184,39 @@ void Midi2Protocol::addIdentification(juce::MidiBuffer& buffer, int eventTime) {
     addToBuffer(buffer, configPkt.data(), (int)configPkt.size(), eventTime);
 }
 
-int Midi2Protocol::findMidiChannelForNewNote(MidiChannelType outputType, int /*noteNumber*/) {
-    if (outputType == MidiChannelType::MPE_Low) return 1;
-    if (outputType == MidiChannelType::MPE_High) return 16;
+int Midi2Protocol::findMidiChannelForNewNote(MidiChannelType outputType, int noteNumber) {
+    if (remoteSupportsPerNote_) {
+        if (outputType == MidiChannelType::MPE_Low) return 1;
+        if (outputType == MidiChannelType::MPE_High) return 16;
+        return static_cast<int>(outputType);
+    }
+
+    if (outputType == MidiChannelType::MPE_Low) {
+        if (lowerChanAssigner_ && noteNumber != -1)
+            return lowerChanAssigner_->findMidiChannelForNewNote(noteNumber);
+        return 1;
+    }
+    if (outputType == MidiChannelType::MPE_High) {
+        if (upperChanAssigner_ && noteNumber != -1)
+            return upperChanAssigner_->findMidiChannelForNewNote(noteNumber);
+        return 16;
+    }
     
     return static_cast<int>(outputType);
 }
 
-void Midi2Protocol::releaseMidiChannel(MidiChannelType /*outputType*/, int /*noteNumber*/, int /*channel*/) {
+void Midi2Protocol::releaseMidiChannel(MidiChannelType outputType, int noteNumber, int channel) {
+    if (remoteSupportsPerNote_) return;
+
+    if (outputType == MidiChannelType::MPE_Low && lowerChanAssigner_ && noteNumber != -1)
+        lowerChanAssigner_->noteOff(noteNumber, channel);
+    else if (outputType == MidiChannelType::MPE_High && upperChanAssigner_ && noteNumber != -1)
+        upperChanAssigner_->noteOff(noteNumber, channel);
+}
+
+void Midi2Protocol::setRemoteSupportsPerNote(bool supports) {
+    remoteSupportsPerNote_ = supports;
+    juce::Logger::writeToLog("Midi2Protocol: Remote supports per-note expression: " + juce::String(supports ? "Yes" : "No"));
 }
 
 }

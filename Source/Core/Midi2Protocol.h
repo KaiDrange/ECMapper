@@ -1,4 +1,5 @@
 #pragma once
+#include <atomic>
 #include "MidiProtocol.h"
 
 namespace ecm {
@@ -29,8 +30,13 @@ public:
     int findMidiChannelForNewNote(MidiChannelType outputType, int noteNumber) override;
     void releaseMidiChannel(MidiChannelType outputType, int noteNumber, int channel) override;
 
+    void setRemoteSupportsPerNote(bool supports) override;
+
 private:
     uint8_t group_ = 0;
+    std::atomic<bool> remoteSupportsPerNote_ { false };
+    std::unique_ptr<juce::MPEChannelAssigner> lowerChanAssigner_;
+    std::unique_ptr<juce::MPEChannelAssigner> upperChanAssigner_;
 };
 
 }

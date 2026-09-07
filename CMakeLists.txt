@@ -81,6 +81,7 @@ set(COMMON_LIBS
     juce::juce_events
     juce::juce_core
     juce::juce_audio_basics # MIDI 2.0 / UMP support
+    juce::juce_midi_ci
     juce::juce_osc
     juce::juce_recommended_config_flags
     juce::juce_recommended_lto_flags

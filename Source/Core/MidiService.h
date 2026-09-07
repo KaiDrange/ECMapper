@@ -1,5 +1,6 @@
 #pragma once
 #include <juce_audio_devices/juce_audio_devices.h>
+#include <juce_midi_ci/juce_midi_ci.h>
 #include "ConfigLookup.h"
 #include "BezierCurve.h"
 #include "OSCMessage.h"
@@ -16,7 +17,11 @@ class HardwareService;
 
 class MidiService : public juce::ValueTree::Listener,
                     public juce::universal_midi_packets::EndpointsListener,
-                    public juce::universal_midi_packets::Consumer {
+                    public juce::universal_midi_packets::Consumer,
+                    public juce::midi_ci::DeviceMessageHandler,
+                    public juce::midi_ci::ProfileDelegate,
+                    public juce::midi_ci::PropertyDelegate,
+                    public juce::midi_ci::DeviceListener {
 public:
     struct RuntimeConfigSnapshot {
         std::array<ConfigLookup, 3> configLookups;
@@ -38,7 +43,7 @@ public:
     void createLayoutRPNs(juce::MidiBuffer& buffer);
     void queueTransposeChangeFlush(InstrumentType deviceType, Zone zone);
     void drainPendingMidiMessages(juce::MidiBuffer& buffer, int eventTime = 0);
-    void drainDirectUMPs(juce::MidiBuffer& buffer);
+    void drainDirectUMPs(juce::MidiBuffer& buffer, bool silentIfFailed = false);
     void setMidiOutput(juce::MidiOutput* output);
     void sendIdentification();
     void setRuntimeConfigSnapshot(std::unique_ptr<RuntimeConfigSnapshot> snapshot);
@@ -49,12 +54,33 @@ public:
     void endpointsChanged() override;
     void consume (juce::universal_midi_packets::Iterator b, juce::universal_midi_packets::Iterator e, double time) override;
 
+    // DeviceMessageHandler
+    void processMessage (juce::universal_midi_packets::BytesOnGroup msg) override;
+
+    // ProfileDelegate
+    void profileEnablementRequested (juce::midi_ci::MUID x, juce::midi_ci::ProfileAtAddress profileAtAddress, int numChannels, bool enabled) override;
+
+    // PropertyDelegate
+    juce::midi_ci::PropertyReplyData propertyGetDataRequested (juce::midi_ci::MUID, const juce::midi_ci::PropertyRequestHeader&) override;
+    juce::midi_ci::PropertyReplyHeader propertySetDataRequested (juce::midi_ci::MUID, const juce::midi_ci::PropertyRequestData&) override;
+    bool subscriptionStartRequested (juce::midi_ci::MUID, const juce::midi_ci::PropertySubscriptionHeader&) override;
+    void subscriptionDidStart (juce::midi_ci::MUID, const juce::String& subId, const juce::midi_ci::PropertySubscriptionHeader&) override;
+    void subscriptionWillEnd (juce::midi_ci::MUID, const juce::midi_ci::Subscription& sub) override;
+
+    // DeviceListener
+    void deviceAdded (juce::midi_ci::MUID x) override;
+    void deviceRemoved (juce::midi_ci::MUID x) override;
+    void profileStateReceived (juce::midi_ci::MUID x, juce::midi_ci::ChannelInGroup destination) override;
+    void profileEnablementChanged (juce::midi_ci::MUID x, juce::midi_ci::ChannelInGroup destination, juce::midi_ci::Profile profile, int numChannels) override;
+
     void updateVirtualOutput();
     bool isVirtualOutputActive() const;
     bool isUsingUMPPath() const;
 
     void setOSCBroadcastQueue(osc::MessageFifo* queue) { oscBroadcastQueue_ = queue; }
     void setLocalHardwareQueue(osc::MessageFifo* queue) { localHardwareQueue_ = queue; }
+    
+    JUCE_DECLARE_WEAK_REFERENCEABLE(MidiService)
 
     bool isInitialized() const { return initialized_; }
     
@@ -162,6 +188,7 @@ private:
 
     std::optional<juce::universal_midi_packets::Session> umpSession_;
     juce::universal_midi_packets::Output umpOutput_;
+    juce::universal_midi_packets::Input umpInput_;
     juce::universal_midi_packets::Output directUmpOutput_;
     std::optional<juce::universal_midi_packets::LegacyVirtualOutput> virtualUmpOutput_;
     std::optional<juce::universal_midi_packets::LegacyVirtualInput> virtualUmpInputMirror_;
@@ -176,6 +203,14 @@ private:
     std::atomic<bool> isVirtualTarget_{ false };
     juce::String midiOutputName_ = "None";
 
+    std::unique_ptr<juce::midi_ci::Device> ciDevice_;
+    juce::universal_midi_packets::ToBytestreamDispatcher dispatcher_ { 4096 };
+    std::atomic<bool> remoteSupportsPerNote_ { false };
+
+    void sendCISysex (int group, juce::midi_ci::MUID destinationMUID, std::byte subID2, juce::Span<const std::byte> body, std::byte deviceID = std::byte{0x7f});
+    void sendInitiateProtocolNegotiation (int group, juce::midi_ci::MUID destinationMUID, std::byte deviceID = std::byte{0x7f});
+    void sendIdentityResponse (int group, std::byte deviceID);
+
     int countPlayingNoteMatches(int channel, int noteNumber) const;
     void removeOneNoteMatch(int channel, int noteNumber);
     void appendPendingMidiMessage(const juce::MidiMessage& message, int eventTime);
@@ -185,6 +220,7 @@ private:
     std::vector<VisualMarker> recentVisualEvents_[3][6];
     mutable juce::CriticalSection visualEventsLock_;
     void recordVisualEvent(InstrumentType deviceType, ExpressionCurveTarget target, float value, int keyId = -1);
+    void logMidiExpressionMode();
 };
 
 } // namespace ecm
