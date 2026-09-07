@@ -59,11 +59,17 @@ void Midi2Protocol::addNoteOff(juce::MidiBuffer& buffer, int channel, int noteNu
 }
 
 void Midi2Protocol::addPitchBend(juce::MidiBuffer& buffer, int channel, int noteNumber, float value, int eventTime) {
+    uint32_t scaled = scaleTo32Bit(value);
     if (noteNumber == -1) {
-        auto ump = Factory::makePitchBendV2(group_, (uint8_t)(channel - 1), scaleTo32Bit(value));
+        juce::Logger::writeToLog("Midi2Protocol: Channel Pitch Bend - channel=" + juce::String(channel) + 
+                                 ", value=" + juce::String(value) + ", scaled=" + juce::String((juce::int64)scaled));
+        auto ump = Factory::makePitchBendV2(group_, (uint8_t)(channel - 1), scaled);
         addToBuffer(buffer, ump.data(), (int)ump.size(), eventTime);
     } else {
-        auto ump = Factory::makePerNotePitchBendV2(group_, (uint8_t)(channel - 1), (uint8_t)noteNumber, scaleTo32Bit(value));
+        juce::Logger::writeToLog("Midi2Protocol: Per-Note Pitch Bend - channel=" + juce::String(channel) + 
+                                 ", note=" + juce::String(noteNumber) + ", value=" + juce::String(value) + 
+                                 ", scaled=" + juce::String((juce::int64)scaled));
+        auto ump = Factory::makePerNotePitchBendV2(group_, (uint8_t)(channel - 1), (uint8_t)noteNumber, scaled);
         addToBuffer(buffer, ump.data(), (int)ump.size(), eventTime);
     }
 }
@@ -122,7 +128,11 @@ void Midi2Protocol::addMidiContinue(juce::MidiBuffer& buffer, int eventTime) {
     addToBuffer(buffer, ump.data(), (int)ump.size(), eventTime);
 }
 
-void Midi2Protocol::setup(juce::MidiBuffer&, const juce::MPEZoneLayout& layout) {
+void Midi2Protocol::setup(juce::MidiBuffer& buffer, const juce::MPEZoneLayout& layout) {
+    juce::Logger::writeToLog("Midi2Protocol: Setting up MPE Zone Layout. Lower channels: " + juce::String(layout.getLowerZone().numMemberChannels) + 
+                             ", Lower PB: " + juce::String(layout.getLowerZone().perNotePitchbendRange) +
+                             ", Upper channels: " + juce::String(layout.getUpperZone().numMemberChannels) +
+                             ", Upper PB: " + juce::String(layout.getUpperZone().perNotePitchbendRange));
     lowerChanAssigner_ = std::make_unique<juce::MPEChannelAssigner>(layout.getLowerZone());
     if (layout.getUpperZone().numMemberChannels > 0)
         upperChanAssigner_ = std::make_unique<juce::MPEChannelAssigner>(layout.getUpperZone());

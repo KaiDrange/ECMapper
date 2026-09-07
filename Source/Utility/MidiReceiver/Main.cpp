@@ -63,23 +63,30 @@ public:
                           << ". Connecting..." << std::endl;
                 
                 // Force MIDI 2.0 connection protocol to ensure UMP delivery on macOS 11+
-                auto input = session->connectInput(epId, juce::universal_midi_packets::PacketProtocol::MIDI_2_0);
-                
-                if (! input.isAlive())
+                if (epId.src.isNotEmpty())
                 {
-                    std::cout << "Failed to connect with MIDI 2.0 protocol, trying reported protocol..." << std::endl;
-                    input = session->connectInput(epId, reportedProtocol);
-                }
-                
-                if (input.isAlive())
-                {
-                    input.addConsumer(*this);
-                    std::cout << "Connected to: " << ep->getName() << std::endl;
-                    inputs.push_back(std::move(input));
+                    auto input = session->connectInput(epId, juce::universal_midi_packets::PacketProtocol::MIDI_2_0);
+                    
+                    if (! input.isAlive())
+                    {
+                        std::cout << "Failed to connect with MIDI 2.0 protocol, trying reported protocol..." << std::endl;
+                        input = session->connectInput(epId, reportedProtocol);
+                    }
+                    
+                    if (input.isAlive())
+                    {
+                        input.addConsumer(*this);
+                        std::cout << "Connected to: " << ep->getName() << std::endl;
+                        inputs.push_back(std::move(input));
+                    }
+                    else
+                    {
+                        std::cout << "Failed to connect to " << ep->getName() << std::endl;
+                    }
                 }
                 else
                 {
-                    std::cout << "Failed to connect to " << ep->getName() << std::endl;
+                    std::cout << "Skipping connection to " << ep->getName() << " (no source identifier)" << std::endl;
                 }
             }
         }

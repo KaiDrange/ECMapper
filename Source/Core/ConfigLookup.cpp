@@ -130,12 +130,28 @@ void ConfigLookup::updateKeyUnlocked(LayoutWrapper::KeyId keyId) {
             return maxPb > 0.0f ? std::min(pb / maxPb, 1.0f) : 0.0f;
         };
 
-        if (key.output == MidiChannelType::MPE_Low)
-            key.pbRange = getSafePbRange((float)keyPB, (float)SettingsWrapper::getLowerMPEPB(pluginState.state));
-        else if (key.output == MidiChannelType::MPE_High)
-            key.pbRange = getSafePbRange((float)keyPB, (float)SettingsWrapper::getUpperMPEPB(pluginState.state));
-        else
-            key.pbRange = getSafePbRange((float)keyPB, (float)ZoneWrapper::getChannelMaxPitchbend(layoutKey.keyId.deviceType, layoutKey.zone, pluginState.state));
+        bool midi2 = SettingsWrapper::getMidi2Mode(pluginState.state);
+        float maxPb = 1.0f;
+        
+        if (midi2) {
+            maxPb = 128.0f;
+        } else {
+            if (key.output == MidiChannelType::MPE_Low)
+                maxPb = (float)SettingsWrapper::getLowerMPEPB(pluginState.state);
+            else if (key.output == MidiChannelType::MPE_High)
+                maxPb = (float)SettingsWrapper::getUpperMPEPB(pluginState.state);
+            else
+                maxPb = (float)ZoneWrapper::getChannelMaxPitchbend(layoutKey.keyId.deviceType, layoutKey.zone, pluginState.state);
+        }
+
+        key.pbRange = getSafePbRange((float)keyPB, maxPb);
+        
+        if (key.yaw.valueType == MidiValueType::Pitchbend || key.roll.valueType == MidiValueType::Pitchbend) {
+             juce::Logger::writeToLog("ConfigLookup: PB Settings for Key [" + juce::String(layoutKey.keyId.course) + "," + juce::String(layoutKey.keyId.keyNo) + "] - midi2=" + juce::String((int)midi2) + 
+                ", keyPB=" + juce::String(keyPB) + " semitones, maxPb=" + juce::String(maxPb) + 
+                " semitones, pbScaling=" + juce::String(key.pbRange) + " (ratio)" +
+                ", outputType=" + juce::String((int)key.output));
+        }
         
         if (key.mapType != KeyMappingType::MidiMsg) {
             key.cmdType = 0;
@@ -226,6 +242,21 @@ void ConfigLookup::updateBreathUnlocked(Zone zone) {
         breath[zoneIdx].channel = (int)midiChannelType;
     
     breath[zoneIdx].midiValue = ZoneWrapper::getMidiValue(deviceType, zone, ZoneWrapper::id_breath, ZoneWrapper::default_breath, pluginState.state);
+    
+    float globalPB = 48.0f;
+    if (midiChannelType == MidiChannelType::MPE_Low)
+        globalPB = (float)SettingsWrapper::getLowerMPEPB(pluginState.state);
+    else if (midiChannelType == MidiChannelType::MPE_High)
+        globalPB = (float)SettingsWrapper::getUpperMPEPB(pluginState.state);
+    else
+        globalPB = (float)ZoneWrapper::getChannelMaxPitchbend(deviceType, zone, pluginState.state);
+
+    breath[zoneIdx].pbRange = SettingsWrapper::getMidi2Mode(pluginState.state) ? (globalPB / 128.0f) : 1.0f;
+
+    if (breath[zoneIdx].midiValue.valueType == MidiValueType::Pitchbend) {
+        juce::Logger::writeToLog("ConfigLookup: PB Settings for Breath (Zone " + juce::String(zoneIdx) + ") - targetPB=" + juce::String(globalPB) + 
+            " semitones, pbScaling=" + juce::String(breath[zoneIdx].pbRange));
+    }
 }
 
 void ConfigLookup::updateStrips(Zone zone) {
@@ -263,6 +294,25 @@ void ConfigLookup::updateStripsUnlocked(Zone zone) {
     strip1[zoneIdx].relMidiValue = ZoneWrapper::getMidiValue(deviceType, zone, ZoneWrapper::id_strip1Rel, ZoneWrapper::default_strip1Rel, pluginState.state);
     strip2[zoneIdx].absMidiValue = ZoneWrapper::getMidiValue(deviceType, zone, ZoneWrapper::id_strip2Abs, ZoneWrapper::default_strip2Abs, pluginState.state);
     strip2[zoneIdx].relMidiValue = ZoneWrapper::getMidiValue(deviceType, zone, ZoneWrapper::id_strip2Rel, ZoneWrapper::default_strip2Rel, pluginState.state);
+    
+    float globalPB = 48.0f;
+    if (midiChannelType == MidiChannelType::MPE_Low)
+        globalPB = (float)SettingsWrapper::getLowerMPEPB(pluginState.state);
+    else if (midiChannelType == MidiChannelType::MPE_High)
+        globalPB = (float)SettingsWrapper::getUpperMPEPB(pluginState.state);
+    else
+        globalPB = (float)ZoneWrapper::getChannelMaxPitchbend(deviceType, zone, pluginState.state);
+
+    strip1[zoneIdx].pbRange = strip2[zoneIdx].pbRange = SettingsWrapper::getMidi2Mode(pluginState.state) ? (globalPB / 128.0f) : 1.0f;
+
+    if (strip1[zoneIdx].absMidiValue.valueType == MidiValueType::Pitchbend || strip1[zoneIdx].relMidiValue.valueType == MidiValueType::Pitchbend) {
+        juce::Logger::writeToLog("ConfigLookup: PB Settings for Strip 1 (Zone " + juce::String(zoneIdx) + ") - targetPB=" + juce::String(globalPB) + 
+            " semitones, pbScaling=" + juce::String(strip1[zoneIdx].pbRange));
+    }
+    if (strip2[zoneIdx].absMidiValue.valueType == MidiValueType::Pitchbend || strip2[zoneIdx].relMidiValue.valueType == MidiValueType::Pitchbend) {
+        juce::Logger::writeToLog("ConfigLookup: PB Settings for Strip 2 (Zone " + juce::String(zoneIdx) + ") - targetPB=" + juce::String(globalPB) + 
+            " semitones, pbScaling=" + juce::String(strip2[zoneIdx].pbRange));
+    }
 }
 
 void ConfigLookup::updateExpressionCurves() {

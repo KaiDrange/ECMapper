@@ -179,6 +179,7 @@ juce_add_console_app(MidiReceiver
     PRODUCT_NAME "MidiReceiver"
     VERSION "1.0.0"
     COMPANY_NAME "Tic Tech"
+    BUNDLE_ID "com.tictech.midireceiver.app"
 )
 
 target_sources(MidiReceiver PRIVATE Source/Utility/MidiReceiver/Main.cpp)

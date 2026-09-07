@@ -164,7 +164,7 @@ private:
     void createAllNotesOff(juce::MidiBuffer& buffer, int eventTime, MidiProtocol* protocol);
     
     void addMidiValueMessage(InstrumentType deviceType, int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, int noteNo, juce::MidiBuffer& buffer, bool isBipolar, ExpressionCurveTarget curveTarget, int eventTime, MidiProtocol* protocol);
-    void addStripValueMessage(int channel, float ehValue, ZoneWrapper::MidiValue midiValue, juce::MidiBuffer& buffer, bool isBipolar, int eventTime, MidiProtocol* protocol);
+    void addStripValueMessage(int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, juce::MidiBuffer& buffer, bool isBipolar, int eventTime, MidiProtocol* protocol);
     
     void createBreath(int deviceIndex, const ConfigLookup& keyLookup, juce::MidiBuffer& buffer, int eventTime, MidiProtocol* protocol);
     void createStripAbsolute(int deviceIndex, int stripIndex, int zoneIndex, const ConfigLookup& keyLookup, juce::MidiBuffer& buffer, int eventTime, MidiProtocol* protocol);

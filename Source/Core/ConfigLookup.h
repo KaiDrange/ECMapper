@@ -49,12 +49,14 @@ public:
     struct Breath {
         ZoneWrapper::MidiValue midiValue;
         int channel = 0;
+        float pbRange = 0.0f;
     };
     
     struct Strip {
         ZoneWrapper::MidiValue absMidiValue;
         ZoneWrapper::MidiValue relMidiValue;
         int channel = 0;
+        float pbRange = 0.0f;
     };
 
     Key keys[3][120];

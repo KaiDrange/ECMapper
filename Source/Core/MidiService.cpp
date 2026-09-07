@@ -29,11 +29,11 @@ void MidiService::start(juce::AudioProcessorValueTreeState& pluginState, Hardwar
     hardwareService_ = hs;
     pluginState_ = &pluginState;
     int lowerChannelCount = SettingsWrapper::getLowerMPEVoiceCount(pluginState.state);
-    mpeZone_.setLowerZone(lowerChannelCount, 1, SettingsWrapper::getLowerMPEPB(pluginState.state));
+    mpeZone_.setLowerZone(lowerChannelCount, SettingsWrapper::getLowerMPEPB(pluginState.state), 2);
     
     if (lowerChannelCount < 14) {
         int upperChannelCount = SettingsWrapper::getUpperMPEVoiceCount(pluginState.state);
-        mpeZone_.setUpperZone(upperChannelCount, 16, SettingsWrapper::getUpperMPEPB(pluginState.state));
+        mpeZone_.setUpperZone(upperChannelCount, SettingsWrapper::getUpperMPEPB(pluginState.state), 2);
     }
     
     for (int i = 0; i < 3; ++i) {
@@ -242,16 +242,16 @@ void MidiService::valueTreePropertyChanged(juce::ValueTree& tree, const juce::Id
     {
         const juce::ScopedLock stateGuard(stateLock_);
         int lowerChannelCount = SettingsWrapper::getLowerMPEVoiceCount(tree);
-        mpeZone_.setLowerZone(lowerChannelCount, 1, SettingsWrapper::getLowerMPEPB(tree));
+        mpeZone_.setLowerZone(lowerChannelCount, SettingsWrapper::getLowerMPEPB(tree), 2);
         
         if (lowerChannelCount < 14) {
             int upperChannelCount = SettingsWrapper::getUpperMPEVoiceCount(tree);
-            mpeZone_.setUpperZone(upperChannelCount, 16, SettingsWrapper::getUpperMPEPB(tree));
+            mpeZone_.setUpperZone(upperChannelCount, SettingsWrapper::getUpperMPEPB(tree), 2);
         }
 
         if (protocol_) {
-            juce::MidiBuffer dummy;
-            protocol_->setup(dummy, mpeZone_);
+            const juce::ScopedLock sl(pendingMessageLock_);
+            protocol_->setup(pendingMidiBuffer_, mpeZone_);
         }
     }
 }
@@ -265,16 +265,16 @@ void MidiService::valueTreeRedirected(juce::ValueTree& tree)
     // Refresh MPE settings
     const juce::ScopedLock stateGuard(stateLock_);
     int lowerChannelCount = SettingsWrapper::getLowerMPEVoiceCount(tree);
-    mpeZone_.setLowerZone(lowerChannelCount, 1, SettingsWrapper::getLowerMPEPB(tree));
+    mpeZone_.setLowerZone(lowerChannelCount, SettingsWrapper::getLowerMPEPB(tree), 2);
     
     if (lowerChannelCount < 14) {
         int upperChannelCount = SettingsWrapper::getUpperMPEVoiceCount(tree);
-        mpeZone_.setUpperZone(upperChannelCount, 16, SettingsWrapper::getUpperMPEPB(tree));
+        mpeZone_.setUpperZone(upperChannelCount, SettingsWrapper::getUpperMPEPB(tree), 2);
     }
 
     if (protocol_) {
-        juce::MidiBuffer dummy;
-        protocol_->setup(dummy, mpeZone_);
+        const juce::ScopedLock sl(pendingMessageLock_);
+        protocol_->setup(pendingMidiBuffer_, mpeZone_);
     }
 }
 
@@ -639,26 +639,32 @@ void MidiService::setMidiOutput(juce::MidiOutput* output)
             
         juce::Logger::writeToLog("MidiService: Attempting to connect UMP output/input to ID: src='" + endpointId.src + "', dst='" + endpointId.dst + "'");
         
-        umpOutput_ = (*umpSession_).connectOutput(endpointId);
-        
-        if (umpOutput_.isAlive())
-            juce::Logger::writeToLog("MidiService: Connected direct UMP output to " + name);
-        else
-            juce::Logger::writeToLog("MidiService: Failed to connect direct UMP output to " + name + ". Will retry if endpoints change.");
-
-        if (umpInput_.isAlive())
-            umpInput_.removeConsumer(*this);
+        if (endpointId.dst.isNotEmpty())
+        {
+            umpOutput_ = (*umpSession_).connectOutput(endpointId);
             
-        umpInput_ = (*umpSession_).connectInput(endpointId, isMidi2Mode_ ? juce::universal_midi_packets::PacketProtocol::MIDI_2_0 : juce::universal_midi_packets::PacketProtocol::MIDI_1_0);
-        
-        if (umpInput_.isAlive())
-        {
-            juce::Logger::writeToLog("MidiService: Connected direct UMP input to " + name);
-            umpInput_.addConsumer(*this);
+            if (umpOutput_.isAlive())
+                juce::Logger::writeToLog("MidiService: Connected direct UMP output to " + name);
+            else
+                juce::Logger::writeToLog("MidiService: Failed to connect direct UMP output to " + name + ". Will retry if endpoints change.");
         }
-        else
+        
+        if (endpointId.src.isNotEmpty())
         {
-            juce::Logger::writeToLog("MidiService: Failed to connect direct UMP input to " + name);
+            if (umpInput_.isAlive())
+                umpInput_.removeConsumer(*this);
+                
+            umpInput_ = (*umpSession_).connectInput(endpointId, isMidi2Mode_ ? juce::universal_midi_packets::PacketProtocol::MIDI_2_0 : juce::universal_midi_packets::PacketProtocol::MIDI_1_0);
+            
+            if (umpInput_.isAlive())
+            {
+                juce::Logger::writeToLog("MidiService: Connected direct UMP input to " + name);
+                umpInput_.addConsumer(*this);
+            }
+            else
+            {
+                juce::Logger::writeToLog("MidiService: Failed to connect direct UMP input to " + name);
+            }
         }
             
         sendIdentification();
@@ -670,23 +676,29 @@ void MidiService::endpointsChanged()
     const juce::ScopedLock sl(umpOutputLock_);
     if (isVirtualTarget_) return;
 
-    if (lastEndpointId_ != juce::universal_midi_packets::EndpointId{} && (!umpOutput_.isAlive() || !umpInput_.isAlive()))
+    bool needsOutput = lastEndpointId_.dst.isNotEmpty() && !umpOutput_.isAlive();
+    bool needsInput = lastEndpointId_.src.isNotEmpty() && !umpInput_.isAlive();
+
+    if (needsOutput || needsInput)
     {
         if (!umpSession_.has_value())
             umpSession_ = juce::universal_midi_packets::Endpoints::getInstance()->makeSession("ECMapperUMP");
 
-        if (!umpOutput_.isAlive())
+        if (needsOutput)
             umpOutput_ = (*umpSession_).connectOutput(lastEndpointId_);
 
-        if (!umpInput_.isAlive())
+        if (needsInput)
         {
             umpInput_ = (*umpSession_).connectInput(lastEndpointId_, isMidi2Mode_ ? juce::universal_midi_packets::PacketProtocol::MIDI_2_0 : juce::universal_midi_packets::PacketProtocol::MIDI_1_0);
             if (umpInput_.isAlive())
                 umpInput_.addConsumer(*this);
         }
 
-        if (umpOutput_.isAlive() && umpInput_.isAlive())
-            juce::Logger::writeToLog("MidiService: Automatically connected direct UMP output/input to " + midiOutputName_ + " after endpoint change.");
+        bool outputOk = lastEndpointId_.dst.isEmpty() || umpOutput_.isAlive();
+        bool inputOk = lastEndpointId_.src.isEmpty() || umpInput_.isAlive();
+
+        if (outputOk && inputOk)
+            juce::Logger::writeToLog("MidiService: Automatically connected direct UMP port(s) to " + midiOutputName_ + " after endpoint change.");
     }
 }
 
@@ -1084,13 +1096,13 @@ void MidiService::createBreath(int deviceIndex, const ConfigLookup& keyLookup, j
     }
 
     for (int z = 0; z < 3; ++z) {
-        addMidiValueMessage(static_cast<InstrumentType>(deviceIndex + 1), keyLookup.breath[z].channel, val * 3.0f, keyLookup.breath[z].midiValue, 1.0f, 0, buffer, false, ExpressionCurveTarget::Breath, eventTime, protocol);
+        addMidiValueMessage(static_cast<InstrumentType>(deviceIndex + 1), keyLookup.breath[z].channel, val * 3.0f, keyLookup.breath[z].midiValue, keyLookup.breath[z].pbRange, 0, buffer, false, ExpressionCurveTarget::Breath, eventTime, protocol);
     }
 }
 
 void MidiService::createStripAbsolute(int deviceIndex, int stripIndex, int zoneIndex, const ConfigLookup& keyLookup, juce::MidiBuffer& buffer, int eventTime, MidiProtocol* protocol) {
     auto& strip = (stripIndex == 0) ? keyLookup.strip1[zoneIndex] : keyLookup.strip2[zoneIndex];
-    addStripValueMessage(strip.channel, ehStrips_[stripIndex][deviceIndex], strip.absMidiValue, buffer, false, eventTime, protocol);
+    addStripValueMessage(strip.channel, ehStrips_[stripIndex][deviceIndex], strip.absMidiValue, strip.pbRange, buffer, false, eventTime, protocol);
 }
 
 void MidiService::createStripRelative(int deviceIndex, int stripIndex, int zoneIndex, const ConfigLookup& keyLookup, juce::MidiBuffer& buffer, int eventTime, MidiProtocol* protocol) {
@@ -1102,7 +1114,7 @@ void MidiService::createStripRelative(int deviceIndex, int stripIndex, int zoneI
         currentStripPBperChannel_[strip.channel > 0 ? strip.channel - 1 : 0] = 0;
     }
 
-    addStripValueMessage(strip.channel, relValue, strip.relMidiValue, buffer, true, eventTime, protocol);
+    addStripValueMessage(strip.channel, relValue, strip.relMidiValue, strip.pbRange, buffer, true, eventTime, protocol);
 }
 
 void MidiService::createNoteOn(const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime, MidiProtocol* protocol) {
@@ -1338,7 +1350,14 @@ void MidiService::createNoteHold(const ConfigLookup::Key& keyLookup, KeyState* s
 }
 
 void MidiService::addMidiValueMessage(InstrumentType deviceType, int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, int noteNo, juce::MidiBuffer& buffer, bool isBipolar, ExpressionCurveTarget curveTarget, int eventTime, MidiProtocol* protocol) {
-    if (midiValue.valueType == MidiValueType::Off || channel < 1 || channel > 16) return;
+    if (midiValue.valueType == MidiValueType::Off) return;
+    
+    int resolvedChannel = channel;
+    if (resolvedChannel > 16 && protocol) {
+        resolvedChannel = protocol->findMidiChannelForNewNote(static_cast<MidiChannelType>(channel), noteNo);
+    }
+    
+    if (resolvedChannel < 1 || resolvedChannel > 16) return;
     
     float gain = 1.7f;
     if (!isBipolar && midiValue.valueType == MidiValueType::CC) gain = 1.0f;
@@ -1350,25 +1369,26 @@ void MidiService::addMidiValueMessage(InstrumentType deviceType, int channel, fl
     bool useNativePerNote = isMidi2Mode_ && remoteSupportsPerNote_ && noteNo != -1;
 
     if (midiValue.valueType == MidiValueType::Pitchbend) {
-        float notePB = calculatePitchBendCurve(normalized);
-        if (!isMidi2Mode_) notePB *= pbRange;
+        float notePB = calculatePitchBendCurve(normalized) * pbRange;
         
         if (useNativePerNote) {
-            protocol->addPitchBend(buffer, channel, noteNo, notePB * 0.5f + 0.5f, eventTime);
+            float protocolValue = notePB * 0.5f + 0.5f;
+            protocol->addPitchBend(buffer, resolvedChannel, noteNo, protocolValue, eventTime);
         } else {
-            currentKeyPBperChannel_[channel - 1] = notePB;
-            float totalPB = std::clamp(currentKeyPBperChannel_[channel - 1] + currentStripPBperChannel_[channel - 1], -1.0f, 1.0f);
-            protocol->addPitchBend(buffer, channel, -1, totalPB * 0.5f + 0.5f, eventTime);
+            currentKeyPBperChannel_[resolvedChannel - 1] = notePB;
+            float totalPB = std::clamp(currentKeyPBperChannel_[resolvedChannel - 1] + currentStripPBperChannel_[resolvedChannel - 1], -1.0f, 1.0f);
+            float protocolValue = totalPB * 0.5f + 0.5f;
+            protocol->addPitchBend(buffer, resolvedChannel, -1, protocolValue, eventTime);
         }
     } else if (midiValue.valueType == MidiValueType::ChannelAftertouch) {
         float val = isBipolar ? (normalized * 0.5f + 0.5f) : normalized;
-        protocol->addChannelPressure(buffer, channel, useNativePerNote ? noteNo : -1, val, eventTime);
+        protocol->addChannelPressure(buffer, resolvedChannel, useNativePerNote ? noteNo : -1, val, eventTime);
     } else if (midiValue.valueType == MidiValueType::PolyAftertouch) {
         float val = isBipolar ? (normalized * 0.5f + 0.5f) : normalized;
-        protocol->addPolyAftertouch(buffer, channel, noteNo, val, eventTime);
+        protocol->addPolyAftertouch(buffer, resolvedChannel, noteNo, val, eventTime);
     } else if (midiValue.valueType == MidiValueType::CC) {
         float val = isBipolar ? (normalized * 0.5f + 0.5f) : normalized;
-        protocol->addCC(buffer, channel, useNativePerNote ? noteNo : -1, midiValue.ccNo, val, eventTime);
+        protocol->addCC(buffer, resolvedChannel, useNativePerNote ? noteNo : -1, midiValue.ccNo, val, eventTime);
     }
 }
 
@@ -1437,24 +1457,39 @@ std::vector<MidiService::VisualMarker> MidiService::getVisualMarkers(InstrumentT
     return markers;
 }
 
-void MidiService::addStripValueMessage(int channel, float ehValue, ZoneWrapper::MidiValue midiValue, juce::MidiBuffer& buffer, bool isBipolar, int eventTime, MidiProtocol* protocol) {
-    if (midiValue.valueType == MidiValueType::Off || channel < 1 || channel > 16) return;
+void MidiService::addStripValueMessage(int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, juce::MidiBuffer& buffer, bool isBipolar, int eventTime, MidiProtocol* protocol) {
+    if (midiValue.valueType == MidiValueType::Off) return;
     
+    int resolvedChannel = channel;
+    if (resolvedChannel > 16 && protocol) {
+        resolvedChannel = protocol->findMidiChannelForNewNote(static_cast<MidiChannelType>(channel), -1);
+    }
+
+    if (resolvedChannel < 1 || resolvedChannel > 16) return;
+
     float gain = isBipolar ? 1.7f : 1.0f;
     float normalized = isBipolar ? (std::clamp(ehValue * gain, -1.0f, 1.0f)) : (std::clamp(ehValue * gain, 0.0f, 1.0f));
     
     if (!protocol) return;
 
     if (midiValue.valueType == MidiValueType::Pitchbend) {
-        currentStripPBperChannel_[channel - 1] = (isBipolar ? calculatePitchBendCurve(normalized) : normalized);
-        float totalPB = std::clamp(currentKeyPBperChannel_[channel - 1] + currentStripPBperChannel_[channel - 1], -1.0f, 1.0f);
-        protocol->addPitchBend(buffer, channel, -1, totalPB * 0.5f + 0.5f, eventTime);
+        currentStripPBperChannel_[resolvedChannel - 1] = (isBipolar ? calculatePitchBendCurve(normalized) : normalized) * pbRange;
+        float totalPB = std::clamp(currentKeyPBperChannel_[resolvedChannel - 1] + currentStripPBperChannel_[resolvedChannel - 1], -1.0f, 1.0f);
+        float protocolValue = totalPB * 0.5f + 0.5f;
+        
+        juce::Logger::writeToLog("MidiService: Strip PB Message - channel=" + juce::String(resolvedChannel) + 
+            ", rawEhValue=" + juce::String(ehValue) + ", normalized=" + juce::String(normalized) + 
+            ", pbScaling=" + juce::String(pbRange) + 
+            ", currentStripPB=" + juce::String(currentStripPBperChannel_[resolvedChannel - 1]) + 
+            ", totalPB=" + juce::String(totalPB) + ", protocolValue=" + juce::String(protocolValue));
+
+        protocol->addPitchBend(buffer, resolvedChannel, -1, protocolValue, eventTime);
     } else {
         float val = isBipolar ? (normalized * 0.5f + 0.5f) : normalized;
         if (midiValue.valueType == MidiValueType::ChannelAftertouch)
-            protocol->addChannelPressure(buffer, channel, -1, val, eventTime);
+            protocol->addChannelPressure(buffer, resolvedChannel, -1, val, eventTime);
         else if (midiValue.valueType == MidiValueType::CC)
-            protocol->addCC(buffer, channel, -1, midiValue.ccNo, val, eventTime);
+            protocol->addCC(buffer, resolvedChannel, -1, midiValue.ccNo, val, eventTime);
     }
 }
 

@@ -282,10 +282,17 @@ void MainComponent::showPresetBrowser()
 
 void MainComponent::refreshFromState()
 {
-    lowerMPEVoiceCount.setValue(SettingsWrapper::getLowerMPEVoiceCount(pluginState.state));
-    upperMPEVoiceCount.setValue(SettingsWrapper::getUpperMPEVoiceCount(pluginState.state));
-    lowerMPEPitchbendRange.setValue(SettingsWrapper::getLowerMPEPB(pluginState.state));
-    upperMPEPitchbendRange.setValue(SettingsWrapper::getUpperMPEPB(pluginState.state));
+    if (!lowerMPEVoiceCount.input.hasKeyboardFocus(true))
+        lowerMPEVoiceCount.setValue(SettingsWrapper::getLowerMPEVoiceCount(pluginState.state));
+
+    if (!upperMPEVoiceCount.input.hasKeyboardFocus(true))
+        upperMPEVoiceCount.setValue(SettingsWrapper::getUpperMPEVoiceCount(pluginState.state));
+
+    if (!lowerMPEPitchbendRange.input.hasKeyboardFocus(true))
+        lowerMPEPitchbendRange.setValue(SettingsWrapper::getLowerMPEPB(pluginState.state));
+
+    if (!upperMPEPitchbendRange.input.hasKeyboardFocus(true))
+        upperMPEPitchbendRange.setValue(SettingsWrapper::getUpperMPEPB(pluginState.state));
 
     pendingMidi2Mode = SettingsWrapper::getMidi2Mode(pluginState.state);
     midi2ModeChanged = (pendingMidi2Mode != midi2ModeEnabled);

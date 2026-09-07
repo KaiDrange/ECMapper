@@ -18,6 +18,9 @@ void Midi1Protocol::addPitchBend(juce::MidiBuffer& buffer, int channel, int note
     // value is expected to be in range [0, 1] (where 0.5 is center)
     // MIDI 1.0 Pitch Wheel is 14-bit: 0 to 16383. Center is 8192.
     int pb = std::clamp(static_cast<int>(value * 16384.0f), 0, 16383);
+    juce::Logger::writeToLog("Midi1Protocol: Pitch Wheel - channel=" + juce::String(channel) + 
+                             ", value=" + juce::String(value) + ", pb=" + juce::String(pb) + 
+                             " (offset=" + juce::String(pb - 8192) + ")");
     buffer.addEvent(juce::MidiMessage::pitchWheel(channel, pb), eventTime);
 }
 
@@ -59,6 +62,10 @@ void Midi1Protocol::addMidiContinue(juce::MidiBuffer& buffer, int eventTime) {
 }
 
 void Midi1Protocol::setup(juce::MidiBuffer& buffer, const juce::MPEZoneLayout& layout) {
+    juce::Logger::writeToLog("Midi1Protocol: Setting up MPE Zone Layout. Lower channels: " + juce::String(layout.getLowerZone().numMemberChannels) + 
+                             ", Lower PB: " + juce::String(layout.getLowerZone().perNotePitchbendRange) +
+                             ", Upper channels: " + juce::String(layout.getUpperZone().numMemberChannels) +
+                             ", Upper PB: " + juce::String(layout.getUpperZone().perNotePitchbendRange));
     auto buff = juce::MPEMessages::setZoneLayout(layout);
     buffer.addEvents(buff, 0, -1, 0);
     
