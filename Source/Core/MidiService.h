@@ -122,9 +122,15 @@ private:
     float currentStripPBperChannel_[16] = {0.0f};
     
     static constexpr int PRESSURE_HISTORY_LENGTH = 6;
-    static constexpr float breathZeroThreshold_[3] = {0.03125f, 0.03125f, 0.125f};
-    static constexpr float stripZeroThreshold_[3] = {0.0366f, 0.0366f, 0.12f};
-    static constexpr float stripGain_[3] = {1.3f, 1.3f, 1.2f};
+    float breathZeroThreshold_[3] = {0.03125f, 0.03125f, 0.125f};
+    float stripZeroThreshold_[3] = {0.0366f, 0.0366f, 0.12f};
+    float stripSensitivity_[3] = {1.3f, 1.3f, 1.2f};
+    float yawSensitivity_[3] = {1.7f, 1.7f, 1.7f};
+    float rollSensitivity_[3] = {1.7f, 1.7f, 1.7f};
+    float pressureSensitivity_[3] = {1.7f, 1.7f, 1.7f};
+    float breathSensitivity_[3] = {1.0f, 1.0f, 1.0f};
+
+    void updateCalibration();
     
     juce::MPEZoneLayout mpeZone_;
     
@@ -164,7 +170,7 @@ private:
     void createAllNotesOff(juce::MidiBuffer& buffer, int eventTime, MidiProtocol* protocol);
     
     void addMidiValueMessage(InstrumentType deviceType, int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, int noteNo, juce::MidiBuffer& buffer, bool isBipolar, ExpressionCurveTarget curveTarget, int eventTime, MidiProtocol* protocol);
-    void addStripValueMessage(int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, juce::MidiBuffer& buffer, bool isBipolar, int eventTime, MidiProtocol* protocol);
+    void addStripValueMessage(InstrumentType deviceType, int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, juce::MidiBuffer& buffer, bool isBipolar, int eventTime, MidiProtocol* protocol);
     
     void createBreath(int deviceIndex, const ConfigLookup& keyLookup, juce::MidiBuffer& buffer, int eventTime, MidiProtocol* protocol);
     void createStripAbsolute(int deviceIndex, int stripIndex, int zoneIndex, const ConfigLookup& keyLookup, juce::MidiBuffer& buffer, int eventTime, MidiProtocol* protocol);

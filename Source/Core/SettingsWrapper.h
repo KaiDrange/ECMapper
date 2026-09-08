@@ -20,6 +20,15 @@ public:
     static inline const juce::Identifier id_clientListenIP { "clientListenIP" };
     static inline const juce::Identifier id_clientListenPort { "clientListenPort" };
 
+    static inline const juce::Identifier id_calibration { "calibration" };
+    static inline const juce::Identifier id_breathThreshold { "breathThreshold" };
+    static inline const juce::Identifier id_breathSensitivity { "breathSensitivity" };
+    static inline const juce::Identifier id_stripThreshold { "stripThreshold" };
+    static inline const juce::Identifier id_stripSensitivity { "stripSensitivity" };
+    static inline const juce::Identifier id_yawSensitivity { "yawSensitivity" };
+    static inline const juce::Identifier id_rollSensitivity { "rollSensitivity" };
+    static inline const juce::Identifier id_pressureSensitivity { "pressureSensitivity" };
+
     static void addListener(juce::ValueTree::Listener* listener, juce::ValueTree& rootState);
 
     static juce::String getIP(juce::ValueTree& rootState);
@@ -43,6 +52,10 @@ public:
     static void setClientListenIP(juce::String ip, juce::ValueTree& rootState);
     static int getClientListenPort(juce::ValueTree& rootState);
     static void setClientListenPort(int port, juce::ValueTree& rootState);
+    
+    static void setCalibrationValue(InstrumentType type, const juce::Identifier& param, float value, juce::ValueTree& rootState);
+    static float getCalibrationValue(InstrumentType type, const juce::Identifier& param, float defaultValue, juce::ValueTree& rootState);
+    static void resetCalibration(InstrumentType type, juce::ValueTree& rootState);
     
     static void saveDeviceSettings(const ConnectedDevice& device, juce::ValueTree& rootState);
     static void loadDeviceSettings(ConnectedDevice& device, juce::ValueTree& rootState);

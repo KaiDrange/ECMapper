@@ -18,6 +18,7 @@ public:
 
     void showAudioSettings();
     void showPresetBrowser();
+    void showCalibrationDialog();
     void showAboutDialog();
     static void showOnlineManual();
     static void showOurMusic();

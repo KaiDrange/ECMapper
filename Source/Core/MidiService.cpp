@@ -84,6 +84,8 @@ void MidiService::start(juce::AudioProcessorValueTreeState& pluginState, Hardwar
         protocol_->setup(pendingMidiBuffer_, mpeZone_);
     }
 
+    updateCalibration();
+
     if (midi2) {
         using namespace juce::midi_ci;
         juce::universal_midi_packets::DeviceInfo info;
@@ -233,6 +235,28 @@ void MidiService::finishedBlock()
     currentBlockId_.fetch_add(1, std::memory_order_release);
 }
 
+void MidiService::updateCalibration() {
+    if (!pluginState_) return;
+    
+    struct Defs { InstrumentType type; float breath; float stripT; float stripG; };
+    Defs defaults[3] = {
+        { InstrumentType::Alpha, 0.03125f, 0.0366f, 1.3f },
+        { InstrumentType::Tau,   0.03125f, 0.0366f, 1.3f },
+        { InstrumentType::Pico,  0.125f,   0.12f,   1.2f }
+    };
+    
+    for (int i = 0; i < 3; i++) {
+        int idx = static_cast<int>(defaults[i].type) - 1;
+        breathZeroThreshold_[idx] = SettingsWrapper::getCalibrationValue(defaults[i].type, SettingsWrapper::id_breathThreshold, defaults[i].breath, pluginState_->state);
+        stripZeroThreshold_[idx] = SettingsWrapper::getCalibrationValue(defaults[i].type, SettingsWrapper::id_stripThreshold, defaults[i].stripT, pluginState_->state);
+        stripSensitivity_[idx] = SettingsWrapper::getCalibrationValue(defaults[i].type, SettingsWrapper::id_stripSensitivity, defaults[i].stripG, pluginState_->state);
+        yawSensitivity_[idx] = SettingsWrapper::getCalibrationValue(defaults[i].type, SettingsWrapper::id_yawSensitivity, 1.7f, pluginState_->state);
+        rollSensitivity_[idx] = SettingsWrapper::getCalibrationValue(defaults[i].type, SettingsWrapper::id_rollSensitivity, 1.7f, pluginState_->state);
+        pressureSensitivity_[idx] = SettingsWrapper::getCalibrationValue(defaults[i].type, SettingsWrapper::id_pressureSensitivity, 1.7f, pluginState_->state);
+        breathSensitivity_[idx] = SettingsWrapper::getCalibrationValue(defaults[i].type, SettingsWrapper::id_breathSensitivity, 1.0f, pluginState_->state);
+    }
+}
+
 void MidiService::valueTreePropertyChanged(juce::ValueTree& tree, const juce::Identifier& property)
 {
     if (property == SettingsWrapper::id_lowerMPEVoiceCount || 
@@ -253,6 +277,17 @@ void MidiService::valueTreePropertyChanged(juce::ValueTree& tree, const juce::Id
             const juce::ScopedLock sl(pendingMessageLock_);
             protocol_->setup(pendingMidiBuffer_, mpeZone_);
         }
+    }
+    
+    if (property == SettingsWrapper::id_breathThreshold ||
+        property == SettingsWrapper::id_breathSensitivity ||
+        property == SettingsWrapper::id_stripThreshold ||
+        property == SettingsWrapper::id_stripSensitivity ||
+        property == SettingsWrapper::id_yawSensitivity ||
+        property == SettingsWrapper::id_rollSensitivity ||
+        property == SettingsWrapper::id_pressureSensitivity)
+    {
+        updateCalibration();
     }
 }
 
@@ -340,7 +375,7 @@ void MidiService::processMessage(const osc::Message& oscMsg, osc::Message& outgo
             if (stripIndex < 0 || stripIndex > 1) break;
 
             const bool stripOff = !oscMsg.active;
-            ehStrips_[stripIndex][deviceIndex] = stripOff ? 0.0f : std::max((oscMsg.value - stripZeroThreshold_[deviceIndex]) * stripGain_[deviceIndex], 0.0f);
+            ehStrips_[stripIndex][deviceIndex] = stripOff ? 0.0f : std::max((oscMsg.value - stripZeroThreshold_[deviceIndex]) * stripSensitivity_[deviceIndex], 0.0f);
             
             if (stripOff) {
                 relStart_ehStrips_[stripIndex][deviceIndex] = -1.0f;
@@ -1102,7 +1137,7 @@ void MidiService::createBreath(int deviceIndex, const ConfigLookup& keyLookup, j
 
 void MidiService::createStripAbsolute(int deviceIndex, int stripIndex, int zoneIndex, const ConfigLookup& keyLookup, juce::MidiBuffer& buffer, int eventTime, MidiProtocol* protocol) {
     auto& strip = (stripIndex == 0) ? keyLookup.strip1[zoneIndex] : keyLookup.strip2[zoneIndex];
-    addStripValueMessage(strip.channel, ehStrips_[stripIndex][deviceIndex], strip.absMidiValue, strip.pbRange, buffer, false, eventTime, protocol);
+    addStripValueMessage(static_cast<InstrumentType>(deviceIndex + 1), strip.channel, ehStrips_[stripIndex][deviceIndex], strip.absMidiValue, strip.pbRange, buffer, false, eventTime, protocol);
 }
 
 void MidiService::createStripRelative(int deviceIndex, int stripIndex, int zoneIndex, const ConfigLookup& keyLookup, juce::MidiBuffer& buffer, int eventTime, MidiProtocol* protocol) {
@@ -1114,7 +1149,7 @@ void MidiService::createStripRelative(int deviceIndex, int stripIndex, int zoneI
         currentStripPBperChannel_[strip.channel > 0 ? strip.channel - 1 : 0] = 0;
     }
 
-    addStripValueMessage(strip.channel, relValue, strip.relMidiValue, strip.pbRange, buffer, true, eventTime, protocol);
+    addStripValueMessage(static_cast<InstrumentType>(deviceIndex + 1), strip.channel, relValue, strip.relMidiValue, strip.pbRange, buffer, true, eventTime, protocol);
 }
 
 void MidiService::createNoteOn(const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime, MidiProtocol* protocol) {
@@ -1359,9 +1394,16 @@ void MidiService::addMidiValueMessage(InstrumentType deviceType, int channel, fl
     
     if (resolvedChannel < 1 || resolvedChannel > 16) return;
     
-    float gain = 1.7f;
-    if (!isBipolar && midiValue.valueType == MidiValueType::CC) gain = 1.0f;
-    float normalized = isBipolar ? (std::clamp(ehValue * 1.7f, -1.0f, 1.0f)) : (std::clamp(ehValue * gain, 0.0f, 1.0f));
+    int deviceIndex = static_cast<int>(deviceType) - 1;
+    float gain = isBipolar ? 1.7f : 1.0f;
+    if (deviceIndex >= 0 && deviceIndex < 3) {
+        if (curveTarget == ExpressionCurveTarget::Yaw) gain = yawSensitivity_[deviceIndex];
+        else if (curveTarget == ExpressionCurveTarget::Roll) gain = rollSensitivity_[deviceIndex];
+        else if (curveTarget == ExpressionCurveTarget::Pressure) gain = pressureSensitivity_[deviceIndex];
+        else if (curveTarget == ExpressionCurveTarget::Breath) gain = breathSensitivity_[deviceIndex];
+    }
+
+    float normalized = isBipolar ? (std::clamp(ehValue * gain, -1.0f, 1.0f)) : (std::clamp(ehValue * gain, 0.0f, 1.0f));
     normalized = applyExpressionCurve(deviceType, curveTarget, normalized, isBipolar);
     
     if (!protocol) return;
@@ -1431,8 +1473,12 @@ std::vector<MidiService::VisualMarker> MidiService::getVisualMarkers(InstrumentT
                     }
                     
                     float gain = 1.7f;
+                    if (target == ExpressionCurveTarget::Yaw) gain = yawSensitivity_[deviceIndex];
+                    else if (target == ExpressionCurveTarget::Roll) gain = rollSensitivity_[deviceIndex];
+                    else if (target == ExpressionCurveTarget::Pressure) gain = pressureSensitivity_[deviceIndex];
+                    
                     bool isBipolar = (target == ExpressionCurveTarget::Yaw || target == ExpressionCurveTarget::Roll);
-                    float normalized = isBipolar ? (std::clamp(val * 1.7f, -1.0f, 1.0f)) : (std::clamp(val * gain, 0.0f, 1.0f));
+                    float normalized = isBipolar ? (std::clamp(val * gain, -1.0f, 1.0f)) : (std::clamp(val * gain, 0.0f, 1.0f));
                     
                     markers.push_back({normalized, now, c * 1000 + k});
                 }
@@ -1444,6 +1490,7 @@ std::vector<MidiService::VisualMarker> MidiService::getVisualMarkers(InstrumentT
         if (val > 0.0f) {
             val = val / (1.0f - breathZeroThreshold_[deviceIndex]);
         }
+        val *= breathSensitivity_[deviceIndex];
         markers.push_back({val, now, -1});
     } else {
         const juce::ScopedLock sl(visualEventsLock_);
@@ -1457,7 +1504,7 @@ std::vector<MidiService::VisualMarker> MidiService::getVisualMarkers(InstrumentT
     return markers;
 }
 
-void MidiService::addStripValueMessage(int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, juce::MidiBuffer& buffer, bool isBipolar, int eventTime, MidiProtocol* protocol) {
+void MidiService::addStripValueMessage(InstrumentType deviceType, int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, juce::MidiBuffer& buffer, bool isBipolar, int eventTime, MidiProtocol* protocol) {
     if (midiValue.valueType == MidiValueType::Off) return;
     
     int resolvedChannel = channel;
@@ -1467,7 +1514,12 @@ void MidiService::addStripValueMessage(int channel, float ehValue, ZoneWrapper::
 
     if (resolvedChannel < 1 || resolvedChannel > 16) return;
 
+    int deviceIndex = static_cast<int>(deviceType) - 1;
     float gain = isBipolar ? 1.7f : 1.0f;
+    if (deviceIndex >= 0 && deviceIndex < 3) {
+        gain = stripSensitivity_[deviceIndex];
+    }
+    
     float normalized = isBipolar ? (std::clamp(ehValue * gain, -1.0f, 1.0f)) : (std::clamp(ehValue * gain, 0.0f, 1.0f));
     
     if (!protocol) return;
@@ -1527,9 +1579,12 @@ float MidiService::calculateNoteOnVelocity(InstrumentType deviceType, KeyState* 
     if (state->ehPressureHistory.size() < PRESSURE_HISTORY_LENGTH) return 0.0f;
     
     auto it = state->ehPressureHistory.begin();
+    int deviceIndex = static_cast<int>(deviceType) - 1;
+    float gain = (deviceIndex >= 0 && deviceIndex < 3) ? pressureSensitivity_[deviceIndex] : 1.7f;
+
     float v1 = (it[1] + it[2]) / 2.0f;
     float v2 = (it[4] + it[5]) / 2.0f;
-    float diff = v2 - v1;
+    float diff = (v2 - v1) * gain;
     diff = std::clamp(diff, 0.0f, 1.0f);
     int tableIndex = std::clamp(static_cast<int>(diff * 4096.0f), 0, BezierCurve::TABLE_LENGTH - 1);
     float baseVelocity = velocityCurve_.getTableValue(tableIndex);
@@ -1543,7 +1598,10 @@ float MidiService::calculateNoteOnVelocity(InstrumentType deviceType, KeyState* 
 
 float MidiService::calculateNoteOffVelocity(InstrumentType deviceType, KeyState* state) {
     if (state->ehPressureHistory.empty()) return 0.0f;
-    float norm = std::min(state->ehPressureHistory.front() * 10.0f, 1.0f);
+    int deviceIndex = static_cast<int>(deviceType) - 1;
+    float gain = (deviceIndex >= 0 && deviceIndex < 3) ? pressureSensitivity_[deviceIndex] : 1.7f;
+    
+    float norm = std::min(state->ehPressureHistory.front() * gain * 6.0f, 1.0f);
     recordVisualEvent(deviceType, ExpressionCurveTarget::ReleaseVelocity, norm);
     norm = applyExpressionCurve(deviceType, ExpressionCurveTarget::ReleaseVelocity, norm, false);
     return norm;

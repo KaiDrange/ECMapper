@@ -272,9 +272,9 @@ void AppLookAndFeel::drawTabButton(juce::TabBarButton& button, juce::Graphics& g
         fill = button.isFrontTab() ? Style::accent() : Style::surfaceRaised();
 
     if (button.isFrontTab())
-        fill = fill.withMultipliedBrightness(1.12f);
+        fill = fill.withMultipliedBrightness(1.25f);
     else
-        fill = fill.withMultipliedBrightness(1.28f);
+        fill = fill.interpolatedWith(Style::surface(), 0.2f);
 
     if (isMouseDown)
         fill = fill.interpolatedWith(Style::accent(), 0.10f);
@@ -284,9 +284,9 @@ void AppLookAndFeel::drawTabButton(juce::TabBarButton& button, juce::Graphics& g
     g.setColour(fill);
     g.fillRoundedRectangle(area, 6.0f);
 
-    auto outline = button.isFrontTab() ? Style::accentStrong() : fill.contrasting(0.25f);
+    auto outline = button.isFrontTab() ? Style::accentStrong() : Style::border();
     g.setColour(outline);
-    g.drawRoundedRectangle(area, 6.0f, button.isFrontTab() ? 1.8f : 1.4f);
+    g.drawRoundedRectangle(area, 6.0f, button.isFrontTab() ? 1.8f : 1.0f);
 
     if (!button.isFrontTab())
     {
@@ -297,14 +297,18 @@ void AppLookAndFeel::drawTabButton(juce::TabBarButton& button, juce::Graphics& g
     }
 
     g.setColour(Style::text());
-    g.setFont(juce::Font(juce::FontOptions(13.0f, juce::Font::plain)));
+    g.setFont(juce::Font(juce::FontOptions(15.0f, juce::Font::plain)));
     g.drawFittedText(button.getButtonText(), button.getTextArea().reduced(8, 0),
                      juce::Justification::centred, 1);
 }
 
 void AppLookAndFeel::drawTabAreaBehindFrontButton(juce::TabbedButtonBar& bar, juce::Graphics& g, int w, int h)
 {
-    g.setColour(Style::surface());
+    auto bg = bar.findColour(juce::TabbedComponent::backgroundColourId);
+    if (bg.isTransparent())
+        return;
+
+    g.setColour(bg);
     g.fillRect(0, 0, w, h);
 
     g.setColour(Style::border());

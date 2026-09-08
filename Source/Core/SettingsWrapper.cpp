@@ -125,6 +125,42 @@ void SettingsWrapper::setClientListenPort(int port, juce::ValueTree& rootState) 
     settings.setProperty(id_clientListenPort, port, nullptr);
 }
 
+static juce::String getDeviceNodeName(InstrumentType type) {
+    switch (type) {
+        case InstrumentType::Pico: return "Pico";
+        case InstrumentType::Tau: return "Tau";
+        case InstrumentType::Alpha: return "Alpha";
+        default: return "Unknown";
+    }
+}
+
+void SettingsWrapper::setCalibrationValue(InstrumentType type, const juce::Identifier& param, float value, juce::ValueTree& rootState) {
+    auto settings = getSettingsTree(rootState);
+    auto calibration = settings.getOrCreateChildWithName(id_calibration, nullptr);
+    auto devNode = calibration.getOrCreateChildWithName(getDeviceNodeName(type), nullptr);
+    devNode.setProperty(param, value, nullptr);
+}
+
+float SettingsWrapper::getCalibrationValue(InstrumentType type, const juce::Identifier& param, float defaultValue, juce::ValueTree& rootState) {
+    auto settings = getSettingsTree(rootState);
+    auto calibration = settings.getChildWithName(id_calibration);
+    if (!calibration.isValid()) return defaultValue;
+    auto devNode = calibration.getChildWithName(getDeviceNodeName(type));
+    if (!devNode.isValid()) return defaultValue;
+    return devNode.getProperty(param, defaultValue);
+}
+
+void SettingsWrapper::resetCalibration(InstrumentType type, juce::ValueTree& rootState) {
+    auto settings = getSettingsTree(rootState);
+    auto calibration = settings.getChildWithName(id_calibration);
+    if (calibration.isValid()) {
+        auto devNode = calibration.getChildWithName(getDeviceNodeName(type));
+        if (devNode.isValid()) {
+            calibration.removeChild(devNode, nullptr);
+        }
+    }
+}
+
 void SettingsWrapper::saveDeviceSettings(const ConnectedDevice& device, juce::ValueTree& rootState) {
     auto settings = getSettingsTree(rootState);
     auto devices = settings.getOrCreateChildWithName(id_devices, nullptr);

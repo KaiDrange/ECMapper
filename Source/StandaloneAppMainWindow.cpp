@@ -3,6 +3,7 @@
 #include "UI/AboutDialogComponent.h"
 #include "StandaloneApp.h"
 #include "UI/PresetBrowserComponent.h"
+#include "UI/CalibrationDialogComponent.h"
 
 StandaloneAppMainWindow::StandaloneAppMainWindow(const juce::String& name)
     : DocumentWindow(name,
@@ -13,6 +14,7 @@ StandaloneAppMainWindow::StandaloneAppMainWindow(const juce::String& name)
           nullptr,
           [this] { showPresetBrowser(); },
           [this] { showAudioSettings(); },
+          [this] { showCalibrationDialog(); },
           [this] { showAboutDialog(); },
           [] { showOnlineManual(); },
           [] { showOurMusic(); }
@@ -248,6 +250,19 @@ void StandaloneAppMainWindow::showPresetBrowser()
     options.escapeKeyTriggersCloseButton = true;
     options.useNativeTitleBar = true;
     options.resizable = true;
+    options.componentToCentreAround = this;
+    options.launchAsync();
+}
+
+void StandaloneAppMainWindow::showCalibrationDialog()
+{
+    juce::DialogWindow::LaunchOptions options;
+    options.content.setOwned(new ecm::CalibrationDialogComponent(processor->state.state));
+    options.dialogTitle = "Calibration";
+    options.dialogBackgroundColour = ecm::Style::background();
+    options.escapeKeyTriggersCloseButton = true;
+    options.useNativeTitleBar = true;
+    options.resizable = false;
     options.componentToCentreAround = this;
     options.launchAsync();
 }
