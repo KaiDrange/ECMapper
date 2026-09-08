@@ -172,6 +172,30 @@ if(ECMAPPER_BUILD_PLUGIN)
 endif()
 
 # ------------------------------------------------------------------------------
+# Tests
+
+juce_add_console_app(ECMapper_Tests
+    PRODUCT_NAME "ECMapperTests"
+)
+
+target_sources(ECMapper_Tests PRIVATE
+    Source/Tests/Main.cpp
+    Source/Tests/PluginProcessorAudioTests.cpp
+    Source/PluginProcessor.cpp
+    Source/PluginProcessor.h
+    Source/PluginEditor.cpp
+    Source/PluginEditor.h
+    Source/UI/AppStyle.cpp
+    Source/UI/AppStyle.h
+    ${SHARED_SOURCES}
+)
+
+target_link_libraries(ECMapper_Tests PRIVATE ${COMMON_LIBS})
+target_compile_definitions(ECMapper_Tests PRIVATE ECMAPPER_ENABLE_HARDWARE=0 JUCE_VST3_CAN_REPLACE_VST2=0)
+target_include_directories(ECMapper_Tests PRIVATE Source)
+juce_generate_juce_header(ECMapper_Tests)
+
+# ------------------------------------------------------------------------------
 # MIDI Receiver Utility
 # ------------------------------------------------------------------------------
 
