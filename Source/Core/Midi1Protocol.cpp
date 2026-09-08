@@ -6,6 +6,44 @@ Midi1Protocol::Midi1Protocol() {
     juce::Logger::writeToLog("Midi1Protocol: Created");
 }
 
+void Midi1Protocol::renderEvent(juce::MidiBuffer& buffer, const PerformanceEvent& event) {
+    switch (event.kind) {
+        case PerformanceEventKind::NoteOn:
+            addNoteOn(buffer, event.channel, event.noteNumber, event.velocity, event.sampleOffset);
+            break;
+        case PerformanceEventKind::NoteOff:
+            addNoteOff(buffer, event.channel, event.noteNumber, event.velocity, event.sampleOffset);
+            break;
+        case PerformanceEventKind::PitchBend:
+            addPitchBend(buffer, event.channel, event.perNote ? event.noteNumber : -1, event.value, event.sampleOffset);
+            break;
+        case PerformanceEventKind::ChannelPressure:
+            addChannelPressure(buffer, event.channel, event.perNote ? event.noteNumber : -1, event.value, event.sampleOffset);
+            break;
+        case PerformanceEventKind::PolyAftertouch:
+            addPolyAftertouch(buffer, event.channel, event.noteNumber, event.value, event.sampleOffset);
+            break;
+        case PerformanceEventKind::Controller:
+            addCC(buffer, event.channel, event.perNote ? event.noteNumber : -1, event.controller, event.value, event.sampleOffset);
+            break;
+        case PerformanceEventKind::ProgramChange:
+            addProgramChange(buffer, event.channel, event.program, event.sampleOffset);
+            break;
+        case PerformanceEventKind::AllNotesOff:
+            addAllNotesOff(buffer, event.channel, event.sampleOffset);
+            break;
+        case PerformanceEventKind::MidiStart:
+            addMidiStart(buffer, event.sampleOffset);
+            break;
+        case PerformanceEventKind::MidiStop:
+            addMidiStop(buffer, event.sampleOffset);
+            break;
+        case PerformanceEventKind::MidiContinue:
+            addMidiContinue(buffer, event.sampleOffset);
+            break;
+    }
+}
+
 void Midi1Protocol::addNoteOn(juce::MidiBuffer& buffer, int channel, int noteNumber, float velocity, int eventTime) {
     buffer.addEvent(juce::MidiMessage::noteOn(channel, noteNumber, velocity), eventTime);
 }
@@ -45,8 +83,6 @@ void Midi1Protocol::addProgramChange(juce::MidiBuffer& buffer, int channel, int 
 
 void Midi1Protocol::addAllNotesOff(juce::MidiBuffer& buffer, int channel, int eventTime) {
     buffer.addEvent(juce::MidiMessage::allNotesOff(channel), eventTime);
-    if (lowerChanAssigner_) lowerChanAssigner_->allNotesOff();
-    if (upperChanAssigner_) upperChanAssigner_->allNotesOff();
 }
 
 void Midi1Protocol::addMidiStart(juce::MidiBuffer& buffer, int eventTime) {
@@ -61,44 +97,16 @@ void Midi1Protocol::addMidiContinue(juce::MidiBuffer& buffer, int eventTime) {
     buffer.addEvent(juce::MidiMessage::midiContinue(), eventTime);
 }
 
-void Midi1Protocol::setup(juce::MidiBuffer& buffer, const juce::MPEZoneLayout& layout) {
+void Midi1Protocol::setupTransport(juce::MidiBuffer& buffer, const juce::MPEZoneLayout& layout) {
     juce::Logger::writeToLog("Midi1Protocol: Setting up MPE Zone Layout. Lower channels: " + juce::String(layout.getLowerZone().numMemberChannels) + 
                              ", Lower PB: " + juce::String(layout.getLowerZone().perNotePitchbendRange) +
                              ", Upper channels: " + juce::String(layout.getUpperZone().numMemberChannels) +
                              ", Upper PB: " + juce::String(layout.getUpperZone().perNotePitchbendRange));
     auto buff = juce::MPEMessages::setZoneLayout(layout);
     buffer.addEvents(buff, 0, -1, 0);
-    
-    lowerChanAssigner_ = std::make_unique<juce::MPEChannelAssigner>(layout.getLowerZone());
-    if (layout.getUpperZone().numMemberChannels > 0)
-        upperChanAssigner_ = std::make_unique<juce::MPEChannelAssigner>(layout.getUpperZone());
-    else
-        upperChanAssigner_.reset();
 }
 
 void Midi1Protocol::addIdentification(juce::MidiBuffer&, int) {
-}
-
-int Midi1Protocol::findMidiChannelForNewNote(MidiChannelType outputType, int noteNumber) {
-    if (outputType == MidiChannelType::MPE_Low) {
-        if (lowerChanAssigner_ && noteNumber != -1)
-            return lowerChanAssigner_->findMidiChannelForNewNote(noteNumber);
-        return 1;
-    }
-    if (outputType == MidiChannelType::MPE_High) {
-        if (upperChanAssigner_ && noteNumber != -1)
-            return upperChanAssigner_->findMidiChannelForNewNote(noteNumber);
-        return 16;
-    }
-    
-    return static_cast<int>(outputType);
-}
-
-void Midi1Protocol::releaseMidiChannel(MidiChannelType outputType, int noteNumber, int channel) {
-    if (outputType == MidiChannelType::MPE_Low && lowerChanAssigner_ && noteNumber != -1)
-        lowerChanAssigner_->noteOff(noteNumber, channel);
-    else if (outputType == MidiChannelType::MPE_High && upperChanAssigner_ && noteNumber != -1)
-        upperChanAssigner_->noteOff(noteNumber, channel);
 }
 
 }

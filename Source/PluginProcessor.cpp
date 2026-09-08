@@ -2,6 +2,9 @@
 #include "PluginEditor.h"
 #include "Core/SettingsWrapper.h"
 #include "Core/Midi2Protocol.h"
+#include "../JUCE/modules/juce_audio_processors_headless/format_types/VST3_SDK/pluginterfaces/vst/ivstevents.h"
+#include "../JUCE/modules/juce_audio_processors_headless/format_types/VST3_SDK/pluginterfaces/vst/ivstmidicontrollers.h"
+#include "../JUCE/modules/juce_audio_processors_headless/format_types/VST3_SDK/pluginterfaces/vst/ivstnoteexpression.h"
 #include <cmath>
 #include <string_view>
 
@@ -52,7 +55,8 @@ bool isPresetMpeProperty(const juce::Identifier& property)
         || property == ecm::SettingsWrapper::id_upperMPEVoiceCount
         || property == ecm::SettingsWrapper::id_lowerMPEPB
         || property == ecm::SettingsWrapper::id_upperMPEPB
-        || property == ecm::SettingsWrapper::id_midi2Mode;
+        || property == ecm::SettingsWrapper::id_midi2Mode
+        || property == ecm::SettingsWrapper::id_pluginOutputMode;
 }
 
 void pruneGlobalSettingsForPreset(juce::ValueTree& globalSettings)
@@ -87,6 +91,7 @@ void applyGlobalSettingsPreset(juce::ValueTree& liveRoot, const juce::ValueTree&
     copyProperty(ecm::SettingsWrapper::id_lowerMPEPB);
     copyProperty(ecm::SettingsWrapper::id_upperMPEPB);
     copyProperty(ecm::SettingsWrapper::id_midi2Mode);
+    copyProperty(ecm::SettingsWrapper::id_pluginOutputMode);
 }
 
 void materializeLayoutKeysForDevice(const ecm::InstrumentType deviceType, juce::ValueTree& rootState)
@@ -307,6 +312,8 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& audioBuffer,
     if (juce::JUCEApplicationBase::isStandaloneApp())
         audioBuffer.clear();
 
+    const bool useVst3Direct = !juce::JUCEApplicationBase::isStandaloneApp()
+                               && ecm::SettingsWrapper::getPluginOutputMode(state.state) == ecm::OutputTransportMode::Vst3Direct;
     juce::MidiBuffer* targetBuffer = &midiMessages;
     juce::MidiBuffer tempBuffer;
     bool useDirect = (ecm::SettingsWrapper::getMidi2Mode(state.state) || midiService.isUsingUMPPath()) 
@@ -315,15 +322,21 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& audioBuffer,
     if (useDirect)
         targetBuffer = &tempBuffer;
 
+    if (useVst3Direct)
+        vst3DirectEventQueue_.clear();
+
     int slotToLoad = -1;
     collectPresetSlotLoadRequests(midiMessages, slotToLoad);
     const auto timing = calculateBlockTiming(audioBuffer);
     if (applyZoneControlMessages(midiMessages))
         requestRuntimeConfigRefresh();
     prepareMidiMessagesForBlock(*targetBuffer);
-    processHardwareMessagesForBlock(timing, *targetBuffer, slotToLoad);
+    processHardwareMessagesForBlock(timing, *targetBuffer, slotToLoad, useVst3Direct ? static_cast<ecm::PerformanceEventSink*>(&vst3DirectPerformanceSink_) : nullptr);
+    if (useVst3Direct)
+        midiService.reduceBreath(*targetBuffer, vst3DirectPerformanceSink_, timing.numSamples - 1);
+    else
+        midiService.reduceBreath(*targetBuffer, timing.numSamples - 1);
     dispatchPresetSlotLoad(slotToLoad);
-    midiService.reduceBreath(*targetBuffer, timing.numSamples - 1);
     
     if (!targetBuffer->isEmpty()) {
         static int debugCounter = 0;
@@ -337,6 +350,22 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& audioBuffer,
     }
     
     midiService.finishedBlock();
+}
+
+bool ECMapperAudioProcessor::isVst3DirectOutputEnabled() const
+{
+    return !juce::JUCEApplicationBase::isStandaloneApp()
+        && ecm::SettingsWrapper::getPluginOutputMode(const_cast<juce::ValueTree&>(state.state)) == ecm::OutputTransportMode::Vst3Direct;
+}
+
+std::vector<ecm::Vst3DirectEvent> ECMapperAudioProcessor::drainPendingVst3DirectEvents()
+{
+    return vst3DirectEventQueue_.drain();
+}
+
+void ECMapperAudioProcessor::clearPendingVst3DirectEvents()
+{
+    vst3DirectEventQueue_.clear();
 }
 
 ECMapperAudioProcessor::BlockTiming ECMapperAudioProcessor::calculateBlockTiming(const juce::AudioBuffer<float>& audioBuffer)
@@ -376,16 +405,16 @@ void ECMapperAudioProcessor::prepareMidiMessagesForBlock(juce::MidiBuffer& midiM
     midiService.drainPendingMidiMessages(midiMessages, 0);
 }
 
-void ECMapperAudioProcessor::processHardwareMessagesForBlock(const BlockTiming& timing, juce::MidiBuffer& midiMessages, int& slotToLoad)
+void ECMapperAudioProcessor::processHardwareMessagesForBlock(const BlockTiming& timing, juce::MidiBuffer& midiMessages, int& slotToLoad, ecm::PerformanceEventSink* sink)
 {
     ecm::osc::Message msg;
 
     while (hardwareToMapperQueue.read(msg)) {
-        handleHardwareMessage(msg, timing, midiMessages, slotToLoad);
+        handleHardwareMessage(msg, timing, midiMessages, slotToLoad, sink);
     }
 }
 
-void ECMapperAudioProcessor::handleHardwareMessage(const ecm::osc::Message& msg, const BlockTiming& timing, juce::MidiBuffer& midiMessages, int& slotToLoad)
+void ECMapperAudioProcessor::handleHardwareMessage(const ecm::osc::Message& msg, const BlockTiming& timing, juce::MidiBuffer& midiMessages, int& slotToLoad, ecm::PerformanceEventSink* sink)
 {
     if (msg.type == ecm::osc::MessageType::Device) {
         layoutChangeHandler->sendLEDMsgForAllKeys(msg.device);
@@ -417,7 +446,10 @@ void ECMapperAudioProcessor::handleHardwareMessage(const ecm::osc::Message& msg,
     ecm::osc::Message outgoingMsg;
     outgoingMsg.type = ecm::osc::MessageType::Undefined;
     int presetSlotRequest = -1;
-    midiService.processMessage(msg, outgoingMsg, midiMessages, sampleOffset, &presetSlotRequest);
+    if (sink != nullptr)
+        midiService.processMessage(msg, outgoingMsg, midiMessages, *sink, sampleOffset, &presetSlotRequest);
+    else
+        midiService.processMessage(msg, outgoingMsg, midiMessages, sampleOffset, &presetSlotRequest);
 
     if (outgoingMsg.type == ecm::osc::MessageType::LED) {
         if (hardwareService.getDeviceMode(msg.devId) == ecm::DeviceMode::Local)
@@ -439,7 +471,7 @@ void ECMapperAudioProcessor::dispatchPresetSlotLoad(const int slotToLoad)
 void ECMapperAudioProcessor::publishRuntimeConfigSnapshot()
 {
     logger.log("publishRuntimeConfigSnapshot: Updating snapshot with protocol " + juce::String(midiService.getProtocol() ? (std::dynamic_pointer_cast<ecm::Midi2Protocol>(midiService.getProtocol()) ? "MIDI 2.0" : "MIDI 1.0") : "None"));
-    midiService.setRuntimeConfigSnapshot(std::make_unique<ecm::MidiService::RuntimeConfigSnapshot>(configLookups, midiService.getProtocol()));
+    midiService.setRuntimeConfigSnapshot(std::make_unique<ecm::MidiService::RuntimeConfigSnapshot>(configLookups, midiService.getProtocol(), midiService.getVoiceRouter(), midiService.getExpressionPolicy()));
 }
 
 bool ECMapperAudioProcessor::applyZoneControlMessages(const juce::MidiBuffer& midiMessages) const
@@ -1167,4 +1199,85 @@ void ECMapperAudioProcessor::ensureInitPresetExists()
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() {
     return new ECMapperAudioProcessor();
+}
+
+bool ecmapperAppendDirectVst3Events(juce::AudioProcessor& processor, Steinberg::Vst::IEventList& outputEvents)
+{
+    auto* ecMapperProcessor = dynamic_cast<ECMapperAudioProcessor*>(&processor);
+    if (ecMapperProcessor == nullptr || !ecMapperProcessor->isVst3DirectOutputEnabled())
+        return false;
+
+    auto pendingEvents = ecMapperProcessor->drainPendingVst3DirectEvents();
+
+    using namespace Steinberg::Vst;
+
+    for (const auto& sourceEvent : pendingEvents)
+    {
+        Event event {};
+        event.busIndex = 0;
+        event.sampleOffset = sourceEvent.sampleOffset;
+        event.ppqPosition = 0.0;
+        event.flags = 0;
+
+        switch (sourceEvent.kind)
+        {
+            case ecm::Vst3DirectEventKind::NoteOn:
+                event.type = Event::kNoteOnEvent;
+                event.noteOn.channel = static_cast<int16>(sourceEvent.channel);
+                event.noteOn.pitch = static_cast<int16>(sourceEvent.noteNumber);
+                event.noteOn.tuning = 0.0f;
+                event.noteOn.velocity = static_cast<float>(sourceEvent.value);
+                event.noteOn.length = 0;
+                event.noteOn.noteId = sourceEvent.noteId;
+                break;
+
+            case ecm::Vst3DirectEventKind::NoteOff:
+                event.type = Event::kNoteOffEvent;
+                event.noteOff.channel = static_cast<int16>(sourceEvent.channel);
+                event.noteOff.pitch = static_cast<int16>(sourceEvent.noteNumber);
+                event.noteOff.velocity = static_cast<float>(sourceEvent.value);
+                event.noteOff.noteId = sourceEvent.noteId;
+                event.noteOff.tuning = 0.0f;
+                break;
+
+            case ecm::Vst3DirectEventKind::PolyPressure:
+                event.type = Event::kPolyPressureEvent;
+                event.polyPressure.channel = static_cast<int16>(sourceEvent.channel);
+                event.polyPressure.pitch = static_cast<int16>(sourceEvent.noteNumber);
+                event.polyPressure.noteId = sourceEvent.noteId;
+                event.polyPressure.pressure = static_cast<float>(sourceEvent.value);
+                break;
+
+            case ecm::Vst3DirectEventKind::NoteExpression:
+                event.type = Event::kNoteExpressionValueEvent;
+                event.noteExpressionValue.noteId = sourceEvent.noteId;
+                switch (sourceEvent.expressionType)
+                {
+                    case ecm::Vst3NoteExpressionType::Tuning:
+                        event.noteExpressionValue.typeId = NoteExpressionTypeIDs::kTuningTypeID;
+                        break;
+                    case ecm::Vst3NoteExpressionType::Brightness:
+                        event.noteExpressionValue.typeId = NoteExpressionTypeIDs::kBrightnessTypeID;
+                        break;
+                    case ecm::Vst3NoteExpressionType::Expression:
+                    default:
+                        event.noteExpressionValue.typeId = NoteExpressionTypeIDs::kExpressionTypeID;
+                        break;
+                }
+                event.noteExpressionValue.value = sourceEvent.value;
+                break;
+
+            case ecm::Vst3DirectEventKind::LegacyCC:
+                event.type = Event::kLegacyMIDICCOutEvent;
+                event.midiCCOut.channel = static_cast<uint8>(sourceEvent.channel);
+                event.midiCCOut.controlNumber = static_cast<uint8>(sourceEvent.controller);
+                event.midiCCOut.value = static_cast<int8>(juce::jlimit(0, 127, juce::roundToInt(sourceEvent.value * 127.0)));
+                event.midiCCOut.value2 = static_cast<int8>(juce::jlimit(0, 127, juce::roundToInt(sourceEvent.value2 * 127.0)));
+                break;
+        }
+
+        outputEvents.addEvent(event);
+    }
+
+    return !pendingEvents.empty();
 }

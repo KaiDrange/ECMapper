@@ -85,6 +85,19 @@ bool SettingsWrapper::getMidi2Mode(juce::ValueTree& rootState) {
     return vTree.getProperty(id_midi2Mode, default_midi2Mode);
 }
 
+void SettingsWrapper::setPluginOutputMode(OutputTransportMode mode, juce::ValueTree& rootState) {
+    auto vTree = getSettingsTree(rootState);
+    vTree.setProperty(id_pluginOutputMode, static_cast<int>(mode), nullptr);
+}
+
+OutputTransportMode SettingsWrapper::getPluginOutputMode(juce::ValueTree& rootState) {
+    auto vTree = getSettingsTree(rootState);
+    const int stored = static_cast<int>(vTree.getProperty(id_pluginOutputMode, default_pluginOutputMode));
+    if (stored == static_cast<int>(OutputTransportMode::Vst3Direct))
+        return OutputTransportMode::Vst3Direct;
+    return OutputTransportMode::LegacyMidi;
+}
+
 void SettingsWrapper::setCurrentTabIndex(int index, juce::ValueTree& rootState) {
     auto vTree = getSettingsTree(rootState);
     vTree.setProperty(id_activeTab, index, nullptr);

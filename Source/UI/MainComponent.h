@@ -48,6 +48,8 @@ private:
     NumberInputComponent upperMPEPitchbendRange;
     juce::TextButton mpeModeButton;
     juce::TextButton midi20ModeButton;
+    juce::TextButton legacyPluginModeButton;
+    juce::TextButton vst3DirectModeButton;
 
     juce::TextButton communicationTabButton;
     juce::TextButton alphaTabButton;
@@ -61,6 +63,8 @@ private:
     bool midi2ModeEnabled = false;
     bool pendingMidi2Mode = false;
     bool midi2ModeChanged = false;
+    bool pluginOutputModeIsVst3Direct_ = false;
+    bool isStandaloneApp_ = false;
     bool ignorePresetComboChange_ = false;
     ECMapperAudioProcessor& processor;
 

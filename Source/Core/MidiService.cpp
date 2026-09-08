@@ -2,6 +2,7 @@
 #include "HardwareService.h"
 #include "Midi1Protocol.h"
 #include "Midi2Protocol.h"
+#include "VoiceAllocator.h"
 #include <cmath>
 #include <algorithm>
 
@@ -78,11 +79,18 @@ void MidiService::start(juce::AudioProcessorValueTreeState& pluginState, Hardwar
         protocol_ = std::make_shared<Midi2Protocol>();
     else
         protocol_ = std::make_shared<Midi1Protocol>();
+
+    transportSession_ = std::dynamic_pointer_cast<MidiTransportSession>(protocol_);
+    voiceRouter_ = std::make_shared<ChannelVoiceRouter>(midi2 ? OutputTransportMode::UmpMidi : OutputTransportMode::LegacyMidi);
+    expressionPolicy_ = createExpressionEmissionPolicy(midi2 ? OutputTransportMode::UmpMidi : OutputTransportMode::LegacyMidi);
     
     {
         const juce::ScopedLock sl(pendingMessageLock_);
-        protocol_->setup(pendingMidiBuffer_, mpeZone_);
+        if (transportSession_)
+            transportSession_->setupTransport(pendingMidiBuffer_, mpeZone_);
     }
+    if (voiceRouter_)
+        voiceRouter_->configureLayout(mpeZone_);
 
     updateCalibration();
 
@@ -129,7 +137,8 @@ void MidiService::start(juce::AudioProcessorValueTreeState& pluginState, Hardwar
     }
     
     remoteSupportsPerNote_ = false;
-    protocol_->setRemoteSupportsPerNote(false);
+    if (voiceRouter_)
+        voiceRouter_->setRemoteSupportsPerNote(false);
     logMidiExpressionMode();
     
     updateVirtualOutput();
@@ -165,6 +174,8 @@ void MidiService::stop() {
 
     initialized_ = false;
     pluginState_ = nullptr;
+    voiceRouter_.reset();
+    expressionPolicy_.reset();
     {
         const juce::ScopedLock sl(pendingMessageLock_);
         pendingMidiBuffer_.clear();
@@ -174,12 +185,12 @@ void MidiService::stop() {
 void MidiService::sendIdentification()
 {
     const juce::ScopedLock sl(umpOutputLock_);
-    if (!protocol_) return;
+    if (!transportSession_) return;
     
     juce::Logger::writeToLog("MidiService: Sending MIDI protocol identification messages.");
     
     juce::MidiBuffer identBuffer;
-    protocol_->addIdentification(identBuffer, 0);
+    transportSession_->addIdentification(identBuffer, 0);
     
     if (identBuffer.isEmpty()) return;
 
@@ -273,10 +284,12 @@ void MidiService::valueTreePropertyChanged(juce::ValueTree& tree, const juce::Id
             mpeZone_.setUpperZone(upperChannelCount, SettingsWrapper::getUpperMPEPB(tree), 2);
         }
 
-        if (protocol_) {
+        if (transportSession_) {
             const juce::ScopedLock sl(pendingMessageLock_);
-            protocol_->setup(pendingMidiBuffer_, mpeZone_);
+            transportSession_->setupTransport(pendingMidiBuffer_, mpeZone_);
         }
+        if (voiceRouter_)
+            voiceRouter_->configureLayout(mpeZone_);
     }
     
     if (property == SettingsWrapper::id_breathThreshold ||
@@ -307,20 +320,32 @@ void MidiService::valueTreeRedirected(juce::ValueTree& tree)
         mpeZone_.setUpperZone(upperChannelCount, SettingsWrapper::getUpperMPEPB(tree), 2);
     }
 
-    if (protocol_) {
+    if (transportSession_) {
         const juce::ScopedLock sl(pendingMessageLock_);
-        protocol_->setup(pendingMidiBuffer_, mpeZone_);
+        transportSession_->setupTransport(pendingMidiBuffer_, mpeZone_);
     }
+    if (voiceRouter_)
+        voiceRouter_->configureLayout(mpeZone_);
 }
 
 void MidiService::processMessage(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, juce::MidiBuffer& midiBuffer, int eventTime, int* presetSlotRequest) {
+    auto* snapshot = activeSnapshot_.load(std::memory_order_acquire);
+    if (snapshot == nullptr)
+        return;
+
+    MidiBufferPerformanceEventSink sink { midiBuffer, snapshot->protocol.get() };
+    processMessage(oscMsg, outgoingOscMsg, midiBuffer, sink, eventTime, presetSlotRequest);
+}
+
+void MidiService::processMessage(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, juce::MidiBuffer& midiBuffer, PerformanceEventSink& sink, int eventTime, int* presetSlotRequest) {
     if (!initialized_) return;
 
     auto* snapshot = activeSnapshot_.load(std::memory_order_acquire);
     if (snapshot == nullptr)
         return;
 
-    MidiProtocol* protocol = snapshot->protocol.get();
+    MidiVoiceRouter* voiceRouter = snapshot->voiceRouter.get();
+    ExpressionEmissionPolicy* expressionPolicy = snapshot->expressionPolicy.get();
     const auto& runtimeLookups = snapshot->configLookups;
     
     std::strncpy(outgoingOscMsg.devId, oscMsg.devId, 63);
@@ -354,9 +379,9 @@ void MidiService::processMessage(const osc::Message& oscMsg, osc::Message& outgo
             }
             
             if (keyLookup.mapType == KeyMappingType::Note || keyLookup.mapType == KeyMappingType::Chord)
-                processNoteKey(oscMsg, keyLookup, keyState, midiBuffer, eventTime, protocol);
+                processNoteKey(oscMsg, keyLookup, keyState, sink, eventTime, voiceRouter, expressionPolicy);
             else if (keyLookup.mapType == KeyMappingType::MidiMsg)
-                processCmdKey(oscMsg, outgoingOscMsg, keyLookup, keyState, midiBuffer, eventTime, protocol);
+                processCmdKey(oscMsg, outgoingOscMsg, keyLookup, keyState, sink, eventTime, voiceRouter);
             else if (keyLookup.mapType == KeyMappingType::AppCtrl)
                 processAppCtrlKey(oscMsg, outgoingOscMsg, keyLookup, keyState, midiBuffer, eventTime, presetSlotRequest);
             break;
@@ -366,7 +391,7 @@ void MidiService::processMessage(const osc::Message& oscMsg, osc::Message& outgo
             ehBreath_[deviceIndex] = std::abs(oscMsg.value);
             if ((ehBreath_[deviceIndex] > breathZeroThreshold_[deviceIndex]) || 
                 (ehBreath_[deviceIndex] < breathZeroThreshold_[deviceIndex] && prevBreathValue > 0.0f)) {
-                createBreath(deviceIndex, deviceLookups, midiBuffer, eventTime, protocol);
+                createBreath(deviceIndex, deviceLookups, sink, eventTime, voiceRouter);
             }
             break;
         }
@@ -385,9 +410,9 @@ void MidiService::processMessage(const osc::Message& oscMsg, osc::Message& outgo
 
             for (int i = 0; i < 3; i++) {
                 if (!stripOff) {
-                    createStripAbsolute(deviceIndex, stripIndex, i, deviceLookups, midiBuffer, eventTime, protocol);
+                    createStripAbsolute(deviceIndex, stripIndex, i, deviceLookups, sink, eventTime, voiceRouter);
                 }
-                createStripRelative(deviceIndex, stripIndex, i, deviceLookups, midiBuffer, eventTime, protocol);
+                createStripRelative(deviceIndex, stripIndex, i, deviceLookups, sink, eventTime, voiceRouter);
             }
             break;
         }
@@ -403,30 +428,32 @@ void MidiService::processMessage(const osc::Message& oscMsg, osc::Message& outgo
         outgoingOscMsg.type = osc::MessageType::Undefined;
 }
 
-void MidiService::processNoteKey(const osc::Message& oscMsg, const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime, MidiProtocol* protocol) {
+void MidiService::processNoteKey(const osc::Message& oscMsg, const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter, ExpressionEmissionPolicy* expressionPolicy) {
     state->messageCount++;
 
     if (!oscMsg.active) {
-        createNoteOff(keyLookup, state, buffer, eventTime, protocol);
+        createNoteOff(keyLookup, state, sink, eventTime, voiceRouter);
     } else if (state->status == KeyStatus::Off) {
         state->status = KeyStatus::Pending;
     } else if (state->messageCount == PRESSURE_HISTORY_LENGTH && state->status == KeyStatus::Pending) {
-        createNoteOn(keyLookup, state, buffer, eventTime, protocol);
+        createNoteOn(keyLookup, state, sink, eventTime, voiceRouter);
     } else if (state->status == KeyStatus::Active) {
-        if (state->messageCount >= 64)
-            createNoteHold(keyLookup, state, buffer, eventTime, protocol);
+        const bool shouldEmit = expressionPolicy ? expressionPolicy->shouldEmitContinuousUpdate(state->messageCount)
+                                                 : state->messageCount >= 64;
+        if (shouldEmit)
+            createNoteHold(keyLookup, state, sink, eventTime, voiceRouter);
     }
 }
 
-void MidiService::processCmdKey(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime, MidiProtocol* protocol) {
+void MidiService::processCmdKey(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter) {
     if (!oscMsg.active) {
         if (keyLookup.cmdType == 2) // Momentary
-            createMidiMsgOff(keyLookup, state, buffer, outgoingOscMsg, oscMsg.devId, eventTime, protocol);
+            createMidiMsgOff(keyLookup, state, sink, outgoingOscMsg, oscMsg.devId, eventTime, voiceRouter);
     } else if (state->status == KeyStatus::Off) {
         if (keyLookup.cmdType == 1 && state->isLatchOn)
-            createMidiMsgOff(keyLookup, state, buffer, outgoingOscMsg, oscMsg.devId, eventTime, protocol);
+            createMidiMsgOff(keyLookup, state, sink, outgoingOscMsg, oscMsg.devId, eventTime, voiceRouter);
         else
-            createMidiMsgOn(keyLookup, state, buffer, outgoingOscMsg, oscMsg.devId, eventTime, protocol);
+            createMidiMsgOn(keyLookup, state, sink, outgoingOscMsg, oscMsg.devId, eventTime, voiceRouter);
     }
     state->status = oscMsg.active ? KeyStatus::Active : KeyStatus::Off;
 }
@@ -755,7 +782,7 @@ void MidiService::consume (juce::universal_midi_packets::Iterator b, juce::unive
             {
                 juce::Logger::writeToLog("MidiService: MIDI 2.0 traffic detected from remote. Enabling per-note expression.");
                 remoteSupportsPerNote_ = true;
-                if (protocol_) protocol_->setRemoteSupportsPerNote(true);
+                if (voiceRouter_) voiceRouter_->setRemoteSupportsPerNote(true);
                 logMidiExpressionMode();
             }
         }
@@ -810,7 +837,7 @@ void MidiService::consume (juce::universal_midi_packets::Iterator b, juce::unive
                                         
                                         if (service->isMidi2Mode_ && !service->remoteSupportsPerNote_) {
                                             service->remoteSupportsPerNote_ = true;
-                                            if (service->protocol_) service->protocol_->setRemoteSupportsPerNote(true);
+                                            if (service->voiceRouter_) service->voiceRouter_->setRemoteSupportsPerNote(true);
                                             service->logMidiExpressionMode();
                                         }
                                         return;
@@ -820,7 +847,7 @@ void MidiService::consume (juce::universal_midi_packets::Iterator b, juce::unive
                                             juce::Logger::writeToLog("MidiService: Remote accepted MIDI 2.0 protocol.");
                                             if (service->isMidi2Mode_ && !service->remoteSupportsPerNote_) {
                                                 service->remoteSupportsPerNote_ = true;
-                                                if (service->protocol_) service->protocol_->setRemoteSupportsPerNote(true);
+                                                if (service->voiceRouter_) service->voiceRouter_->setRemoteSupportsPerNote(true);
                                                 service->logMidiExpressionMode();
                                             }
                                         }
@@ -831,7 +858,7 @@ void MidiService::consume (juce::universal_midi_packets::Iterator b, juce::unive
                                             juce::Logger::writeToLog("MidiService: Protocol confirmed: MIDI 2.0");
                                             if (service->isMidi2Mode_ && !service->remoteSupportsPerNote_) {
                                                 service->remoteSupportsPerNote_ = true;
-                                                if (service->protocol_) service->protocol_->setRemoteSupportsPerNote(true);
+                                                if (service->voiceRouter_) service->voiceRouter_->setRemoteSupportsPerNote(true);
                                                 service->logMidiExpressionMode();
                                             }
                                         }
@@ -866,7 +893,7 @@ void MidiService::consume (juce::universal_midi_packets::Iterator b, juce::unive
                 {
                     juce::Logger::writeToLog("MidiService: Endpoint Info indicates MIDI 2.0 support. Enabling per-note expression.");
                     remoteSupportsPerNote_ = true;
-                    if (protocol_) protocol_->setRemoteSupportsPerNote(true);
+                    if (voiceRouter_) voiceRouter_->setRemoteSupportsPerNote(true);
                     logMidiExpressionMode();
                 }
             }
@@ -884,7 +911,7 @@ void MidiService::consume (juce::universal_midi_packets::Iterator b, juce::unive
                     {
                         juce::Logger::writeToLog("MidiService: Host requested MIDI 2.0 protocol. Enabling per-note expression.");
                         remoteSupportsPerNote_ = true;
-                        if (protocol_) protocol_->setRemoteSupportsPerNote(true);
+                        if (voiceRouter_) voiceRouter_->setRemoteSupportsPerNote(true);
                         logMidiExpressionMode();
                     }
                 }
@@ -1112,16 +1139,25 @@ void MidiService::reduceBreath(juce::MidiBuffer& buffer, int eventTime) {
     if (snapshot == nullptr)
         return;
 
-    MidiProtocol* protocol = snapshot->protocol.get();
+    MidiBufferPerformanceEventSink sink { buffer, snapshot->protocol.get() };
+    reduceBreath(buffer, sink, eventTime);
+}
+
+void MidiService::reduceBreath(juce::MidiBuffer& buffer, PerformanceEventSink& sink, int eventTime) {
+    auto* snapshot = activeSnapshot_.load(std::memory_order_acquire);
+    if (snapshot == nullptr)
+        return;
+
+    MidiVoiceRouter* voiceRouter = snapshot->voiceRouter.get();
     const auto& runtimeLookups = snapshot->configLookups;
     for (int i = 0; i < 3; i++) {
         if (ehBreath_[i] <= 0.0f) continue;
         ehBreath_[i] = (ehBreath_[i] > breathZeroThreshold_[i]) ? ehBreath_[i] - 0.005f : 0.0f;
-        createBreath(i, runtimeLookups[i], buffer, eventTime, protocol);
+        createBreath(i, runtimeLookups[i], sink, eventTime, voiceRouter);
     }
 }
 
-void MidiService::createBreath(int deviceIndex, const ConfigLookup& keyLookup, juce::MidiBuffer& buffer, int eventTime, MidiProtocol* protocol) {
+void MidiService::createBreath(int deviceIndex, const ConfigLookup& keyLookup, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter) {
     float val = (ehBreath_[deviceIndex] < breathZeroThreshold_[deviceIndex]) 
                        ? 0.0f : ehBreath_[deviceIndex] - breathZeroThreshold_[deviceIndex];
     
@@ -1131,16 +1167,16 @@ void MidiService::createBreath(int deviceIndex, const ConfigLookup& keyLookup, j
     }
 
     for (int z = 0; z < 3; ++z) {
-        addMidiValueMessage(static_cast<InstrumentType>(deviceIndex + 1), keyLookup.breath[z].channel, val * 3.0f, keyLookup.breath[z].midiValue, keyLookup.breath[z].pbRange, 0, buffer, false, ExpressionCurveTarget::Breath, eventTime, protocol);
+        addMidiValueMessage(static_cast<InstrumentType>(deviceIndex + 1), keyLookup.breath[z].channel, val * 3.0f, keyLookup.breath[z].midiValue, keyLookup.breath[z].pbRange, 0, sink, false, ExpressionCurveTarget::Breath, eventTime, voiceRouter);
     }
 }
 
-void MidiService::createStripAbsolute(int deviceIndex, int stripIndex, int zoneIndex, const ConfigLookup& keyLookup, juce::MidiBuffer& buffer, int eventTime, MidiProtocol* protocol) {
+void MidiService::createStripAbsolute(int deviceIndex, int stripIndex, int zoneIndex, const ConfigLookup& keyLookup, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter) {
     auto& strip = (stripIndex == 0) ? keyLookup.strip1[zoneIndex] : keyLookup.strip2[zoneIndex];
-    addStripValueMessage(static_cast<InstrumentType>(deviceIndex + 1), strip.channel, ehStrips_[stripIndex][deviceIndex], strip.absMidiValue, strip.pbRange, buffer, false, eventTime, protocol);
+    addStripValueMessage(static_cast<InstrumentType>(deviceIndex + 1), strip.channel, ehStrips_[stripIndex][deviceIndex], strip.absMidiValue, strip.pbRange, sink, false, eventTime, voiceRouter);
 }
 
-void MidiService::createStripRelative(int deviceIndex, int stripIndex, int zoneIndex, const ConfigLookup& keyLookup, juce::MidiBuffer& buffer, int eventTime, MidiProtocol* protocol) {
+void MidiService::createStripRelative(int deviceIndex, int stripIndex, int zoneIndex, const ConfigLookup& keyLookup, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter) {
     auto& strip = (stripIndex == 0) ? keyLookup.strip1[zoneIndex] : keyLookup.strip2[zoneIndex];
     float relValue = (relStart_ehStrips_[stripIndex][deviceIndex] < 0.0f) 
                    ? 0.0f : relStart_ehStrips_[stripIndex][deviceIndex] - ehStrips_[stripIndex][deviceIndex];
@@ -1149,14 +1185,14 @@ void MidiService::createStripRelative(int deviceIndex, int stripIndex, int zoneI
         currentStripPBperChannel_[strip.channel > 0 ? strip.channel - 1 : 0] = 0;
     }
 
-    addStripValueMessage(static_cast<InstrumentType>(deviceIndex + 1), strip.channel, relValue, strip.relMidiValue, strip.pbRange, buffer, true, eventTime, protocol);
+    addStripValueMessage(static_cast<InstrumentType>(deviceIndex + 1), strip.channel, relValue, strip.relMidiValue, strip.pbRange, sink, true, eventTime, voiceRouter);
 }
 
-void MidiService::createNoteOn(const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime, MidiProtocol* protocol) {
+void MidiService::createNoteOn(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter) {
     int deviceIndex = static_cast<int>(keyLookup.keyId.deviceType) - 1;
     int totalTranspose = (deviceIndex >= 0 && deviceIndex < 3) ? (latchTranspose_[deviceIndex] + momentaryTranspose_[deviceIndex]) : 0;
 
-    state->midiChannel = protocol ? protocol->findMidiChannelForNewNote(keyLookup.output, keyLookup.notes[0]) : static_cast<int>(keyLookup.output);
+    state->midiChannel = voiceRouter ? voiceRouter->findMidiChannelForNewNote(keyLookup.output, keyLookup.notes[0]) : static_cast<int>(keyLookup.output);
 
     if (state->midiChannel > 0 && state->midiChannel <= 16)
         chanNotePri_[state->midiChannel - 1].push_front(keyLookup.keyId);
@@ -1171,19 +1207,17 @@ void MidiService::createNoteOn(const ConfigLookup::Key& keyLookup, KeyState* sta
         }
     }
 
-    createNoteHold(keyLookup, state, buffer, eventTime, protocol);
+    createNoteHold(keyLookup, state, sink, eventTime, voiceRouter);
     float vel = calculateNoteOnVelocity(keyLookup.keyId.deviceType, state);
     
     for (int i = 0; i < 4; i++) {
         int noteNo = state->activeNotes[i];
         if (noteNo > -1) {
             if (countPlayingNoteMatches(state->midiChannel, noteNo) == 0) {
-                if (protocol) {
-                    protocol->addNoteOn(buffer, state->midiChannel, noteNo, vel, eventTime);
-                    juce::Logger::writeToLog("MidiService: Note On - Chan: " + juce::String(state->midiChannel) + 
-                                             ", Note: " + juce::String(noteNo) + 
-                                             ", Velocity: " + juce::String(vel, 3));
-                }
+                sink.pushEvent(PerformanceEvent::noteOn(state->midiChannel, noteNo, vel, eventTime));
+                juce::Logger::writeToLog("MidiService: Note On - Chan: " + juce::String(state->midiChannel) + 
+                                         ", Note: " + juce::String(noteNo) + 
+                                         ", Velocity: " + juce::String(vel, 3));
             }
             playingNotes_.push_back({state->midiChannel, noteNo});
         }
@@ -1191,9 +1225,9 @@ void MidiService::createNoteOn(const ConfigLookup::Key& keyLookup, KeyState* sta
     state->status = KeyStatus::Active;
 }
 
-void MidiService::createNoteOff(const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime, MidiProtocol* protocol) {
+void MidiService::createNoteOff(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter) {
     int channel = state->midiChannel;
-    if (protocol) protocol->releaseMidiChannel(keyLookup.output, keyLookup.notes[0], channel);
+    if (voiceRouter) voiceRouter->releaseMidiChannel(keyLookup.output, keyLookup.notes[0], channel);
 
     if (channel > 0 && channel <= 16) {
         chanNotePri_[channel - 1].remove_if([&keyLookup](const LayoutWrapper::KeyId& id) { return id == keyLookup.keyId; });
@@ -1204,12 +1238,10 @@ void MidiService::createNoteOff(const ConfigLookup::Key& keyLookup, KeyState* st
         int noteToTurnOff = state->activeNotes[i];
         if (noteToTurnOff > -1) {
             if (countPlayingNoteMatches(channel, noteToTurnOff) < 2) {
-                if (protocol) {
-                    protocol->addNoteOff(buffer, channel, noteToTurnOff, vel, eventTime);
-                    juce::Logger::writeToLog("MidiService: Note Off - Chan: " + juce::String(channel) + 
-                                             ", Note: " + juce::String(noteToTurnOff) + 
-                                             ", Velocity: " + juce::String(vel, 3));
-                }
+                sink.pushEvent(PerformanceEvent::noteOff(channel, noteToTurnOff, vel, eventTime));
+                juce::Logger::writeToLog("MidiService: Note Off - Chan: " + juce::String(channel) + 
+                                         ", Note: " + juce::String(noteToTurnOff) + 
+                                         ", Velocity: " + juce::String(vel, 3));
             }
             removeOneNoteMatch(channel, noteToTurnOff);
             state->activeNotes[i] = -1;
@@ -1217,32 +1249,30 @@ void MidiService::createNoteOff(const ConfigLookup::Key& keyLookup, KeyState* st
     }
     
     if (channel > 0 && channel <= 16 && chanNotePri_[channel - 1].empty()) {
-        addMidiValueMessage(keyLookup.keyId.deviceType, channel, 0, keyLookup.pressure, keyLookup.pbRange, keyLookup.notes[0], buffer, false, ExpressionCurveTarget::Pressure, eventTime, protocol);
-        addMidiValueMessage(keyLookup.keyId.deviceType, channel, 0, keyLookup.roll, keyLookup.pbRange, keyLookup.notes[0], buffer, true, ExpressionCurveTarget::Roll, eventTime, protocol);
-        addMidiValueMessage(keyLookup.keyId.deviceType, channel, 0, keyLookup.yaw, keyLookup.pbRange, keyLookup.notes[0], buffer, true, ExpressionCurveTarget::Yaw, eventTime, protocol);
+        addMidiValueMessage(keyLookup.keyId.deviceType, channel, 0, keyLookup.pressure, keyLookup.pbRange, keyLookup.notes[0], sink, false, ExpressionCurveTarget::Pressure, eventTime, voiceRouter);
+        addMidiValueMessage(keyLookup.keyId.deviceType, channel, 0, keyLookup.roll, keyLookup.pbRange, keyLookup.notes[0], sink, true, ExpressionCurveTarget::Roll, eventTime, voiceRouter);
+        addMidiValueMessage(keyLookup.keyId.deviceType, channel, 0, keyLookup.yaw, keyLookup.pbRange, keyLookup.notes[0], sink, true, ExpressionCurveTarget::Yaw, eventTime, voiceRouter);
     }
     state->status = KeyStatus::Off;
     state->messageCount = 0;
 }
 
-void MidiService::createMidiMsgOn(const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, osc::Message& outgoingOscMsg, const char* devId, int eventTime, MidiProtocol* protocol) {
+void MidiService::createMidiMsgOn(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, osc::Message& outgoingOscMsg, const char* devId, int eventTime, MidiVoiceRouter* voiceRouter) {
     state->isLatchOn = true;
-    state->midiChannel = protocol ? protocol->findMidiChannelForNewNote(keyLookup.output, -1) : 
+    state->midiChannel = voiceRouter ? voiceRouter->findMidiChannelForNewNote(keyLookup.output, -1) : 
                          ((keyLookup.output == MidiChannelType::MPE_Low) ? 1 : 
                           (keyLookup.output == MidiChannelType::MPE_High) ? 16 : static_cast<int>(keyLookup.output));
 
     if (keyLookup.msgType == 4) {
-        createAllNotesOff(buffer, eventTime, protocol);
+        createAllNotesOff(sink, eventTime);
     } else if (keyLookup.msgType == 1) {
-        if (protocol) protocol->addCC(buffer, state->midiChannel, -1, keyLookup.cmdCC, keyLookup.cmdOn / 127.0f, eventTime);
+        sink.pushEvent(PerformanceEvent::controllerChange(state->midiChannel, -1, keyLookup.cmdCC, keyLookup.cmdOn / 127.0f, false, eventTime));
     } else if (keyLookup.msgType == 2) {
-        if (protocol) protocol->addProgramChange(buffer, state->midiChannel, keyLookup.cmdOn, eventTime);
+        sink.pushEvent(PerformanceEvent::programChange(state->midiChannel, keyLookup.cmdOn, eventTime));
     } else if (keyLookup.msgType == 3) {
-        if (protocol) {
-            if (keyLookup.cmdOn == 1) protocol->addMidiStart(buffer, eventTime);
-            else if (keyLookup.cmdOn == 2) protocol->addMidiStop(buffer, eventTime);
-            else if (keyLookup.cmdOn == 3) protocol->addMidiContinue(buffer, eventTime);
-        }
+        if (keyLookup.cmdOn == 1) sink.pushEvent(PerformanceEvent::midiStart(eventTime));
+        else if (keyLookup.cmdOn == 2) sink.pushEvent(PerformanceEvent::midiStop(eventTime));
+        else if (keyLookup.cmdOn == 3) sink.pushEvent(PerformanceEvent::midiContinue(eventTime));
     }
     
     state->status = KeyStatus::Active;
@@ -1256,20 +1286,19 @@ void MidiService::createMidiMsgOn(const ConfigLookup::Key& keyLookup, KeyState* 
     }
 }
 
-void MidiService::createMidiMsgOff(const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, osc::Message& outgoingOscMsg, const char* devId, int eventTime, MidiProtocol* protocol) {
+void MidiService::createMidiMsgOff(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, osc::Message& outgoingOscMsg, const char* devId, int eventTime, MidiVoiceRouter* voiceRouter) {
+    juce::ignoreUnused(voiceRouter);
     if (keyLookup.cmdType != 3) { // Not Trigger
         if (keyLookup.msgType == 4) {
-            createAllNotesOff(buffer, eventTime, protocol);
+            createAllNotesOff(sink, eventTime);
         } else if (keyLookup.msgType == 1) {
-            if (protocol) protocol->addCC(buffer, state->midiChannel, -1, keyLookup.cmdCC, keyLookup.cmdOff / 127.0f, eventTime);
+            sink.pushEvent(PerformanceEvent::controllerChange(state->midiChannel, -1, keyLookup.cmdCC, keyLookup.cmdOff / 127.0f, false, eventTime));
         } else if (keyLookup.msgType == 2) {
-            if (protocol) protocol->addProgramChange(buffer, state->midiChannel, keyLookup.cmdOff, eventTime);
+            sink.pushEvent(PerformanceEvent::programChange(state->midiChannel, keyLookup.cmdOff, eventTime));
         } else if (keyLookup.msgType == 3) {
-            if (protocol) {
-                if (keyLookup.cmdOff == 1) protocol->addMidiStart(buffer, eventTime);
-                else if (keyLookup.cmdOff == 2) protocol->addMidiStop(buffer, eventTime);
-                else if (keyLookup.cmdOff == 3) protocol->addMidiContinue(buffer, eventTime);
-            }
+            if (keyLookup.cmdOff == 1) sink.pushEvent(PerformanceEvent::midiStart(eventTime));
+            else if (keyLookup.cmdOff == 2) sink.pushEvent(PerformanceEvent::midiStop(eventTime));
+            else if (keyLookup.cmdOff == 3) sink.pushEvent(PerformanceEvent::midiContinue(eventTime));
         }
     }
     
@@ -1285,10 +1314,10 @@ void MidiService::createMidiMsgOff(const ConfigLookup::Key& keyLookup, KeyState*
     }
 }
 
-void MidiService::createAllNotesOff(juce::MidiBuffer& buffer, int eventTime, MidiProtocol* protocol) {
+void MidiService::createAllNotesOff(PerformanceEventSink& sink, int eventTime) {
     juce::Logger::writeToLog("MidiService: Sending All Notes Off to all channels.");
     for (int i = 1; i <= 16; i++) {
-        if (protocol) protocol->addAllNotesOff(buffer, i, eventTime);
+        sink.pushEvent(PerformanceEvent::allNotesOff(i, eventTime));
         chanNotePri_[i - 1].clear();
     }
     playingNotes_.clear();
@@ -1312,6 +1341,8 @@ void MidiService::queueTransposeChangeFlush(InstrumentType deviceType, Zone zone
 
     juce::MidiBuffer localMessages;
     MidiProtocol* protocol = protocol_.get();
+    MidiVoiceRouter* voiceRouter = voiceRouter_.get();
+    MidiBufferPerformanceEventSink sink { localMessages, protocol };
 
     const juce::ScopedLock sl(configLookups_[deviceIndex].getLock());
     auto& state = pluginState_->state;
@@ -1331,19 +1362,20 @@ void MidiService::queueTransposeChangeFlush(InstrumentType deviceType, Zone zone
                 auto vel = calculateNoteOffVelocity(deviceType, &keyState);
 
                 for (int i = 0; i < 4; ++i) {
-                    if (keyLookup.notes[i] > -1) {
-                        if (countPlayingNoteMatches(channel, keyLookup.notes[i]) < 2) {
-                            if (protocol) {
-                                protocol->addNoteOff(localMessages, channel, keyLookup.notes[i], vel, 0);
-                                juce::Logger::writeToLog("MidiService: Note Off (Flush) - Chan: " + juce::String(channel) + 
-                                                         ", Note: " + juce::String(keyLookup.notes[i]));
-                            }
+                    const int noteNumber = keyState.activeNotes[i];
+                    if (noteNumber > -1) {
+                        if (countPlayingNoteMatches(channel, noteNumber) < 2) {
+                            sink.pushEvent(PerformanceEvent::noteOff(channel, noteNumber, vel, 0));
+                            juce::Logger::writeToLog("MidiService: Note Off (Flush) - Chan: " + juce::String(channel) + 
+                                                     ", Note: " + juce::String(noteNumber));
                         }
-                        removeOneNoteMatch(channel, keyLookup.notes[i]);
+                        removeOneNoteMatch(channel, noteNumber);
+                        keyState.activeNotes[i] = -1;
                     }
                 }
 
-                if (protocol) protocol->releaseMidiChannel(keyLookup.output, keyLookup.notes[0], channel);
+                if (voiceRouter)
+                    voiceRouter->releaseMidiChannel(keyLookup.output, keyLookup.notes[0], channel);
 
                 if (channel > 0 && channel <= 16) {
                     chanNotePri_[channel - 1].remove_if([&keyId](const LayoutWrapper::KeyId& id) { return id == keyId; });
@@ -1351,10 +1383,8 @@ void MidiService::queueTransposeChangeFlush(InstrumentType deviceType, Zone zone
                     if (chanNotePri_[channel - 1].empty()) {
                         currentKeyPBperChannel_[channel - 1] = 0.0f;
                         currentStripPBperChannel_[channel - 1] = 0.0f;
-                        if (protocol) {
-                            protocol->addChannelPressure(localMessages, channel, -1, 0.0f, 0);
-                            protocol->addPitchBend(localMessages, channel, -1, 0.5f, 0);
-                        }
+                        sink.pushEvent(PerformanceEvent::channelPressure(channel, -1, 0.0f, false, 0));
+                        sink.pushEvent(PerformanceEvent::pitchBend(channel, -1, 0.5f, false, 0));
                     }
                 }
             }
@@ -1374,22 +1404,22 @@ void MidiService::queueTransposeChangeFlush(InstrumentType deviceType, Zone zone
     }
 }
 
-void MidiService::createNoteHold(const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime, MidiProtocol* protocol) {
+void MidiService::createNoteHold(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter) {
     int channel = state->midiChannel;
     if (channel > 0 && channel <= 16 && (isMidi2Mode_ || chanNotePri_[channel - 1].empty() || chanNotePri_[channel - 1].front() == keyLookup.keyId)) {
-        addMidiValueMessage(keyLookup.keyId.deviceType, channel, state->ehRoll, keyLookup.roll, keyLookup.pbRange, state->activeNotes[0], buffer, true, ExpressionCurveTarget::Roll, eventTime, protocol);
-        addMidiValueMessage(keyLookup.keyId.deviceType, channel, state->ehYaw, keyLookup.yaw, keyLookup.pbRange, state->activeNotes[0], buffer, true, ExpressionCurveTarget::Yaw, eventTime, protocol);
-        addMidiValueMessage(keyLookup.keyId.deviceType, channel, state->ehPressureHistory.back(), keyLookup.pressure, keyLookup.pbRange, state->activeNotes[0], buffer, false, ExpressionCurveTarget::Pressure, eventTime, protocol);
+        addMidiValueMessage(keyLookup.keyId.deviceType, channel, state->ehRoll, keyLookup.roll, keyLookup.pbRange, state->activeNotes[0], sink, true, ExpressionCurveTarget::Roll, eventTime, voiceRouter);
+        addMidiValueMessage(keyLookup.keyId.deviceType, channel, state->ehYaw, keyLookup.yaw, keyLookup.pbRange, state->activeNotes[0], sink, true, ExpressionCurveTarget::Yaw, eventTime, voiceRouter);
+        addMidiValueMessage(keyLookup.keyId.deviceType, channel, state->ehPressureHistory.back(), keyLookup.pressure, keyLookup.pbRange, state->activeNotes[0], sink, false, ExpressionCurveTarget::Pressure, eventTime, voiceRouter);
     }
     state->messageCount = 0;
 }
 
-void MidiService::addMidiValueMessage(InstrumentType deviceType, int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, int noteNo, juce::MidiBuffer& buffer, bool isBipolar, ExpressionCurveTarget curveTarget, int eventTime, MidiProtocol* protocol) {
+void MidiService::addMidiValueMessage(InstrumentType deviceType, int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, int noteNo, PerformanceEventSink& sink, bool isBipolar, ExpressionCurveTarget curveTarget, int eventTime, MidiVoiceRouter* voiceRouter) {
     if (midiValue.valueType == MidiValueType::Off) return;
     
     int resolvedChannel = channel;
-    if (resolvedChannel > 16 && protocol) {
-        resolvedChannel = protocol->findMidiChannelForNewNote(static_cast<MidiChannelType>(channel), noteNo);
+    if (resolvedChannel > 16 && voiceRouter) {
+        resolvedChannel = voiceRouter->findMidiChannelForNewNote(static_cast<MidiChannelType>(channel), noteNo);
     }
     
     if (resolvedChannel < 1 || resolvedChannel > 16) return;
@@ -1406,8 +1436,6 @@ void MidiService::addMidiValueMessage(InstrumentType deviceType, int channel, fl
     float normalized = isBipolar ? (std::clamp(ehValue * gain, -1.0f, 1.0f)) : (std::clamp(ehValue * gain, 0.0f, 1.0f));
     normalized = applyExpressionCurve(deviceType, curveTarget, normalized, isBipolar);
     
-    if (!protocol) return;
-
     bool useNativePerNote = isMidi2Mode_ && remoteSupportsPerNote_ && noteNo != -1;
 
     if (midiValue.valueType == MidiValueType::Pitchbend) {
@@ -1415,22 +1443,22 @@ void MidiService::addMidiValueMessage(InstrumentType deviceType, int channel, fl
         
         if (useNativePerNote) {
             float protocolValue = notePB * 0.5f + 0.5f;
-            protocol->addPitchBend(buffer, resolvedChannel, noteNo, protocolValue, eventTime);
+            sink.pushEvent(PerformanceEvent::pitchBend(resolvedChannel, noteNo, protocolValue, true, eventTime));
         } else {
             currentKeyPBperChannel_[resolvedChannel - 1] = notePB;
             float totalPB = std::clamp(currentKeyPBperChannel_[resolvedChannel - 1] + currentStripPBperChannel_[resolvedChannel - 1], -1.0f, 1.0f);
             float protocolValue = totalPB * 0.5f + 0.5f;
-            protocol->addPitchBend(buffer, resolvedChannel, -1, protocolValue, eventTime);
+            sink.pushEvent(PerformanceEvent::pitchBend(resolvedChannel, -1, protocolValue, false, eventTime));
         }
     } else if (midiValue.valueType == MidiValueType::ChannelAftertouch) {
         float val = isBipolar ? (normalized * 0.5f + 0.5f) : normalized;
-        protocol->addChannelPressure(buffer, resolvedChannel, useNativePerNote ? noteNo : -1, val, eventTime);
+        sink.pushEvent(PerformanceEvent::channelPressure(resolvedChannel, useNativePerNote ? noteNo : -1, val, useNativePerNote, eventTime));
     } else if (midiValue.valueType == MidiValueType::PolyAftertouch) {
         float val = isBipolar ? (normalized * 0.5f + 0.5f) : normalized;
-        protocol->addPolyAftertouch(buffer, resolvedChannel, noteNo, val, eventTime);
+        sink.pushEvent(PerformanceEvent::polyAftertouch(resolvedChannel, noteNo, val, eventTime));
     } else if (midiValue.valueType == MidiValueType::CC) {
         float val = isBipolar ? (normalized * 0.5f + 0.5f) : normalized;
-        protocol->addCC(buffer, resolvedChannel, useNativePerNote ? noteNo : -1, midiValue.ccNo, val, eventTime);
+        sink.pushEvent(PerformanceEvent::controllerChange(resolvedChannel, useNativePerNote ? noteNo : -1, midiValue.ccNo, val, useNativePerNote, eventTime));
     }
 }
 
@@ -1504,12 +1532,12 @@ std::vector<MidiService::VisualMarker> MidiService::getVisualMarkers(InstrumentT
     return markers;
 }
 
-void MidiService::addStripValueMessage(InstrumentType deviceType, int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, juce::MidiBuffer& buffer, bool isBipolar, int eventTime, MidiProtocol* protocol) {
+void MidiService::addStripValueMessage(InstrumentType deviceType, int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, PerformanceEventSink& sink, bool isBipolar, int eventTime, MidiVoiceRouter* voiceRouter) {
     if (midiValue.valueType == MidiValueType::Off) return;
     
     int resolvedChannel = channel;
-    if (resolvedChannel > 16 && protocol) {
-        resolvedChannel = protocol->findMidiChannelForNewNote(static_cast<MidiChannelType>(channel), -1);
+    if (resolvedChannel > 16 && voiceRouter) {
+        resolvedChannel = voiceRouter->findMidiChannelForNewNote(static_cast<MidiChannelType>(channel), -1);
     }
 
     if (resolvedChannel < 1 || resolvedChannel > 16) return;
@@ -1522,8 +1550,6 @@ void MidiService::addStripValueMessage(InstrumentType deviceType, int channel, f
     
     float normalized = isBipolar ? (std::clamp(ehValue * gain, -1.0f, 1.0f)) : (std::clamp(ehValue * gain, 0.0f, 1.0f));
     
-    if (!protocol) return;
-
     if (midiValue.valueType == MidiValueType::Pitchbend) {
         currentStripPBperChannel_[resolvedChannel - 1] = (isBipolar ? calculatePitchBendCurve(normalized) : normalized) * pbRange;
         float totalPB = std::clamp(currentKeyPBperChannel_[resolvedChannel - 1] + currentStripPBperChannel_[resolvedChannel - 1], -1.0f, 1.0f);
@@ -1535,22 +1561,22 @@ void MidiService::addStripValueMessage(InstrumentType deviceType, int channel, f
             ", currentStripPB=" + juce::String(currentStripPBperChannel_[resolvedChannel - 1]) + 
             ", totalPB=" + juce::String(totalPB) + ", protocolValue=" + juce::String(protocolValue));
 
-        protocol->addPitchBend(buffer, resolvedChannel, -1, protocolValue, eventTime);
+        sink.pushEvent(PerformanceEvent::pitchBend(resolvedChannel, -1, protocolValue, false, eventTime));
     } else {
         float val = isBipolar ? (normalized * 0.5f + 0.5f) : normalized;
         if (midiValue.valueType == MidiValueType::ChannelAftertouch)
-            protocol->addChannelPressure(buffer, resolvedChannel, -1, val, eventTime);
+            sink.pushEvent(PerformanceEvent::channelPressure(resolvedChannel, -1, val, false, eventTime));
         else if (midiValue.valueType == MidiValueType::CC)
-            protocol->addCC(buffer, resolvedChannel, -1, midiValue.ccNo, val, eventTime);
+            sink.pushEvent(PerformanceEvent::controllerChange(resolvedChannel, -1, midiValue.ccNo, val, false, eventTime));
     }
 }
 
 void MidiService::createLayoutRPNs(juce::MidiBuffer& buffer) {
     auto* snapshot = activeSnapshot_.load(std::memory_order_acquire);
-    MidiProtocol* protocol = snapshot ? snapshot->protocol.get() : protocol_.get();
+    auto transportSession = snapshot ? snapshot->transportSession : transportSession_;
     buffer.clear();
-    if (protocol)
-        protocol->setup(buffer, mpeZone_);
+    if (transportSession)
+        transportSession->setupTransport(buffer, mpeZone_);
 }
 
 float MidiService::calculatePitchBendCurve(float value) const {
@@ -1736,7 +1762,7 @@ void MidiService::profileStateReceived (juce::midi_ci::MUID x, juce::midi_ci::Ch
 
     if (mpeFound && !remoteSupportsPerNote_) {
         remoteSupportsPerNote_ = true;
-        if (protocol_) protocol_->setRemoteSupportsPerNote(true);
+        if (voiceRouter_) voiceRouter_->setRemoteSupportsPerNote(true);
         logMidiExpressionMode();
     }
 }
@@ -1748,7 +1774,7 @@ void MidiService::profileEnablementChanged (juce::midi_ci::MUID, juce::midi_ci::
 
     if (isMPE(profile) && numChannels > 0 && !remoteSupportsPerNote_) {
         remoteSupportsPerNote_ = true;
-        if (protocol_) protocol_->setRemoteSupportsPerNote(true);
+        if (voiceRouter_) voiceRouter_->setRemoteSupportsPerNote(true);
         logMidiExpressionMode();
     }
 }

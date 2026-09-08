@@ -8,6 +8,7 @@
 #include "Core/ConfigLookup.h"
 #include "Core/LayoutChangeHandler.h"
 #include "Core/Logger.h"
+#include "Core/Vst3DirectEventQueue.h"
 #include <array>
 #include <atomic>
 #include <functional>
@@ -79,6 +80,9 @@ public:
     void queueKeyboardSelectionMessage(const juce::MidiMessage& message);
     void drainKeyboardSelectionMessages(std::vector<juce::MidiMessage>& messages);
     void clearKeyboardSelectionMessages();
+    bool isVst3DirectOutputEnabled() const;
+    std::vector<ecm::Vst3DirectEvent> drainPendingVst3DirectEvents();
+    void clearPendingVst3DirectEvents();
     juce::ValueTree getPresetNode(int slot) const;
     juce::AudioProcessorEditor* createUI() { return createEditor(); }
 
@@ -120,6 +124,8 @@ private:
     bool presetBatchInProgress_ = false;
     std::atomic<int> slotToLoadAsync_ { -1 };
     std::atomic<bool> runtimeConfigRefreshRequested_ { false };
+    ecm::Vst3DirectEventQueue vst3DirectEventQueue_;
+    ecm::Vst3DirectPerformanceEventSink vst3DirectPerformanceSink_ { vst3DirectEventQueue_ };
 
     void updateGlobalSettings();
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
@@ -148,8 +154,8 @@ private:
 
     BlockTiming calculateBlockTiming(const juce::AudioBuffer<float>& audioBuffer);
     void prepareMidiMessagesForBlock(juce::MidiBuffer& midiMessages);
-    void processHardwareMessagesForBlock(const BlockTiming& timing, juce::MidiBuffer& midiMessages, int& slotToLoad);
-    void handleHardwareMessage(const ecm::osc::Message& msg, const BlockTiming& timing, juce::MidiBuffer& midiMessages, int& slotToLoad);
+    void processHardwareMessagesForBlock(const BlockTiming& timing, juce::MidiBuffer& midiMessages, int& slotToLoad, ecm::PerformanceEventSink* sink = nullptr);
+    void handleHardwareMessage(const ecm::osc::Message& msg, const BlockTiming& timing, juce::MidiBuffer& midiMessages, int& slotToLoad, ecm::PerformanceEventSink* sink = nullptr);
     void dispatchPresetSlotLoad(int slotToLoad);
     void collectPresetSlotLoadRequests(const juce::MidiBuffer& midiMessages, int& slotToLoad);
     static void queuePresetSlotLoad(int slot, int& slotToLoad);

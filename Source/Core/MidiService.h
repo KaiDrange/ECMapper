@@ -10,6 +10,9 @@
 #include <vector>
 #include <list>
 #include "MidiProtocol.h"
+#include "ExpressionEmissionPolicy.h"
+#include "PerformanceEventSink.h"
+#include "Vst3DirectEventQueue.h"
 
 namespace ecm {
 
@@ -26,8 +29,18 @@ public:
     struct RuntimeConfigSnapshot {
         std::array<ConfigLookup, 3> configLookups;
         std::shared_ptr<MidiProtocol> protocol;
-        RuntimeConfigSnapshot(const ConfigLookup (&source)[3], std::shared_ptr<MidiProtocol> p)
-            : configLookups { source[0], source[1], source[2] }, protocol(std::move(p)) {}
+        std::shared_ptr<MidiTransportSession> transportSession;
+        std::shared_ptr<MidiVoiceRouter> voiceRouter;
+        std::shared_ptr<ExpressionEmissionPolicy> expressionPolicy;
+        RuntimeConfigSnapshot(const ConfigLookup (&source)[3],
+                              std::shared_ptr<MidiProtocol> p,
+                              std::shared_ptr<MidiVoiceRouter> router,
+                              std::shared_ptr<ExpressionEmissionPolicy> policy)
+            : configLookups { source[0], source[1], source[2] },
+              protocol(std::move(p)),
+              transportSession(std::dynamic_pointer_cast<MidiTransportSession>(protocol)),
+              voiceRouter(std::move(router)),
+              expressionPolicy(std::move(policy)) {}
     };
 
     MidiService(ConfigLookup (&configLookups)[3], juce::CriticalSection& stateLock);
@@ -37,9 +50,11 @@ public:
     void stop();
     
     void processMessage(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, juce::MidiBuffer& midiBuffer, int eventTime = 0, int* presetSlotRequest = nullptr);
+    void processMessage(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, juce::MidiBuffer& midiBuffer, PerformanceEventSink& sink, int eventTime = 0, int* presetSlotRequest = nullptr);
     void handleRemotePerformanceData(osc::Message& oscMsg, juce::MidiBuffer& midiBuffer, int eventTime = 0);
     void resendLEDs(const char* devId, InstrumentType type, osc::MessageFifo* targetQueue = nullptr, bool onlyNonOff = false);
     void reduceBreath(juce::MidiBuffer& buffer, int eventTime = 0);
+    void reduceBreath(juce::MidiBuffer& buffer, PerformanceEventSink& sink, int eventTime = 0);
     void createLayoutRPNs(juce::MidiBuffer& buffer);
     void queueTransposeChangeFlush(InstrumentType deviceType, Zone zone);
     void drainPendingMidiMessages(juce::MidiBuffer& buffer, int eventTime = 0);
@@ -85,6 +100,8 @@ public:
     bool isInitialized() const { return initialized_; }
     
     std::shared_ptr<MidiProtocol> getProtocol() { return protocol_; }
+    std::shared_ptr<MidiVoiceRouter> getVoiceRouter() { return voiceRouter_; }
+    std::shared_ptr<ExpressionEmissionPolicy> getExpressionPolicy() { return expressionPolicy_; }
 
     struct VisualMarker {
         float value;
@@ -153,28 +170,31 @@ private:
     juce::AudioProcessorValueTreeState* pluginState_ = nullptr;
     BezierCurve velocityCurve_ { 0.0f, 0.0f, 0.0f, 1.0f, 0.5f, 0.6f, 1.0f, 1.0f };
     std::shared_ptr<MidiProtocol> protocol_;
+    std::shared_ptr<MidiTransportSession> transportSession_;
+    std::shared_ptr<MidiVoiceRouter> voiceRouter_;
+    std::shared_ptr<ExpressionEmissionPolicy> expressionPolicy_;
     bool initialized_ = false;
 
     juce::universal_midi_packets::EndpointId getCorrectedEndpointId(juce::universal_midi_packets::EndpointId id, const juce::String& name);
     juce::universal_midi_packets::EndpointId getEndpointIdSafe(juce::MidiOutput* output);
-    void processNoteKey(const osc::Message& oscMsg, const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime, MidiProtocol* protocol);
-    void processCmdKey(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime, MidiProtocol* protocol);
+    void processNoteKey(const osc::Message& oscMsg, const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter, ExpressionEmissionPolicy* expressionPolicy);
+    void processCmdKey(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter);
     void processAppCtrlKey(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime, int* presetSlotRequest);
     
-    void createNoteOn(const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime, MidiProtocol* protocol);
-    void createNoteOff(const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime, MidiProtocol* protocol);
-    void createNoteHold(const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime, MidiProtocol* protocol);
+    void createNoteOn(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter);
+    void createNoteOff(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter);
+    void createNoteHold(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter);
     
-    void createMidiMsgOn(const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, osc::Message& outgoingOscMsg, const char* devId, int eventTime, MidiProtocol* protocol);
-    void createMidiMsgOff(const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, osc::Message& outgoingOscMsg, const char* devId, int eventTime, MidiProtocol* protocol);
-    void createAllNotesOff(juce::MidiBuffer& buffer, int eventTime, MidiProtocol* protocol);
+    void createMidiMsgOn(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, osc::Message& outgoingOscMsg, const char* devId, int eventTime, MidiVoiceRouter* voiceRouter);
+    void createMidiMsgOff(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, osc::Message& outgoingOscMsg, const char* devId, int eventTime, MidiVoiceRouter* voiceRouter);
+    void createAllNotesOff(PerformanceEventSink& sink, int eventTime);
     
-    void addMidiValueMessage(InstrumentType deviceType, int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, int noteNo, juce::MidiBuffer& buffer, bool isBipolar, ExpressionCurveTarget curveTarget, int eventTime, MidiProtocol* protocol);
-    void addStripValueMessage(InstrumentType deviceType, int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, juce::MidiBuffer& buffer, bool isBipolar, int eventTime, MidiProtocol* protocol);
+    void addMidiValueMessage(InstrumentType deviceType, int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, int noteNo, PerformanceEventSink& sink, bool isBipolar, ExpressionCurveTarget curveTarget, int eventTime, MidiVoiceRouter* voiceRouter);
+    void addStripValueMessage(InstrumentType deviceType, int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, PerformanceEventSink& sink, bool isBipolar, int eventTime, MidiVoiceRouter* voiceRouter);
     
-    void createBreath(int deviceIndex, const ConfigLookup& keyLookup, juce::MidiBuffer& buffer, int eventTime, MidiProtocol* protocol);
-    void createStripAbsolute(int deviceIndex, int stripIndex, int zoneIndex, const ConfigLookup& keyLookup, juce::MidiBuffer& buffer, int eventTime, MidiProtocol* protocol);
-    void createStripRelative(int deviceIndex, int stripIndex, int zoneIndex, const ConfigLookup& keyLookup, juce::MidiBuffer& buffer, int eventTime, MidiProtocol* protocol);
+    void createBreath(int deviceIndex, const ConfigLookup& keyLookup, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter);
+    void createStripAbsolute(int deviceIndex, int stripIndex, int zoneIndex, const ConfigLookup& keyLookup, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter);
+    void createStripRelative(int deviceIndex, int stripIndex, int zoneIndex, const ConfigLookup& keyLookup, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter);
 
     void clearAllAppCtrlTransposes(int deviceIndex);
 

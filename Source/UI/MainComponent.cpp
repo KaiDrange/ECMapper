@@ -37,6 +37,8 @@ MainComponent::MainComponent(juce::AudioProcessorValueTreeState& pluginStateToUs
       pluginState(pluginStateToUse),
       deviceManager(deviceManagerToUse) {
 
+    isStandaloneApp_ = juce::JUCEApplicationBase::isStandaloneApp();
+
     pendingModeMessage.setText("This change will take effect the next time ECMapper is started", juce::dontSendNotification);
     pendingModeMessage.setJustificationType(juce::Justification::centred);
     pendingModeMessage.setColour(juce::Label::textColourId, juce::Colours::orange);
@@ -86,10 +88,16 @@ MainComponent::MainComponent(juce::AudioProcessorValueTreeState& pluginStateToUs
     pendingMidi2Mode = midi2ModeEnabled;
     configureModeButton(mpeModeButton);
     configureModeButton(midi20ModeButton);
+    configureModeButton(legacyPluginModeButton);
+    configureModeButton(vst3DirectModeButton);
     mpeModeButton.setConnectedEdges(juce::Button::ConnectedOnRight);
     midi20ModeButton.setConnectedEdges(juce::Button::ConnectedOnLeft);
+    legacyPluginModeButton.setConnectedEdges(juce::Button::ConnectedOnRight);
+    vst3DirectModeButton.setConnectedEdges(juce::Button::ConnectedOnLeft);
     mpeModeButton.setButtonText("MPE");
     midi20ModeButton.setButtonText("MIDI 2.0");
+    legacyPluginModeButton.setButtonText("Legacy MIDI");
+    vst3DirectModeButton.setButtonText("VST3 Direct");
 
     mpeModeButton.onClick = [this] {
         juce::Logger::writeToLog("MainComponent: MPE button clicked");
@@ -107,12 +115,34 @@ MainComponent::MainComponent(juce::AudioProcessorValueTreeState& pluginStateToUs
     };
     addAndMakeVisible(mpeModeButton);
     addAndMakeVisible(midi20ModeButton);
+    addAndMakeVisible(legacyPluginModeButton);
+    addAndMakeVisible(vst3DirectModeButton);
     mpeModeButton.setToggleState(!pendingMidi2Mode, juce::dontSendNotification);
     midi20ModeButton.setToggleState(pendingMidi2Mode, juce::dontSendNotification);
+    pluginOutputModeIsVst3Direct_ = SettingsWrapper::getPluginOutputMode(pluginState.state) == OutputTransportMode::Vst3Direct;
+    legacyPluginModeButton.setToggleState(!pluginOutputModeIsVst3Direct_, juce::dontSendNotification);
+    vst3DirectModeButton.setToggleState(pluginOutputModeIsVst3Direct_, juce::dontSendNotification);
+    legacyPluginModeButton.setVisible(!isStandaloneApp_);
+    vst3DirectModeButton.setVisible(!isStandaloneApp_);
+    mpeModeButton.setVisible(isStandaloneApp_);
+    midi20ModeButton.setVisible(isStandaloneApp_);
     updateMpeControlsEnabled(lowerMPEVoiceCount, !pendingMidi2Mode);
     updateMpeControlsEnabled(upperMPEVoiceCount, !pendingMidi2Mode);
     updateMpeControlsEnabled(lowerMPEPitchbendRange, !pendingMidi2Mode);
     updateMpeControlsEnabled(upperMPEPitchbendRange, !pendingMidi2Mode);
+
+    legacyPluginModeButton.onClick = [this] {
+        if (!legacyPluginModeButton.getToggleState())
+            return;
+
+        SettingsWrapper::setPluginOutputMode(OutputTransportMode::LegacyMidi, this->pluginState.state);
+    };
+    vst3DirectModeButton.onClick = [this] {
+        if (!vst3DirectModeButton.getToggleState())
+            return;
+
+        SettingsWrapper::setPluginOutputMode(OutputTransportMode::Vst3Direct, this->pluginState.state);
+    };
     
     corePage = std::make_unique<CorePage>(hardwareService, pluginState.state);
     alphaPage = std::make_unique<TabPage>(0, InstrumentType::Alpha, pluginState, processor);
@@ -187,7 +217,7 @@ void MainComponent::resized() {
     controlArea.removeFromLeft(12);
     controlArea.removeFromRight(12);
     auto controlWidth = 120;
-    auto modeWidth = 72;
+    auto modeWidth = isStandaloneApp_ ? 72 : 104;
     auto modeGap = 2;
 
     upperMPEPitchbendRange.setBounds(controlArea.removeFromRight(controlWidth).withHeight(28));
@@ -198,9 +228,15 @@ void MainComponent::resized() {
     controlArea.removeFromRight(8);
     lowerMPEVoiceCount.setBounds(controlArea.removeFromRight(controlWidth).withHeight(28));
     controlArea.removeFromRight(4);
-    midi20ModeButton.setBounds(controlArea.removeFromRight(modeWidth).withSizeKeepingCentre(modeWidth, 24));
-    controlArea.removeFromRight(modeGap);
-    mpeModeButton.setBounds(controlArea.removeFromRight(modeWidth).withSizeKeepingCentre(modeWidth, 24));
+    if (isStandaloneApp_) {
+        midi20ModeButton.setBounds(controlArea.removeFromRight(modeWidth).withSizeKeepingCentre(modeWidth, 24));
+        controlArea.removeFromRight(modeGap);
+        mpeModeButton.setBounds(controlArea.removeFromRight(modeWidth).withSizeKeepingCentre(modeWidth, 24));
+    } else {
+        vst3DirectModeButton.setBounds(controlArea.removeFromRight(modeWidth).withSizeKeepingCentre(modeWidth, 24));
+        controlArea.removeFromRight(modeGap);
+        legacyPluginModeButton.setBounds(controlArea.removeFromRight(modeWidth).withSizeKeepingCentre(modeWidth, 24));
+    }
     
 
     auto tabArea = bottomRow.reduced(0, 1);
@@ -295,11 +331,14 @@ void MainComponent::refreshFromState()
         upperMPEPitchbendRange.setValue(SettingsWrapper::getUpperMPEPB(pluginState.state));
 
     pendingMidi2Mode = SettingsWrapper::getMidi2Mode(pluginState.state);
+    pluginOutputModeIsVst3Direct_ = SettingsWrapper::getPluginOutputMode(pluginState.state) == OutputTransportMode::Vst3Direct;
     midi2ModeChanged = (pendingMidi2Mode != midi2ModeEnabled);
     pendingModeMessage.setVisible(midi2ModeChanged);
 
     mpeModeButton.setToggleState(!pendingMidi2Mode, juce::dontSendNotification);
     midi20ModeButton.setToggleState(pendingMidi2Mode, juce::dontSendNotification);
+    legacyPluginModeButton.setToggleState(!pluginOutputModeIsVst3Direct_, juce::dontSendNotification);
+    vst3DirectModeButton.setToggleState(pluginOutputModeIsVst3Direct_, juce::dontSendNotification);
     updateMpeControlsEnabled(lowerMPEVoiceCount, !pendingMidi2Mode);
     updateMpeControlsEnabled(upperMPEVoiceCount, !pendingMidi2Mode);
     updateMpeControlsEnabled(lowerMPEPitchbendRange, !pendingMidi2Mode);
@@ -327,14 +366,17 @@ void MainComponent::valueTreePropertyChanged(juce::ValueTree& vTree, const juce:
     juce::ignoreUnused(vTree);
     juce::Logger::writeToLog("MainComponent: Property changed: " + property.toString());
 
-    if (property == SettingsWrapper::id_midi2Mode)
+    if (property == SettingsWrapper::id_midi2Mode || property == SettingsWrapper::id_pluginOutputMode)
     {
         pendingMidi2Mode = SettingsWrapper::getMidi2Mode(pluginState.state);
+        pluginOutputModeIsVst3Direct_ = SettingsWrapper::getPluginOutputMode(pluginState.state) == OutputTransportMode::Vst3Direct;
         midi2ModeChanged = (pendingMidi2Mode != midi2ModeEnabled);
         pendingModeMessage.setVisible(midi2ModeChanged);
 
         mpeModeButton.setToggleState(!pendingMidi2Mode, juce::dontSendNotification);
         midi20ModeButton.setToggleState(pendingMidi2Mode, juce::dontSendNotification);
+        legacyPluginModeButton.setToggleState(!pluginOutputModeIsVst3Direct_, juce::dontSendNotification);
+        vst3DirectModeButton.setToggleState(pluginOutputModeIsVst3Direct_, juce::dontSendNotification);
         updateMpeControlsEnabled(lowerMPEVoiceCount, !pendingMidi2Mode);
         updateMpeControlsEnabled(upperMPEVoiceCount, !pendingMidi2Mode);
         updateMpeControlsEnabled(lowerMPEPitchbendRange, !pendingMidi2Mode);
