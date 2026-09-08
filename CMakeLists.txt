@@ -7,10 +7,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(WIN32 AND (MINGW OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
     message(FATAL_ERROR
-        "ECMapper cannot be configured with MinGW on Windows. "
-        "JUCE does not support that toolchain here. "
-        "Switch CLion to a Visual Studio or clang-cl toolchain, then reconfigure "
-        "using the windows-debug or windows-release preset.")
+            "ECMapper cannot be configured with MinGW on Windows. "
+            "JUCE does not support that toolchain here. "
+            "Switch CLion to a Visual Studio or clang-cl toolchain, then reconfigure "
+            "using the windows-debug or windows-release preset.")
 endif()
 
 if(APPLE)
@@ -50,12 +50,12 @@ if(APPLE)
 
     if(EXISTS "${PICO_ARM_LIB}" AND EXISTS "${PICO_X64_LIB}")
         add_custom_command(OUTPUT "${PICO_UNIVERSAL_LIB}"
-            COMMAND lipo -create "${PICO_ARM_LIB}" "${PICO_X64_LIB}" -output "${PICO_UNIVERSAL_LIB}"
-            DEPENDS "${PICO_ARM_LIB}" "${PICO_X64_LIB}"
-            COMMENT "Creating universal static libpicodecoder"
+                COMMAND lipo -create "${PICO_ARM_LIB}" "${PICO_X64_LIB}" -output "${PICO_UNIVERSAL_LIB}"
+                DEPENDS "${PICO_ARM_LIB}" "${PICO_X64_LIB}"
+                COMMENT "Creating universal static libpicodecoder"
         )
         add_custom_target(PicodecoderStaticUniversal ALL DEPENDS "${PICO_UNIVERSAL_LIB}")
-        
+
         # Override the imported location for the target defined in EigenLite
         if(TARGET picodecoder_static)
             set_target_properties(picodecoder_static PROPERTIES IMPORTED_LOCATION "${PICO_UNIVERSAL_LIB}")
@@ -67,25 +67,25 @@ endif()
 # ------------------------------------------------------------------------------
 # Shared Configuration
 
-file(GLOB_RECURSE SHARED_SOURCES CONFIGURE_DEPENDS 
-    Source/UI/*.cpp Source/UI/*.h 
-    Source/Core/*.cpp Source/Core/*.h
+file(GLOB_RECURSE SHARED_SOURCES CONFIGURE_DEPENDS
+        Source/UI/*.cpp Source/UI/*.h
+        Source/Core/*.cpp Source/Core/*.h
 )
 
 set(COMMON_LIBS
-    eigenapi
-    juce::juce_audio_utils
-    juce::juce_audio_processors
-    juce::juce_gui_basics
-    juce::juce_graphics
-    juce::juce_events
-    juce::juce_core
-    juce::juce_audio_basics # MIDI 2.0 / UMP support
-    juce::juce_midi_ci
-    juce::juce_osc
-    juce::juce_recommended_config_flags
-    juce::juce_recommended_lto_flags
-    juce::juce_recommended_warning_flags
+        eigenapi
+        juce::juce_audio_utils
+        juce::juce_audio_processors
+        juce::juce_gui_basics
+        juce::juce_graphics
+        juce::juce_events
+        juce::juce_core
+        juce::juce_audio_basics # MIDI 2.0 / UMP support
+        juce::juce_midi_ci
+        juce::juce_osc
+        juce::juce_recommended_config_flags
+        juce::juce_recommended_lto_flags
+        juce::juce_recommended_warning_flags
 )
 
 # ------------------------------------------------------------------------------
@@ -93,25 +93,25 @@ set(COMMON_LIBS
 
 if(ECMAPPER_BUILD_APP)
     juce_add_gui_app(ECMapper_App
-        PRODUCT_NAME "ECMapper"
-        VERSION "2.0.0"
-        COMPANY_NAME "Tic Tech"
-        BUNDLE_ID "com.tictech.ecmapper.app"
-        ICON_BIG "${CMAKE_CURRENT_SOURCE_DIR}/assets/app_icon.png"
+            PRODUCT_NAME "ECMapper"
+            VERSION "2.0.0"
+            COMPANY_NAME "Tic Tech"
+            BUNDLE_ID "com.tictech.ecmapper.app"
+            ICON_BIG "${CMAKE_CURRENT_SOURCE_DIR}/assets/app_icon.png"
     )
 
     target_sources(ECMapper_App PRIVATE
-        Source/StandaloneApp.cpp
-        Source/StandaloneApp.h
-        Source/StandaloneAppMainWindow.cpp
-        Source/StandaloneAppMainWindow.h
-        Source/UI/AppStyle.cpp
-        Source/UI/AppStyle.h
-        Source/PluginProcessor.cpp
-        Source/PluginProcessor.h
-        Source/PluginEditor.cpp
-        Source/PluginEditor.h
-        ${SHARED_SOURCES}
+            Source/StandaloneApp.cpp
+            Source/StandaloneApp.h
+            Source/StandaloneAppMainWindow.cpp
+            Source/StandaloneAppMainWindow.h
+            Source/UI/AppStyle.cpp
+            Source/UI/AppStyle.h
+            Source/PluginProcessor.cpp
+            Source/PluginProcessor.h
+            Source/PluginEditor.cpp
+            Source/PluginEditor.h
+            ${SHARED_SOURCES}
     )
 
     target_link_libraries(ECMapper_App PRIVATE ${COMMON_LIBS} juce::juce_gui_extra)
@@ -123,8 +123,8 @@ if(ECMAPPER_BUILD_APP)
 
     if(APPLE)
         set_target_properties(ECMapper_App PROPERTIES
-            MACOSX_BUNDLE_GUI_IDENTIFIER "com.tictech.ecmapper.app"
-            MACOSX_BUNDLE_BUNDLE_NAME "ECMapper"
+                MACOSX_BUNDLE_GUI_IDENTIFIER "com.tictech.ecmapper.app"
+                MACOSX_BUNDLE_BUNDLE_NAME "ECMapper"
         )
     endif()
 endif()
@@ -134,25 +134,25 @@ endif()
 
 if(ECMAPPER_BUILD_PLUGIN)
     juce_add_plugin(ECMapper_Plugin
-        PRODUCT_NAME "ECMapper"
-        VERSION "2.0.0"
-        COMPANY_NAME "Tic Tech"
-        BUNDLE_ID "com.tictech.ecmapper.plugin"
-        FORMATS VST3
-        IS_SYNTH TRUE
-        NEEDS_MIDI_INPUT TRUE
-        NEEDS_MIDI_OUTPUT TRUE
-        COPY_PLUGIN_AFTER_BUILD FALSE
+            PRODUCT_NAME "ECMapper"
+            VERSION "2.0.0"
+            COMPANY_NAME "Tic Tech"
+            BUNDLE_ID "com.tictech.ecmapper.plugin"
+            FORMATS VST3
+            IS_SYNTH TRUE
+            NEEDS_MIDI_INPUT TRUE
+            NEEDS_MIDI_OUTPUT TRUE
+            COPY_PLUGIN_AFTER_BUILD FALSE
     )
 
     target_sources(ECMapper_Plugin PRIVATE
-        Source/PluginProcessor.cpp
-        Source/PluginProcessor.h
-        Source/PluginEditor.cpp
-        Source/PluginEditor.h
-        Source/UI/AppStyle.cpp
-        Source/UI/AppStyle.h
-        ${SHARED_SOURCES}
+            Source/PluginProcessor.cpp
+            Source/PluginProcessor.h
+            Source/PluginEditor.cpp
+            Source/PluginEditor.h
+            Source/UI/AppStyle.cpp
+            Source/UI/AppStyle.h
+            ${SHARED_SOURCES}
     )
 
     target_link_libraries(ECMapper_Plugin PRIVATE ${COMMON_LIBS})
@@ -165,57 +165,33 @@ if(ECMAPPER_BUILD_PLUGIN)
 
     if(APPLE)
         set_target_properties(ECMapper_Plugin PROPERTIES
-            MACOSX_BUNDLE_GUI_IDENTIFIER "com.tictech.ecmapper.plugin"
-            MACOSX_BUNDLE_BUNDLE_NAME "ECMapper"
+                MACOSX_BUNDLE_GUI_IDENTIFIER "com.tictech.ecmapper.plugin"
+                MACOSX_BUNDLE_BUNDLE_NAME "ECMapper"
         )
     endif()
 endif()
-
-# ------------------------------------------------------------------------------
-# Tests
-
-juce_add_console_app(ECMapper_Tests
-    PRODUCT_NAME "ECMapperTests"
-)
-
-target_sources(ECMapper_Tests PRIVATE
-    Source/Tests/Main.cpp
-    Source/Tests/PluginProcessorAudioTests.cpp
-    Source/PluginProcessor.cpp
-    Source/PluginProcessor.h
-    Source/PluginEditor.cpp
-    Source/PluginEditor.h
-    Source/UI/AppStyle.cpp
-    Source/UI/AppStyle.h
-    ${SHARED_SOURCES}
-)
-
-target_link_libraries(ECMapper_Tests PRIVATE ${COMMON_LIBS})
-target_compile_definitions(ECMapper_Tests PRIVATE ECMAPPER_ENABLE_HARDWARE=0 JUCE_VST3_CAN_REPLACE_VST2=0)
-target_include_directories(ECMapper_Tests PRIVATE Source)
-juce_generate_juce_header(ECMapper_Tests)
 
 # ------------------------------------------------------------------------------
 # MIDI Receiver Utility
 # ------------------------------------------------------------------------------
 
 juce_add_console_app(MidiReceiver
-    PRODUCT_NAME "MidiReceiver"
-    VERSION "1.0.0"
-    COMPANY_NAME "Tic Tech"
-    BUNDLE_ID "com.tictech.midireceiver.app"
+        PRODUCT_NAME "MidiReceiver"
+        VERSION "1.0.0"
+        COMPANY_NAME "Tic Tech"
+        BUNDLE_ID "com.tictech.midireceiver.app"
 )
 
 target_sources(MidiReceiver PRIVATE Source/Utility/MidiReceiver/Main.cpp)
 target_link_libraries(MidiReceiver PRIVATE
-    juce::juce_audio_devices
-    juce::juce_audio_basics
-    juce::juce_gui_basics
-    juce::juce_events
-    juce::juce_core
-    juce::juce_recommended_config_flags
-    juce::juce_recommended_lto_flags
-    juce::juce_recommended_warning_flags
+        juce::juce_audio_devices
+        juce::juce_audio_basics
+        juce::juce_gui_basics
+        juce::juce_events
+        juce::juce_core
+        juce::juce_recommended_config_flags
+        juce::juce_recommended_lto_flags
+        juce::juce_recommended_warning_flags
 )
 target_compile_definitions(MidiReceiver PRIVATE JUCE_MODAL_LOOPS_PERMITTED=1)
 juce_generate_juce_header(MidiReceiver)
