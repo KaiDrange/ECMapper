@@ -1,6 +1,6 @@
 [submodule "JUCE"]
 	path = JUCE
-	url = https://github.com/juce-framework/JUCE.git
+	url = https://github.com/KaiDrange/JUCE.git
 [submodule "EigenLite"]
 	path = EigenLite
 	url = https://github.com/TheTechnobear/EigenLite.git
