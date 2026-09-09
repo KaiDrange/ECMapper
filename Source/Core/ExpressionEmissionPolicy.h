@@ -24,6 +24,25 @@ protected:
     ExpressionEmissionConfig config_;
 };
 
+inline bool usesIndependentPerNoteExpression(OutputTransportMode mode, bool remoteSupportsPerNote)
+{
+    switch (mode) {
+        case OutputTransportMode::UmpMidi:
+            return remoteSupportsPerNote;
+        case OutputTransportMode::Vst3Direct:
+            return true;
+        case OutputTransportMode::LegacyMidi:
+            return false;
+    }
+
+    return false;
+}
+
+inline bool shouldUsePerNoteExpressionEvent(OutputTransportMode mode, bool remoteSupportsPerNote, int noteNumber)
+{
+    return noteNumber != -1 && usesIndependentPerNoteExpression(mode, remoteSupportsPerNote);
+}
+
 std::shared_ptr<ExpressionEmissionPolicy> createExpressionEmissionPolicy(OutputTransportMode mode);
 
 }

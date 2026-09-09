@@ -1406,12 +1406,23 @@ void MidiService::queueTransposeChangeFlush(InstrumentType deviceType, Zone zone
 
 void MidiService::createNoteHold(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter) {
     int channel = state->midiChannel;
-    if (channel > 0 && channel <= 16 && (isMidi2Mode_ || chanNotePri_[channel - 1].empty() || chanNotePri_[channel - 1].front() == keyLookup.keyId)) {
+    const auto outputMode = getEffectiveOutputMode();
+    const auto allowsIndependentPerNote = usesIndependentPerNoteExpression(outputMode, remoteSupportsPerNote_);
+
+    if (channel > 0 && channel <= 16 && (allowsIndependentPerNote || chanNotePri_[channel - 1].empty() || chanNotePri_[channel - 1].front() == keyLookup.keyId)) {
         addMidiValueMessage(keyLookup.keyId.deviceType, channel, state->ehRoll, keyLookup.roll, keyLookup.pbRange, state->activeNotes[0], sink, true, ExpressionCurveTarget::Roll, eventTime, voiceRouter);
         addMidiValueMessage(keyLookup.keyId.deviceType, channel, state->ehYaw, keyLookup.yaw, keyLookup.pbRange, state->activeNotes[0], sink, true, ExpressionCurveTarget::Yaw, eventTime, voiceRouter);
         addMidiValueMessage(keyLookup.keyId.deviceType, channel, state->ehPressureHistory.back(), keyLookup.pressure, keyLookup.pbRange, state->activeNotes[0], sink, false, ExpressionCurveTarget::Pressure, eventTime, voiceRouter);
     }
     state->messageCount = 0;
+}
+
+OutputTransportMode MidiService::getEffectiveOutputMode() const
+{
+    if (! juce::JUCEApplicationBase::isStandaloneApp() && pluginState_ != nullptr)
+        return SettingsWrapper::getPluginOutputMode(pluginState_->state);
+
+    return isMidi2Mode_ ? OutputTransportMode::UmpMidi : OutputTransportMode::LegacyMidi;
 }
 
 void MidiService::addMidiValueMessage(InstrumentType deviceType, int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, int noteNo, PerformanceEventSink& sink, bool isBipolar, ExpressionCurveTarget curveTarget, int eventTime, MidiVoiceRouter* voiceRouter) {
@@ -1435,8 +1446,9 @@ void MidiService::addMidiValueMessage(InstrumentType deviceType, int channel, fl
 
     float normalized = isBipolar ? (std::clamp(ehValue * gain, -1.0f, 1.0f)) : (std::clamp(ehValue * gain, 0.0f, 1.0f));
     normalized = applyExpressionCurve(deviceType, curveTarget, normalized, isBipolar);
-    
-    bool useNativePerNote = isMidi2Mode_ && remoteSupportsPerNote_ && noteNo != -1;
+
+    const auto outputMode = getEffectiveOutputMode();
+    const bool useNativePerNote = shouldUsePerNoteExpressionEvent(outputMode, remoteSupportsPerNote_, noteNo);
 
     if (midiValue.valueType == MidiValueType::Pitchbend) {
         float notePB = calculatePitchBendCurve(normalized) * pbRange;

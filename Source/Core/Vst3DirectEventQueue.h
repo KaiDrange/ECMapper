@@ -48,6 +48,7 @@ class Vst3DirectPerformanceEventSink final : public PerformanceEventSink {
 public:
     explicit Vst3DirectPerformanceEventSink(Vst3DirectEventQueue& queue);
 
+    void configureLayout(const juce::MPEZoneLayout& layout);
     void pushEvent(const PerformanceEvent& event) override;
     void reset();
 
@@ -55,10 +56,13 @@ private:
     int allocateNoteId(int channel, int noteNumber);
     int findNoteId(int channel, int noteNumber) const;
     void releaseNoteId(int channel, int noteNumber);
+    int collapseOutputChannel(int channel) const;
     static int noteIndex(int channel, int noteNumber);
 
     Vst3DirectEventQueue& queue_;
     std::array<int, 16 * 128> activeNoteIds_ {};
+    int lowerMemberChannelEnd_ = 1;
+    int upperMemberChannelStart_ = 16;
     int nextNoteId_ = 1;
 };
 

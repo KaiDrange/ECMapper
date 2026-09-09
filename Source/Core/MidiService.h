@@ -202,7 +202,8 @@ private:
     float calculateNoteOnVelocity(InstrumentType deviceType, KeyState* state);
     float calculateNoteOffVelocity(InstrumentType deviceType, KeyState* state);
     float applyExpressionCurve(InstrumentType deviceType, ExpressionCurveTarget target, float value, bool isBipolar) const;
-    
+    OutputTransportMode getEffectiveOutputMode() const;
+
     struct MidiNote {
         int channel;
         int noteNumber;

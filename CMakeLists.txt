@@ -142,7 +142,7 @@ if(ECMAPPER_BUILD_PLUGIN)
             IS_SYNTH TRUE
             NEEDS_MIDI_INPUT TRUE
             NEEDS_MIDI_OUTPUT TRUE
-            COPY_PLUGIN_AFTER_BUILD FALSE
+            COPY_PLUGIN_AFTER_BUILD TRUE
     )
 
     target_sources(ECMapper_Plugin PRIVATE
@@ -195,4 +195,26 @@ target_link_libraries(MidiReceiver PRIVATE
 )
 target_compile_definitions(MidiReceiver PRIVATE JUCE_MODAL_LOOPS_PERMITTED=1)
 juce_generate_juce_header(MidiReceiver)
+
+juce_add_console_app(Vst3DirectEventQueueCheck
+        PRODUCT_NAME "Vst3DirectEventQueueCheck"
+        VERSION "1.0.0"
+        COMPANY_NAME "Tic Tech"
+        BUNDLE_ID "com.tictech.vst3directeventqueuecheck.app"
+)
+
+target_sources(Vst3DirectEventQueueCheck PRIVATE
+        Source/Utility/Vst3DirectEventQueueCheck.cpp
+        Source/Core/Vst3DirectEventQueue.cpp
+)
+target_link_libraries(Vst3DirectEventQueueCheck PRIVATE
+        juce::juce_audio_basics
+        juce::juce_core
+        juce::juce_events
+        juce::juce_recommended_config_flags
+        juce::juce_recommended_lto_flags
+        juce::juce_recommended_warning_flags
+)
+target_include_directories(Vst3DirectEventQueueCheck PRIVATE Source)
+juce_generate_juce_header(Vst3DirectEventQueueCheck)
 

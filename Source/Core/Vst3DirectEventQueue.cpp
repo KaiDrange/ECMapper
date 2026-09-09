@@ -4,6 +4,17 @@ namespace ecm {
 
 namespace {
 
+constexpr int vst3LegacyPitchBendController = 129;
+
+std::pair<double, double> splitPitchBend14Bit(const double normalizedValue)
+{
+    const auto clamped = juce::jlimit(0.0, 1.0, normalizedValue);
+    const auto pitchBendValue = juce::jlimit(0, 16383, static_cast<int>(clamped * 16384.0));
+    const auto lsb = pitchBendValue & 0x7f;
+    const auto msb = (pitchBendValue >> 7) & 0x7f;
+    return { lsb / 127.0, msb / 127.0 };
+}
+
 Vst3NoteExpressionType mapControllerExpressionType(const int controller)
 {
     switch (controller) {
@@ -48,11 +59,17 @@ Vst3DirectPerformanceEventSink::Vst3DirectPerformanceEventSink(Vst3DirectEventQu
     reset();
 }
 
+void Vst3DirectPerformanceEventSink::configureLayout(const juce::MPEZoneLayout& layout)
+{
+    lowerMemberChannelEnd_ = 1 + layout.getLowerZone().numMemberChannels;
+    upperMemberChannelStart_ = 16 - layout.getUpperZone().numMemberChannels;
+}
+
 void Vst3DirectPerformanceEventSink::pushEvent(const PerformanceEvent& event)
 {
     Vst3DirectEvent directEvent;
     directEvent.sampleOffset = event.sampleOffset;
-    directEvent.channel = juce::jlimit(0, 15, event.channel - 1);
+    directEvent.channel = juce::jlimit(0, 15, collapseOutputChannel(event.channel) - 1);
     directEvent.noteNumber = event.noteNumber;
     directEvent.value = event.kind == PerformanceEventKind::NoteOff ? event.velocity : event.value;
 
@@ -89,6 +106,13 @@ void Vst3DirectPerformanceEventSink::pushEvent(const PerformanceEvent& event)
                 queue_.push(directEvent);
                 return;
             }
+
+            directEvent.kind = Vst3DirectEventKind::LegacyCC;
+            directEvent.controller = vst3LegacyPitchBendController;
+            std::tie(directEvent.value, directEvent.value2) = splitPitchBend14Bit(event.value);
+            queue_.push(directEvent);
+            return;
+
             break;
 
         case PerformanceEventKind::Controller:
@@ -139,6 +163,17 @@ void Vst3DirectPerformanceEventSink::reset()
 {
     activeNoteIds_.fill(-1);
     nextNoteId_ = 1;
+}
+
+int Vst3DirectPerformanceEventSink::collapseOutputChannel(int channel) const
+{
+    if (channel >= 2 && channel <= lowerMemberChannelEnd_)
+        return 1;
+
+    if (channel >= upperMemberChannelStart_ && channel <= 15)
+        return 16;
+
+    return juce::jlimit(1, 16, channel);
 }
 
 int Vst3DirectPerformanceEventSink::allocateNoteId(int channel, int noteNumber)

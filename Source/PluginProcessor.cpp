@@ -321,8 +321,10 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& audioBuffer,
     if (useDirect)
         targetBuffer = &tempBuffer;
 
-    if (useVst3Direct)
+    if (useVst3Direct) {
+        vst3DirectPerformanceSink_.configureLayout(createCurrentMpeZoneLayout());
         vst3DirectEventQueue_.clear();
+    }
 
     int slotToLoad = -1;
     collectPresetSlotLoadRequests(midiMessages, slotToLoad);
@@ -471,6 +473,22 @@ void ECMapperAudioProcessor::publishRuntimeConfigSnapshot()
 {
     logger.log("publishRuntimeConfigSnapshot: Updating snapshot with protocol " + juce::String(midiService.getProtocol() ? (std::dynamic_pointer_cast<ecm::Midi2Protocol>(midiService.getProtocol()) ? "MIDI 2.0" : "MIDI 1.0") : "None"));
     midiService.setRuntimeConfigSnapshot(std::make_unique<ecm::MidiService::RuntimeConfigSnapshot>(configLookups, midiService.getProtocol(), midiService.getVoiceRouter(), midiService.getExpressionPolicy()));
+}
+
+juce::MPEZoneLayout ECMapperAudioProcessor::createCurrentMpeZoneLayout() const
+{
+    juce::MPEZoneLayout layout;
+    auto& rootState = const_cast<juce::ValueTree&>(state.state);
+    const int lowerChannelCount = ecm::SettingsWrapper::getLowerMPEVoiceCount(rootState);
+    layout.setLowerZone(lowerChannelCount, ecm::SettingsWrapper::getLowerMPEPB(rootState), 2);
+
+    if (lowerChannelCount < 14) {
+        layout.setUpperZone(ecm::SettingsWrapper::getUpperMPEVoiceCount(rootState),
+                            ecm::SettingsWrapper::getUpperMPEPB(rootState),
+                            2);
+    }
+
+    return layout;
 }
 
 bool ECMapperAudioProcessor::applyZoneControlMessages(const juce::MidiBuffer& midiMessages) const

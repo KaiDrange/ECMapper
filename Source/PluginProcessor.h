@@ -160,6 +160,7 @@ private:
     void collectPresetSlotLoadRequests(const juce::MidiBuffer& midiMessages, int& slotToLoad);
     static void queuePresetSlotLoad(int slot, int& slotToLoad);
     void publishRuntimeConfigSnapshot();
+    juce::MPEZoneLayout createCurrentMpeZoneLayout() const;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ECMapperAudioProcessor)
 };
