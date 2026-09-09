@@ -4,7 +4,9 @@ namespace ecm {
 
 namespace {
 
+constexpr int vst3LegacyAftertouchController = 128;
 constexpr int vst3LegacyPitchBendController = 129;
+constexpr int vst3LegacyPolyPressureController = 131;
 
 std::pair<double, double> splitPitchBend14Bit(const double normalizedValue)
 {
@@ -13,16 +15,6 @@ std::pair<double, double> splitPitchBend14Bit(const double normalizedValue)
     const auto lsb = pitchBendValue & 0x7f;
     const auto msb = (pitchBendValue >> 7) & 0x7f;
     return { lsb / 127.0, msb / 127.0 };
-}
-
-Vst3NoteExpressionType mapControllerExpressionType(const int controller)
-{
-    switch (controller) {
-        case 74: return Vst3NoteExpressionType::Brightness;
-        case 11:
-        case 7:  return Vst3NoteExpressionType::Expression;
-        default: return Vst3NoteExpressionType::Expression;
-    }
 }
 
 }
@@ -61,15 +53,14 @@ Vst3DirectPerformanceEventSink::Vst3DirectPerformanceEventSink(Vst3DirectEventQu
 
 void Vst3DirectPerformanceEventSink::configureLayout(const juce::MPEZoneLayout& layout)
 {
-    lowerMemberChannelEnd_ = 1 + layout.getLowerZone().numMemberChannels;
-    upperMemberChannelStart_ = 16 - layout.getUpperZone().numMemberChannels;
+    juce::ignoreUnused(layout);
 }
 
 void Vst3DirectPerformanceEventSink::pushEvent(const PerformanceEvent& event)
 {
     Vst3DirectEvent directEvent;
     directEvent.sampleOffset = event.sampleOffset;
-    directEvent.channel = juce::jlimit(0, 15, collapseOutputChannel(event.channel) - 1);
+    directEvent.channel = juce::jlimit(0, 15, event.channel - 1);
     directEvent.noteNumber = event.noteNumber;
     directEvent.value = event.kind == PerformanceEventKind::NoteOff ? event.velocity : event.value;
 
@@ -90,39 +81,19 @@ void Vst3DirectPerformanceEventSink::pushEvent(const PerformanceEvent& event)
             return;
 
         case PerformanceEventKind::ChannelPressure:
-            if (event.perNote && event.noteNumber >= 0) {
-                directEvent.kind = Vst3DirectEventKind::PolyPressure;
-                directEvent.noteId = findNoteId(event.channel, event.noteNumber);
-                queue_.push(directEvent);
-                return;
-            }
-            break;
+            directEvent.kind = Vst3DirectEventKind::LegacyCC;
+            directEvent.controller = vst3LegacyAftertouchController;
+            queue_.push(directEvent);
+            return;
 
         case PerformanceEventKind::PitchBend:
-            if (event.perNote && event.noteNumber >= 0) {
-                directEvent.kind = Vst3DirectEventKind::NoteExpression;
-                directEvent.expressionType = Vst3NoteExpressionType::Tuning;
-                directEvent.noteId = findNoteId(event.channel, event.noteNumber);
-                queue_.push(directEvent);
-                return;
-            }
-
             directEvent.kind = Vst3DirectEventKind::LegacyCC;
             directEvent.controller = vst3LegacyPitchBendController;
             std::tie(directEvent.value, directEvent.value2) = splitPitchBend14Bit(event.value);
             queue_.push(directEvent);
             return;
 
-            break;
-
         case PerformanceEventKind::Controller:
-            if (event.perNote && event.noteNumber >= 0 && (event.controller == 74 || event.controller == 11 || event.controller == 7)) {
-                directEvent.kind = Vst3DirectEventKind::NoteExpression;
-                directEvent.expressionType = mapControllerExpressionType(event.controller);
-                directEvent.noteId = findNoteId(event.channel, event.noteNumber);
-                queue_.push(directEvent);
-                return;
-            }
             directEvent.controller = event.controller;
             break;
 
@@ -144,8 +115,10 @@ void Vst3DirectPerformanceEventSink::pushEvent(const PerformanceEvent& event)
             break;
 
         case PerformanceEventKind::PolyAftertouch:
-            directEvent.kind = Vst3DirectEventKind::PolyPressure;
-            directEvent.noteId = findNoteId(event.channel, event.noteNumber);
+            directEvent.kind = Vst3DirectEventKind::LegacyCC;
+            directEvent.controller = vst3LegacyPolyPressureController;
+            directEvent.value = juce::jlimit(0.0, 127.0, static_cast<double>(event.noteNumber)) / 127.0;
+            directEvent.value2 = event.value;
             queue_.push(directEvent);
             return;
 
@@ -163,17 +136,6 @@ void Vst3DirectPerformanceEventSink::reset()
 {
     activeNoteIds_.fill(-1);
     nextNoteId_ = 1;
-}
-
-int Vst3DirectPerformanceEventSink::collapseOutputChannel(int channel) const
-{
-    if (channel >= 2 && channel <= lowerMemberChannelEnd_)
-        return 1;
-
-    if (channel >= upperMemberChannelStart_ && channel <= 15)
-        return 16;
-
-    return juce::jlimit(1, 16, channel);
 }
 
 int Vst3DirectPerformanceEventSink::allocateNoteId(int channel, int noteNumber)

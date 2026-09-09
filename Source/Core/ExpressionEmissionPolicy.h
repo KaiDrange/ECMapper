@@ -30,7 +30,7 @@ inline bool usesIndependentPerNoteExpression(OutputTransportMode mode, bool remo
         case OutputTransportMode::UmpMidi:
             return remoteSupportsPerNote;
         case OutputTransportMode::Vst3Direct:
-            return true;
+            return false;
         case OutputTransportMode::LegacyMidi:
             return false;
     }
