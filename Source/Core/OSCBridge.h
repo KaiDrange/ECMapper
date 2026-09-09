@@ -42,7 +42,11 @@ private:
     void run() override;
     
     void updateConnections();
+    void updateDiscoveryReceiver();
+    void disconnectDiscoveryReceiver();
     void updateClientReceiver();
+    void disconnectClientReceiver();
+    void updatePollingState();
 
     HardwareService& hardwareService_;
     osc::MessageFifo& hardwareToMapperQueue_;
@@ -51,7 +55,6 @@ private:
     Logger& logger_;
     
     juce::OSCSender discoverySender_;
-    juce::OSCReceiver discoveryReceiver_;
     
     struct Connection {
         std::string dev;
@@ -69,10 +72,22 @@ private:
     std::vector<std::unique_ptr<Connection>> connections_;
     juce::CriticalSection connectionsLock_;
     bool hostEnabled_ = false;
+    bool receiverEnabled_ = false;
     bool discoveryPortBusy_ = false;
+    bool discoveryReceiverListening_ = false;
+    bool clientReceiverListening_ = false;
+    bool clientReceiverBindFailed_ = false;
+    int clientReceiverPort_ = 0;
     juce::String instanceId_;
     
-    std::unique_ptr<juce::OSCReceiver> globalClientReceiver_;
+    static juce::CriticalSection globalDiscoveryReceiverLock_;
+    static std::unique_ptr<juce::OSCReceiver> globalDiscoveryReceiver_;
+    static int globalDiscoveryReceiverListenerCount_;
+
+    static juce::CriticalSection globalClientReceiverLock_;
+    static std::unique_ptr<juce::OSCReceiver> globalClientReceiver_;
+    static int globalClientReceiverListenerCount_;
+    static int globalClientReceiverPort_;
 
     void sendOutgoingMessages();
     void sendPing(Connection* conn);

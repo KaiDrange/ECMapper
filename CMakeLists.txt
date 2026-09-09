@@ -72,6 +72,10 @@ file(GLOB_RECURSE SHARED_SOURCES CONFIGURE_DEPENDS
         Source/Core/*.cpp Source/Core/*.h
 )
 
+file(GLOB_RECURSE CORE_SOURCES CONFIGURE_DEPENDS
+        Source/Core/*.cpp Source/Core/*.h
+)
+
 set(COMMON_LIBS
         eigenapi
         juce::juce_audio_utils
@@ -142,7 +146,7 @@ if(ECMAPPER_BUILD_PLUGIN)
             IS_SYNTH TRUE
             NEEDS_MIDI_INPUT TRUE
             NEEDS_MIDI_OUTPUT TRUE
-            COPY_PLUGIN_AFTER_BUILD FALSE
+            COPY_PLUGIN_AFTER_BUILD TRUE
     )
 
     target_sources(ECMapper_Plugin PRIVATE
@@ -195,4 +199,21 @@ target_link_libraries(MidiReceiver PRIVATE
 )
 target_compile_definitions(MidiReceiver PRIVATE JUCE_MODAL_LOOPS_PERMITTED=1)
 juce_generate_juce_header(MidiReceiver)
+
+juce_add_console_app(OSCBridgeLifecycleTest
+        PRODUCT_NAME "OSCBridgeLifecycleTest"
+        VERSION "1.0.0"
+        COMPANY_NAME "Tic Tech"
+        BUNDLE_ID "com.tictech.ecmapper.oscbridgelifecycletest"
+)
+
+target_sources(OSCBridgeLifecycleTest PRIVATE
+        Source/Tests/OSCBridgeLifecycleTest.cpp
+        ${CORE_SOURCES}
+)
+
+target_link_libraries(OSCBridgeLifecycleTest PRIVATE ${COMMON_LIBS})
+target_include_directories(OSCBridgeLifecycleTest PRIVATE Source)
+target_compile_definitions(OSCBridgeLifecycleTest PRIVATE ECMAPPER_ENABLE_HARDWARE=0 JUCE_MODAL_LOOPS_PERMITTED=1)
+juce_generate_juce_header(OSCBridgeLifecycleTest)
 

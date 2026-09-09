@@ -2,6 +2,90 @@
 
 namespace ecm {
 
+namespace {
+
+juce::String toString(InstrumentType type) {
+    switch (type) {
+        case InstrumentType::None: return "None";
+        case InstrumentType::Alpha: return "Alpha";
+        case InstrumentType::Tau: return "Tau";
+        case InstrumentType::Pico: return "Pico";
+    }
+
+    return "UnknownInstrument";
+}
+
+juce::String toString(DeviceMode mode) {
+    switch (mode) {
+        case DeviceMode::Local: return "Local";
+        case DeviceMode::TransmitOSC: return "TransmitOSC";
+        case DeviceMode::ReceiveOSC: return "ReceiveOSC";
+    }
+
+    return "UnknownMode";
+}
+
+juce::String toString(AppRole role) {
+    switch (role) {
+        case AppRole::Host: return "Host";
+        case AppRole::Client: return "Client";
+    }
+
+    return "UnknownRole";
+}
+
+juce::String describeConnection(const std::string& dev,
+                                const std::string& originalDevId,
+                                InstrumentType type,
+                                DeviceMode mode,
+                                const juce::String& ip,
+                                int sendPort,
+                                int receivePort,
+                                bool receiveLEDs) {
+    return "dev=" + juce::String(dev)
+        + ", originalDevId=" + juce::String(originalDevId)
+        + ", type=" + toString(type)
+        + ", mode=" + toString(mode)
+        + ", ip=" + ip
+        + ", sendPort=" + juce::String(sendPort)
+        + ", receivePort=" + juce::String(receivePort)
+        + ", receiveLEDs=" + juce::String(receiveLEDs ? "true" : "false");
+}
+
+juce::String describeDevice(const ConnectedDevice& device) {
+    juce::String targets;
+
+    for (size_t i = 0; i < device.oscTargets.size(); ++i) {
+        const auto& target = device.oscTargets[i];
+        if (i > 0)
+            targets << "; ";
+
+        targets << target.ip << ":" << target.port
+                << "(receiveLEDs=" << (target.receiveLEDs ? "true" : "false") << ")";
+    }
+
+    if (targets.isEmpty())
+        targets = "none";
+
+    return "dev=" + juce::String(device.dev)
+        + ", remoteOriginalDevId=" + juce::String(device.remoteOriginalDevId)
+        + ", type=" + toString(device.type)
+        + ", mode=" + toString(device.mode)
+        + ", isRemote=" + juce::String(device.isRemote ? "true" : "false")
+        + ", oscTargets=[" + targets + "]";
+}
+
+}
+
+juce::CriticalSection OSCBridge::globalDiscoveryReceiverLock_;
+std::unique_ptr<juce::OSCReceiver> OSCBridge::globalDiscoveryReceiver_;
+int OSCBridge::globalDiscoveryReceiverListenerCount_ = 0;
+
+juce::CriticalSection OSCBridge::globalClientReceiverLock_;
+std::unique_ptr<juce::OSCReceiver> OSCBridge::globalClientReceiver_;
+int OSCBridge::globalClientReceiverListenerCount_ = 0;
+int OSCBridge::globalClientReceiverPort_ = 0;
+
 OSCBridge::OSCBridge(HardwareService& hardwareService,
                     osc::MessageFifo& hardwareToMapperQueue, 
                     osc::MessageFifo& mapperToHardwareQueue, 
@@ -16,10 +100,16 @@ OSCBridge::OSCBridge(HardwareService& hardwareService,
     instanceId_ = juce::Uuid().toString();
     hardwareService_.addListener(this);
     discoverySender_.connect("127.0.0.1", 12121);
+    logger_.log("OSCBridge created: instanceId=" + instanceId_
+                + ", role=" + toString(hardwareService_.getAppRole())
+                + ", clientListenPort=" + juce::String(hardwareService_.getClientListenPort()));
 }
 
 OSCBridge::~OSCBridge() {
     hardwareService_.removeListener(this);
+    stopTimer();
+    disconnectDiscoveryReceiver();
+    disconnectClientReceiver();
     stopThread(2000);
     const juce::ScopedLock sl(connectionsLock_);
     connections_.clear();
@@ -30,36 +120,218 @@ void OSCBridge::deviceListChanged() {
     updateClientReceiver();
 }
 
-void OSCBridge::updateClientReceiver() {
-    if (hardwareService_.getAppRole() == AppRole::Client) {
-        int port = hardwareService_.getClientListenPort();
-        if (globalClientReceiver_ == nullptr || !globalClientReceiver_->connect(port)) {
-            globalClientReceiver_ = std::make_unique<juce::OSCReceiver>();
-            if (globalClientReceiver_->connect(port)) {
-                globalClientReceiver_->addListener(this);
-                logger_.log("Global Client Receiver listening on port " + juce::String(port));
+void OSCBridge::disconnectDiscoveryReceiver() {
+    const juce::ScopedLock lock(globalDiscoveryReceiverLock_);
+
+    if (globalDiscoveryReceiver_ != nullptr && discoveryReceiverListening_) {
+        globalDiscoveryReceiver_->removeListener(this);
+        discoveryReceiverListening_ = false;
+
+        if (globalDiscoveryReceiverListenerCount_ > 0)
+            --globalDiscoveryReceiverListenerCount_;
+    }
+
+    if (globalDiscoveryReceiver_ != nullptr && globalDiscoveryReceiverListenerCount_ == 0) {
+        logger_.log("Discovery OSC Receiver disconnecting shared listener on port 12121");
+        globalDiscoveryReceiver_->disconnect();
+        globalDiscoveryReceiver_ = nullptr;
+    }
+
+    discoveryReceiverListening_ = false;
+    discoveryPortBusy_ = false;
+}
+
+void OSCBridge::updateDiscoveryReceiver() {
+    constexpr int discoveryPort = 12121;
+
+    if (!receiverEnabled_) {
+        disconnectDiscoveryReceiver();
+        return;
+    }
+
+    bool attachedToExistingReceiver = false;
+    bool createdReceiver = false;
+    bool bindFailed = false;
+
+    {
+        const juce::ScopedLock lock(globalDiscoveryReceiverLock_);
+
+        if (globalDiscoveryReceiver_ != nullptr) {
+            if (!discoveryReceiverListening_) {
+                globalDiscoveryReceiver_->addListener(this);
+                discoveryReceiverListening_ = true;
+                ++globalDiscoveryReceiverListenerCount_;
+                attachedToExistingReceiver = true;
+            }
+        } else {
+            auto receiver = std::make_unique<juce::OSCReceiver>();
+            if (receiver->connect(discoveryPort)) {
+                receiver->addListener(this);
+                globalDiscoveryReceiver_ = std::move(receiver);
+                globalDiscoveryReceiverListenerCount_ = 1;
+                discoveryReceiverListening_ = true;
+                createdReceiver = true;
             } else {
-                logger_.log("Global Client Receiver FAILED to listen on port " + juce::String(port));
+                bindFailed = true;
             }
         }
-    } else {
-        if (globalClientReceiver_ != nullptr) {
-            globalClientReceiver_->removeListener(this);
-            globalClientReceiver_->disconnect();
-            globalClientReceiver_ = nullptr;
-        }
     }
+
+    if (createdReceiver) {
+        logger_.log("Discovery OSC Receiver listening on port " + juce::String(discoveryPort));
+        discoveryPortBusy_ = false;
+    } else if (attachedToExistingReceiver) {
+        logger_.log("Discovery OSC Receiver reusing shared listener on port " + juce::String(discoveryPort));
+        discoveryPortBusy_ = false;
+    } else if (bindFailed) {
+        logger_.log("Discovery OSC Receiver FAILED to listen on port " + juce::String(discoveryPort));
+        discoveryPortBusy_ = true;
+    }
+}
+
+void OSCBridge::disconnectClientReceiver() {
+    const juce::ScopedLock lock(globalClientReceiverLock_);
+
+    if (globalClientReceiver_ != nullptr && clientReceiverListening_) {
+        globalClientReceiver_->removeListener(this);
+        clientReceiverListening_ = false;
+
+        if (globalClientReceiverListenerCount_ > 0)
+            --globalClientReceiverListenerCount_;
+    }
+
+    if (globalClientReceiver_ != nullptr && globalClientReceiverListenerCount_ == 0) {
+        logger_.log("Global Client Receiver disconnecting shared listener on port " + juce::String(globalClientReceiverPort_));
+        globalClientReceiver_->disconnect();
+        globalClientReceiver_ = nullptr;
+        globalClientReceiverPort_ = 0;
+    }
+
+    clientReceiverListening_ = false;
+    clientReceiverPort_ = 0;
+    clientReceiverBindFailed_ = false;
+}
+
+void OSCBridge::updatePollingState() {
+    const bool needsClientRetry = receiverEnabled_
+                                  && hardwareService_.getAppRole() == AppRole::Client
+                                  && !clientReceiverListening_;
+
+    if (hostEnabled_ || needsClientRetry) {
+        if (!isTimerRunning())
+            startTimer(100);
+    } else if (isTimerRunning()) {
+        stopTimer();
+    }
+}
+
+void OSCBridge::updateClientReceiver() {
+    bool attachedToExistingReceiver = false;
+    bool createdReceiver = false;
+    bool shouldLogBindFailure = false;
+    bool shouldLogPortConflict = false;
+
+    if (receiverEnabled_ && hardwareService_.getAppRole() == AppRole::Client) {
+        const int port = hardwareService_.getClientListenPort();
+        const bool retryingFailedBind = clientReceiverBindFailed_ && clientReceiverPort_ == port;
+
+        {
+            const juce::ScopedLock lock(globalClientReceiverLock_);
+
+            if (globalClientReceiver_ != nullptr && globalClientReceiverPort_ == port) {
+                if (!clientReceiverListening_) {
+                    globalClientReceiver_->addListener(this);
+                    clientReceiverListening_ = true;
+                    ++globalClientReceiverListenerCount_;
+                    attachedToExistingReceiver = true;
+                }
+
+                clientReceiverPort_ = port;
+                clientReceiverBindFailed_ = false;
+            } else {
+                if (globalClientReceiver_ != nullptr && clientReceiverListening_) {
+                    globalClientReceiver_->removeListener(this);
+                    clientReceiverListening_ = false;
+
+                    if (globalClientReceiverListenerCount_ > 0)
+                        --globalClientReceiverListenerCount_;
+                }
+
+                if (globalClientReceiver_ != nullptr && globalClientReceiverListenerCount_ == 0) {
+                    globalClientReceiver_->disconnect();
+                    globalClientReceiver_ = nullptr;
+                    globalClientReceiverPort_ = 0;
+                }
+
+                if (globalClientReceiver_ == nullptr) {
+                    auto receiver = std::make_unique<juce::OSCReceiver>();
+                    if (receiver->connect(port)) {
+                        receiver->addListener(this);
+                        globalClientReceiver_ = std::move(receiver);
+                        globalClientReceiverPort_ = port;
+                        globalClientReceiverListenerCount_ = 1;
+                        clientReceiverListening_ = true;
+                        clientReceiverPort_ = port;
+                        clientReceiverBindFailed_ = false;
+                        createdReceiver = true;
+                    } else {
+                        clientReceiverListening_ = false;
+                        clientReceiverPort_ = port;
+                        clientReceiverBindFailed_ = true;
+                        shouldLogBindFailure = !retryingFailedBind;
+                    }
+                } else {
+                    clientReceiverListening_ = false;
+                    clientReceiverPort_ = port;
+                    clientReceiverBindFailed_ = true;
+                    shouldLogPortConflict = !retryingFailedBind;
+                }
+            }
+        }
+
+        if (createdReceiver) {
+            logger_.log("Global Client Receiver listening on port " + juce::String(port)
+                        + (retryingFailedBind ? " after retry" : ""));
+        } else if (attachedToExistingReceiver) {
+            logger_.log("Global Client Receiver reusing shared listener on port " + juce::String(port));
+        } else if (shouldLogBindFailure) {
+            logger_.log("Global Client Receiver FAILED to listen on port " + juce::String(port) + ", will retry");
+        } else {
+            if (shouldLogPortConflict)
+                logger_.log("Global Client Receiver waiting for shared listener on port " + juce::String(port));
+        }
+    } else {
+        disconnectClientReceiver();
+    }
+
+    updatePollingState();
 }
 
 void OSCBridge::updateConnections() {
     if (!hostEnabled_) {
-        const juce::ScopedLock sl(connectionsLock_);
-        connections_.clear();
+        size_t clearedConnectionCount = 0;
+
+        {
+            const juce::ScopedLock sl(connectionsLock_);
+            clearedConnectionCount = connections_.size();
+            connections_.clear();
+        }
+
+        logger_.log("OSCBridge host connections disabled: instanceId=" + instanceId_
+                    + ", role=" + toString(hardwareService_.getAppRole())
+                    + ", clearedConnections=" + juce::String(static_cast<int>(clearedConnectionCount)));
+
         stopTimer();
         return;
     }
     
     auto devices = hardwareService_.getConnectedDevices();
+    logger_.log("OSCBridge rebuilding host connections: instanceId=" + instanceId_
+                + ", role=" + toString(hardwareService_.getAppRole())
+                + ", deviceCount=" + juce::String(static_cast<int>(devices.size())));
+    for (const auto& device : devices) {
+        logger_.log("  device: " + describeDevice(device));
+    }
     
     std::vector<std::unique_ptr<Connection>> newConnections;
     for (const auto& d : devices) {
@@ -105,6 +377,16 @@ void OSCBridge::updateConnections() {
             } else {
                 logger_.log("OSC Receiver using global client receiver for " + d.dev);
             }
+
+            logger_.log("  host connection prepared: "
+                        + describeConnection(conn->dev,
+                                             conn->originalDevId,
+                                             conn->type,
+                                             conn->mode,
+                                             conn->ip,
+                                             conn->sendPort,
+                                             conn->receivePort,
+                                             conn->receiveLEDs));
             
             newConnections.push_back(std::move(conn));
         }
@@ -113,12 +395,11 @@ void OSCBridge::updateConnections() {
     {
         const juce::ScopedLock sl(connectionsLock_);
         connections_ = std::move(newConnections);
-        if (hostEnabled_) {
-            if (!isTimerRunning()) startTimer(100);
-        } else {
-            stopTimer();
-        }
+        logger_.log("OSCBridge host connections active: instanceId=" + instanceId_
+                    + ", connectionCount=" + juce::String(static_cast<int>(connections_.size())));
     }
+
+    updatePollingState();
 }
 
 bool OSCBridge::isPortOccupied(int port) {
@@ -131,6 +412,9 @@ bool OSCBridge::isPortOccupied(int port) {
 
 void OSCBridge::setSenderEnabled(bool enabled) {
     if (hostEnabled_ == enabled) return;
+    logger_.log("OSCBridge setSenderEnabled(" + juce::String(enabled ? "true" : "false")
+                + "): instanceId=" + instanceId_
+                + ", role=" + toString(hardwareService_.getAppRole()));
     hostEnabled_ = enabled;
     updateConnections();
     
@@ -141,19 +425,13 @@ void OSCBridge::setSenderEnabled(bool enabled) {
 }
 
 void OSCBridge::setReceiverEnabled(bool enabled) {
-    if (enabled) {
-        if (discoveryReceiver_.connect(12121)) {
-            discoveryReceiver_.addListener(this);
-            logger_.log("Discovery OSC Receiver listening on port 12121");
-            discoveryPortBusy_ = false;
-        } else {
-            logger_.log("Discovery OSC Receiver FAILED to listen on port 12121");
-            discoveryPortBusy_ = true;
-        }
-    } else {
-        discoveryReceiver_.removeListener(this);
-        discoveryReceiver_.disconnect();
-    }
+    logger_.log("OSCBridge setReceiverEnabled(" + juce::String(enabled ? "true" : "false")
+                + "): instanceId=" + instanceId_
+                + ", role=" + toString(hardwareService_.getAppRole())
+                + ", clientListenPort=" + juce::String(hardwareService_.getClientListenPort()));
+    receiverEnabled_ = enabled;
+    updateDiscoveryReceiver();
+    updateClientReceiver();
     setSenderEnabled(enabled);
 }
 
@@ -167,6 +445,10 @@ void OSCBridge::setReceiverPort(int port) {
 }
 
 void OSCBridge::timerCallback() {
+    if (receiverEnabled_ && hardwareService_.getAppRole() == AppRole::Client && !clientReceiverListening_)
+        updateClientReceiver();
+    else
+        updatePollingState();
 }
 
 void OSCBridge::run() {
@@ -189,11 +471,26 @@ void OSCBridge::run() {
                 if (!d.isRemote && d.mode == ecm::DeviceMode::TransmitOSC) {
                     juce::String localIP = juce::IPAddress::getLocalAddress().toString();
                     int port = d.oscTargets.empty() ? 12130 : d.oscTargets[0].port;
+                    logger_.log("Host discovery broadcast: instanceId=" + instanceId_
+                                + ", device=" + juce::String(d.dev)
+                                + ", type=" + toString(d.type)
+                                + ", ip=" + localIP
+                                + ", port=" + juce::String(port)
+                                + ", mirroredConnectionCount=" + juce::String(static_cast<int>(connections_.size())));
                     
                     discoverySender_.send("/EigenCore/device", (int)d.type, localIP, port, instanceId_, juce::String(d.dev));
 
                     for (auto& conn : connections_) {
                         if (conn->mode == ecm::DeviceMode::TransmitOSC) {
+                            logger_.log("  forwarded discovery to connection: "
+                                        + describeConnection(conn->dev,
+                                                             conn->originalDevId,
+                                                             conn->type,
+                                                             conn->mode,
+                                                             conn->ip,
+                                                             conn->sendPort,
+                                                             conn->receivePort,
+                                                             conn->receiveLEDs));
                             conn->sender->send("/EigenCore/device", (int)d.type, localIP, port, instanceId_, juce::String(d.dev));
                         }
                     }
@@ -312,6 +609,14 @@ void OSCBridge::oscMessageReceived(const juce::OSCMessage& message) {
             auto remotePort = getInt(message[2]);
             auto senderId = message[3].getString();
             auto remoteOriginalDevId = message[4].getString();
+            logger_.log("OSC received discovery: instanceId=" + instanceId_
+                        + ", role=" + toString(hardwareService_.getAppRole())
+                        + ", type=" + toString(devType)
+                        + ", remoteIP=" + remoteIP
+                        + ", remotePort=" + juce::String(remotePort)
+                        + ", senderId=" + senderId
+                        + ", remoteOriginalDevId=" + remoteOriginalDevId
+                        + ", isSelf=" + juce::String(senderId == instanceId_ ? "true" : "false"));
             
             if (senderId != instanceId_) {
                 hardwareService_.handleRemoteDeviceConnection(devType, remoteIP, remoteOriginalDevId, remotePort);
@@ -321,6 +626,13 @@ void OSCBridge::oscMessageReceived(const juce::OSCMessage& message) {
             auto remoteIP = message[1].getString();
             auto senderId = message[2].getString();
             auto remoteOriginalDevId = message[3].getString();
+            logger_.log("OSC received legacy discovery: instanceId=" + instanceId_
+                        + ", role=" + toString(hardwareService_.getAppRole())
+                        + ", type=" + toString(devType)
+                        + ", remoteIP=" + remoteIP
+                        + ", senderId=" + senderId
+                        + ", remoteOriginalDevId=" + remoteOriginalDevId
+                        + ", isSelf=" + juce::String(senderId == instanceId_ ? "true" : "false"));
             
             if (senderId != instanceId_) {
                 hardwareService_.handleRemoteDeviceConnection(devType, remoteIP, remoteOriginalDevId, 0);
@@ -491,6 +803,11 @@ void OSCBridge::oscMessageReceived(const juce::OSCMessage& message) {
         juce::String devId = message[0].getString();
         juce::String senderId;
         if (message.size() >= 2) senderId = message[1].getString();
+        logger_.log("OSC received LED request: instanceId=" + instanceId_
+                    + ", role=" + toString(hardwareService_.getAppRole())
+                    + ", devId=" + devId
+                    + ", senderId=" + senderId
+                    + ", isSelf=" + juce::String(senderId == instanceId_ ? "true" : "false"));
         
         if (senderId != instanceId_) {
             hardwareService_.handleLEDRequest(devId.toStdString());
@@ -498,6 +815,11 @@ void OSCBridge::oscMessageReceived(const juce::OSCMessage& message) {
     } else if (pattern == "/ECMapper/ping" && message.size() >= 2) {
         auto devId = message[0].getString();
         auto senderId = message[1].getString();
+        logger_.log("OSC received client ping: instanceId=" + instanceId_
+                    + ", role=" + toString(hardwareService_.getAppRole())
+                    + ", devId=" + devId
+                    + ", senderId=" + senderId
+                    + ", isSelf=" + juce::String(senderId == instanceId_ ? "true" : "false"));
         if (senderId != instanceId_) {
             hardwareService_.updateDeviceLastMessageTime(devId.toStdString());
         }

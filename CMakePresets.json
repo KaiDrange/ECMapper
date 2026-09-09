@@ -98,7 +98,7 @@
       "name": "macos-debug-plugin",
       "displayName": "Build VST3 Plugin",
       "configurePreset": "macos-debug",
-      "targets": [ "ECMapper_Plugin" ]
+      "targets": [ "ECMapper_Plugin_VST3" ]
     },
     {
       "name": "macos-release-app",
@@ -110,7 +110,7 @@
       "name": "macos-release-plugin",
       "displayName": "Build VST3 Plugin",
       "configurePreset": "macos-release",
-      "targets": [ "ECMapper_Plugin" ]
+      "targets": [ "ECMapper_Plugin_VST3" ]
     },
     {
       "name": "windows-debug-app",
@@ -122,7 +122,7 @@
       "name": "windows-debug-plugin",
       "displayName": "Build VST3 Plugin",
       "configurePreset": "windows-debug",
-      "targets": [ "ECMapper_Plugin" ]
+      "targets": [ "ECMapper_Plugin_VST3" ]
     },
     {
       "name": "windows-release-app",
@@ -134,7 +134,7 @@
       "name": "windows-release-plugin",
       "displayName": "Build VST3 Plugin",
       "configurePreset": "windows-release",
-      "targets": [ "ECMapper_Plugin" ]
+      "targets": [ "ECMapper_Plugin_VST3" ]
     }
   ]
 }
