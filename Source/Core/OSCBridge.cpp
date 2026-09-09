@@ -85,6 +85,7 @@ juce::CriticalSection OSCBridge::globalClientReceiverLock_;
 std::unique_ptr<juce::OSCReceiver> OSCBridge::globalClientReceiver_;
 int OSCBridge::globalClientReceiverListenerCount_ = 0;
 int OSCBridge::globalClientReceiverPort_ = 0;
+std::vector<OSCBridge*> OSCBridge::globalClientReceiverBridges_;
 
 OSCBridge::OSCBridge(HardwareService& hardwareService,
                     osc::MessageFifo& hardwareToMapperQueue, 
@@ -190,26 +191,40 @@ void OSCBridge::updateDiscoveryReceiver() {
 }
 
 void OSCBridge::disconnectClientReceiver() {
-    const juce::ScopedLock lock(globalClientReceiverLock_);
+    std::vector<OSCBridge*> remainingBridges;
 
-    if (globalClientReceiver_ != nullptr && clientReceiverListening_) {
-        globalClientReceiver_->removeListener(this);
+    {
+        const juce::ScopedLock lock(globalClientReceiverLock_);
+
+        if (globalClientReceiver_ != nullptr && clientReceiverListening_) {
+            globalClientReceiver_->removeListener(this);
+            clientReceiverListening_ = false;
+
+            auto it = std::remove(globalClientReceiverBridges_.begin(), globalClientReceiverBridges_.end(), this);
+            globalClientReceiverBridges_.erase(it, globalClientReceiverBridges_.end());
+
+            if (globalClientReceiverListenerCount_ > 0)
+                --globalClientReceiverListenerCount_;
+
+            remainingBridges = globalClientReceiverBridges_;
+        }
+
+        if (globalClientReceiver_ != nullptr && globalClientReceiverListenerCount_ == 0) {
+            logger_.log("Global Client Receiver disconnecting shared listener on port " + juce::String(globalClientReceiverPort_));
+            globalClientReceiver_->disconnect();
+            globalClientReceiver_ = nullptr;
+            globalClientReceiverPort_ = 0;
+        }
+
         clientReceiverListening_ = false;
-
-        if (globalClientReceiverListenerCount_ > 0)
-            --globalClientReceiverListenerCount_;
+        clientReceiverPort_ = 0;
+        clientReceiverBindFailed_ = false;
     }
 
-    if (globalClientReceiver_ != nullptr && globalClientReceiverListenerCount_ == 0) {
-        logger_.log("Global Client Receiver disconnecting shared listener on port " + juce::String(globalClientReceiverPort_));
-        globalClientReceiver_->disconnect();
-        globalClientReceiver_ = nullptr;
-        globalClientReceiverPort_ = 0;
+    for (auto* bridge : remainingBridges) {
+        if (bridge != nullptr)
+            bridge->refreshKnownRemoteLEDs();
     }
-
-    clientReceiverListening_ = false;
-    clientReceiverPort_ = 0;
-    clientReceiverBindFailed_ = false;
 }
 
 void OSCBridge::updatePollingState() {
@@ -243,6 +258,7 @@ void OSCBridge::updateClientReceiver() {
                     globalClientReceiver_->addListener(this);
                     clientReceiverListening_ = true;
                     ++globalClientReceiverListenerCount_;
+                    globalClientReceiverBridges_.push_back(this);
                     attachedToExistingReceiver = true;
                 }
 
@@ -252,6 +268,9 @@ void OSCBridge::updateClientReceiver() {
                 if (globalClientReceiver_ != nullptr && clientReceiverListening_) {
                     globalClientReceiver_->removeListener(this);
                     clientReceiverListening_ = false;
+
+                    auto it = std::remove(globalClientReceiverBridges_.begin(), globalClientReceiverBridges_.end(), this);
+                    globalClientReceiverBridges_.erase(it, globalClientReceiverBridges_.end());
 
                     if (globalClientReceiverListenerCount_ > 0)
                         --globalClientReceiverListenerCount_;
@@ -270,6 +289,8 @@ void OSCBridge::updateClientReceiver() {
                         globalClientReceiver_ = std::move(receiver);
                         globalClientReceiverPort_ = port;
                         globalClientReceiverListenerCount_ = 1;
+                        globalClientReceiverBridges_.clear();
+                        globalClientReceiverBridges_.push_back(this);
                         clientReceiverListening_ = true;
                         clientReceiverPort_ = port;
                         clientReceiverBindFailed_ = false;
@@ -305,6 +326,22 @@ void OSCBridge::updateClientReceiver() {
     }
 
     updatePollingState();
+}
+
+void OSCBridge::refreshKnownRemoteLEDs() {
+    if (!receiverEnabled_ || hardwareService_.getAppRole() != AppRole::Client)
+        return;
+
+    const auto devices = hardwareService_.getConnectedDevices();
+    for (const auto& device : devices) {
+        if (!device.isRemote)
+            continue;
+
+        logger_.log("OSCBridge requesting LED resync after client handover: instanceId=" + instanceId_
+                    + ", dev=" + juce::String(device.dev)
+                    + ", remoteOriginalDevId=" + juce::String(device.remoteOriginalDevId));
+        hardwareService_.syncLEDs(device.dev);
+    }
 }
 
 void OSCBridge::updateConnections() {

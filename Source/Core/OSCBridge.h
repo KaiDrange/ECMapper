@@ -1,5 +1,6 @@
 #pragma once
 #include <JuceHeader.h>
+#include <vector>
 #include "OSCMessage.h"
 #include "Logger.h"
 
@@ -47,6 +48,7 @@ private:
     void updateClientReceiver();
     void disconnectClientReceiver();
     void updatePollingState();
+    void refreshKnownRemoteLEDs();
 
     HardwareService& hardwareService_;
     osc::MessageFifo& hardwareToMapperQueue_;
@@ -88,6 +90,7 @@ private:
     static std::unique_ptr<juce::OSCReceiver> globalClientReceiver_;
     static int globalClientReceiverListenerCount_;
     static int globalClientReceiverPort_;
+    static std::vector<OSCBridge*> globalClientReceiverBridges_;
 
     void sendOutgoingMessages();
     void sendPing(Connection* conn);
