@@ -15,7 +15,7 @@ std::shared_ptr<ExpressionEmissionPolicy> createExpressionEmissionPolicy(OutputT
         case OutputTransportMode::LegacyMidi:
             return std::make_shared<ExpressionEmissionPolicy>(ExpressionEmissionConfig { 64, 0.0f, true });
         case OutputTransportMode::UmpMidi:
-            return std::make_shared<ExpressionEmissionPolicy>(ExpressionEmissionConfig { 1, 0.0f, false });
+            return std::make_shared<ExpressionEmissionPolicy>(ExpressionEmissionConfig { 32, 0.0f, false });
         case OutputTransportMode::Vst3Direct:
             return std::make_shared<ExpressionEmissionPolicy>(ExpressionEmissionConfig { 1, 0.0f, false });
     }
