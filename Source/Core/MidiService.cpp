@@ -93,14 +93,16 @@ void MidiService::start(juce::AudioProcessorValueTreeState& pluginState, Hardwar
     }
     juce::Logger::writeToLog("MidiService: Initializing MIDI Protocol. MIDI 2.0 Mode: " + juce::String(midi2 ? "Enabled" : "Disabled"));
 
+    const auto outputMode = resolveRuntimeOutputMode(juce::JUCEApplicationBase::isStandaloneApp(), midi2, pluginState_ != nullptr ? SettingsWrapper::getPluginOutputMode(pluginState_->state) : OutputTransportMode::LegacyMidi);
+
     if (midi2)
         protocol_ = std::make_shared<Midi2Protocol>();
     else
         protocol_ = std::make_shared<Midi1Protocol>();
 
     transportSession_ = std::dynamic_pointer_cast<MidiTransportSession>(protocol_);
-    voiceRouter_ = std::make_shared<ChannelVoiceRouter>(midi2 ? OutputTransportMode::UmpMidi : OutputTransportMode::LegacyMidi);
-    expressionPolicy_ = createExpressionEmissionPolicy(midi2 ? OutputTransportMode::UmpMidi : OutputTransportMode::LegacyMidi);
+    voiceRouter_ = std::make_shared<ChannelVoiceRouter>(outputMode);
+    expressionPolicy_ = createExpressionEmissionPolicy(outputMode);
     
     {
         const juce::ScopedLock sl(pendingMessageLock_);
@@ -1442,10 +1444,7 @@ void MidiService::createNoteHold(const ConfigLookup::Key& keyLookup, KeyState* s
 
 OutputTransportMode MidiService::getEffectiveOutputMode() const
 {
-    if (! juce::JUCEApplicationBase::isStandaloneApp() && pluginState_ != nullptr)
-        return SettingsWrapper::getPluginOutputMode(pluginState_->state);
-
-    return isMidi2Mode_ ? OutputTransportMode::UmpMidi : OutputTransportMode::LegacyMidi;
+    return resolveRuntimeOutputMode(juce::JUCEApplicationBase::isStandaloneApp(), isMidi2Mode_, pluginState_ != nullptr ? SettingsWrapper::getPluginOutputMode(pluginState_->state) : OutputTransportMode::LegacyMidi);
 }
 
 void MidiService::addMidiValueMessage(InstrumentType deviceType, int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, int noteNo, PerformanceEventSink& sink, bool isBipolar, ExpressionCurveTarget curveTarget, int eventTime, MidiVoiceRouter* voiceRouter, int outputPort) {

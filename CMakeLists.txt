@@ -206,6 +206,7 @@ juce_add_console_app(Vst3DirectEventQueueCheck
 
 target_sources(Vst3DirectEventQueueCheck PRIVATE
         Source/Utility/Vst3DirectEventQueueCheck.cpp
+        Source/Core/ExpressionEmissionPolicy.cpp
         Source/Core/Vst3DirectEventQueue.cpp
 )
 target_link_libraries(Vst3DirectEventQueueCheck PRIVATE

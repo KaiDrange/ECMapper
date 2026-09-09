@@ -1,5 +1,4 @@
 #include "ExpressionEmissionPolicy.h"
-
 namespace ecm {
 
 ExpressionEmissionPolicy::ExpressionEmissionPolicy(ExpressionEmissionConfig config)
@@ -21,6 +20,14 @@ std::shared_ptr<ExpressionEmissionPolicy> createExpressionEmissionPolicy(OutputT
     }
 
     return std::make_shared<ExpressionEmissionPolicy>(ExpressionEmissionConfig {});
+}
+
+OutputTransportMode resolveRuntimeOutputMode(const bool isStandaloneApp, const bool midi2ModeEnabled, const OutputTransportMode pluginOutputMode)
+{
+    if (! isStandaloneApp)
+        return pluginOutputMode;
+
+    return midi2ModeEnabled ? OutputTransportMode::UmpMidi : OutputTransportMode::LegacyMidi;
 }
 
 }

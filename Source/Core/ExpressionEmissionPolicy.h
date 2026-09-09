@@ -43,6 +43,8 @@ inline bool shouldUsePerNoteExpressionEvent(OutputTransportMode mode, bool remot
     return noteNumber != -1 && usesIndependentPerNoteExpression(mode, remoteSupportsPerNote);
 }
 
+OutputTransportMode resolveRuntimeOutputMode(bool isStandaloneApp, bool midi2ModeEnabled, OutputTransportMode pluginOutputMode);
+
 std::shared_ptr<ExpressionEmissionPolicy> createExpressionEmissionPolicy(OutputTransportMode mode);
 
 }
