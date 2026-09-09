@@ -33,49 +33,56 @@ struct PerformanceEvent {
     float velocity = 0.0f;
     bool perNote = false;
     int sampleOffset = 0;
+    int outputPort = 0;
 
-    static PerformanceEvent noteOn(int channel, int noteNumber, float velocity, int sampleOffset) {
-        return { PerformanceEventKind::NoteOn, channel, noteNumber, -1, -1, 0, 0.0f, velocity, false, sampleOffset };
+    PerformanceEvent withOutputPort(int newOutputPort) const {
+        auto copy = *this;
+        copy.outputPort = newOutputPort;
+        return copy;
     }
 
-    static PerformanceEvent noteOff(int channel, int noteNumber, float velocity, int sampleOffset) {
-        return { PerformanceEventKind::NoteOff, channel, noteNumber, -1, -1, 0, 0.0f, velocity, false, sampleOffset };
+    static PerformanceEvent noteOn(int channel, int noteNumber, float velocity, int sampleOffset, int outputPort = 0) {
+        return { PerformanceEventKind::NoteOn, channel, noteNumber, -1, -1, 0, 0.0f, velocity, false, sampleOffset, outputPort };
     }
 
-    static PerformanceEvent pitchBend(int channel, int noteNumber, float value, bool perNote, int sampleOffset) {
-        return { PerformanceEventKind::PitchBend, channel, noteNumber, -1, -1, 0, value, 0.0f, perNote, sampleOffset };
+    static PerformanceEvent noteOff(int channel, int noteNumber, float velocity, int sampleOffset, int outputPort = 0) {
+        return { PerformanceEventKind::NoteOff, channel, noteNumber, -1, -1, 0, 0.0f, velocity, false, sampleOffset, outputPort };
     }
 
-    static PerformanceEvent channelPressure(int channel, int noteNumber, float value, bool perNote, int sampleOffset) {
-        return { PerformanceEventKind::ChannelPressure, channel, noteNumber, -1, -1, 0, value, 0.0f, perNote, sampleOffset };
+    static PerformanceEvent pitchBend(int channel, int noteNumber, float value, bool perNote, int sampleOffset, int outputPort = 0) {
+        return { PerformanceEventKind::PitchBend, channel, noteNumber, -1, -1, 0, value, 0.0f, perNote, sampleOffset, outputPort };
     }
 
-    static PerformanceEvent polyAftertouch(int channel, int noteNumber, float value, int sampleOffset) {
-        return { PerformanceEventKind::PolyAftertouch, channel, noteNumber, -1, -1, 0, value, 0.0f, true, sampleOffset };
+    static PerformanceEvent channelPressure(int channel, int noteNumber, float value, bool perNote, int sampleOffset, int outputPort = 0) {
+        return { PerformanceEventKind::ChannelPressure, channel, noteNumber, -1, -1, 0, value, 0.0f, perNote, sampleOffset, outputPort };
     }
 
-    static PerformanceEvent controllerChange(int channel, int noteNumber, int controllerNumber, float value, bool perNote, int sampleOffset) {
-        return { PerformanceEventKind::Controller, channel, noteNumber, -1, controllerNumber, 0, value, 0.0f, perNote, sampleOffset };
+    static PerformanceEvent polyAftertouch(int channel, int noteNumber, float value, int sampleOffset, int outputPort = 0) {
+        return { PerformanceEventKind::PolyAftertouch, channel, noteNumber, -1, -1, 0, value, 0.0f, true, sampleOffset, outputPort };
     }
 
-    static PerformanceEvent programChange(int channel, int program, int sampleOffset) {
-        return { PerformanceEventKind::ProgramChange, channel, -1, -1, -1, program, 0.0f, 0.0f, false, sampleOffset };
+    static PerformanceEvent controllerChange(int channel, int noteNumber, int controllerNumber, float value, bool perNote, int sampleOffset, int outputPort = 0) {
+        return { PerformanceEventKind::Controller, channel, noteNumber, -1, controllerNumber, 0, value, 0.0f, perNote, sampleOffset, outputPort };
     }
 
-    static PerformanceEvent allNotesOff(int channel, int sampleOffset) {
-        return { PerformanceEventKind::AllNotesOff, channel, -1, -1, -1, 0, 0.0f, 0.0f, false, sampleOffset };
+    static PerformanceEvent programChange(int channel, int program, int sampleOffset, int outputPort = 0) {
+        return { PerformanceEventKind::ProgramChange, channel, -1, -1, -1, program, 0.0f, 0.0f, false, sampleOffset, outputPort };
     }
 
-    static PerformanceEvent midiStart(int sampleOffset) {
-        return { PerformanceEventKind::MidiStart, 1, -1, -1, -1, 0, 0.0f, 0.0f, false, sampleOffset };
+    static PerformanceEvent allNotesOff(int channel, int sampleOffset, int outputPort = 0) {
+        return { PerformanceEventKind::AllNotesOff, channel, -1, -1, -1, 0, 0.0f, 0.0f, false, sampleOffset, outputPort };
     }
 
-    static PerformanceEvent midiStop(int sampleOffset) {
-        return { PerformanceEventKind::MidiStop, 1, -1, -1, -1, 0, 0.0f, 0.0f, false, sampleOffset };
+    static PerformanceEvent midiStart(int sampleOffset, int outputPort = 0) {
+        return { PerformanceEventKind::MidiStart, 1, -1, -1, -1, 0, 0.0f, 0.0f, false, sampleOffset, outputPort };
     }
 
-    static PerformanceEvent midiContinue(int sampleOffset) {
-        return { PerformanceEventKind::MidiContinue, 1, -1, -1, -1, 0, 0.0f, 0.0f, false, sampleOffset };
+    static PerformanceEvent midiStop(int sampleOffset, int outputPort = 0) {
+        return { PerformanceEventKind::MidiStop, 1, -1, -1, -1, 0, 0.0f, 0.0f, false, sampleOffset, outputPort };
+    }
+
+    static PerformanceEvent midiContinue(int sampleOffset, int outputPort = 0) {
+        return { PerformanceEventKind::MidiContinue, 1, -1, -1, -1, 0, 0.0f, 0.0f, false, sampleOffset, outputPort };
     }
 };
 

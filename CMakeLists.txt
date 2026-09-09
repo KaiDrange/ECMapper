@@ -157,6 +157,7 @@ if(ECMAPPER_BUILD_PLUGIN)
 
     target_link_libraries(ECMapper_Plugin PRIVATE ${COMMON_LIBS})
     target_compile_definitions(ECMapper_Plugin PRIVATE JUCE_VST3_CAN_REPLACE_VST2=0)
+    target_compile_definitions(ECMapper_Plugin PRIVATE ECMAPPER_VST3_DIRECT_OUTPUT_BUS_COUNT=3)
     target_compile_definitions(ECMapper_Plugin PRIVATE ECMAPPER_ENABLE_HARDWARE=$<BOOL:${ECMAPPER_ENABLE_HARDWARE}>)
     target_include_directories(ECMapper_Plugin PRIVATE Source)
     juce_generate_juce_header(ECMapper_Plugin)

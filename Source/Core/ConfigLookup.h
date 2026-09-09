@@ -28,6 +28,7 @@ public:
 
     struct Key {
         LayoutWrapper::KeyId keyId;
+        Zone zone = Zone::NoZone;
         EigenharpKeyType keyType = EigenharpKeyType::Normal;
         KeyMappingType mapType = KeyMappingType::None;
         std::array<int, 4> notes = { -1, -1, -1, -1 };
@@ -50,6 +51,7 @@ public:
         ZoneWrapper::MidiValue midiValue;
         int channel = 0;
         float pbRange = 0.0f;
+        int outputPort = 0;
     };
     
     struct Strip {
@@ -57,6 +59,7 @@ public:
         ZoneWrapper::MidiValue relMidiValue;
         int channel = 0;
         float pbRange = 0.0f;
+        int outputPort = 0;
     };
 
     Key keys[3][120];

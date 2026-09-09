@@ -24,6 +24,7 @@ struct Vst3DirectEvent {
     Vst3DirectEventKind kind = Vst3DirectEventKind::LegacyCC;
     Vst3NoteExpressionType expressionType = Vst3NoteExpressionType::Expression;
     int sampleOffset = 0;
+    int busIndex = 0;
     int channel = 0;
     int noteNumber = -1;
     int noteId = -1;

@@ -1231,7 +1231,7 @@ bool ecmapperAppendDirectVst3Events(juce::AudioProcessor& processor, Steinberg::
     for (const auto& sourceEvent : pendingEvents)
     {
         Event event {};
-        event.busIndex = 0;
+        event.busIndex = sourceEvent.busIndex;
         event.sampleOffset = sourceEvent.sampleOffset;
         event.ppqPosition = 0.0;
         event.flags = 0;

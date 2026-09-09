@@ -60,6 +60,7 @@ void Vst3DirectPerformanceEventSink::pushEvent(const PerformanceEvent& event)
 {
     Vst3DirectEvent directEvent;
     directEvent.sampleOffset = event.sampleOffset;
+    directEvent.busIndex = juce::jlimit(0, 2, event.outputPort);
     directEvent.channel = juce::jlimit(0, 15, event.channel - 1);
     directEvent.noteNumber = event.noteNumber;
     directEvent.value = event.kind == PerformanceEventKind::NoteOff ? event.velocity : event.value;

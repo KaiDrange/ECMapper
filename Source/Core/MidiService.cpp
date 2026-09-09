@@ -8,6 +8,24 @@
 
 namespace ecm {
 
+namespace {
+
+int zoneToDirectOutputPort(const Zone zone)
+{
+    switch (zone) {
+        case Zone::Zone1: return 0;
+        case Zone::Zone2: return 1;
+        case Zone::Zone3: return 2;
+        case Zone::NoZone:
+        case Zone::AllZones:
+            break;
+    }
+
+    return 0;
+}
+
+}
+
 MidiService::MidiService(ConfigLookup (&configLookups)[3], juce::CriticalSection& stateLock)
     : configLookups_(configLookups), stateLock_(stateLock) {
 }
@@ -1167,13 +1185,13 @@ void MidiService::createBreath(int deviceIndex, const ConfigLookup& keyLookup, P
     }
 
     for (int z = 0; z < 3; ++z) {
-        addMidiValueMessage(static_cast<InstrumentType>(deviceIndex + 1), keyLookup.breath[z].channel, val * 3.0f, keyLookup.breath[z].midiValue, keyLookup.breath[z].pbRange, 0, sink, false, ExpressionCurveTarget::Breath, eventTime, voiceRouter);
+        addMidiValueMessage(static_cast<InstrumentType>(deviceIndex + 1), keyLookup.breath[z].channel, val * 3.0f, keyLookup.breath[z].midiValue, keyLookup.breath[z].pbRange, 0, sink, false, ExpressionCurveTarget::Breath, eventTime, voiceRouter, keyLookup.breath[z].outputPort);
     }
 }
 
 void MidiService::createStripAbsolute(int deviceIndex, int stripIndex, int zoneIndex, const ConfigLookup& keyLookup, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter) {
     auto& strip = (stripIndex == 0) ? keyLookup.strip1[zoneIndex] : keyLookup.strip2[zoneIndex];
-    addStripValueMessage(static_cast<InstrumentType>(deviceIndex + 1), strip.channel, ehStrips_[stripIndex][deviceIndex], strip.absMidiValue, strip.pbRange, sink, false, eventTime, voiceRouter);
+    addStripValueMessage(static_cast<InstrumentType>(deviceIndex + 1), strip.channel, ehStrips_[stripIndex][deviceIndex], strip.absMidiValue, strip.pbRange, sink, false, eventTime, voiceRouter, strip.outputPort);
 }
 
 void MidiService::createStripRelative(int deviceIndex, int stripIndex, int zoneIndex, const ConfigLookup& keyLookup, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter) {
@@ -1185,7 +1203,7 @@ void MidiService::createStripRelative(int deviceIndex, int stripIndex, int zoneI
         currentStripPBperChannel_[strip.channel > 0 ? strip.channel - 1 : 0] = 0;
     }
 
-    addStripValueMessage(static_cast<InstrumentType>(deviceIndex + 1), strip.channel, relValue, strip.relMidiValue, strip.pbRange, sink, true, eventTime, voiceRouter);
+    addStripValueMessage(static_cast<InstrumentType>(deviceIndex + 1), strip.channel, relValue, strip.relMidiValue, strip.pbRange, sink, true, eventTime, voiceRouter, strip.outputPort);
 }
 
 void MidiService::createNoteOn(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter) {
@@ -1214,7 +1232,7 @@ void MidiService::createNoteOn(const ConfigLookup::Key& keyLookup, KeyState* sta
         int noteNo = state->activeNotes[i];
         if (noteNo > -1) {
             if (countPlayingNoteMatches(state->midiChannel, noteNo) == 0) {
-                sink.pushEvent(PerformanceEvent::noteOn(state->midiChannel, noteNo, vel, eventTime));
+                sink.pushEvent(PerformanceEvent::noteOn(state->midiChannel, noteNo, vel, eventTime).withOutputPort(zoneToDirectOutputPort(keyLookup.zone)));
                 juce::Logger::writeToLog("MidiService: Note On - Chan: " + juce::String(state->midiChannel) + 
                                          ", Note: " + juce::String(noteNo) + 
                                          ", Velocity: " + juce::String(vel, 3));
@@ -1238,7 +1256,7 @@ void MidiService::createNoteOff(const ConfigLookup::Key& keyLookup, KeyState* st
         int noteToTurnOff = state->activeNotes[i];
         if (noteToTurnOff > -1) {
             if (countPlayingNoteMatches(channel, noteToTurnOff) < 2) {
-                sink.pushEvent(PerformanceEvent::noteOff(channel, noteToTurnOff, vel, eventTime));
+                sink.pushEvent(PerformanceEvent::noteOff(channel, noteToTurnOff, vel, eventTime).withOutputPort(zoneToDirectOutputPort(keyLookup.zone)));
                 juce::Logger::writeToLog("MidiService: Note Off - Chan: " + juce::String(channel) + 
                                          ", Note: " + juce::String(noteToTurnOff) + 
                                          ", Velocity: " + juce::String(vel, 3));
@@ -1249,9 +1267,9 @@ void MidiService::createNoteOff(const ConfigLookup::Key& keyLookup, KeyState* st
     }
     
     if (channel > 0 && channel <= 16 && chanNotePri_[channel - 1].empty()) {
-        addMidiValueMessage(keyLookup.keyId.deviceType, channel, 0, keyLookup.pressure, keyLookup.pbRange, keyLookup.notes[0], sink, false, ExpressionCurveTarget::Pressure, eventTime, voiceRouter);
-        addMidiValueMessage(keyLookup.keyId.deviceType, channel, 0, keyLookup.roll, keyLookup.pbRange, keyLookup.notes[0], sink, true, ExpressionCurveTarget::Roll, eventTime, voiceRouter);
-        addMidiValueMessage(keyLookup.keyId.deviceType, channel, 0, keyLookup.yaw, keyLookup.pbRange, keyLookup.notes[0], sink, true, ExpressionCurveTarget::Yaw, eventTime, voiceRouter);
+        addMidiValueMessage(keyLookup.keyId.deviceType, channel, 0, keyLookup.pressure, keyLookup.pbRange, keyLookup.notes[0], sink, false, ExpressionCurveTarget::Pressure, eventTime, voiceRouter, zoneToDirectOutputPort(keyLookup.zone));
+        addMidiValueMessage(keyLookup.keyId.deviceType, channel, 0, keyLookup.roll, keyLookup.pbRange, keyLookup.notes[0], sink, true, ExpressionCurveTarget::Roll, eventTime, voiceRouter, zoneToDirectOutputPort(keyLookup.zone));
+        addMidiValueMessage(keyLookup.keyId.deviceType, channel, 0, keyLookup.yaw, keyLookup.pbRange, keyLookup.notes[0], sink, true, ExpressionCurveTarget::Yaw, eventTime, voiceRouter, zoneToDirectOutputPort(keyLookup.zone));
     }
     state->status = KeyStatus::Off;
     state->messageCount = 0;
@@ -1264,15 +1282,15 @@ void MidiService::createMidiMsgOn(const ConfigLookup::Key& keyLookup, KeyState* 
                           (keyLookup.output == MidiChannelType::MPE_High) ? 16 : static_cast<int>(keyLookup.output));
 
     if (keyLookup.msgType == 4) {
-        createAllNotesOff(sink, eventTime);
+        createAllNotesOff(sink, eventTime, zoneToDirectOutputPort(keyLookup.zone));
     } else if (keyLookup.msgType == 1) {
-        sink.pushEvent(PerformanceEvent::controllerChange(state->midiChannel, -1, keyLookup.cmdCC, keyLookup.cmdOn / 127.0f, false, eventTime));
+        sink.pushEvent(PerformanceEvent::controllerChange(state->midiChannel, -1, keyLookup.cmdCC, keyLookup.cmdOn / 127.0f, false, eventTime).withOutputPort(zoneToDirectOutputPort(keyLookup.zone)));
     } else if (keyLookup.msgType == 2) {
-        sink.pushEvent(PerformanceEvent::programChange(state->midiChannel, keyLookup.cmdOn, eventTime));
+        sink.pushEvent(PerformanceEvent::programChange(state->midiChannel, keyLookup.cmdOn, eventTime).withOutputPort(zoneToDirectOutputPort(keyLookup.zone)));
     } else if (keyLookup.msgType == 3) {
-        if (keyLookup.cmdOn == 1) sink.pushEvent(PerformanceEvent::midiStart(eventTime));
-        else if (keyLookup.cmdOn == 2) sink.pushEvent(PerformanceEvent::midiStop(eventTime));
-        else if (keyLookup.cmdOn == 3) sink.pushEvent(PerformanceEvent::midiContinue(eventTime));
+        if (keyLookup.cmdOn == 1) sink.pushEvent(PerformanceEvent::midiStart(eventTime).withOutputPort(zoneToDirectOutputPort(keyLookup.zone)));
+        else if (keyLookup.cmdOn == 2) sink.pushEvent(PerformanceEvent::midiStop(eventTime).withOutputPort(zoneToDirectOutputPort(keyLookup.zone)));
+        else if (keyLookup.cmdOn == 3) sink.pushEvent(PerformanceEvent::midiContinue(eventTime).withOutputPort(zoneToDirectOutputPort(keyLookup.zone)));
     }
     
     state->status = KeyStatus::Active;
@@ -1290,15 +1308,15 @@ void MidiService::createMidiMsgOff(const ConfigLookup::Key& keyLookup, KeyState*
     juce::ignoreUnused(voiceRouter);
     if (keyLookup.cmdType != 3) { // Not Trigger
         if (keyLookup.msgType == 4) {
-            createAllNotesOff(sink, eventTime);
+            createAllNotesOff(sink, eventTime, zoneToDirectOutputPort(keyLookup.zone));
         } else if (keyLookup.msgType == 1) {
-            sink.pushEvent(PerformanceEvent::controllerChange(state->midiChannel, -1, keyLookup.cmdCC, keyLookup.cmdOff / 127.0f, false, eventTime));
+            sink.pushEvent(PerformanceEvent::controllerChange(state->midiChannel, -1, keyLookup.cmdCC, keyLookup.cmdOff / 127.0f, false, eventTime).withOutputPort(zoneToDirectOutputPort(keyLookup.zone)));
         } else if (keyLookup.msgType == 2) {
-            sink.pushEvent(PerformanceEvent::programChange(state->midiChannel, keyLookup.cmdOff, eventTime));
+            sink.pushEvent(PerformanceEvent::programChange(state->midiChannel, keyLookup.cmdOff, eventTime).withOutputPort(zoneToDirectOutputPort(keyLookup.zone)));
         } else if (keyLookup.msgType == 3) {
-            if (keyLookup.cmdOff == 1) sink.pushEvent(PerformanceEvent::midiStart(eventTime));
-            else if (keyLookup.cmdOff == 2) sink.pushEvent(PerformanceEvent::midiStop(eventTime));
-            else if (keyLookup.cmdOff == 3) sink.pushEvent(PerformanceEvent::midiContinue(eventTime));
+            if (keyLookup.cmdOff == 1) sink.pushEvent(PerformanceEvent::midiStart(eventTime).withOutputPort(zoneToDirectOutputPort(keyLookup.zone)));
+            else if (keyLookup.cmdOff == 2) sink.pushEvent(PerformanceEvent::midiStop(eventTime).withOutputPort(zoneToDirectOutputPort(keyLookup.zone)));
+            else if (keyLookup.cmdOff == 3) sink.pushEvent(PerformanceEvent::midiContinue(eventTime).withOutputPort(zoneToDirectOutputPort(keyLookup.zone)));
         }
     }
     
@@ -1314,10 +1332,15 @@ void MidiService::createMidiMsgOff(const ConfigLookup::Key& keyLookup, KeyState*
     }
 }
 
-void MidiService::createAllNotesOff(PerformanceEventSink& sink, int eventTime) {
+void MidiService::createAllNotesOff(PerformanceEventSink& sink, int eventTime, int outputPort) {
     juce::Logger::writeToLog("MidiService: Sending All Notes Off to all channels.");
     for (int i = 1; i <= 16; i++) {
-        sink.pushEvent(PerformanceEvent::allNotesOff(i, eventTime));
+        if (outputPort < 0) {
+            for (int port = 0; port < 3; ++port)
+                sink.pushEvent(PerformanceEvent::allNotesOff(i, eventTime).withOutputPort(port));
+        } else {
+            sink.pushEvent(PerformanceEvent::allNotesOff(i, eventTime).withOutputPort(outputPort));
+        }
         chanNotePri_[i - 1].clear();
     }
     playingNotes_.clear();
@@ -1365,7 +1388,7 @@ void MidiService::queueTransposeChangeFlush(InstrumentType deviceType, Zone zone
                     const int noteNumber = keyState.activeNotes[i];
                     if (noteNumber > -1) {
                         if (countPlayingNoteMatches(channel, noteNumber) < 2) {
-                            sink.pushEvent(PerformanceEvent::noteOff(channel, noteNumber, vel, 0));
+                            sink.pushEvent(PerformanceEvent::noteOff(channel, noteNumber, vel, 0).withOutputPort(zoneToDirectOutputPort(zone)));
                             juce::Logger::writeToLog("MidiService: Note Off (Flush) - Chan: " + juce::String(channel) + 
                                                      ", Note: " + juce::String(noteNumber));
                         }
@@ -1383,8 +1406,8 @@ void MidiService::queueTransposeChangeFlush(InstrumentType deviceType, Zone zone
                     if (chanNotePri_[channel - 1].empty()) {
                         currentKeyPBperChannel_[channel - 1] = 0.0f;
                         currentStripPBperChannel_[channel - 1] = 0.0f;
-                        sink.pushEvent(PerformanceEvent::channelPressure(channel, -1, 0.0f, false, 0));
-                        sink.pushEvent(PerformanceEvent::pitchBend(channel, -1, 0.5f, false, 0));
+                        sink.pushEvent(PerformanceEvent::channelPressure(channel, -1, 0.0f, false, 0).withOutputPort(zoneToDirectOutputPort(zone)));
+                        sink.pushEvent(PerformanceEvent::pitchBend(channel, -1, 0.5f, false, 0).withOutputPort(zoneToDirectOutputPort(zone)));
                     }
                 }
             }
@@ -1410,9 +1433,9 @@ void MidiService::createNoteHold(const ConfigLookup::Key& keyLookup, KeyState* s
     const auto allowsIndependentPerNote = usesIndependentPerNoteExpression(outputMode, remoteSupportsPerNote_);
 
     if (channel > 0 && channel <= 16 && (allowsIndependentPerNote || chanNotePri_[channel - 1].empty() || chanNotePri_[channel - 1].front() == keyLookup.keyId)) {
-        addMidiValueMessage(keyLookup.keyId.deviceType, channel, state->ehRoll, keyLookup.roll, keyLookup.pbRange, state->activeNotes[0], sink, true, ExpressionCurveTarget::Roll, eventTime, voiceRouter);
-        addMidiValueMessage(keyLookup.keyId.deviceType, channel, state->ehYaw, keyLookup.yaw, keyLookup.pbRange, state->activeNotes[0], sink, true, ExpressionCurveTarget::Yaw, eventTime, voiceRouter);
-        addMidiValueMessage(keyLookup.keyId.deviceType, channel, state->ehPressureHistory.back(), keyLookup.pressure, keyLookup.pbRange, state->activeNotes[0], sink, false, ExpressionCurveTarget::Pressure, eventTime, voiceRouter);
+        addMidiValueMessage(keyLookup.keyId.deviceType, channel, state->ehRoll, keyLookup.roll, keyLookup.pbRange, state->activeNotes[0], sink, true, ExpressionCurveTarget::Roll, eventTime, voiceRouter, zoneToDirectOutputPort(keyLookup.zone));
+        addMidiValueMessage(keyLookup.keyId.deviceType, channel, state->ehYaw, keyLookup.yaw, keyLookup.pbRange, state->activeNotes[0], sink, true, ExpressionCurveTarget::Yaw, eventTime, voiceRouter, zoneToDirectOutputPort(keyLookup.zone));
+        addMidiValueMessage(keyLookup.keyId.deviceType, channel, state->ehPressureHistory.back(), keyLookup.pressure, keyLookup.pbRange, state->activeNotes[0], sink, false, ExpressionCurveTarget::Pressure, eventTime, voiceRouter, zoneToDirectOutputPort(keyLookup.zone));
     }
     state->messageCount = 0;
 }
@@ -1425,7 +1448,7 @@ OutputTransportMode MidiService::getEffectiveOutputMode() const
     return isMidi2Mode_ ? OutputTransportMode::UmpMidi : OutputTransportMode::LegacyMidi;
 }
 
-void MidiService::addMidiValueMessage(InstrumentType deviceType, int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, int noteNo, PerformanceEventSink& sink, bool isBipolar, ExpressionCurveTarget curveTarget, int eventTime, MidiVoiceRouter* voiceRouter) {
+void MidiService::addMidiValueMessage(InstrumentType deviceType, int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, int noteNo, PerformanceEventSink& sink, bool isBipolar, ExpressionCurveTarget curveTarget, int eventTime, MidiVoiceRouter* voiceRouter, int outputPort) {
     if (midiValue.valueType == MidiValueType::Off) return;
     
     int resolvedChannel = channel;
@@ -1455,22 +1478,22 @@ void MidiService::addMidiValueMessage(InstrumentType deviceType, int channel, fl
         
         if (useNativePerNote) {
             float protocolValue = notePB * 0.5f + 0.5f;
-            sink.pushEvent(PerformanceEvent::pitchBend(resolvedChannel, noteNo, protocolValue, true, eventTime));
+            sink.pushEvent(PerformanceEvent::pitchBend(resolvedChannel, noteNo, protocolValue, true, eventTime).withOutputPort(outputPort));
         } else {
             currentKeyPBperChannel_[resolvedChannel - 1] = notePB;
             float totalPB = std::clamp(currentKeyPBperChannel_[resolvedChannel - 1] + currentStripPBperChannel_[resolvedChannel - 1], -1.0f, 1.0f);
             float protocolValue = totalPB * 0.5f + 0.5f;
-            sink.pushEvent(PerformanceEvent::pitchBend(resolvedChannel, -1, protocolValue, false, eventTime));
+            sink.pushEvent(PerformanceEvent::pitchBend(resolvedChannel, -1, protocolValue, false, eventTime).withOutputPort(outputPort));
         }
     } else if (midiValue.valueType == MidiValueType::ChannelAftertouch) {
         float val = isBipolar ? (normalized * 0.5f + 0.5f) : normalized;
-        sink.pushEvent(PerformanceEvent::channelPressure(resolvedChannel, useNativePerNote ? noteNo : -1, val, useNativePerNote, eventTime));
+        sink.pushEvent(PerformanceEvent::channelPressure(resolvedChannel, useNativePerNote ? noteNo : -1, val, useNativePerNote, eventTime).withOutputPort(outputPort));
     } else if (midiValue.valueType == MidiValueType::PolyAftertouch) {
         float val = isBipolar ? (normalized * 0.5f + 0.5f) : normalized;
-        sink.pushEvent(PerformanceEvent::polyAftertouch(resolvedChannel, noteNo, val, eventTime));
+        sink.pushEvent(PerformanceEvent::polyAftertouch(resolvedChannel, noteNo, val, eventTime).withOutputPort(outputPort));
     } else if (midiValue.valueType == MidiValueType::CC) {
         float val = isBipolar ? (normalized * 0.5f + 0.5f) : normalized;
-        sink.pushEvent(PerformanceEvent::controllerChange(resolvedChannel, useNativePerNote ? noteNo : -1, midiValue.ccNo, val, useNativePerNote, eventTime));
+        sink.pushEvent(PerformanceEvent::controllerChange(resolvedChannel, useNativePerNote ? noteNo : -1, midiValue.ccNo, val, useNativePerNote, eventTime).withOutputPort(outputPort));
     }
 }
 
@@ -1544,7 +1567,7 @@ std::vector<MidiService::VisualMarker> MidiService::getVisualMarkers(InstrumentT
     return markers;
 }
 
-void MidiService::addStripValueMessage(InstrumentType deviceType, int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, PerformanceEventSink& sink, bool isBipolar, int eventTime, MidiVoiceRouter* voiceRouter) {
+void MidiService::addStripValueMessage(InstrumentType deviceType, int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, PerformanceEventSink& sink, bool isBipolar, int eventTime, MidiVoiceRouter* voiceRouter, int outputPort) {
     if (midiValue.valueType == MidiValueType::Off) return;
     
     int resolvedChannel = channel;
@@ -1573,13 +1596,13 @@ void MidiService::addStripValueMessage(InstrumentType deviceType, int channel, f
             ", currentStripPB=" + juce::String(currentStripPBperChannel_[resolvedChannel - 1]) + 
             ", totalPB=" + juce::String(totalPB) + ", protocolValue=" + juce::String(protocolValue));
 
-        sink.pushEvent(PerformanceEvent::pitchBend(resolvedChannel, -1, protocolValue, false, eventTime));
+        sink.pushEvent(PerformanceEvent::pitchBend(resolvedChannel, -1, protocolValue, false, eventTime).withOutputPort(outputPort));
     } else {
         float val = isBipolar ? (normalized * 0.5f + 0.5f) : normalized;
         if (midiValue.valueType == MidiValueType::ChannelAftertouch)
-            sink.pushEvent(PerformanceEvent::channelPressure(resolvedChannel, -1, val, false, eventTime));
+            sink.pushEvent(PerformanceEvent::channelPressure(resolvedChannel, -1, val, false, eventTime).withOutputPort(outputPort));
         else if (midiValue.valueType == MidiValueType::CC)
-            sink.pushEvent(PerformanceEvent::controllerChange(resolvedChannel, -1, midiValue.ccNo, val, false, eventTime));
+            sink.pushEvent(PerformanceEvent::controllerChange(resolvedChannel, -1, midiValue.ccNo, val, false, eventTime).withOutputPort(outputPort));
     }
 }
 

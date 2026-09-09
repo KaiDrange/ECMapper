@@ -130,6 +130,8 @@ void ConfigLookup::updateKeyUnlocked(LayoutWrapper::KeyId keyId) {
             return maxPb > 0.0f ? std::min(pb / maxPb, 1.0f) : 0.0f;
         };
 
+        key.zone = layoutKey.zone;
+
         bool midi2 = SettingsWrapper::getMidi2Mode(pluginState.state);
         float maxPb = 1.0f;
         
@@ -229,9 +231,12 @@ void ConfigLookup::updateBreathUnlocked(Zone zone) {
 
     if (!ZoneWrapper::getEnabled(deviceType, zone, pluginState.state)) {
         breath[zoneIdx].channel = 0;
+        breath[zoneIdx].outputPort = zoneIdx;
         breath[zoneIdx].midiValue.valueType = MidiValueType::Off;
         return;
     }
+
+    breath[zoneIdx].outputPort = zoneIdx;
     
     auto midiChannelType = ZoneWrapper::getMidiChannelType(deviceType, zone, pluginState.state);
     if (midiChannelType == MidiChannelType::MPE_Low)
@@ -274,12 +279,17 @@ void ConfigLookup::updateStripsUnlocked(Zone zone) {
     if (!ZoneWrapper::getEnabled(deviceType, zone, pluginState.state)) {
         strip1[zoneIdx].channel = 0;
         strip2[zoneIdx].channel = 0;
+        strip1[zoneIdx].outputPort = zoneIdx;
+        strip2[zoneIdx].outputPort = zoneIdx;
         strip1[zoneIdx].absMidiValue.valueType = MidiValueType::Off;
         strip1[zoneIdx].relMidiValue.valueType = MidiValueType::Off;
         strip2[zoneIdx].absMidiValue.valueType = MidiValueType::Off;
         strip2[zoneIdx].relMidiValue.valueType = MidiValueType::Off;
         return;
     }
+
+    strip1[zoneIdx].outputPort = zoneIdx;
+    strip2[zoneIdx].outputPort = zoneIdx;
     
     auto midiChannelType = ZoneWrapper::getMidiChannelType(deviceType, zone, pluginState.state);
     int channel = 0;
