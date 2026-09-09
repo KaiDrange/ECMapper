@@ -5,6 +5,17 @@
 #include "UI/PresetBrowserComponent.h"
 #include "UI/CalibrationDialogComponent.h"
 
+namespace {
+
+bool isECMapperManagedOutputName(const juce::String& name)
+{
+    return name.contains("ECMapper Virtual Out")
+        || name.contains("ECMapper Direct")
+        || name.contains("ECMapper Zone ");
+}
+
+}
+
 StandaloneAppMainWindow::StandaloneAppMainWindow(const juce::String& name)
     : DocumentWindow(name,
                      ecm::Style::background(),
@@ -127,7 +138,7 @@ void StandaloneAppMainWindow::updateMidiOutput()
     {
         for (auto& device : availableOutputs)
         {
-            if (device.name.contains("ECMapper Virtual Out") || device.name.contains("ECMapper Direct"))
+            if (isECMapperManagedOutputName(device.name))
             {
                 juce::Logger::writeToLog("ECMapper: Found virtual output in list ('" + device.name + "'), selecting it as default.");
                 deviceManager.setDefaultMidiOutputDevice(device.identifier);

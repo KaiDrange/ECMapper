@@ -5,6 +5,7 @@
 #include "BezierCurve.h"
 #include "OSCMessage.h"
 #include <atomic>
+#include <array>
 #include <deque>
 #include <memory>
 #include <vector>
@@ -210,17 +211,20 @@ private:
     };
     std::vector<MidiNote> playingNotes_;
     
+    static constexpr int kStandaloneUmpPortCount = 3;
     juce::CriticalSection pendingMessageLock_;
     juce::MidiBuffer pendingMidiBuffer_;
+    std::array<juce::MidiBuffer, kStandaloneUmpPortCount> pendingDirectUmpBuffers_;
 
     std::optional<juce::universal_midi_packets::Session> umpSession_;
     juce::universal_midi_packets::Output umpOutput_;
     juce::universal_midi_packets::Input umpInput_;
     juce::universal_midi_packets::Output directUmpOutput_;
+    std::array<juce::universal_midi_packets::Output, kStandaloneUmpPortCount> directUmpOutputs_;
     std::optional<juce::universal_midi_packets::LegacyVirtualOutput> virtualUmpOutput_;
     std::optional<juce::universal_midi_packets::LegacyVirtualInput> virtualUmpInputMirror_;
-    juce::universal_midi_packets::VirtualEndpoint virtualEndpoint_;
-    juce::universal_midi_packets::Input virtualUmpInput_;
+    std::array<juce::universal_midi_packets::VirtualEndpoint, kStandaloneUmpPortCount> virtualEndpoints_;
+    std::array<juce::universal_midi_packets::Input, kStandaloneUmpPortCount> virtualUmpInputs_;
     std::unique_ptr<juce::InterProcessLock> virtualMidiLock_;
     juce::CriticalSection umpOutputLock_;
     std::atomic<bool> isFirstInstance_{ false };
