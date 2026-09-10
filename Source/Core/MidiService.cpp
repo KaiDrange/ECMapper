@@ -47,6 +47,12 @@ void MidiService::start(juce::AudioProcessorValueTreeState& pluginState, Hardwar
             for (int k = 0; k < 120; ++k) {
                 keyStates_[i][c][k].isLatchOn = false;
                 keyStates_[i][c][k].status = KeyStatus::Off;
+                keyStates_[i][c][k].messageCount = 0;
+                keyStates_[i][c][k].ehPressureHistory.clear();
+                keyStates_[i][c][k].ehRoll = 0.0f;
+                keyStates_[i][c][k].ehYaw = 0.0f;
+                keyStates_[i][c][k].lastTimestamp = 0;
+                keyStates_[i][c][k].noteOnTimestamp = 0;
                 for (int n = 0; n < 4; ++n)
                     keyStates_[i][c][k].activeNotes[n] = -1;
             }
@@ -433,18 +439,20 @@ void MidiService::processMessage(const osc::Message& oscMsg, osc::Message& outgo
 
 void MidiService::processNoteKey(const osc::Message& oscMsg, const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter, ExpressionEmissionPolicy* expressionPolicy) {
     state->messageCount++;
+    state->lastTimestamp = oscMsg.timestamp;
 
     if (!oscMsg.active) {
         createNoteOff(keyLookup, state, sink, eventTime, voiceRouter);
     } else if (state->status == KeyStatus::Off) {
         state->status = KeyStatus::Pending;
     } else if (state->messageCount == PRESSURE_HISTORY_LENGTH && state->status == KeyStatus::Pending) {
-        createNoteOn(keyLookup, state, sink, eventTime, voiceRouter);
+        createNoteOn(keyLookup, state, sink, eventTime, voiceRouter, expressionPolicy);
     } else if (state->status == KeyStatus::Active) {
         const bool shouldEmit = expressionPolicy ? expressionPolicy->shouldEmitContinuousUpdate(state->messageCount)
                                                  : state->messageCount >= 64;
-        if (shouldEmit)
-            createNoteHold(keyLookup, state, sink, eventTime, voiceRouter);
+        if (shouldEmit) {
+            createNoteHold(keyLookup, state, sink, eventTime, voiceRouter, expressionPolicy);
+        }
     }
 }
 
@@ -1133,7 +1141,7 @@ void MidiService::createStripRelative(int deviceIndex, int stripIndex, int zoneI
     addStripValueMessage(static_cast<InstrumentType>(deviceIndex + 1), strip.channel, relValue, strip.relMidiValue, strip.pbRange, sink, true, eventTime, voiceRouter, zoneIndex);
 }
 
-void MidiService::createNoteOn(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter) {
+void MidiService::createNoteOn(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter, ExpressionEmissionPolicy* expressionPolicy) {
     int deviceIndex = static_cast<int>(keyLookup.keyId.deviceType) - 1;
     int totalTranspose = (deviceIndex >= 0 && deviceIndex < 3) ? (latchTranspose_[deviceIndex] + momentaryTranspose_[deviceIndex]) : 0;
     const int zoneIndex = zoneIndexFromKeyId(keyLookup.keyId);
@@ -1153,7 +1161,8 @@ void MidiService::createNoteOn(const ConfigLookup::Key& keyLookup, KeyState* sta
         }
     }
 
-    createNoteHold(keyLookup, state, sink, eventTime, voiceRouter);
+    state->noteOnTimestamp = state->lastTimestamp;
+    createNoteHold(keyLookup, state, sink, eventTime, voiceRouter, expressionPolicy);
     float vel = calculateNoteOnVelocity(keyLookup.keyId.deviceType, state);
     
     for (int i = 0; i < 4; i++) {
@@ -1202,6 +1211,8 @@ void MidiService::createNoteOff(const ConfigLookup::Key& keyLookup, KeyState* st
     }
     state->status = KeyStatus::Off;
     state->messageCount = 0;
+    state->noteOnTimestamp = 0;
+    state->lastTimestamp = 0;
 }
 
 void MidiService::createMidiMsgOn(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, osc::Message& outgoingOscMsg, const char* devId, int eventTime, MidiVoiceRouter* voiceRouter) {
@@ -1353,15 +1364,32 @@ void MidiService::queueTransposeChangeFlush(InstrumentType deviceType, Zone zone
     }
 }
 
-void MidiService::createNoteHold(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter) {
+void MidiService::createNoteHold(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter, ExpressionEmissionPolicy* expressionPolicy) {
     int channel = state->midiChannel;
     const int zoneIndex = zoneIndexFromKeyId(keyLookup.keyId);
     if (channel > 0 && channel <= 16 && (isMidi2Mode_ || chanNotePri_[channel - 1].empty() || chanNotePri_[channel - 1].front() == keyLookup.keyId)) {
-        addMidiValueMessage(keyLookup.keyId.deviceType, channel, state->ehRoll, keyLookup.roll, keyLookup.pbRange, state->activeNotes[0], sink, true, ExpressionCurveTarget::Roll, eventTime, voiceRouter, zoneIndex);
-        addMidiValueMessage(keyLookup.keyId.deviceType, channel, state->ehYaw, keyLookup.yaw, keyLookup.pbRange, state->activeNotes[0], sink, true, ExpressionCurveTarget::Yaw, eventTime, voiceRouter, zoneIndex);
+        const float transitionedRoll = applyNoteOnTransition(*state, state->ehRoll, expressionPolicy);
+        const float transitionedYaw = applyNoteOnTransition(*state, state->ehYaw, expressionPolicy);
+        addMidiValueMessage(keyLookup.keyId.deviceType, channel, transitionedRoll, keyLookup.roll, keyLookup.pbRange, state->activeNotes[0], sink, true, ExpressionCurveTarget::Roll, eventTime, voiceRouter, zoneIndex);
+        addMidiValueMessage(keyLookup.keyId.deviceType, channel, transitionedYaw, keyLookup.yaw, keyLookup.pbRange, state->activeNotes[0], sink, true, ExpressionCurveTarget::Yaw, eventTime, voiceRouter, zoneIndex);
         addMidiValueMessage(keyLookup.keyId.deviceType, channel, state->ehPressureHistory.back(), keyLookup.pressure, keyLookup.pbRange, state->activeNotes[0], sink, false, ExpressionCurveTarget::Pressure, eventTime, voiceRouter, zoneIndex);
     }
     state->messageCount = 0;
+}
+
+float MidiService::applyNoteOnTransition(const KeyState& state, float measuredValue, ExpressionEmissionPolicy* expressionPolicy) const {
+    const auto* policy = expressionPolicy != nullptr ? expressionPolicy : expressionPolicy_.get();
+    const int transitionMs = policy != nullptr ? policy->getConfig().noteOnTransitionMilliseconds : 0;
+    if (transitionMs <= 0 || state.noteOnTimestamp == 0 || state.lastTimestamp <= state.noteOnTimestamp)
+        return state.noteOnTimestamp == 0 ? measuredValue : 0.0f;
+
+    const uint64_t transitionDurationUs = static_cast<uint64_t>(transitionMs) * 1000ULL;
+    const uint64_t elapsedUs = state.lastTimestamp - state.noteOnTimestamp;
+    if (elapsedUs >= transitionDurationUs)
+        return measuredValue;
+
+    const float progress = static_cast<float>(elapsedUs) / static_cast<float>(transitionDurationUs);
+    return measuredValue * progress;
 }
 
 void MidiService::addMidiValueMessage(InstrumentType deviceType, int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, int noteNo, PerformanceEventSink& sink, bool isBipolar, ExpressionCurveTarget curveTarget, int eventTime, MidiVoiceRouter* voiceRouter, int zoneIndex) {
@@ -1567,6 +1595,16 @@ float MidiService::applyExpressionCurve(InstrumentType deviceType, ExpressionCur
     }
 
     return curve.getValue(value);
+}
+
+bool MidiService::isNoteOnTransitionActive(const KeyState& state, ExpressionEmissionPolicy* expressionPolicy) const {
+    const auto* policy = expressionPolicy != nullptr ? expressionPolicy : expressionPolicy_.get();
+    const int transitionMs = policy != nullptr ? policy->getConfig().noteOnTransitionMilliseconds : 0;
+    if (transitionMs <= 0 || state.noteOnTimestamp == 0 || state.lastTimestamp <= state.noteOnTimestamp)
+        return false;
+
+    const uint64_t transitionDurationUs = static_cast<uint64_t>(transitionMs) * 1000ULL;
+    return (state.lastTimestamp - state.noteOnTimestamp) < transitionDurationUs;
 }
 
 float MidiService::calculateNoteOnVelocity(InstrumentType deviceType, KeyState* state) {

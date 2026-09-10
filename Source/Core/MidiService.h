@@ -127,6 +127,8 @@ private:
         std::deque<float> ehPressureHistory;
         float ehRoll = 0.0f;
         float ehYaw = 0.0f;
+        uint64_t lastTimestamp = 0;
+        uint64_t noteOnTimestamp = 0;
         int midiChannel = 1;
         int messageCount = 0;
         bool isLatchOn = false;
@@ -185,9 +187,9 @@ private:
     void processCmdKey(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter);
     void processAppCtrlKey(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime, int* presetSlotRequest);
     
-    void createNoteOn(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter);
+    void createNoteOn(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter, ExpressionEmissionPolicy* expressionPolicy);
     void createNoteOff(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter);
-    void createNoteHold(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter);
+    void createNoteHold(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter, ExpressionEmissionPolicy* expressionPolicy);
     
     void createMidiMsgOn(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, osc::Message& outgoingOscMsg, const char* devId, int eventTime, MidiVoiceRouter* voiceRouter);
     void createMidiMsgOff(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, osc::Message& outgoingOscMsg, const char* devId, int eventTime, MidiVoiceRouter* voiceRouter);
@@ -206,6 +208,8 @@ private:
     float calculateNoteOnVelocity(InstrumentType deviceType, KeyState* state);
     float calculateNoteOffVelocity(InstrumentType deviceType, KeyState* state);
     float applyExpressionCurve(InstrumentType deviceType, ExpressionCurveTarget target, float value, bool isBipolar) const;
+    bool isNoteOnTransitionActive(const KeyState& state, ExpressionEmissionPolicy* expressionPolicy) const;
+    float applyNoteOnTransition(const KeyState& state, float measuredValue, ExpressionEmissionPolicy* expressionPolicy) const;
     int zoneIndexFromKeyId(const LayoutWrapper::KeyId& keyId) const;
     static int normalizeZoneIndex(int zoneIndex);
     void sendMidiBufferToOutput(const juce::MidiBuffer& buffer, juce::MidiOutput* output) const;

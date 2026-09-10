@@ -10,6 +10,7 @@ struct ExpressionEmissionConfig {
     int minMessageStride = 1;
     float minNormalizedDelta = 0.0f;
     bool quantizeToTransportResolution = false;
+    int noteOnTransitionMilliseconds = 250;
 };
 
 class ExpressionEmissionPolicy {

@@ -235,6 +235,24 @@ target_compile_definitions(RollPreCurveTest PRIVATE ECMAPPER_ENABLE_HARDWARE=0 J
 juce_generate_juce_header(RollPreCurveTest)
 
 
+juce_add_console_app(NoteOnExpressionTransitionTest
+        PRODUCT_NAME "NoteOnExpressionTransitionTest"
+        VERSION "1.0.0"
+        COMPANY_NAME "Tic Tech"
+        BUNDLE_ID "com.tictech.ecmapper.noteonexpressiontransitiontest"
+)
+
+target_sources(NoteOnExpressionTransitionTest PRIVATE
+        Source/Tests/NoteOnExpressionTransitionTest.cpp
+        ${CORE_SOURCES}
+)
+
+target_link_libraries(NoteOnExpressionTransitionTest PRIVATE ${COMMON_LIBS})
+target_include_directories(NoteOnExpressionTransitionTest PRIVATE Source)
+target_compile_definitions(NoteOnExpressionTransitionTest PRIVATE ECMAPPER_ENABLE_HARDWARE=0 JUCE_MODAL_LOOPS_PERMITTED=1)
+juce_generate_juce_header(NoteOnExpressionTransitionTest)
+
+
 juce_add_console_app(CalibrationListenerTest
         PRODUCT_NAME "CalibrationListenerTest"
         VERSION "1.0.0"
