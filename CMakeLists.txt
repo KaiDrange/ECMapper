@@ -253,6 +253,24 @@ target_compile_definitions(NoteOnExpressionTransitionTest PRIVATE ECMAPPER_ENABL
 juce_generate_juce_header(NoteOnExpressionTransitionTest)
 
 
+juce_add_console_app(ReleaseVelocityConsistencyTest
+        PRODUCT_NAME "ReleaseVelocityConsistencyTest"
+        VERSION "1.0.0"
+        COMPANY_NAME "Tic Tech"
+        BUNDLE_ID "com.tictech.ecmapper.releasevelocityconsistencytest"
+)
+
+target_sources(ReleaseVelocityConsistencyTest PRIVATE
+        Source/Tests/ReleaseVelocityConsistencyTest.cpp
+        ${CORE_SOURCES}
+)
+
+target_link_libraries(ReleaseVelocityConsistencyTest PRIVATE ${COMMON_LIBS})
+target_include_directories(ReleaseVelocityConsistencyTest PRIVATE Source)
+target_compile_definitions(ReleaseVelocityConsistencyTest PRIVATE ECMAPPER_ENABLE_HARDWARE=0 JUCE_MODAL_LOOPS_PERMITTED=1)
+juce_generate_juce_header(ReleaseVelocityConsistencyTest)
+
+
 juce_add_console_app(BreathStabilityTest
         PRODUCT_NAME "BreathStabilityTest"
         VERSION "1.0.0"

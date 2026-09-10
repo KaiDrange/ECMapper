@@ -1643,8 +1643,21 @@ float MidiService::calculateNoteOffVelocity(InstrumentType deviceType, KeyState*
     if (state->ehPressureHistory.empty()) return 0.0f;
     int deviceIndex = static_cast<int>(deviceType) - 1;
     float gain = (deviceIndex >= 0 && deviceIndex < 3) ? pressureSensitivity_[deviceIndex] : 1.7f;
-    
-    float norm = std::min(state->ehPressureHistory.front() * gain * 6.0f, 1.0f);
+
+    const auto& history = state->ehPressureHistory;
+    const auto historySize = history.size();
+    const float releasePressure = history.back();
+    const float recent1 = historySize >= 2U ? history[historySize - 2U] : releasePressure;
+    const float recent2 = historySize >= 3U ? history[historySize - 3U] : recent1;
+    const float recent3 = historySize >= 4U ? history[historySize - 4U] : recent2;
+
+    const float heldPressure = recent1 * 0.5f + recent2 * 0.3f + recent3 * 0.2f;
+    const float releaseDrop = std::max(heldPressure - releasePressure, 0.0f);
+    const float relativeReleaseSpeed = releaseDrop / std::max(heldPressure, 0.01f);
+    const float heldPressureFloor = std::clamp(heldPressure * gain * 6.0f, 0.0f, 1.0f);
+    float norm = std::clamp(relativeReleaseSpeed * 0.85f + heldPressureFloor * 0.15f, 0.0f, 1.0f);
+    norm = std::pow(norm, 0.65f);
+
     recordVisualEvent(deviceType, ExpressionCurveTarget::ReleaseVelocity, norm);
     norm = applyExpressionCurve(deviceType, ExpressionCurveTarget::ReleaseVelocity, norm, false);
     return norm;
