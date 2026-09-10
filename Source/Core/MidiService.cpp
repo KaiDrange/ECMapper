@@ -60,6 +60,8 @@ void MidiService::start(juce::AudioProcessorValueTreeState& pluginState, Hardwar
     }
 
     ehBreath_[0] = ehBreath_[1] = ehBreath_[2] = 0.0f;
+    for (int i = 0; i < 3; ++i)
+        breathSamplesSinceUpdate_[i] = BREATH_STABILITY_HOLD_SAMPLES;
     for (int i = 0; i < 3; ++i) {
         for (int t = 0; t < 6; ++t) {
             recentVisualEvents_[i][t].clear();
@@ -272,7 +274,7 @@ void MidiService::updateCalibration() {
         yawSensitivity_[idx] = SettingsWrapper::getCalibrationValue(defaults[i].type, SettingsWrapper::id_yawSensitivity, 1.7f, pluginState_->state);
         rollSensitivity_[idx] = SettingsWrapper::getCalibrationValue(defaults[i].type, SettingsWrapper::id_rollSensitivity, 1.7f, pluginState_->state);
         pressureSensitivity_[idx] = SettingsWrapper::getCalibrationValue(defaults[i].type, SettingsWrapper::id_pressureSensitivity, 1.7f, pluginState_->state);
-        breathSensitivity_[idx] = SettingsWrapper::getCalibrationValue(defaults[i].type, SettingsWrapper::id_breathSensitivity, 1.0f, pluginState_->state);
+        breathSensitivity_[idx] = SettingsWrapper::getCalibrationValue(defaults[i].type, SettingsWrapper::id_breathSensitivity, 1.7f, pluginState_->state);
     }
 }
 
@@ -398,6 +400,7 @@ void MidiService::processMessage(const osc::Message& oscMsg, osc::Message& outgo
         case osc::MessageType::Breath: {
             float prevBreathValue = ehBreath_[deviceIndex];
             ehBreath_[deviceIndex] = std::abs(oscMsg.value);
+            breathSamplesSinceUpdate_[deviceIndex] = 0;
             if ((ehBreath_[deviceIndex] > breathZeroThreshold_[deviceIndex]) || 
                 (ehBreath_[deviceIndex] < breathZeroThreshold_[deviceIndex] && prevBreathValue > 0.0f)) {
                 createBreath(deviceIndex, deviceLookups, sink, eventTime, voiceRouter);
@@ -1087,25 +1090,33 @@ void MidiService::resendLEDs(const char* devId, InstrumentType type, osc::Messag
     }
 }
 
-void MidiService::reduceBreath(juce::MidiBuffer& buffer, int eventTime) {
+void MidiService::reduceBreath(juce::MidiBuffer& buffer, int eventTime, int blockSampleCount) {
     auto* snapshot = activeSnapshot_.load(std::memory_order_acquire);
     if (snapshot == nullptr)
         return;
 
     MidiBufferPerformanceEventSink sink { buffer, snapshot->protocol.get() };
-    reduceBreath(buffer, sink, eventTime);
+    reduceBreath(buffer, sink, eventTime, blockSampleCount);
 }
 
-void MidiService::reduceBreath(juce::MidiBuffer& buffer, PerformanceEventSink& sink, int eventTime) {
+void MidiService::reduceBreath(juce::MidiBuffer&, PerformanceEventSink& sink, int eventTime, int blockSampleCount) {
     auto* snapshot = activeSnapshot_.load(std::memory_order_acquire);
     if (snapshot == nullptr)
         return;
 
     MidiVoiceRouter* voiceRouter = snapshot->voiceRouter.get();
     const auto& runtimeLookups = snapshot->configLookups;
+    const int effectiveBlockSamples = std::max(1, blockSampleCount);
     for (int i = 0; i < 3; i++) {
         if (ehBreath_[i] <= 0.0f) continue;
-        ehBreath_[i] = (ehBreath_[i] > breathZeroThreshold_[i]) ? ehBreath_[i] - 0.005f : 0.0f;
+
+        breathSamplesSinceUpdate_[i] += effectiveBlockSamples;
+        if (breathSamplesSinceUpdate_[i] <= BREATH_STABILITY_HOLD_SAMPLES)
+            continue;
+
+        const int decaySamples = std::min(effectiveBlockSamples, breathSamplesSinceUpdate_[i] - BREATH_STABILITY_HOLD_SAMPLES);
+        const float decayAmount = static_cast<float>(decaySamples) * BREATH_RELEASE_PER_SAMPLE;
+        ehBreath_[i] = (ehBreath_[i] > breathZeroThreshold_[i]) ? std::max(0.0f, ehBreath_[i] - decayAmount) : 0.0f;
         createBreath(i, runtimeLookups[i], sink, eventTime, voiceRouter);
     }
 }

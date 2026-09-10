@@ -53,8 +53,8 @@ public:
     void processMessage(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, juce::MidiBuffer& midiBuffer, PerformanceEventSink& sink, int eventTime = 0, int* presetSlotRequest = nullptr);
     void handleRemotePerformanceData(osc::Message& oscMsg, juce::MidiBuffer& midiBuffer, int eventTime = 0);
     void resendLEDs(const char* devId, InstrumentType type, osc::MessageFifo* targetQueue = nullptr, bool onlyNonOff = false);
-    void reduceBreath(juce::MidiBuffer& buffer, int eventTime = 0);
-    void reduceBreath(juce::MidiBuffer& buffer, PerformanceEventSink& sink, int eventTime = 0);
+    void reduceBreath(juce::MidiBuffer& buffer, int eventTime = 0, int blockSampleCount = 0);
+    void reduceBreath(juce::MidiBuffer& buffer, PerformanceEventSink& sink, int eventTime = 0, int blockSampleCount = 0);
     void createLayoutRPNs(juce::MidiBuffer& buffer);
     void queueTransposeChangeFlush(InstrumentType deviceType, Zone zone);
     void drainPendingMidiMessages(juce::MidiBuffer& buffer, int eventTime = 0);
@@ -145,6 +145,8 @@ private:
     float currentStripPBperChannel_[16] = {0.0f};
     
     static constexpr int PRESSURE_HISTORY_LENGTH = 6;
+    static constexpr int BREATH_STABILITY_HOLD_SAMPLES = 8192;
+    static constexpr float BREATH_RELEASE_PER_SAMPLE = 0.000006f;
     float breathZeroThreshold_[3] = {0.03125f, 0.03125f, 0.125f};
     float stripZeroThreshold_[3] = {0.0366f, 0.0366f, 0.12f};
     float stripSensitivity_[3] = {1.3f, 1.3f, 1.2f};
@@ -152,6 +154,7 @@ private:
     float rollSensitivity_[3] = {1.7f, 1.7f, 1.7f};
     float pressureSensitivity_[3] = {1.7f, 1.7f, 1.7f};
     float breathSensitivity_[3] = {1.0f, 1.0f, 1.0f};
+    int breathSamplesSinceUpdate_[3] = {BREATH_STABILITY_HOLD_SAMPLES, BREATH_STABILITY_HOLD_SAMPLES, BREATH_STABILITY_HOLD_SAMPLES};
 
     void updateCalibration();
     

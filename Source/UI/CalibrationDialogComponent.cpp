@@ -62,7 +62,7 @@ void CalibrationDialogComponent::DeviceCalibrationPanel::updateValues()
     float stripGD = (type == InstrumentType::Pico) ? 1.2f : 1.3f;
 
     breathThresholdSlider.setValue(SettingsWrapper::getCalibrationValue(type, SettingsWrapper::id_breathThreshold, breathD, state), juce::dontSendNotification);
-    breathSensitivitySlider.setValue(SettingsWrapper::getCalibrationValue(type, SettingsWrapper::id_breathSensitivity, 1.0f, state), juce::dontSendNotification);
+    breathSensitivitySlider.setValue(SettingsWrapper::getCalibrationValue(type, SettingsWrapper::id_breathSensitivity, 1.7f, state), juce::dontSendNotification);
     stripThresholdSlider.setValue(SettingsWrapper::getCalibrationValue(type, SettingsWrapper::id_stripThreshold, stripTD, state), juce::dontSendNotification);
     stripSensitivitySlider.setValue(SettingsWrapper::getCalibrationValue(type, SettingsWrapper::id_stripSensitivity, stripGD, state), juce::dontSendNotification);
     yawSensitivitySlider.setValue(SettingsWrapper::getCalibrationValue(type, SettingsWrapper::id_yawSensitivity, 1.7f, state), juce::dontSendNotification);

@@ -253,6 +253,24 @@ target_compile_definitions(NoteOnExpressionTransitionTest PRIVATE ECMAPPER_ENABL
 juce_generate_juce_header(NoteOnExpressionTransitionTest)
 
 
+juce_add_console_app(BreathStabilityTest
+        PRODUCT_NAME "BreathStabilityTest"
+        VERSION "1.0.0"
+        COMPANY_NAME "Tic Tech"
+        BUNDLE_ID "com.tictech.ecmapper.breathstabilitytest"
+)
+
+target_sources(BreathStabilityTest PRIVATE
+        Source/Tests/BreathStabilityTest.cpp
+        ${CORE_SOURCES}
+)
+
+target_link_libraries(BreathStabilityTest PRIVATE ${COMMON_LIBS})
+target_include_directories(BreathStabilityTest PRIVATE Source)
+target_compile_definitions(BreathStabilityTest PRIVATE ECMAPPER_ENABLE_HARDWARE=0 JUCE_MODAL_LOOPS_PERMITTED=1)
+juce_generate_juce_header(BreathStabilityTest)
+
+
 juce_add_console_app(CalibrationListenerTest
         PRODUCT_NAME "CalibrationListenerTest"
         VERSION "1.0.0"

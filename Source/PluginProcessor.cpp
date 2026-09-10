@@ -373,11 +373,11 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& audioBuffer,
     prepareMidiMessagesForBlock(*targetBuffer);
     processHardwareMessagesForBlock(timing, *targetBuffer, slotToLoad, eventSink);
     if (useVst3Direct)
-        midiService.reduceBreath(*targetBuffer, vst3DirectPerformanceSink_, timing.numSamples - 1);
+        midiService.reduceBreath(*targetBuffer, vst3DirectPerformanceSink_, timing.numSamples - 1, timing.numSamples);
     else if (useStandaloneZoneRouting)
-        midiService.reduceBreath(*targetBuffer, standaloneZoneSink, timing.numSamples - 1);
+        midiService.reduceBreath(*targetBuffer, standaloneZoneSink, timing.numSamples - 1, timing.numSamples);
     else
-        midiService.reduceBreath(*targetBuffer, timing.numSamples - 1);
+        midiService.reduceBreath(*targetBuffer, timing.numSamples - 1, timing.numSamples);
     dispatchPresetSlotLoad(slotToLoad);
     
     if (!targetBuffer->isEmpty()) {
