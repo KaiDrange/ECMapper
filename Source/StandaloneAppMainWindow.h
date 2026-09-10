@@ -29,6 +29,14 @@ public:
 
 private:
     void updateMidiOutput();
+    void updateMidiInputs();
+    bool isMidi2ModeEnabled() const;
+    void applyBufferSize(int bufferSize);
+    int getRequestedBufferSize() const;
+    void openStandaloneZoneMidiOutputs();
+    void restoreMidiInputSelection();
+    juce::String getConfiguredZoneOutputId(int zoneIndex) const;
+    juce::String getConfiguredMidiInputId() const;
     
     void saveAudioSettings();
     void loadAudioSettings();
@@ -42,6 +50,10 @@ private:
     
     juce::AudioDeviceManager deviceManager;
     juce::AudioProcessorPlayer processorPlayer;
+    std::array<std::unique_ptr<juce::MidiOutput>, 3> standaloneZoneOutputs_;
+    std::array<juce::String, 3> standaloneZoneOutputIds_;
+    juce::String standaloneMidiInputId_;
+    int requestedBufferSize_ = 256;
     
     ecm::AppLookAndFeel lookAndFeel;
     MainMenuBarModel menuBarModel;

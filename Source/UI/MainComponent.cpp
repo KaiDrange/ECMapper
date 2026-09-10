@@ -7,15 +7,18 @@ namespace ecm {
 
 namespace {
 
+constexpr int standaloneTransportModeGroupId = 2;
+constexpr int pluginTransportModeGroupId = 3;
+
 void updateMpeControlsEnabled(juce::Component& component, bool enabled)
 {
     component.setEnabled(enabled);
 }
 
-void configureModeButton(juce::TextButton& button)
+void configureModeButton(juce::TextButton& button, int radioGroupId)
 {
     button.setClickingTogglesState(true);
-    button.setRadioGroupId(2);
+    button.setRadioGroupId(radioGroupId);
     button.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff395060));
     button.setColour(juce::TextButton::buttonOnColourId, juce::Colour(0xff2bb6df));
     button.setColour(juce::TextButton::textColourOffId, Style::text());
@@ -86,10 +89,10 @@ MainComponent::MainComponent(juce::AudioProcessorValueTreeState& pluginStateToUs
 
     midi2ModeEnabled = SettingsWrapper::getMidi2Mode(pluginState.state);
     pendingMidi2Mode = midi2ModeEnabled;
-    configureModeButton(mpeModeButton);
-    configureModeButton(midi20ModeButton);
-    configureModeButton(legacyPluginModeButton);
-    configureModeButton(vst3DirectModeButton);
+    configureModeButton(mpeModeButton, standaloneTransportModeGroupId);
+    configureModeButton(midi20ModeButton, standaloneTransportModeGroupId);
+    configureModeButton(legacyPluginModeButton, pluginTransportModeGroupId);
+    configureModeButton(vst3DirectModeButton, pluginTransportModeGroupId);
     mpeModeButton.setConnectedEdges(juce::Button::ConnectedOnRight);
     midi20ModeButton.setConnectedEdges(juce::Button::ConnectedOnLeft);
     legacyPluginModeButton.setConnectedEdges(juce::Button::ConnectedOnRight);

@@ -60,9 +60,13 @@ public:
     void drainPendingMidiMessages(juce::MidiBuffer& buffer, int eventTime = 0);
     void drainDirectUMPs(juce::MidiBuffer& buffer, bool silentIfFailed = false);
     void setMidiOutput(juce::MidiOutput* output);
+    void setStandaloneLegacyMidiOutputs(const std::array<juce::MidiOutput*, 3>& outputs, juce::MidiOutput* defaultOutput);
+    bool isStandaloneLegacyZoneRoutingEnabled() const;
+    void sendStandaloneLegacyMidiBuffers(const juce::MidiBuffer& sharedBuffer, const std::array<juce::MidiBuffer, 3>& zoneBuffers);
     void sendIdentification();
     void setRuntimeConfigSnapshot(std::unique_ptr<RuntimeConfigSnapshot> snapshot);
     void finishedBlock();
+    std::shared_ptr<MidiProtocol> getProtocol() const { return protocol_; }
 
     void valueTreePropertyChanged(juce::ValueTree& treeWhosePropertyHasChanged, const juce::Identifier& property) override;
     void valueTreeRedirected(juce::ValueTree& treeWhichHasBeenChanged) override;
@@ -189,8 +193,8 @@ private:
     void createMidiMsgOff(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, osc::Message& outgoingOscMsg, const char* devId, int eventTime, MidiVoiceRouter* voiceRouter);
     void createAllNotesOff(PerformanceEventSink& sink, int eventTime);
     
-    void addMidiValueMessage(InstrumentType deviceType, int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, int noteNo, PerformanceEventSink& sink, bool isBipolar, ExpressionCurveTarget curveTarget, int eventTime, MidiVoiceRouter* voiceRouter);
-    void addStripValueMessage(InstrumentType deviceType, int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, PerformanceEventSink& sink, bool isBipolar, int eventTime, MidiVoiceRouter* voiceRouter);
+    void addMidiValueMessage(InstrumentType deviceType, int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, int noteNo, PerformanceEventSink& sink, bool isBipolar, ExpressionCurveTarget curveTarget, int eventTime, MidiVoiceRouter* voiceRouter, int zoneIndex = -1);
+    void addStripValueMessage(InstrumentType deviceType, int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, PerformanceEventSink& sink, bool isBipolar, int eventTime, MidiVoiceRouter* voiceRouter, int zoneIndex = -1);
     
     void createBreath(int deviceIndex, const ConfigLookup& keyLookup, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter);
     void createStripAbsolute(int deviceIndex, int stripIndex, int zoneIndex, const ConfigLookup& keyLookup, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter);
@@ -202,6 +206,10 @@ private:
     float calculateNoteOnVelocity(InstrumentType deviceType, KeyState* state);
     float calculateNoteOffVelocity(InstrumentType deviceType, KeyState* state);
     float applyExpressionCurve(InstrumentType deviceType, ExpressionCurveTarget target, float value, bool isBipolar) const;
+    int zoneIndexFromKeyId(const LayoutWrapper::KeyId& keyId) const;
+    static int normalizeZoneIndex(int zoneIndex);
+    void sendMidiBufferToOutput(const juce::MidiBuffer& buffer, juce::MidiOutput* output) const;
+    void sendMidiBufferToDistinctOutputs(const juce::MidiBuffer& buffer, const std::array<juce::MidiOutput*, 3>& outputs, juce::MidiOutput* fallbackOutput) const;
     
     struct MidiNote {
         int channel;
@@ -228,6 +236,9 @@ private:
     std::atomic<bool> isMidi2Mode_{ false };
     std::atomic<bool> isVirtualTarget_{ false };
     juce::String midiOutputName_ = "None";
+    std::array<juce::MidiOutput*, 3> standaloneLegacyOutputs_ { nullptr, nullptr, nullptr };
+    juce::MidiOutput* standaloneDefaultLegacyOutput_ = nullptr;
+    juce::CriticalSection standaloneLegacyOutputLock_;
 
     std::unique_ptr<juce::midi_ci::Device> ciDevice_;
     juce::universal_midi_packets::ToBytestreamDispatcher dispatcher_ { 4096 };

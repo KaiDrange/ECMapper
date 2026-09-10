@@ -32,6 +32,37 @@ bool enableFromCc(const int ccValue)
     return juce::jlimit(0, 127, ccValue) >= 64;
 }
 
+class ZoneMidiBufferPerformanceEventSink final : public ecm::PerformanceEventSink
+{
+public:
+    ZoneMidiBufferPerformanceEventSink(std::shared_ptr<ecm::MidiProtocol> protocol,
+                                       juce::MidiBuffer& sharedBuffer,
+                                       std::array<juce::MidiBuffer, 3>& zoneBuffers)
+        : protocol_(std::move(protocol)),
+          sharedBuffer_(sharedBuffer),
+          zoneBuffers_(zoneBuffers)
+    {
+    }
+
+    void pushEvent(const ecm::PerformanceEvent& event) override
+    {
+        if (protocol_ == nullptr)
+            return;
+
+        if (event.zoneIndex >= 0 && event.zoneIndex < static_cast<int>(zoneBuffers_.size())) {
+            protocol_->renderEvent(zoneBuffers_[static_cast<size_t>(event.zoneIndex)], event);
+            return;
+        }
+
+        protocol_->renderEvent(sharedBuffer_, event);
+    }
+
+private:
+    std::shared_ptr<ecm::MidiProtocol> protocol_;
+    juce::MidiBuffer& sharedBuffer_;
+    std::array<juce::MidiBuffer, 3>& zoneBuffers_;
+};
+
 struct DeviceKeyCounts
 {
     int normal = 0;
@@ -313,10 +344,20 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& audioBuffer,
 
     const bool useVst3Direct = !juce::JUCEApplicationBase::isStandaloneApp()
                                && ecm::SettingsWrapper::getPluginOutputMode(state.state) == ecm::OutputTransportMode::Vst3Direct;
+    const bool useStandaloneZoneRouting = juce::JUCEApplicationBase::isStandaloneApp()
+                                          && !ecm::SettingsWrapper::getMidi2Mode(state.state)
+                                          && midiService.isStandaloneLegacyZoneRoutingEnabled();
     juce::MidiBuffer* targetBuffer = &midiMessages;
     juce::MidiBuffer tempBuffer;
+    std::array<juce::MidiBuffer, 3> zoneBuffers;
     bool useDirect = (ecm::SettingsWrapper::getMidi2Mode(state.state) || midiService.isUsingUMPPath()) 
                      && juce::JUCEApplicationBase::isStandaloneApp();
+    useDirect = useDirect || useStandaloneZoneRouting;
+
+    ZoneMidiBufferPerformanceEventSink standaloneZoneSink(midiService.getProtocol(), tempBuffer, zoneBuffers);
+    ecm::PerformanceEventSink* eventSink = useVst3Direct
+        ? static_cast<ecm::PerformanceEventSink*>(&vst3DirectPerformanceSink_)
+        : (useStandaloneZoneRouting ? static_cast<ecm::PerformanceEventSink*>(&standaloneZoneSink) : nullptr);
     
     if (useDirect)
         targetBuffer = &tempBuffer;
@@ -330,9 +371,11 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& audioBuffer,
     if (applyZoneControlMessages(midiMessages))
         requestRuntimeConfigRefresh();
     prepareMidiMessagesForBlock(*targetBuffer);
-    processHardwareMessagesForBlock(timing, *targetBuffer, slotToLoad, useVst3Direct ? static_cast<ecm::PerformanceEventSink*>(&vst3DirectPerformanceSink_) : nullptr);
+    processHardwareMessagesForBlock(timing, *targetBuffer, slotToLoad, eventSink);
     if (useVst3Direct)
         midiService.reduceBreath(*targetBuffer, vst3DirectPerformanceSink_, timing.numSamples - 1);
+    else if (useStandaloneZoneRouting)
+        midiService.reduceBreath(*targetBuffer, standaloneZoneSink, timing.numSamples - 1);
     else
         midiService.reduceBreath(*targetBuffer, timing.numSamples - 1);
     dispatchPresetSlotLoad(slotToLoad);
@@ -344,7 +387,10 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& audioBuffer,
     }
 
     if (useDirect) {
-        midiService.drainDirectUMPs(tempBuffer);
+        if (useStandaloneZoneRouting)
+            midiService.sendStandaloneLegacyMidiBuffers(tempBuffer, zoneBuffers);
+        else
+            midiService.drainDirectUMPs(tempBuffer);
         midiMessages.clear();
     }
     

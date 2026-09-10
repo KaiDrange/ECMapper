@@ -5,6 +5,7 @@
 #include "VoiceAllocator.h"
 #include <cmath>
 #include <algorithm>
+#include <set>
 
 namespace ecm {
 
@@ -546,6 +547,29 @@ void MidiService::drainPendingMidiMessages(juce::MidiBuffer& buffer, int eventTi
     pendingMidiBuffer_.clear();
 }
 
+void MidiService::sendMidiBufferToOutput(const juce::MidiBuffer& buffer, juce::MidiOutput* output) const {
+    if (output == nullptr || buffer.isEmpty())
+        return;
+
+    output->sendBlockOfMessagesNow(buffer);
+}
+
+void MidiService::sendMidiBufferToDistinctOutputs(const juce::MidiBuffer& buffer,
+                                                  const std::array<juce::MidiOutput*, 3>& outputs,
+                                                  juce::MidiOutput* fallbackOutput) const {
+    if (buffer.isEmpty())
+        return;
+
+    std::set<juce::MidiOutput*> sentOutputs;
+    for (auto* output : outputs) {
+        if (output != nullptr && sentOutputs.insert(output).second)
+            sendMidiBufferToOutput(buffer, output);
+    }
+
+    if (fallbackOutput != nullptr && sentOutputs.insert(fallbackOutput).second)
+        sendMidiBufferToOutput(buffer, fallbackOutput);
+}
+
 void MidiService::drainDirectUMPs(juce::MidiBuffer& buffer, bool silentIfFailed)
 {
     const juce::ScopedLock sl(umpOutputLock_);
@@ -730,6 +754,42 @@ void MidiService::setMidiOutput(juce::MidiOutput* output)
         }
             
         sendIdentification();
+    }
+}
+
+void MidiService::setStandaloneLegacyMidiOutputs(const std::array<juce::MidiOutput*, 3>& outputs, juce::MidiOutput* defaultOutput)
+{
+    const juce::ScopedLock sl(standaloneLegacyOutputLock_);
+    standaloneLegacyOutputs_ = outputs;
+    standaloneDefaultLegacyOutput_ = defaultOutput;
+}
+
+bool MidiService::isStandaloneLegacyZoneRoutingEnabled() const
+{
+    if (isMidi2Mode_)
+        return false;
+
+    const juce::ScopedLock sl(standaloneLegacyOutputLock_);
+    return std::any_of(standaloneLegacyOutputs_.begin(), standaloneLegacyOutputs_.end(), [](juce::MidiOutput* output) {
+        return output != nullptr;
+    });
+}
+
+void MidiService::sendStandaloneLegacyMidiBuffers(const juce::MidiBuffer& sharedBuffer, const std::array<juce::MidiBuffer, 3>& zoneBuffers)
+{
+    std::array<juce::MidiOutput*, 3> outputs {};
+    juce::MidiOutput* fallbackOutput = nullptr;
+    {
+        const juce::ScopedLock sl(standaloneLegacyOutputLock_);
+        outputs = standaloneLegacyOutputs_;
+        fallbackOutput = standaloneDefaultLegacyOutput_;
+    }
+
+    sendMidiBufferToDistinctOutputs(sharedBuffer, outputs, fallbackOutput);
+
+    for (size_t i = 0; i < zoneBuffers.size(); ++i) {
+        auto* output = outputs[i] != nullptr ? outputs[i] : fallbackOutput;
+        sendMidiBufferToOutput(zoneBuffers[i], output);
     }
 }
 
@@ -928,137 +988,20 @@ void MidiService::consume (juce::universal_midi_packets::Iterator b, juce::unive
 
 void MidiService::updateVirtualOutput()
 {
-    juce::Logger::writeToLog("MidiService::updateVirtualOutput() called. Mode: " + juce::String(isMidi2Mode_ ? "MIDI 2.0" : "MIDI 1.0"));
-#if JUCE_MAC
-    if (!juce::JUCEApplicationBase::isStandaloneApp())
-    {
-        juce::Logger::writeToLog("MidiService: Not a standalone app, skipping virtual MIDI port creation.");
-        return;
-    }
+    juce::Logger::writeToLog("MidiService: Internal virtual MIDI outputs are disabled.");
 
-    if (virtualMidiLock_ == nullptr)
-    {
-        juce::Logger::writeToLog("MidiService: Initializing InterProcessLock for virtual MIDI.");
-        virtualMidiLock_ = std::make_unique<juce::InterProcessLock>("ECMapper_VirtualMidi_Lock");
-    }
+    const juce::ScopedLock sl(umpOutputLock_);
 
-    isFirstInstance_ = virtualMidiLock_->enter(0);
+    if (virtualUmpInput_.isAlive())
+        virtualUmpInput_.removeConsumer(*this);
 
-    if (isFirstInstance_)
-    {
-        juce::Logger::writeToLog("MidiService: This is the first instance. Managing virtual port.");
-
-        const juce::ScopedLock sl(umpOutputLock_);
-
-        // Clean up ports that don't match the current mode
-        if (isMidi2Mode_)
-        {
-            if (virtualUmpOutput_.has_value() && *virtualUmpOutput_)
-            {
-                juce::Logger::writeToLog("MidiService: Closing legacy virtual output.");
-                virtualUmpOutput_ = {};
-                virtualUmpInputMirror_ = {};
-            }
-        }
-        else
-        {
-            if (virtualEndpoint_.isAlive())
-            {
-                juce::Logger::writeToLog("MidiService: Closing UMP virtual endpoint.");
-                if (virtualUmpInput_.isAlive())
-                    virtualUmpInput_.removeConsumer(*this);
-                virtualEndpoint_ = {};
-                virtualUmpInput_ = {};
-            }
-        }
-        
-        bool needsCreation = false;
-        if (isMidi2Mode_)
-            needsCreation = !virtualEndpoint_.isAlive();
-        else
-            needsCreation = !virtualUmpOutput_.has_value() || !*virtualUmpOutput_;
-
-        if (needsCreation)
-        {
-            if (!umpSession_.has_value())
-            {
-                juce::Logger::writeToLog("MidiService: Creating UMP session.");
-                umpSession_ = juce::universal_midi_packets::Endpoints::getInstance()->makeSession("ECMapperUMP");
-            }
-
-            if (umpSession_.has_value())
-            {
-                if (isMidi2Mode_)
-                {
-                    using namespace juce::universal_midi_packets;
-                    juce::Logger::writeToLog("MidiService: Creating VirtualEndpoint (MIDI 2.0) 'ECMapper Direct'.");
-                    
-                    DeviceInfo devInfo;
-                    devInfo.manufacturer = {std::byte{0x7D}, std::byte{0x00}, std::byte{0x00}};
-                    devInfo.family = {std::byte{0x01}, std::byte{0x00}};
-                    devInfo.modelNumber = {std::byte{0x01}, std::byte{0x00}};
-                    devInfo.revision = {std::byte{0x01}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00}};
-
-                    const std::array blocks { 
-                        Block{}.withName("Main")
-                               .withDirection(BlockDirection::bidirectional)
-                               .withUiHint(BlockUiHint::bidirectional)
-                               .withEnabled(true)
-                               .withFirstGroup(0)
-                               .withNumGroups(16)
-                               .withMIDI1ProxyKind(BlockMIDI1ProxyKind::inapplicable)
-                    };
-                    
-                    virtualEndpoint_ = umpSession_->createVirtualEndpoint("ECMapper Direct UMP", devInfo, "ECMapper-Direct-UMP", PacketProtocol::MIDI_2_0, blocks, BlocksAreStatic::yes);
-                    
-                    if (virtualEndpoint_.isAlive())
-                    {
-                        juce::Logger::writeToLog("MidiService: Successfully created virtual MIDI 2.0 endpoint.");
-                        directUmpOutput_ = umpSession_->connectOutput(virtualEndpoint_.getId());
-                        
-                        virtualUmpInput_ = umpSession_->connectInput(virtualEndpoint_.getId(), PacketProtocol::MIDI_2_0);
-                        virtualUmpInput_.addConsumer(*this);
-                    }
-                    else
-                    {
-                        juce::Logger::writeToLog("MidiService: Failed to create virtual MIDI 2.0 endpoint.");
-                    }
-                }
-                else
-                {
-                    juce::Logger::writeToLog("MidiService: Creating LegacyVirtualOutput 'ECMapper Direct'.");
-                    virtualUmpOutput_ = umpSession_->createLegacyVirtualOutput("ECMapper Direct");
-                    
-                    juce::Logger::writeToLog("MidiService: Creating LegacyVirtualInput mirror 'ECMapper Virtual Out'.");
-                    virtualUmpInputMirror_ = umpSession_->createLegacyVirtualInput("ECMapper Virtual Out");
-
-                    if (virtualUmpOutput_.has_value() && *virtualUmpOutput_)
-                    {
-                        juce::Logger::writeToLog("MidiService: Successfully created virtual MIDI output 'ECMapper Direct'");
-                        directUmpOutput_ = umpSession_->connectOutput(virtualUmpOutput_->getId());
-                        
-                        sendIdentification();
-                        endpointsChanged();
-                    }
-                }
-            }
-            else
-            {
-                juce::Logger::writeToLog("MidiService: Failed to create UMP session.");
-            }
-        }
-        else
-        {
-            juce::Logger::writeToLog("MidiService: Virtual port already exists.");
-        }
-    }
-    else
-    {
-        juce::Logger::writeToLog("MidiService: Not the first instance (lock busy), not creating virtual MIDI output.");
-    }
-#else
-    juce::Logger::writeToLog("MidiService: Virtual MIDI output only supported on macOS.");
-#endif
+    virtualEndpoint_ = {};
+    virtualUmpInput_ = {};
+    virtualUmpOutput_ = {};
+    virtualUmpInputMirror_ = {};
+    directUmpOutput_ = {};
+    isVirtualTarget_ = false;
+    isFirstInstance_ = false;
 }
 
 bool MidiService::isVirtualOutputActive() const
@@ -1167,13 +1110,13 @@ void MidiService::createBreath(int deviceIndex, const ConfigLookup& keyLookup, P
     }
 
     for (int z = 0; z < 3; ++z) {
-        addMidiValueMessage(static_cast<InstrumentType>(deviceIndex + 1), keyLookup.breath[z].channel, val * 3.0f, keyLookup.breath[z].midiValue, keyLookup.breath[z].pbRange, 0, sink, false, ExpressionCurveTarget::Breath, eventTime, voiceRouter);
+        addMidiValueMessage(static_cast<InstrumentType>(deviceIndex + 1), keyLookup.breath[z].channel, val * 3.0f, keyLookup.breath[z].midiValue, keyLookup.breath[z].pbRange, 0, sink, false, ExpressionCurveTarget::Breath, eventTime, voiceRouter, z);
     }
 }
 
 void MidiService::createStripAbsolute(int deviceIndex, int stripIndex, int zoneIndex, const ConfigLookup& keyLookup, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter) {
     auto& strip = (stripIndex == 0) ? keyLookup.strip1[zoneIndex] : keyLookup.strip2[zoneIndex];
-    addStripValueMessage(static_cast<InstrumentType>(deviceIndex + 1), strip.channel, ehStrips_[stripIndex][deviceIndex], strip.absMidiValue, strip.pbRange, sink, false, eventTime, voiceRouter);
+    addStripValueMessage(static_cast<InstrumentType>(deviceIndex + 1), strip.channel, ehStrips_[stripIndex][deviceIndex], strip.absMidiValue, strip.pbRange, sink, false, eventTime, voiceRouter, zoneIndex);
 }
 
 void MidiService::createStripRelative(int deviceIndex, int stripIndex, int zoneIndex, const ConfigLookup& keyLookup, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter) {
@@ -1185,12 +1128,13 @@ void MidiService::createStripRelative(int deviceIndex, int stripIndex, int zoneI
         currentStripPBperChannel_[strip.channel > 0 ? strip.channel - 1 : 0] = 0;
     }
 
-    addStripValueMessage(static_cast<InstrumentType>(deviceIndex + 1), strip.channel, relValue, strip.relMidiValue, strip.pbRange, sink, true, eventTime, voiceRouter);
+    addStripValueMessage(static_cast<InstrumentType>(deviceIndex + 1), strip.channel, relValue, strip.relMidiValue, strip.pbRange, sink, true, eventTime, voiceRouter, zoneIndex);
 }
 
 void MidiService::createNoteOn(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter) {
     int deviceIndex = static_cast<int>(keyLookup.keyId.deviceType) - 1;
     int totalTranspose = (deviceIndex >= 0 && deviceIndex < 3) ? (latchTranspose_[deviceIndex] + momentaryTranspose_[deviceIndex]) : 0;
+    const int zoneIndex = zoneIndexFromKeyId(keyLookup.keyId);
 
     state->midiChannel = voiceRouter ? voiceRouter->findMidiChannelForNewNote(keyLookup.output, keyLookup.notes[0]) : static_cast<int>(keyLookup.output);
 
@@ -1214,7 +1158,7 @@ void MidiService::createNoteOn(const ConfigLookup::Key& keyLookup, KeyState* sta
         int noteNo = state->activeNotes[i];
         if (noteNo > -1) {
             if (countPlayingNoteMatches(state->midiChannel, noteNo) == 0) {
-                sink.pushEvent(PerformanceEvent::noteOn(state->midiChannel, noteNo, vel, eventTime));
+                sink.pushEvent(PerformanceEvent::noteOn(state->midiChannel, noteNo, vel, eventTime, zoneIndex));
                 juce::Logger::writeToLog("MidiService: Note On - Chan: " + juce::String(state->midiChannel) + 
                                          ", Note: " + juce::String(noteNo) + 
                                          ", Velocity: " + juce::String(vel, 3));
@@ -1227,6 +1171,7 @@ void MidiService::createNoteOn(const ConfigLookup::Key& keyLookup, KeyState* sta
 
 void MidiService::createNoteOff(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter) {
     int channel = state->midiChannel;
+    const int zoneIndex = zoneIndexFromKeyId(keyLookup.keyId);
     if (voiceRouter) voiceRouter->releaseMidiChannel(keyLookup.output, keyLookup.notes[0], channel);
 
     if (channel > 0 && channel <= 16) {
@@ -1238,7 +1183,7 @@ void MidiService::createNoteOff(const ConfigLookup::Key& keyLookup, KeyState* st
         int noteToTurnOff = state->activeNotes[i];
         if (noteToTurnOff > -1) {
             if (countPlayingNoteMatches(channel, noteToTurnOff) < 2) {
-                sink.pushEvent(PerformanceEvent::noteOff(channel, noteToTurnOff, vel, eventTime));
+                sink.pushEvent(PerformanceEvent::noteOff(channel, noteToTurnOff, vel, eventTime, zoneIndex));
                 juce::Logger::writeToLog("MidiService: Note Off - Chan: " + juce::String(channel) + 
                                          ", Note: " + juce::String(noteToTurnOff) + 
                                          ", Velocity: " + juce::String(vel, 3));
@@ -1259,6 +1204,7 @@ void MidiService::createNoteOff(const ConfigLookup::Key& keyLookup, KeyState* st
 
 void MidiService::createMidiMsgOn(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, osc::Message& outgoingOscMsg, const char* devId, int eventTime, MidiVoiceRouter* voiceRouter) {
     state->isLatchOn = true;
+    const int zoneIndex = zoneIndexFromKeyId(keyLookup.keyId);
     state->midiChannel = voiceRouter ? voiceRouter->findMidiChannelForNewNote(keyLookup.output, -1) : 
                          ((keyLookup.output == MidiChannelType::MPE_Low) ? 1 : 
                           (keyLookup.output == MidiChannelType::MPE_High) ? 16 : static_cast<int>(keyLookup.output));
@@ -1266,13 +1212,13 @@ void MidiService::createMidiMsgOn(const ConfigLookup::Key& keyLookup, KeyState* 
     if (keyLookup.msgType == 4) {
         createAllNotesOff(sink, eventTime);
     } else if (keyLookup.msgType == 1) {
-        sink.pushEvent(PerformanceEvent::controllerChange(state->midiChannel, -1, keyLookup.cmdCC, keyLookup.cmdOn / 127.0f, false, eventTime));
+        sink.pushEvent(PerformanceEvent::controllerChange(state->midiChannel, -1, keyLookup.cmdCC, keyLookup.cmdOn / 127.0f, false, eventTime, zoneIndex));
     } else if (keyLookup.msgType == 2) {
-        sink.pushEvent(PerformanceEvent::programChange(state->midiChannel, keyLookup.cmdOn, eventTime));
+        sink.pushEvent(PerformanceEvent::programChange(state->midiChannel, keyLookup.cmdOn, eventTime, zoneIndex));
     } else if (keyLookup.msgType == 3) {
-        if (keyLookup.cmdOn == 1) sink.pushEvent(PerformanceEvent::midiStart(eventTime));
-        else if (keyLookup.cmdOn == 2) sink.pushEvent(PerformanceEvent::midiStop(eventTime));
-        else if (keyLookup.cmdOn == 3) sink.pushEvent(PerformanceEvent::midiContinue(eventTime));
+        if (keyLookup.cmdOn == 1) sink.pushEvent(PerformanceEvent::midiStart(eventTime, zoneIndex));
+        else if (keyLookup.cmdOn == 2) sink.pushEvent(PerformanceEvent::midiStop(eventTime, zoneIndex));
+        else if (keyLookup.cmdOn == 3) sink.pushEvent(PerformanceEvent::midiContinue(eventTime, zoneIndex));
     }
     
     state->status = KeyStatus::Active;
@@ -1288,17 +1234,18 @@ void MidiService::createMidiMsgOn(const ConfigLookup::Key& keyLookup, KeyState* 
 
 void MidiService::createMidiMsgOff(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, osc::Message& outgoingOscMsg, const char* devId, int eventTime, MidiVoiceRouter* voiceRouter) {
     juce::ignoreUnused(voiceRouter);
+    const int zoneIndex = zoneIndexFromKeyId(keyLookup.keyId);
     if (keyLookup.cmdType != 3) { // Not Trigger
         if (keyLookup.msgType == 4) {
             createAllNotesOff(sink, eventTime);
         } else if (keyLookup.msgType == 1) {
-            sink.pushEvent(PerformanceEvent::controllerChange(state->midiChannel, -1, keyLookup.cmdCC, keyLookup.cmdOff / 127.0f, false, eventTime));
+            sink.pushEvent(PerformanceEvent::controllerChange(state->midiChannel, -1, keyLookup.cmdCC, keyLookup.cmdOff / 127.0f, false, eventTime, zoneIndex));
         } else if (keyLookup.msgType == 2) {
-            sink.pushEvent(PerformanceEvent::programChange(state->midiChannel, keyLookup.cmdOff, eventTime));
+            sink.pushEvent(PerformanceEvent::programChange(state->midiChannel, keyLookup.cmdOff, eventTime, zoneIndex));
         } else if (keyLookup.msgType == 3) {
-            if (keyLookup.cmdOff == 1) sink.pushEvent(PerformanceEvent::midiStart(eventTime));
-            else if (keyLookup.cmdOff == 2) sink.pushEvent(PerformanceEvent::midiStop(eventTime));
-            else if (keyLookup.cmdOff == 3) sink.pushEvent(PerformanceEvent::midiContinue(eventTime));
+            if (keyLookup.cmdOff == 1) sink.pushEvent(PerformanceEvent::midiStart(eventTime, zoneIndex));
+            else if (keyLookup.cmdOff == 2) sink.pushEvent(PerformanceEvent::midiStop(eventTime, zoneIndex));
+            else if (keyLookup.cmdOff == 3) sink.pushEvent(PerformanceEvent::midiContinue(eventTime, zoneIndex));
         }
     }
     
@@ -1406,15 +1353,16 @@ void MidiService::queueTransposeChangeFlush(InstrumentType deviceType, Zone zone
 
 void MidiService::createNoteHold(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter) {
     int channel = state->midiChannel;
+    const int zoneIndex = zoneIndexFromKeyId(keyLookup.keyId);
     if (channel > 0 && channel <= 16 && (isMidi2Mode_ || chanNotePri_[channel - 1].empty() || chanNotePri_[channel - 1].front() == keyLookup.keyId)) {
-        addMidiValueMessage(keyLookup.keyId.deviceType, channel, state->ehRoll, keyLookup.roll, keyLookup.pbRange, state->activeNotes[0], sink, true, ExpressionCurveTarget::Roll, eventTime, voiceRouter);
-        addMidiValueMessage(keyLookup.keyId.deviceType, channel, state->ehYaw, keyLookup.yaw, keyLookup.pbRange, state->activeNotes[0], sink, true, ExpressionCurveTarget::Yaw, eventTime, voiceRouter);
-        addMidiValueMessage(keyLookup.keyId.deviceType, channel, state->ehPressureHistory.back(), keyLookup.pressure, keyLookup.pbRange, state->activeNotes[0], sink, false, ExpressionCurveTarget::Pressure, eventTime, voiceRouter);
+        addMidiValueMessage(keyLookup.keyId.deviceType, channel, state->ehRoll, keyLookup.roll, keyLookup.pbRange, state->activeNotes[0], sink, true, ExpressionCurveTarget::Roll, eventTime, voiceRouter, zoneIndex);
+        addMidiValueMessage(keyLookup.keyId.deviceType, channel, state->ehYaw, keyLookup.yaw, keyLookup.pbRange, state->activeNotes[0], sink, true, ExpressionCurveTarget::Yaw, eventTime, voiceRouter, zoneIndex);
+        addMidiValueMessage(keyLookup.keyId.deviceType, channel, state->ehPressureHistory.back(), keyLookup.pressure, keyLookup.pbRange, state->activeNotes[0], sink, false, ExpressionCurveTarget::Pressure, eventTime, voiceRouter, zoneIndex);
     }
     state->messageCount = 0;
 }
 
-void MidiService::addMidiValueMessage(InstrumentType deviceType, int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, int noteNo, PerformanceEventSink& sink, bool isBipolar, ExpressionCurveTarget curveTarget, int eventTime, MidiVoiceRouter* voiceRouter) {
+void MidiService::addMidiValueMessage(InstrumentType deviceType, int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, int noteNo, PerformanceEventSink& sink, bool isBipolar, ExpressionCurveTarget curveTarget, int eventTime, MidiVoiceRouter* voiceRouter, int zoneIndex) {
     if (midiValue.valueType == MidiValueType::Off) return;
     
     int resolvedChannel = channel;
@@ -1443,22 +1391,22 @@ void MidiService::addMidiValueMessage(InstrumentType deviceType, int channel, fl
         
         if (useNativePerNote) {
             float protocolValue = notePB * 0.5f + 0.5f;
-            sink.pushEvent(PerformanceEvent::pitchBend(resolvedChannel, noteNo, protocolValue, true, eventTime));
+            sink.pushEvent(PerformanceEvent::pitchBend(resolvedChannel, noteNo, protocolValue, true, eventTime, zoneIndex));
         } else {
             currentKeyPBperChannel_[resolvedChannel - 1] = notePB;
             float totalPB = std::clamp(currentKeyPBperChannel_[resolvedChannel - 1] + currentStripPBperChannel_[resolvedChannel - 1], -1.0f, 1.0f);
             float protocolValue = totalPB * 0.5f + 0.5f;
-            sink.pushEvent(PerformanceEvent::pitchBend(resolvedChannel, -1, protocolValue, false, eventTime));
+            sink.pushEvent(PerformanceEvent::pitchBend(resolvedChannel, -1, protocolValue, false, eventTime, zoneIndex));
         }
     } else if (midiValue.valueType == MidiValueType::ChannelAftertouch) {
         float val = isBipolar ? (normalized * 0.5f + 0.5f) : normalized;
-        sink.pushEvent(PerformanceEvent::channelPressure(resolvedChannel, useNativePerNote ? noteNo : -1, val, useNativePerNote, eventTime));
+        sink.pushEvent(PerformanceEvent::channelPressure(resolvedChannel, useNativePerNote ? noteNo : -1, val, useNativePerNote, eventTime, zoneIndex));
     } else if (midiValue.valueType == MidiValueType::PolyAftertouch) {
         float val = isBipolar ? (normalized * 0.5f + 0.5f) : normalized;
-        sink.pushEvent(PerformanceEvent::polyAftertouch(resolvedChannel, noteNo, val, eventTime));
+        sink.pushEvent(PerformanceEvent::polyAftertouch(resolvedChannel, noteNo, val, eventTime, zoneIndex));
     } else if (midiValue.valueType == MidiValueType::CC) {
         float val = isBipolar ? (normalized * 0.5f + 0.5f) : normalized;
-        sink.pushEvent(PerformanceEvent::controllerChange(resolvedChannel, useNativePerNote ? noteNo : -1, midiValue.ccNo, val, useNativePerNote, eventTime));
+        sink.pushEvent(PerformanceEvent::controllerChange(resolvedChannel, useNativePerNote ? noteNo : -1, midiValue.ccNo, val, useNativePerNote, eventTime, zoneIndex));
     }
 }
 
@@ -1532,7 +1480,7 @@ std::vector<MidiService::VisualMarker> MidiService::getVisualMarkers(InstrumentT
     return markers;
 }
 
-void MidiService::addStripValueMessage(InstrumentType deviceType, int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, PerformanceEventSink& sink, bool isBipolar, int eventTime, MidiVoiceRouter* voiceRouter) {
+void MidiService::addStripValueMessage(InstrumentType deviceType, int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, PerformanceEventSink& sink, bool isBipolar, int eventTime, MidiVoiceRouter* voiceRouter, int zoneIndex) {
     if (midiValue.valueType == MidiValueType::Off) return;
     
     int resolvedChannel = channel;
@@ -1561,14 +1509,28 @@ void MidiService::addStripValueMessage(InstrumentType deviceType, int channel, f
             ", currentStripPB=" + juce::String(currentStripPBperChannel_[resolvedChannel - 1]) + 
             ", totalPB=" + juce::String(totalPB) + ", protocolValue=" + juce::String(protocolValue));
 
-        sink.pushEvent(PerformanceEvent::pitchBend(resolvedChannel, -1, protocolValue, false, eventTime));
+        sink.pushEvent(PerformanceEvent::pitchBend(resolvedChannel, -1, protocolValue, false, eventTime, zoneIndex));
     } else {
         float val = isBipolar ? (normalized * 0.5f + 0.5f) : normalized;
         if (midiValue.valueType == MidiValueType::ChannelAftertouch)
-            sink.pushEvent(PerformanceEvent::channelPressure(resolvedChannel, -1, val, false, eventTime));
+            sink.pushEvent(PerformanceEvent::channelPressure(resolvedChannel, -1, val, false, eventTime, zoneIndex));
         else if (midiValue.valueType == MidiValueType::CC)
-            sink.pushEvent(PerformanceEvent::controllerChange(resolvedChannel, -1, midiValue.ccNo, val, false, eventTime));
+            sink.pushEvent(PerformanceEvent::controllerChange(resolvedChannel, -1, midiValue.ccNo, val, false, eventTime, zoneIndex));
     }
+}
+
+int MidiService::normalizeZoneIndex(int zoneIndex)
+{
+    return juce::jlimit(0, 2, zoneIndex);
+}
+
+int MidiService::zoneIndexFromKeyId(const LayoutWrapper::KeyId& keyId) const
+{
+    if (pluginState_ == nullptr)
+        return 0;
+
+    auto layoutKey = LayoutWrapper::getLayoutKey(keyId, pluginState_->state);
+    return normalizeZoneIndex(static_cast<int>(layoutKey.zone) - 1);
 }
 
 void MidiService::createLayoutRPNs(juce::MidiBuffer& buffer) {

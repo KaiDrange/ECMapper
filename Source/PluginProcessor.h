@@ -76,6 +76,8 @@ public:
     juce::AudioDeviceManager* getDeviceManager() const { return deviceManager; }
 
     void setMidiOutput(juce::MidiOutput* output) { midiService.setMidiOutput(output); }
+    void setStandaloneLegacyMidiOutputs(const std::array<juce::MidiOutput*, 3>& outputs, juce::MidiOutput* defaultOutput) { midiService.setStandaloneLegacyMidiOutputs(outputs, defaultOutput); }
+    bool isStandaloneLegacyZoneRoutingEnabled() const { return midiService.isStandaloneLegacyZoneRoutingEnabled(); }
 
     void queueKeyboardSelectionMessage(const juce::MidiMessage& message);
     void drainKeyboardSelectionMessages(std::vector<juce::MidiMessage>& messages);
