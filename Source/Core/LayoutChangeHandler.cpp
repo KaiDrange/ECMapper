@@ -127,6 +127,9 @@ void LayoutChangeHandler::valueTreeChildAdded(juce::ValueTree&, juce::ValueTree&
     if (childTree.getType().toString().startsWith(LayoutWrapper::id_key.toString() + "_")) {
         LayoutWrapper::LayoutKey layoutKey = LayoutWrapper::getLayoutKeyFromKeyTree(childTree);
         if (layoutKey.keyId.deviceType != InstrumentType::None) {
+            configLookups_[getConfigIndexFromInstrumentType(layoutKey.keyId.deviceType)].updateKey(childTree);
+            if (zoneChangeCallback_)
+                zoneChangeCallback_(layoutKey.keyId.deviceType, Zone::NoZone);
             sendLEDMsg(layoutKey);
         }
     } else if (childTree.getType().toString().startsWith(ExpressionCurveWrapper::id_expressionCurves.toString()) ||
@@ -138,6 +141,24 @@ void LayoutChangeHandler::valueTreeChildAdded(juce::ValueTree&, juce::ValueTree&
                 zoneChangeCallback_(deviceType, Zone::NoZone);
         }
     }
+}
+
+void LayoutChangeHandler::valueTreeChildRemoved(juce::ValueTree& parentTree, juce::ValueTree& childTree, int) {
+    const juce::ScopedLock stateGuard(stateLock_);
+    if (shouldSuppressNotificationsCallback_ && shouldSuppressNotificationsCallback_())
+        return;
+
+    if (!childTree.getType().toString().startsWith(LayoutWrapper::id_key.toString() + "_"))
+        return;
+
+    auto deviceType = LayoutWrapper::getInstrumentTypeFromLayoutTree(parentTree);
+    if (deviceType == InstrumentType::None)
+        return;
+
+    configLookups_[getConfigIndexFromInstrumentType(deviceType)].updateAll();
+    if (zoneChangeCallback_)
+        zoneChangeCallback_(deviceType, Zone::NoZone);
+    sendLEDMsgForAllKeys(deviceType);
 }
 
 void LayoutChangeHandler::valueTreeRedirected(juce::ValueTree&) {

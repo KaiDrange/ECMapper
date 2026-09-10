@@ -23,7 +23,7 @@ public:
 private:
     void valueTreePropertyChanged(juce::ValueTree& vTree, const juce::Identifier& property) override;
     void valueTreeChildAdded(juce::ValueTree& parentTree, juce::ValueTree& childTree) override;
-    void valueTreeChildRemoved(juce::ValueTree&, juce::ValueTree&, int) override {}
+    void valueTreeChildRemoved(juce::ValueTree& parentTree, juce::ValueTree& childTree, int) override;
     void valueTreeChildOrderChanged(juce::ValueTree&, int, int) override {}
     void valueTreeParentChanged(juce::ValueTree&) override {}
     void valueTreeRedirected(juce::ValueTree& vTree) override;

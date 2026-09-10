@@ -30,8 +30,10 @@ public:
     static inline const juce::Identifier id_yawSensitivity { "yawSensitivity" };
     static inline const juce::Identifier id_rollSensitivity { "rollSensitivity" };
     static inline const juce::Identifier id_pressureSensitivity { "pressureSensitivity" };
+    static inline const juce::Identifier id_calibrationRevision { "calibrationRevision" };
 
     static void addListener(juce::ValueTree::Listener* listener, juce::ValueTree& rootState);
+    static void removeListener(juce::ValueTree::Listener* listener, juce::ValueTree& rootState);
 
     static juce::String getIP(juce::ValueTree& rootState);
     static void setIP(juce::String ip, juce::ValueTree& rootState);

@@ -7,6 +7,11 @@ void SettingsWrapper::addListener(juce::ValueTree::Listener* listener, juce::Val
     vTree.addListener(listener);
 }
 
+void SettingsWrapper::removeListener(juce::ValueTree::Listener* listener, juce::ValueTree& rootState) {
+    auto vTree = getSettingsTree(rootState);
+    vTree.removeListener(listener);
+}
+
 void SettingsWrapper::cleanupLegacyDeviceNodes(juce::ValueTree& devicesNode) {
     if (!devicesNode.isValid()) return;
     for (int i = devicesNode.getNumChildren(); --i >= 0;) {
@@ -152,6 +157,7 @@ void SettingsWrapper::setCalibrationValue(InstrumentType type, const juce::Ident
     auto calibration = settings.getOrCreateChildWithName(id_calibration, nullptr);
     auto devNode = calibration.getOrCreateChildWithName(getDeviceNodeName(type), nullptr);
     devNode.setProperty(param, value, nullptr);
+    rootState.setProperty(id_calibrationRevision, static_cast<int>(rootState.getProperty(id_calibrationRevision, 0)) + 1, nullptr);
 }
 
 float SettingsWrapper::getCalibrationValue(InstrumentType type, const juce::Identifier& param, float defaultValue, juce::ValueTree& rootState) {
@@ -170,6 +176,7 @@ void SettingsWrapper::resetCalibration(InstrumentType type, juce::ValueTree& roo
         auto devNode = calibration.getChildWithName(getDeviceNodeName(type));
         if (devNode.isValid()) {
             calibration.removeChild(devNode, nullptr);
+            rootState.setProperty(id_calibrationRevision, static_cast<int>(rootState.getProperty(id_calibrationRevision, 0)) + 1, nullptr);
         }
     }
 }

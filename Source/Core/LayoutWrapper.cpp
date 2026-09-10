@@ -24,8 +24,9 @@ void LayoutWrapper::clearLayout(InstrumentType deviceType, juce::ValueTree& root
 }
 
 LayoutWrapper::LayoutKey LayoutWrapper::getLayoutKey(KeyId keyId, juce::ValueTree& rootState) {
-    auto keyTree = getKeyTree(keyId, rootState);
     auto defaultKeyType = getCorrectDefaultKeyType(keyId.deviceType, keyId.course, keyId.keyNo);
+    auto layoutTree = getLayoutTree(keyId.deviceType, rootState);
+    auto keyTree = layoutTree.getChildWithName(id_key + "_" + juce::String(keyId.course) + "_" + juce::String(keyId.keyNo));
     
     return LayoutKey {
         .keyId = keyId,

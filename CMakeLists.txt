@@ -217,3 +217,56 @@ target_include_directories(OSCBridgeLifecycleTest PRIVATE Source)
 target_compile_definitions(OSCBridgeLifecycleTest PRIVATE ECMAPPER_ENABLE_HARDWARE=0 JUCE_MODAL_LOOPS_PERMITTED=1)
 juce_generate_juce_header(OSCBridgeLifecycleTest)
 
+juce_add_console_app(RollPreCurveTest
+        PRODUCT_NAME "RollPreCurveTest"
+        VERSION "1.0.0"
+        COMPANY_NAME "Tic Tech"
+        BUNDLE_ID "com.tictech.ecmapper.rollprecurvetest"
+)
+
+target_sources(RollPreCurveTest PRIVATE
+        Source/Tests/RollPreCurveTest.cpp
+        ${CORE_SOURCES}
+)
+
+target_link_libraries(RollPreCurveTest PRIVATE ${COMMON_LIBS})
+target_include_directories(RollPreCurveTest PRIVATE Source)
+target_compile_definitions(RollPreCurveTest PRIVATE ECMAPPER_ENABLE_HARDWARE=0 JUCE_MODAL_LOOPS_PERMITTED=1)
+juce_generate_juce_header(RollPreCurveTest)
+
+
+juce_add_console_app(CalibrationListenerTest
+        PRODUCT_NAME "CalibrationListenerTest"
+        VERSION "1.0.0"
+        COMPANY_NAME "Tic Tech"
+        BUNDLE_ID "com.tictech.ecmapper.calibrationlistenertest"
+)
+
+target_sources(CalibrationListenerTest PRIVATE
+        Source/Tests/CalibrationListenerTest.cpp
+        ${CORE_SOURCES}
+)
+
+target_link_libraries(CalibrationListenerTest PRIVATE ${COMMON_LIBS})
+target_include_directories(CalibrationListenerTest PRIVATE Source)
+target_compile_definitions(CalibrationListenerTest PRIVATE ECMAPPER_ENABLE_HARDWARE=0 JUCE_MODAL_LOOPS_PERMITTED=1)
+juce_generate_juce_header(CalibrationListenerTest)
+
+
+juce_add_console_app(LayoutLoadListenerTest
+        PRODUCT_NAME "LayoutLoadListenerTest"
+        VERSION "1.0.0"
+        COMPANY_NAME "Tic Tech"
+        BUNDLE_ID "com.tictech.ecmapper.layoutloadlistenertest"
+)
+
+target_sources(LayoutLoadListenerTest PRIVATE
+        Source/Tests/LayoutLoadListenerTest.cpp
+        ${CORE_SOURCES}
+)
+
+target_link_libraries(LayoutLoadListenerTest PRIVATE ${COMMON_LIBS})
+target_include_directories(LayoutLoadListenerTest PRIVATE Source)
+target_compile_definitions(LayoutLoadListenerTest PRIVATE ECMAPPER_ENABLE_HARDWARE=0 JUCE_MODAL_LOOPS_PERMITTED=1)
+juce_generate_juce_header(LayoutLoadListenerTest)
+

@@ -1,4 +1,5 @@
 #include "MidiService.h"
+#include "ExpressionPreprocessor.h"
 #include "HardwareService.h"
 #include "Midi1Protocol.h"
 #include "Midi2Protocol.h"
@@ -152,7 +153,7 @@ void MidiService::stop() {
     juce::universal_midi_packets::Endpoints::getInstance()->removeListener(*this);
     if (pluginState_ != nullptr) {
         pluginState_->state.removeListener(this);
-        SettingsWrapper::getSettingsTree(pluginState_->state).removeListener(this);
+        SettingsWrapper::removeListener(this, pluginState_->state);
     }
 
     if (ciDevice_) {
@@ -299,7 +300,8 @@ void MidiService::valueTreePropertyChanged(juce::ValueTree& tree, const juce::Id
         property == SettingsWrapper::id_stripSensitivity ||
         property == SettingsWrapper::id_yawSensitivity ||
         property == SettingsWrapper::id_rollSensitivity ||
-        property == SettingsWrapper::id_pressureSensitivity)
+        property == SettingsWrapper::id_pressureSensitivity ||
+        property == SettingsWrapper::id_calibrationRevision)
     {
         updateCalibration();
     }
@@ -1382,6 +1384,8 @@ void MidiService::addMidiValueMessage(InstrumentType deviceType, int channel, fl
     }
 
     float normalized = isBipolar ? (std::clamp(ehValue * gain, -1.0f, 1.0f)) : (std::clamp(ehValue * gain, 0.0f, 1.0f));
+    if (curveTarget == ExpressionCurveTarget::Roll)
+        normalized = applyRollPreCurve(normalized);
     normalized = applyExpressionCurve(deviceType, curveTarget, normalized, isBipolar);
     
     bool useNativePerNote = isMidi2Mode_ && remoteSupportsPerNote_ && noteNo != -1;
@@ -1455,6 +1459,8 @@ std::vector<MidiService::VisualMarker> MidiService::getVisualMarkers(InstrumentT
                     
                     bool isBipolar = (target == ExpressionCurveTarget::Yaw || target == ExpressionCurveTarget::Roll);
                     float normalized = isBipolar ? (std::clamp(val * gain, -1.0f, 1.0f)) : (std::clamp(val * gain, 0.0f, 1.0f));
+                    if (target == ExpressionCurveTarget::Roll)
+                        normalized = applyRollPreCurve(normalized);
                     
                     markers.push_back({normalized, now, c * 1000 + k});
                 }
