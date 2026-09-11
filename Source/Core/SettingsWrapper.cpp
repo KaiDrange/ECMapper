@@ -2,6 +2,15 @@
 
 namespace ecm {
 
+bool SettingsWrapper::isLegacyPresetProperty(const juce::Identifier& property) {
+    return property == id_lowerMPEVoiceCount
+        || property == id_upperMPEVoiceCount
+        || property == id_lowerMPEPB
+        || property == id_upperMPEPB
+        || property == id_midi2Mode
+        || property == id_pluginOutputMode;
+}
+
 void SettingsWrapper::addListener(juce::ValueTree::Listener* listener, juce::ValueTree& rootState) {
     auto vTree = getSettingsTree(rootState);
     vTree.addListener(listener);
@@ -23,10 +32,75 @@ void SettingsWrapper::cleanupLegacyDeviceNodes(juce::ValueTree& devicesNode) {
 }
 
 juce::ValueTree SettingsWrapper::getSettingsTree(juce::ValueTree& rootState) {
+    normalizeStateTree(rootState);
     auto vTree = rootState.getOrCreateChildWithName(id_globalSettings, nullptr);
     auto devices = vTree.getOrCreateChildWithName(id_devices, nullptr);
     cleanupLegacyDeviceNodes(devices);
     return vTree;
+}
+
+juce::ValueTree SettingsWrapper::getPresetTree(juce::ValueTree& rootState) {
+    normalizeStateTree(rootState);
+    auto presetTree = rootState.getOrCreateChildWithName(id_preset, nullptr);
+    if (!presetTree.hasProperty(id_ecMapperVersion))
+        presetTree.setProperty(id_ecMapperVersion, ProjectInfo::versionString, nullptr);
+    return presetTree;
+}
+
+void SettingsWrapper::migrateLegacyPresetProperties(juce::ValueTree& rootState, juce::ValueTree& presetTree) {
+    auto globalSettings = rootState.getChildWithName(id_globalSettings);
+    if (!globalSettings.isValid())
+        return;
+
+    for (int i = globalSettings.getNumProperties(); --i >= 0;) {
+        const auto property = globalSettings.getPropertyName(i);
+        if (!isLegacyPresetProperty(property) || presetTree.hasProperty(property))
+            continue;
+
+        presetTree.setProperty(property, globalSettings.getProperty(property), nullptr);
+        globalSettings.removeProperty(property, nullptr);
+    }
+}
+
+void SettingsWrapper::migrateLegacyDeviceNodes(juce::ValueTree& rootState, juce::ValueTree& presetTree) {
+    for (int i = rootState.getNumChildren(); --i >= 0;) {
+        auto child = rootState.getChild(i);
+        const auto type = child.getType().toString();
+        if (!type.startsWith(LayoutWrapper::id_device.toString()))
+            continue;
+
+        auto existing = presetTree.getChildWithName(child.getType());
+        if (existing.isValid()) {
+            existing.copyPropertiesAndChildrenFrom(child, nullptr);
+        } else {
+            presetTree.addChild(child.createCopy(), -1, nullptr);
+        }
+
+        rootState.removeChild(i, nullptr);
+    }
+}
+
+void SettingsWrapper::normalizeStateTree(juce::ValueTree& rootState) {
+    if (!rootState.isValid())
+        return;
+
+    auto presetTree = rootState.getOrCreateChildWithName(id_preset, nullptr);
+    migrateLegacyPresetProperties(rootState, presetTree);
+    migrateLegacyDeviceNodes(rootState, presetTree);
+
+    if (!rootState.hasProperty(id_ecMapperVersion))
+        rootState.setProperty(id_ecMapperVersion, ProjectInfo::versionString, nullptr);
+    if (!presetTree.hasProperty(id_ecMapperVersion))
+        presetTree.setProperty(id_ecMapperVersion, ProjectInfo::versionString, nullptr);
+}
+
+juce::ValueTree SettingsWrapper::createPersistentStateTree(juce::ValueTree& rootState) {
+    auto stateCopy = rootState.createCopy();
+    normalizeStateTree(stateCopy);
+    stateCopy.setProperty(id_ecMapperVersion, ProjectInfo::versionString, nullptr);
+    auto presetTree = stateCopy.getOrCreateChildWithName(id_preset, nullptr);
+    presetTree.setProperty(id_ecMapperVersion, ProjectInfo::versionString, nullptr);
+    return stateCopy;
 }
 
 juce::String SettingsWrapper::getIP(juce::ValueTree& rootState) {
@@ -40,63 +114,63 @@ void SettingsWrapper::setIP(juce::String ip, juce::ValueTree& rootState) {
 }
 
 void SettingsWrapper::setLowerMPEVoiceCount(int count, juce::ValueTree& rootState) {
-    auto vTree = getSettingsTree(rootState);
+    auto vTree = getPresetTree(rootState);
     vTree.setProperty(id_lowerMPEVoiceCount, count, nullptr);
 }
 
 int SettingsWrapper::getLowerMPEVoiceCount(juce::ValueTree& rootState) {
-    auto vTree = getSettingsTree(rootState);
+    auto vTree = getPresetTree(rootState);
     return vTree.getProperty(id_lowerMPEVoiceCount, default_lowerMPEVoiceCount);
 }
 
 void SettingsWrapper::setUpperMPEVoiceCount(int count, juce::ValueTree& rootState) {
-    auto vTree = getSettingsTree(rootState);
+    auto vTree = getPresetTree(rootState);
     vTree.setProperty(id_upperMPEVoiceCount, count, nullptr);
 }
 
 int SettingsWrapper::getUpperMPEVoiceCount(juce::ValueTree& rootState) {
-    auto vTree = getSettingsTree(rootState);
+    auto vTree = getPresetTree(rootState);
     return vTree.getProperty(id_upperMPEVoiceCount, default_upperMPEVoiceCount);
 }
 
 void SettingsWrapper::setLowerMPEPB(int pbValue, juce::ValueTree& rootState) {
-    auto vTree = getSettingsTree(rootState);
+    auto vTree = getPresetTree(rootState);
     vTree.setProperty(id_lowerMPEPB, pbValue, nullptr);
 }
 
 int SettingsWrapper::getLowerMPEPB(juce::ValueTree& rootState) {
-    auto vTree = getSettingsTree(rootState);
+    auto vTree = getPresetTree(rootState);
     return vTree.getProperty(id_lowerMPEPB, default_lowerMPEPB);
 }
 
 void SettingsWrapper::setUpperMPEPB(int pbValue, juce::ValueTree& rootState) {
-    auto vTree = getSettingsTree(rootState);
+    auto vTree = getPresetTree(rootState);
     vTree.setProperty(id_upperMPEPB, pbValue, nullptr);
 }
 
 int SettingsWrapper::getUpperMPEPB(juce::ValueTree& rootState) {
-    auto vTree = getSettingsTree(rootState);
+    auto vTree = getPresetTree(rootState);
     return vTree.getProperty(id_upperMPEPB, default_upperMPEPB);
 }
 
 void SettingsWrapper::setMidi2Mode(bool enabled, juce::ValueTree& rootState) {
-    auto vTree = getSettingsTree(rootState);
+    auto vTree = getPresetTree(rootState);
     vTree.setProperty(id_midi2Mode, enabled, nullptr);
     juce::Logger::writeToLog("SettingsWrapper: setMidi2Mode to " + juce::String((int)enabled));
 }
 
 bool SettingsWrapper::getMidi2Mode(juce::ValueTree& rootState) {
-    auto vTree = getSettingsTree(rootState);
+    auto vTree = getPresetTree(rootState);
     return vTree.getProperty(id_midi2Mode, default_midi2Mode);
 }
 
 void SettingsWrapper::setPluginOutputMode(OutputTransportMode mode, juce::ValueTree& rootState) {
-    auto vTree = getSettingsTree(rootState);
+    auto vTree = getPresetTree(rootState);
     vTree.setProperty(id_pluginOutputMode, static_cast<int>(mode), nullptr);
 }
 
 OutputTransportMode SettingsWrapper::getPluginOutputMode(juce::ValueTree& rootState) {
-    auto vTree = getSettingsTree(rootState);
+    auto vTree = getPresetTree(rootState);
     const int stored = static_cast<int>(vTree.getProperty(id_pluginOutputMode, default_pluginOutputMode));
     if (stored == static_cast<int>(OutputTransportMode::Vst3Direct))
         return OutputTransportMode::Vst3Direct;

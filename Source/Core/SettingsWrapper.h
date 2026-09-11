@@ -9,6 +9,8 @@ namespace ecm {
 class SettingsWrapper {
 public:
     static inline const juce::Identifier id_globalSettings { "globalsettings" };
+    static inline const juce::Identifier id_preset { "preset" };
+    static inline const juce::Identifier id_ecMapperVersion { "ecmapperVersion" };
     static inline const juce::Identifier id_IP { "ipaddress" };
     static inline const juce::Identifier id_lowerMPEVoiceCount {"lowermpevoicecount"};
     static inline const juce::Identifier id_upperMPEVoiceCount {"uppermpevoicecount"};
@@ -73,6 +75,9 @@ public:
     static void loadDeviceSettings(ConnectedDevice& device, juce::ValueTree& rootState);
     
     static juce::ValueTree getSettingsTree(juce::ValueTree& rootState);
+    static juce::ValueTree getPresetTree(juce::ValueTree& rootState);
+    static void normalizeStateTree(juce::ValueTree& rootState);
+    static juce::ValueTree createPersistentStateTree(juce::ValueTree& rootState);
 
 private:
     static inline const juce::Identifier id_devices { "devices" };
@@ -94,6 +99,9 @@ private:
     static constexpr int default_activeCalibrationTab = 0;
 
     static void cleanupLegacyDeviceNodes(juce::ValueTree& devicesNode);
+    static bool isLegacyPresetProperty(const juce::Identifier& property);
+    static void migrateLegacyPresetProperties(juce::ValueTree& rootState, juce::ValueTree& presetTree);
+    static void migrateLegacyDeviceNodes(juce::ValueTree& rootState, juce::ValueTree& presetTree);
 };
 
 } // namespace ecm

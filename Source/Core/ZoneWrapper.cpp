@@ -1,4 +1,5 @@
 #include "ZoneWrapper.h"
+#include "LayoutWrapper.h"
 
 namespace ecm {
 
@@ -21,7 +22,7 @@ void ZoneWrapper::removeListener(InstrumentType deviceType, juce::ValueTree::Lis
 }
 
 juce::ValueTree ZoneWrapper::getZoneTree(InstrumentType deviceType, Zone zone, juce::ValueTree& rootState) {
-    auto deviceChild = rootState.getOrCreateChildWithName(id_device + juce::String((int)deviceType), nullptr);
+    auto deviceChild = LayoutWrapper::getDeviceTree(deviceType, rootState);
     return deviceChild.getOrCreateChildWithName(id_zone + juce::String((int)zone), nullptr);
 }
 

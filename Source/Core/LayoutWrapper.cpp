@@ -1,9 +1,17 @@
 #include "LayoutWrapper.h"
+#include "SettingsWrapper.h"
 
 namespace ecm {
 
+juce::ValueTree LayoutWrapper::getDeviceTree(InstrumentType deviceType, juce::ValueTree& rootState, bool create) {
+    auto presetTree = SettingsWrapper::getPresetTree(rootState);
+    auto deviceName = id_device + juce::String((int)deviceType);
+    return create ? presetTree.getOrCreateChildWithName(deviceName, nullptr)
+                  : presetTree.getChildWithName(deviceName);
+}
+
 juce::ValueTree LayoutWrapper::getLayoutTree(InstrumentType deviceType, juce::ValueTree& rootState) {
-    auto deviceChild = rootState.getOrCreateChildWithName(id_device + juce::String((int)deviceType), nullptr);
+    auto deviceChild = getDeviceTree(deviceType, rootState);
     return deviceChild.getOrCreateChildWithName(id_layout, nullptr);
 }
 

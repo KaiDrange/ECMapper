@@ -1,11 +1,10 @@
 #include "ExpressionCurveWrapper.h"
+#include "LayoutWrapper.h"
 
 namespace ecm {
 
 juce::ValueTree ExpressionCurveWrapper::getDeviceTree(InstrumentType deviceType, juce::ValueTree& rootState, bool create) {
-    auto deviceName = id_device + juce::String((int)deviceType);
-    return create ? rootState.getOrCreateChildWithName(deviceName, nullptr)
-                  : rootState.getChildWithName(deviceName);
+    return LayoutWrapper::getDeviceTree(deviceType, rootState, create);
 }
 
 juce::ValueTree ExpressionCurveWrapper::getExpressionCurvesTree(InstrumentType deviceType, juce::ValueTree& rootState, bool create) {

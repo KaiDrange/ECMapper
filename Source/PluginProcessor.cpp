@@ -80,49 +80,26 @@ DeviceKeyCounts getDeviceKeyCounts(const ecm::InstrumentType deviceType)
     }
 }
 
-bool isPresetMpeProperty(const juce::Identifier& property)
+juce::ValueTree createPresetSnapshotRoot(const juce::ValueTree& stateTree)
 {
-    return property == ecm::SettingsWrapper::id_lowerMPEVoiceCount
-        || property == ecm::SettingsWrapper::id_upperMPEVoiceCount
-        || property == ecm::SettingsWrapper::id_lowerMPEPB
-        || property == ecm::SettingsWrapper::id_upperMPEPB
-        || property == ecm::SettingsWrapper::id_midi2Mode
-        || property == ecm::SettingsWrapper::id_pluginOutputMode;
+    auto snapshot = juce::ValueTree(stateTree.getType());
+    snapshot.setProperty(ecm::SettingsWrapper::id_ecMapperVersion, ProjectInfo::versionString, nullptr);
+
+    auto presetTree = stateTree.getChildWithName(ecm::SettingsWrapper::id_preset);
+    if (presetTree.isValid())
+        snapshot.addChild(presetTree.createCopy(), -1, nullptr);
+
+    return snapshot;
 }
 
-void pruneGlobalSettingsForPreset(juce::ValueTree& globalSettings)
+void normalizePresetBankState(juce::ValueTree& presetBankState)
 {
-    if (!globalSettings.isValid())
-        return;
-
-    for (int i = globalSettings.getNumChildren(); --i >= 0;)
-        globalSettings.removeChild(i, nullptr);
-
-    for (int i = globalSettings.getNumProperties(); --i >= 0;) {
-        auto property = globalSettings.getPropertyName(i);
-        if (!isPresetMpeProperty(property))
-            globalSettings.removeProperty(property, nullptr);
+    for (int i = 0; i < presetBankState.getNumChildren(); ++i) {
+        auto preset = presetBankState.getChild(i);
+        auto snapshot = preset.getNumChildren() > 0 ? preset.getChild(0) : juce::ValueTree();
+        if (snapshot.isValid())
+            ecm::SettingsWrapper::normalizeStateTree(snapshot);
     }
-}
-
-void applyGlobalSettingsPreset(juce::ValueTree& liveRoot, const juce::ValueTree& presetGlobalSettings)
-{
-    auto liveGlobalSettings = liveRoot.getOrCreateChildWithName(ecm::SettingsWrapper::id_globalSettings, nullptr);
-
-    auto copyProperty = [&](const juce::Identifier& property)
-    {
-        if (presetGlobalSettings.hasProperty(property))
-            liveGlobalSettings.setProperty(property, presetGlobalSettings.getProperty(property), nullptr);
-        else
-            liveGlobalSettings.removeProperty(property, nullptr);
-    };
-
-    copyProperty(ecm::SettingsWrapper::id_lowerMPEVoiceCount);
-    copyProperty(ecm::SettingsWrapper::id_upperMPEVoiceCount);
-    copyProperty(ecm::SettingsWrapper::id_lowerMPEPB);
-    copyProperty(ecm::SettingsWrapper::id_upperMPEPB);
-    copyProperty(ecm::SettingsWrapper::id_midi2Mode);
-    copyProperty(ecm::SettingsWrapper::id_pluginOutputMode);
 }
 
 void materializeLayoutKeysForDevice(const ecm::InstrumentType deviceType, juce::ValueTree& rootState)
@@ -205,6 +182,7 @@ void materializePresetState(juce::ValueTree& rootState)
     ecm::SettingsWrapper::setLowerMPEPB(ecm::SettingsWrapper::getLowerMPEPB(rootState), rootState);
     ecm::SettingsWrapper::setUpperMPEPB(ecm::SettingsWrapper::getUpperMPEPB(rootState), rootState);
     ecm::SettingsWrapper::setMidi2Mode(ecm::SettingsWrapper::getMidi2Mode(rootState), rootState);
+    ecm::SettingsWrapper::setPluginOutputMode(ecm::SettingsWrapper::getPluginOutputMode(rootState), rootState);
 }
 
 void mergeTreeIntoLive(juce::ValueTree& liveTree, const juce::ValueTree& snapshotTree)
@@ -696,8 +674,11 @@ juce::AudioProcessorEditor* ECMapperAudioProcessor::createEditor() {
 void ECMapperAudioProcessor::getStateInformation(juce::MemoryBlock& destData) {
     const juce::ScopedLock stateGuard(presetStateLock_);
     juce::ValueTree bundle("ECMapperStateBundle");
-    bundle.addChild(state.copyState(), -1, nullptr);
-    bundle.addChild(presetBankState_.createCopy(), -1, nullptr);
+    auto stateCopy = ecm::SettingsWrapper::createPersistentStateTree(state.state);
+    auto presetBankCopy = presetBankState_.createCopy();
+    normalizePresetBankState(presetBankCopy);
+    bundle.addChild(stateCopy, -1, nullptr);
+    bundle.addChild(presetBankCopy, -1, nullptr);
     const std::unique_ptr xml(bundle.createXml());
     copyXmlToBinary(*xml, destData);
 }
@@ -716,15 +697,20 @@ void ECMapperAudioProcessor::setStateInformation(const void* data, const int siz
         if (tree.hasType("ECMapperStateBundle")) {
             const juce::ScopedValueSetter<bool> batchGuard(presetBatchInProgress_, true);
             const auto liveState = tree.getChildWithName(state.state.getType());
-            if (liveState.isValid())
+            if (liveState.isValid()) {
                 mergeTreeIntoLive(state.state, liveState);
+                ecm::SettingsWrapper::normalizeStateTree(state.state);
+            }
 
             const auto bankState = tree.getChildWithName(presetBankState_.getType());
-            if (bankState.isValid())
+            if (bankState.isValid()) {
                 presetBankState_ = bankState;
+                normalizePresetBankState(presetBankState_);
+            }
         } else if (tree.hasType(state.state.getType())) {
             const juce::ScopedValueSetter batchGuard(presetBatchInProgress_, true);
             mergeTreeIntoLive(state.state, tree);
+            ecm::SettingsWrapper::normalizeStateTree(state.state);
         }
 
         presetSlotParameter_ = dynamic_cast<juce::AudioParameterChoice*>(state.getParameter(presetSlotParameterId));
@@ -859,8 +845,10 @@ juce::ValueTree ECMapperAudioProcessor::getPresetSnapshot(const int slot) const
         return {};
 
     auto snapshot = preset.getChildWithName(state.state.getType());
-    if (snapshot.isValid())
+    if (snapshot.isValid()) {
+        ecm::SettingsWrapper::normalizeStateTree(snapshot);
         return snapshot;
+    }
 
     return {};
 }
@@ -891,14 +879,9 @@ void ECMapperAudioProcessor::applyPresetState(const juce::ValueTree& snapshot)
     {
         const juce::ScopedValueSetter batchGuard(presetBatchInProgress_, true);
         auto& liveState = state.state;
+        ecm::SettingsWrapper::normalizeStateTree(liveState);
         mergeTreeIntoLive(liveState, snapshot);
-
-        auto snapshotGlobalSettings = snapshot.getChildWithName(ecm::SettingsWrapper::id_globalSettings);
-        if (snapshotGlobalSettings.isValid()) {
-            applyGlobalSettingsPreset(liveState, snapshotGlobalSettings);
-        } else {
-            applyGlobalSettingsPreset(liveState, juce::ValueTree());
-        }
+        ecm::SettingsWrapper::normalizeStateTree(liveState);
 
         for (int device = static_cast<int>(ecm::InstrumentType::Alpha); device <= static_cast<int>(ecm::InstrumentType::Pico); ++device) {
             for (int zone = static_cast<int>(ecm::Zone::Zone1); zone <= static_cast<int>(ecm::Zone::Zone3); ++zone) {
@@ -970,13 +953,10 @@ juce::ValueTree ECMapperAudioProcessor::makeComparableState(juce::ValueTree stat
     if (stateTree.isValid())
         stateTree.removeProperty(presetSlotParameterId, nullptr);
 
+    ecm::SettingsWrapper::normalizeStateTree(stateTree);
     materializePresetState(stateTree);
 
-    auto globalSettings = stateTree.getChildWithName(ecm::SettingsWrapper::id_globalSettings);
-    if (globalSettings.isValid())
-        pruneGlobalSettingsForPreset(globalSettings);
-
-    return stateTree;
+    return createPresetSnapshotRoot(stateTree);
 }
 
 void ECMapperAudioProcessor::handleAsyncUpdate()
@@ -1012,10 +992,13 @@ void ECMapperAudioProcessor::loadStandalonePresetBank()
 
     if (bundle.hasType("ECMapperPresetBank")) {
         presetBankState_ = bundle;
+        normalizePresetBankState(presetBankState_);
     } else if (bundle.hasType("ECMapperStateBundle")) {
         const auto bank = bundle.getChildWithName(presetBankState_.getType());
-        if (bank.isValid())
+        if (bank.isValid()) {
             presetBankState_ = bank;
+            normalizePresetBankState(presetBankState_);
+        }
     }
 
     ensureInitPresetExists();

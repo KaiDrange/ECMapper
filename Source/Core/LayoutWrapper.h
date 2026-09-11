@@ -46,6 +46,7 @@ public:
     static void setKeyMappingType(KeyId keyId, KeyMappingType keyMappingType, juce::ValueTree& rootState);
     static void setKeyMappingValue(KeyId keyId, juce::String keyMappingValue, juce::ValueTree& rootState);
     
+    static juce::ValueTree getDeviceTree(InstrumentType deviceType, juce::ValueTree& rootState, bool create = true);
     static juce::ValueTree getLayoutTree(InstrumentType deviceType, juce::ValueTree& rootState);
     static juce::ValueTree createPersistentLayoutTree(InstrumentType deviceType, juce::ValueTree& rootState);
     static LayoutKey getLayoutKeyFromKeyTree(juce::ValueTree keyTree);

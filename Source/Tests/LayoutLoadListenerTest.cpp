@@ -6,6 +6,7 @@
 #include "Core/LayoutChangeHandler.h"
 #include "Core/LayoutWrapper.h"
 #include "Core/OSCMessage.h"
+#include "Core/SettingsWrapper.h"
 #include "Core/ZoneWrapper.h"
 
 namespace {
@@ -131,6 +132,44 @@ int main() {
         ok &= expect(roundTrippedLayout.getProperty(LayoutWrapper::id_ecMapperVersion).toString() == ProjectInfo::versionString,
                      "serialized layout XML should preserve the ECMapper version");
     }
+
+    juce::ValueTree legacyState { "LegacyState" };
+    auto legacySettings = legacyState.getOrCreateChildWithName(SettingsWrapper::id_globalSettings, nullptr);
+    legacySettings.setProperty(SettingsWrapper::id_lowerMPEVoiceCount, 9, nullptr);
+    legacySettings.setProperty(SettingsWrapper::id_upperMPEPB, 24, nullptr);
+    auto legacyDevice = legacyState.getOrCreateChildWithName(LayoutWrapper::id_device + juce::String((int)InstrumentType::Alpha), nullptr);
+    auto legacyLayout = legacyDevice.getOrCreateChildWithName(LayoutWrapper::id_layout, nullptr);
+    auto legacyKey = legacyLayout.getOrCreateChildWithName(LayoutWrapper::id_key + juce::String("_0_2"), nullptr);
+    legacyKey.setProperty(LayoutWrapper::id_keyType, (int)EigenharpKeyType::Normal, nullptr);
+    legacyKey.setProperty(LayoutWrapper::id_keyColour, (int)KeyColour::Off, nullptr);
+    legacyKey.setProperty(LayoutWrapper::id_zone, (int)Zone::Zone1, nullptr);
+    legacyKey.setProperty(LayoutWrapper::id_keyMappingType, (int)KeyMappingType::Note, nullptr);
+    legacyKey.setProperty(LayoutWrapper::id_mappingValue, "75", nullptr);
+
+    SettingsWrapper::normalizeStateTree(legacyState);
+    auto presetTree = SettingsWrapper::getPresetTree(legacyState);
+    ok &= expect(legacyState.hasProperty(SettingsWrapper::id_ecMapperVersion),
+                 "normalized root state should include an ECMapper version");
+    ok &= expect(presetTree.hasProperty(SettingsWrapper::id_ecMapperVersion),
+                 "normalized preset state should include an ECMapper version");
+    ok &= expect(!legacyState.getChildWithName(LayoutWrapper::id_device + juce::String((int)InstrumentType::Alpha)).isValid(),
+                 "legacy root device nodes should move into the preset subtree");
+    ok &= expect(presetTree.getChildWithName(LayoutWrapper::id_device + juce::String((int)InstrumentType::Alpha)).isValid(),
+                 "normalized preset should contain migrated device nodes");
+    ok &= expect(!legacySettings.hasProperty(SettingsWrapper::id_lowerMPEVoiceCount),
+                 "legacy preset properties should be removed from global settings during migration");
+    ok &= expect(SettingsWrapper::getLowerMPEVoiceCount(legacyState) == 9,
+                 "lower MPE voice count should migrate into the preset subtree");
+    ok &= expect(SettingsWrapper::getUpperMPEPB(legacyState) == 24,
+                 "upper MPE pitch bend should migrate into the preset subtree");
+    ok &= expect(LayoutWrapper::getLayoutKey({ 0, 2, InstrumentType::Alpha }, legacyState).mappingValue == "75",
+                 "migrated preset layouts should remain readable through the wrappers");
+
+    auto persistentState = SettingsWrapper::createPersistentStateTree(pluginState.state);
+    ok &= expect(persistentState.hasProperty(SettingsWrapper::id_ecMapperVersion),
+                 "persistent full state should include a root ECMapper version");
+    ok &= expect(persistentState.getChildWithName(SettingsWrapper::id_preset).hasProperty(SettingsWrapper::id_ecMapperVersion),
+                 "persistent full state should include a preset ECMapper version");
 
     pluginState.state.removeListener(&handler);
     juce::Logger::setCurrentLogger(nullptr);
