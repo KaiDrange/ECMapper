@@ -26,12 +26,17 @@ private:
     void requestDeleteSlot(int slot);
     void requestSaveToSlot(int slot);
     void savePresetToSlot(int slot, const juce::String& name);
+    void browseToImportPresetBank();
+    void browseToExportPresetBank();
+    void showPresetBankError(const juce::String& title, const juce::String& message);
     void closeDialog();
 
     ECMapperAudioProcessor& processor;
     int selectedSlot = 1;
 
     juce::Label headerLabel;
+    juce::TextButton importButton { "Import Bank" };
+    juce::TextButton exportButton { "Export Bank" };
 
     std::array<juce::TextButton, slotCount> slotButtons {};
     std::array<juce::TextButton, slotCount> deleteButtons {};

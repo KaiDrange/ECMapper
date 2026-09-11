@@ -1,4 +1,5 @@
 #include "PresetBrowserComponent.h"
+#include "../Core/FileUtil.h"
 #include "../PluginProcessor.h"
 
 namespace ecm {
@@ -43,6 +44,14 @@ PresetBrowserComponent::PresetBrowserComponent(ECMapperAudioProcessor& processor
     headerLabel.setColour(juce::Label::textColourId, Style::text());
     addAndMakeVisible(headerLabel);
 
+    configurePresetActionButton(importButton);
+    importButton.onClick = [this] { browseToImportPresetBank(); };
+    addAndMakeVisible(importButton);
+
+    configurePresetActionButton(exportButton);
+    exportButton.onClick = [this] { browseToExportPresetBank(); };
+    addAndMakeVisible(exportButton);
+
     for (int slot = 1; slot <= slotCount; ++slot)
     {
         auto index = slot - 1;
@@ -75,7 +84,12 @@ void PresetBrowserComponent::paint(juce::Graphics& g)
 void PresetBrowserComponent::resized()
 {
     auto area = getLocalBounds().reduced(12);
-    headerLabel.setBounds(area.removeFromTop(24));
+    auto headerArea = area.removeFromTop(28);
+    auto buttonArea = headerArea.removeFromRight(230);
+    exportButton.setBounds(buttonArea.removeFromRight(110));
+    buttonArea.removeFromRight(10);
+    importButton.setBounds(buttonArea.removeFromRight(110));
+    headerLabel.setBounds(headerArea);
     area.removeFromTop(4);
 
     auto columnWidth = (area.getWidth() - 12) / 2;
@@ -232,6 +246,62 @@ void PresetBrowserComponent::savePresetToSlot(int slot, const juce::String& name
     }
 
     saveNow();
+}
+
+void PresetBrowserComponent::browseToImportPresetBank()
+{
+    auto chooser = std::make_shared<juce::FileChooser>("Import preset bank", FileUtil::getLayoutsRootDirectory(), "*.xml");
+    auto safeThis = juce::Component::SafePointer<PresetBrowserComponent>(this);
+    chooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
+        [safeThis, chooser](const juce::FileChooser& fc)
+        {
+            if (safeThis == nullptr)
+                return;
+
+            const auto file = fc.getResult();
+            if (!file.existsAsFile())
+                return;
+
+            if (!safeThis->processor.importPresetBankFromFile(file)) {
+                safeThis->showPresetBankError("Import Failed", "The selected file is not a valid ECMapper preset bank.");
+                return;
+            }
+
+            safeThis->refreshSlots();
+        });
+}
+
+void PresetBrowserComponent::browseToExportPresetBank()
+{
+    auto chooser = std::make_shared<juce::FileChooser>(
+        "Export preset bank",
+        FileUtil::getLayoutsRootDirectory().getChildFile("preset_bank.xml"),
+        "*.xml");
+    auto safeThis = juce::Component::SafePointer<PresetBrowserComponent>(this);
+    chooser->launchAsync(juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::warnAboutOverwriting,
+        [safeThis, chooser](const juce::FileChooser& fc)
+        {
+            if (safeThis == nullptr)
+                return;
+
+            auto file = fc.getResult();
+            if (file == juce::File())
+                return;
+
+            if (!file.hasFileExtension(".xml"))
+                file = file.withFileExtension(".xml");
+
+            if (!safeThis->processor.exportPresetBankToFile(file))
+                safeThis->showPresetBankError("Export Failed", "ECMapper could not write the preset bank to that file.");
+        });
+}
+
+void PresetBrowserComponent::showPresetBankError(const juce::String& title, const juce::String& message)
+{
+    juce::NativeMessageBox::showMessageBoxAsync(
+        juce::MessageBoxIconType::WarningIcon,
+        title,
+        message);
 }
 
 void PresetBrowserComponent::closeDialog()

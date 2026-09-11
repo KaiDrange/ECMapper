@@ -1,6 +1,7 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 #include "Core/SettingsWrapper.h"
+#include "Core/PresetBankFileUtil.h"
 #include "Core/Midi2Protocol.h"
 #include "../JUCE/modules/juce_audio_processors_headless/format_types/VST3_SDK/pluginterfaces/vst/ivstevents.h"
 #include "../JUCE/modules/juce_audio_processors_headless/format_types/VST3_SDK/pluginterfaces/vst/ivstmidicontrollers.h"
@@ -90,16 +91,6 @@ juce::ValueTree createPresetSnapshotRoot(const juce::ValueTree& stateTree)
         snapshot.addChild(presetTree.createCopy(), -1, nullptr);
 
     return snapshot;
-}
-
-void normalizePresetBankState(juce::ValueTree& presetBankState)
-{
-    for (int i = 0; i < presetBankState.getNumChildren(); ++i) {
-        auto preset = presetBankState.getChild(i);
-        auto snapshot = preset.getNumChildren() > 0 ? preset.getChild(0) : juce::ValueTree();
-        if (snapshot.isValid())
-            ecm::SettingsWrapper::normalizeStateTree(snapshot);
-    }
 }
 
 void materializeLayoutKeysForDevice(const ecm::InstrumentType deviceType, juce::ValueTree& rootState)
@@ -675,8 +666,7 @@ void ECMapperAudioProcessor::getStateInformation(juce::MemoryBlock& destData) {
     const juce::ScopedLock stateGuard(presetStateLock_);
     juce::ValueTree bundle("ECMapperStateBundle");
     auto stateCopy = ecm::SettingsWrapper::createPersistentStateTree(state.state);
-    auto presetBankCopy = presetBankState_.createCopy();
-    normalizePresetBankState(presetBankCopy);
+    auto presetBankCopy = ecm::PresetBankFileUtil::createExportTree(presetBankState_);
     bundle.addChild(stateCopy, -1, nullptr);
     bundle.addChild(presetBankCopy, -1, nullptr);
     const std::unique_ptr xml(bundle.createXml());
@@ -705,7 +695,7 @@ void ECMapperAudioProcessor::setStateInformation(const void* data, const int siz
             const auto bankState = tree.getChildWithName(presetBankState_.getType());
             if (bankState.isValid()) {
                 presetBankState_ = bankState;
-                normalizePresetBankState(presetBankState_);
+                ecm::PresetBankFileUtil::normalizePresetBankState(presetBankState_);
             }
         } else if (tree.hasType(state.state.getType())) {
             const juce::ScopedValueSetter batchGuard(presetBatchInProgress_, true);
@@ -982,24 +972,11 @@ void ECMapperAudioProcessor::loadStandalonePresetBank()
         return;
     }
 
-    const auto xml = juce::XmlDocument::parse(file);
-    if (xml == nullptr)
+    auto importResult = ecm::PresetBankFileUtil::readPresetBankFile(file);
+    if (!importResult.presetBank.isValid())
         return;
 
-    const auto bundle = juce::ValueTree::fromXml(*xml);
-    if (!bundle.isValid())
-        return;
-
-    if (bundle.hasType("ECMapperPresetBank")) {
-        presetBankState_ = bundle;
-        normalizePresetBankState(presetBankState_);
-    } else if (bundle.hasType("ECMapperStateBundle")) {
-        const auto bank = bundle.getChildWithName(presetBankState_.getType());
-        if (bank.isValid()) {
-            presetBankState_ = bank;
-            normalizePresetBankState(presetBankState_);
-        }
-    }
+    presetBankState_ = std::move(importResult.presetBank);
 
     ensureInitPresetExists();
 }
@@ -1015,11 +992,7 @@ void ECMapperAudioProcessor::saveStandalonePresetBank() const
         // ReSharper disable once CppExpressionWithoutSideEffects
         file.getParentDirectory().createDirectory();
 
-    const juce::ValueTree bankCopy = presetBankState_.createCopy();
-    const std::unique_ptr xml(bankCopy.createXml());
-    if (xml != nullptr)
-        // ReSharper disable once CppExpressionWithoutSideEffects
-        xml->writeTo(file);
+    ecm::PresetBankFileUtil::writePresetBankFile(file, presetBankState_);
 }
 
 juce::File ECMapperAudioProcessor::getStandalonePresetBankFile()
@@ -1119,6 +1092,67 @@ bool ECMapperAudioProcessor::loadPresetSlot(const int slot)
         updateGlobalSettings();
 
     return success;
+}
+
+bool ECMapperAudioProcessor::importPresetBankFromFile(const juce::File& file)
+{
+    if (!file.existsAsFile())
+        return false;
+
+    auto importResult = ecm::PresetBankFileUtil::readPresetBankFile(file);
+    if (!importResult.presetBank.isValid())
+        return false;
+
+    juce::ValueTree snapshotToApply;
+    juce::String presetName;
+    int slotToLoad = 1;
+
+    {
+        const juce::ScopedLock stateGuard(presetStateLock_);
+        const auto preferredSlot = juce::jlimit(1, numPresetSlots, currentPresetSlot_.load());
+
+        presetBankState_ = std::move(importResult.presetBank);
+        ensureInitPresetExists();
+
+        slotToLoad = hasPresetSlot(preferredSlot) ? preferredSlot : 1;
+
+        auto preset = getPresetNode(slotToLoad);
+        snapshotToApply = getPresetSnapshot(slotToLoad).createCopy();
+        presetName = preset.isValid() ? preset.getProperty("name", juce::String()).toString()
+                                      : juce::String();
+
+        if (presetName.isEmpty())
+            presetName = slotToLoad == 1 ? juce::String("Init") : "Preset " + juce::String(slotToLoad);
+
+        saveStandalonePresetBank();
+    }
+
+    if (!snapshotToApply.isValid())
+        return false;
+
+    applyPresetState(snapshotToApply);
+    setCurrentPresetSelection(slotToLoad, presetName);
+    updateGlobalSettings();
+    return true;
+}
+
+bool ECMapperAudioProcessor::exportPresetBankToFile(const juce::File& file) const
+{
+    if (file == juce::File())
+        return false;
+
+    if (!file.getParentDirectory().exists())
+        // ReSharper disable once CppExpressionWithoutSideEffects
+        file.getParentDirectory().createDirectory();
+
+    juce::ValueTree bankCopy;
+    {
+        const juce::ScopedLock stateGuard(presetStateLock_);
+        bankCopy = presetBankState_.createCopy();
+        ecm::PresetBankFileUtil::normalizePresetBankState(bankCopy);
+    }
+
+    return ecm::PresetBankFileUtil::writePresetBankFile(file, bankCopy);
 }
 
 int ECMapperAudioProcessor::transposeIndex(ecm::InstrumentType deviceType, ecm::Zone zone)

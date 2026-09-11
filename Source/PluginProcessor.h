@@ -59,6 +59,8 @@ public:
     bool savePresetSlot(int slot, const juce::String& name);
     bool deletePresetSlot(int slot);
     bool loadPresetSlot(int slot);
+    bool importPresetBankFromFile(const juce::File& file);
+    bool exportPresetBankToFile(const juce::File& file) const;
     void loadStandalonePresetBank();
     void saveStandalonePresetBank() const;
 

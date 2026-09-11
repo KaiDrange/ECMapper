@@ -3,10 +3,19 @@
 
 namespace ecm {
 
+juce::File FileUtil::getLayoutsRootDirectory()
+{
+    return juce::File::getSpecialLocation(juce::File::userDocumentsDirectory)
+        .getChildFile("ECMapperLayouts");
+}
+
+juce::File FileUtil::getLayoutDirectory(InstrumentType instrumentType)
+{
+    return getLayoutsRootDirectory().getChildFile(getDeviceFolder(instrumentType));
+}
+
 void FileUtil::loadLayout(InstrumentType instrumentType, juce::ValueTree& rootState, juce::Component* /*parentComponent*/, std::function<void()> onFinished) {
-    juce::File pathFile = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory)
-                            .getChildFile("ECMapperLayouts")
-                            .getChildFile(getDeviceFolder(instrumentType));
+    juce::File pathFile = getLayoutDirectory(instrumentType);
     
     auto chooser = std::make_shared<juce::FileChooser>("Open layout", pathFile, getFileExtension(instrumentType));
     
@@ -26,9 +35,7 @@ void FileUtil::loadLayout(InstrumentType instrumentType, juce::ValueTree& rootSt
 }
 
 void FileUtil::saveLayout(InstrumentType instrumentType, juce::ValueTree& rootState, juce::Component* /*parentComponent*/) {
-    juce::File pathFile = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory)
-                            .getChildFile("ECMapperLayouts")
-                            .getChildFile(getDeviceFolder(instrumentType));
+    juce::File pathFile = getLayoutDirectory(instrumentType);
     
     auto chooser = std::make_shared<juce::FileChooser>("Save layout", pathFile, getFileExtension(instrumentType));
     

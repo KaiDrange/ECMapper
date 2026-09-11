@@ -1,11 +1,12 @@
 #include <iostream>
-
 #include <JuceHeader.h>
 
 #include "Core/ConfigLookup.h"
+#include "Core/FileUtil.h"
 #include "Core/LayoutChangeHandler.h"
 #include "Core/LayoutWrapper.h"
 #include "Core/OSCMessage.h"
+#include "Core/PresetBankFileUtil.h"
 #include "Core/SettingsWrapper.h"
 #include "Core/ZoneWrapper.h"
 
@@ -170,6 +171,97 @@ int main() {
                  "persistent full state should include a root ECMapper version");
     ok &= expect(persistentState.getChildWithName(SettingsWrapper::id_preset).hasProperty(SettingsWrapper::id_ecMapperVersion),
                  "persistent full state should include a preset ECMapper version");
+
+    auto expectedLayoutsRoot = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory)
+        .getChildFile("ECMapperLayouts");
+    ok &= expect(FileUtil::getLayoutsRootDirectory() == expectedLayoutsRoot,
+                 "layout root directory should resolve to the ECMapperLayouts folder in Documents");
+    ok &= expect(juce::File::isAbsolutePath(FileUtil::getLayoutsRootDirectory().getFullPathName()),
+                 "layout root directory should be absolute");
+    ok &= expect(FileUtil::getLayoutDirectory(InstrumentType::Tau) == expectedLayoutsRoot.getChildFile("Tau"),
+                 "device layout directories should resolve inside the ECMapperLayouts folder");
+
+    juce::ValueTree presetBank("ECMapperPresetBank");
+    juce::ValueTree exportedPreset("ECMapperPreset");
+    exportedPreset.setProperty("slot", 2, nullptr);
+    exportedPreset.setProperty("name", "Imported Slot", nullptr);
+    juce::ValueTree exportedSnapshot("APVTS");
+    auto presetBankKey = makeNoteKey(4, 81);
+    LayoutWrapper::setLayoutKey(presetBankKey, exportedSnapshot);
+    SettingsWrapper::setMidi2Mode(true, exportedSnapshot);
+    exportedPreset.addChild(exportedSnapshot, -1, nullptr);
+    presetBank.addChild(exportedPreset, -1, nullptr);
+
+    auto presetBankExport = juce::File::getSpecialLocation(juce::File::tempDirectory)
+        .getNonexistentChildFile("ecmapper_preset_bank_export", ".xml", false);
+    ok &= expect(PresetBankFileUtil::writePresetBankFile(presetBankExport, presetBank),
+                 "exporting a preset bank should succeed");
+
+    auto importResult = PresetBankFileUtil::readPresetBankFile(presetBankExport);
+    ok &= expect(importResult.presetBank.isValid(),
+                 "importing an exported preset bank should succeed");
+    auto normalizedPreset = importResult.presetBank.getChildWithProperty("slot", 2);
+    auto normalizedSnapshot = normalizedPreset.getChildWithName(exportedSnapshot.getType());
+    auto exportedPresetTree = normalizedSnapshot.getChildWithName(SettingsWrapper::id_preset);
+    ok &= expect(importResult.presetBank.hasType("ECMapperPresetBank"),
+                 "exported preset bank should use the preset bank root node");
+    ok &= expect(exportedPresetTree.hasProperty(SettingsWrapper::id_ecMapperVersion),
+                 "exported preset snapshots should preserve the preset version");
+    ok &= expect(exportedPresetTree.getChildWithName(LayoutWrapper::id_device + juce::String((int)InstrumentType::Alpha)).isValid(),
+                 "exported preset snapshots should include preset device trees");
+    ok &= expect(SettingsWrapper::getMidi2Mode(normalizedSnapshot),
+                 "preset bank import should preserve preset-level settings");
+    ok &= expect(LayoutWrapper::getLayoutKey({ 0, 4, InstrumentType::Alpha }, normalizedSnapshot).mappingValue == "81",
+                 "imported preset bank should restore preset layout data");
+
+    juce::ValueTree legacyPresetBank("ECMapperPresetBank");
+    juce::ValueTree legacyPreset("ECMapperPreset");
+    legacyPreset.setProperty("slot", 3, nullptr);
+    legacyPreset.setProperty("name", "Legacy", nullptr);
+    juce::ValueTree legacySnapshot("APVTS");
+    auto legacyBankSettings = legacySnapshot.getOrCreateChildWithName(SettingsWrapper::id_globalSettings, nullptr);
+    legacyBankSettings.setProperty(SettingsWrapper::id_midi2Mode, true, nullptr);
+    auto legacyBankDevice = legacySnapshot.getOrCreateChildWithName(LayoutWrapper::id_device + juce::String((int)InstrumentType::Alpha), nullptr);
+    auto legacyBankLayout = legacyBankDevice.getOrCreateChildWithName(LayoutWrapper::id_layout, nullptr);
+    auto legacyBankKey = legacyBankLayout.getOrCreateChildWithName(LayoutWrapper::id_key + juce::String("_0_5"), nullptr);
+    legacyBankKey.setProperty(LayoutWrapper::id_keyType, (int)EigenharpKeyType::Normal, nullptr);
+    legacyBankKey.setProperty(LayoutWrapper::id_keyColour, (int)KeyColour::Off, nullptr);
+    legacyBankKey.setProperty(LayoutWrapper::id_zone, (int)Zone::Zone1, nullptr);
+    legacyBankKey.setProperty(LayoutWrapper::id_keyMappingType, (int)KeyMappingType::Note, nullptr);
+    legacyBankKey.setProperty(LayoutWrapper::id_mappingValue, "90", nullptr);
+    legacyPreset.addChild(legacySnapshot, -1, nullptr);
+    legacyPresetBank.addChild(legacyPreset, -1, nullptr);
+
+    auto legacyPresetFile = juce::File::getSpecialLocation(juce::File::tempDirectory)
+        .getNonexistentChildFile("ecmapper_legacy_preset_bank", ".xml", false);
+    if (auto legacyXml = legacyPresetBank.createXml())
+        legacyXml->writeTo(legacyPresetFile);
+
+    auto legacyImportResult = PresetBankFileUtil::readPresetBankFile(legacyPresetFile);
+    ok &= expect(legacyImportResult.presetBank.isValid(),
+                 "importing a legacy preset bank should succeed");
+    auto legacyImportedPreset = legacyImportResult.presetBank.getChildWithProperty("slot", 3);
+    auto legacyImportedSnapshot = legacyImportedPreset.getChildWithName(legacySnapshot.getType());
+    ok &= expect(legacyImportedSnapshot.getChildWithName(SettingsWrapper::id_preset).isValid(),
+                 "legacy preset banks should migrate imported snapshots into the preset subtree");
+    ok &= expect(SettingsWrapper::getMidi2Mode(legacyImportedSnapshot),
+                 "legacy preset properties should migrate during preset bank import");
+    ok &= expect(LayoutWrapper::getLayoutKey({ 0, 5, InstrumentType::Alpha }, legacyImportedSnapshot).mappingValue == "90",
+                 "legacy preset layouts should migrate during preset bank import");
+
+    auto invalidPresetBankFile = juce::File::getSpecialLocation(juce::File::tempDirectory)
+        .getNonexistentChildFile("ecmapper_invalid_preset_bank", ".xml", false);
+    juce::ValueTree invalidPresetBank("NotAPresetBank");
+    if (auto invalidXml = invalidPresetBank.createXml())
+        invalidXml->writeTo(invalidPresetBankFile);
+
+    auto invalidImportResult = PresetBankFileUtil::readPresetBankFile(invalidPresetBankFile);
+    ok &= expect(!invalidImportResult.presetBank.isValid(),
+                 "invalid preset bank files should be rejected");
+
+    presetBankExport.deleteFile();
+    legacyPresetFile.deleteFile();
+    invalidPresetBankFile.deleteFile();
 
     pluginState.state.removeListener(&handler);
     juce::Logger::setCurrentLogger(nullptr);
