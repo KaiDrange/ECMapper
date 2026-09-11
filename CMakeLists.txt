@@ -345,6 +345,66 @@ target_compile_definitions(CalibrationDialogThresholdRangeTest PRIVATE ECMAPPER_
 juce_generate_juce_header(CalibrationDialogThresholdRangeTest)
 
 
+juce_add_console_app(MainComponentMidi2ToggleTest
+        PRODUCT_NAME "MainComponentMidi2ToggleTest"
+        VERSION "1.0.0"
+        COMPANY_NAME "Tic Tech"
+        BUNDLE_ID "com.tictech.ecmapper.maincomponentmidi2toggletest"
+)
+
+target_sources(MainComponentMidi2ToggleTest PRIVATE
+        Source/Tests/MainComponentMidi2ToggleTest.cpp
+        Source/PluginProcessor.cpp
+        Source/PluginEditor.cpp
+        ${SHARED_SOURCES}
+)
+
+target_link_libraries(MainComponentMidi2ToggleTest PRIVATE ${COMMON_LIBS})
+target_include_directories(MainComponentMidi2ToggleTest PRIVATE Source)
+target_compile_definitions(MainComponentMidi2ToggleTest PRIVATE ECMAPPER_ENABLE_HARDWARE=0 JUCE_MODAL_LOOPS_PERMITTED=1)
+juce_generate_juce_header(MainComponentMidi2ToggleTest)
+
+juce_add_console_app(MainMenuBarModelTest
+        PRODUCT_NAME "MainMenuBarModelTest"
+        VERSION "1.0.0"
+        COMPANY_NAME "Tic Tech"
+        BUNDLE_ID "com.tictech.ecmapper.mainmenubarmodeltest"
+)
+
+target_sources(MainMenuBarModelTest PRIVATE
+        Source/Tests/MainMenuBarModelTest.cpp
+        Source/UI/MainMenuBarModel.cpp
+        Source/UI/MainMenuBarModel.h
+        Source/UI/InputMidiReferenceText.cpp
+        Source/UI/InputMidiReferenceText.h
+)
+
+target_link_libraries(MainMenuBarModelTest PRIVATE ${COMMON_LIBS})
+target_include_directories(MainMenuBarModelTest PRIVATE Source)
+target_compile_definitions(MainMenuBarModelTest PRIVATE ECMAPPER_ENABLE_HARDWARE=0 JUCE_MODAL_LOOPS_PERMITTED=1)
+juce_generate_juce_header(MainMenuBarModelTest)
+
+
+juce_add_console_app(StandaloneInputMidiTransposeTest
+        PRODUCT_NAME "StandaloneInputMidiTransposeTest"
+        VERSION "1.0.0"
+        COMPANY_NAME "Tic Tech"
+        BUNDLE_ID "com.tictech.ecmapper.standaloneinputmiditransposetest"
+)
+
+target_sources(StandaloneInputMidiTransposeTest PRIVATE
+        Source/Tests/StandaloneInputMidiTransposeTest.cpp
+        Source/PluginProcessor.cpp
+        Source/PluginEditor.cpp
+        ${SHARED_SOURCES}
+)
+
+target_link_libraries(StandaloneInputMidiTransposeTest PRIVATE ${COMMON_LIBS})
+target_include_directories(StandaloneInputMidiTransposeTest PRIVATE Source)
+target_compile_definitions(StandaloneInputMidiTransposeTest PRIVATE ECMAPPER_ENABLE_HARDWARE=0 JUCE_MODAL_LOOPS_PERMITTED=1)
+juce_generate_juce_header(StandaloneInputMidiTransposeTest)
+
+
 juce_add_console_app(StripDirectionCalibrationTest
         PRODUCT_NAME "StripDirectionCalibrationTest"
         VERSION "1.0.0"

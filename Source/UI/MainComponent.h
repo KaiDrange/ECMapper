@@ -40,21 +40,24 @@ private:
     void refreshFromState();
     void handlePresetSelectionChanged();
     void showPresetBrowser();
+    void showCalibrationDialog();
+    void refreshTransportModeControls();
+    void updateStandaloneMidi2Button();
+    void updatePluginVst3DirectButton();
 
     PresetComboBox presetComboBox;
     NumberInputComponent lowerMPEVoiceCount;
     NumberInputComponent upperMPEVoiceCount;
     NumberInputComponent lowerMPEPitchbendRange;
     NumberInputComponent upperMPEPitchbendRange;
-    juce::TextButton mpeModeButton;
     juce::TextButton midi20ModeButton;
-    juce::TextButton legacyPluginModeButton;
     juce::TextButton vst3DirectModeButton;
 
     juce::TextButton communicationTabButton;
     juce::TextButton alphaTabButton;
     juce::TextButton tauTabButton;
     juce::TextButton picoTabButton;
+    juce::TextButton calibrationButton;
     std::unique_ptr<CorePage> corePage;
     std::unique_ptr<TabPage> alphaPage;
     std::unique_ptr<TabPage> tauPage;

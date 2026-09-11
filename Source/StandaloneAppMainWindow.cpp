@@ -4,6 +4,7 @@
 #include "StandaloneApp.h"
 #include "UI/PresetBrowserComponent.h"
 #include "UI/CalibrationDialogComponent.h"
+#include "UI/InputMidiReferenceText.h"
 
 #include <functional>
 
@@ -205,6 +206,7 @@ StandaloneAppMainWindow::StandaloneAppMainWindow(const juce::String& name)
           [this] { showAudioSettings(); },
           [this] { showCalibrationDialog(); },
           [this] { showAboutDialog(); },
+          [this] { showInputMidiReference(); },
           [] { showOnlineManual(); },
           [] { showOurMusic(); }
       )
@@ -596,6 +598,15 @@ void StandaloneAppMainWindow::showAboutDialog()
     options.componentToCentreAround = this;
 
     options.launchAsync();
+}
+
+void StandaloneAppMainWindow::showInputMidiReference()
+{
+    juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::InfoIcon,
+                                           "Input Midi reference",
+                                           ecm::getInputMidiReferenceText(),
+                                           "OK",
+                                           this);
 }
 
 void StandaloneAppMainWindow::showOnlineManual()

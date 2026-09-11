@@ -20,6 +20,7 @@ public:
     void showPresetBrowser();
     void showCalibrationDialog();
     void showAboutDialog();
+    void showInputMidiReference();
     static void showOnlineManual();
     static void showOurMusic();
     static void requestQuit();

@@ -1,13 +1,14 @@
 #include "MainMenuBarModel.h"
 
 MainMenuBarModel::MainMenuBarModel(Action onQuitAction, Action onSavePresetAction, Action onBrowsePresetsAction, Action onAudioSettingsAction, Action onCalibrationAction, Action onAboutAction,
-                                   Action onOnlineManualAction, Action onOurMusicAction)
+                                   Action onInputMidiReferenceAction, Action onOnlineManualAction, Action onOurMusicAction)
     : onQuit(std::move(onQuitAction)),
       onSavePreset(std::move(onSavePresetAction)),
       onBrowsePresets(std::move(onBrowsePresetsAction)),
       onAudioSettings(std::move(onAudioSettingsAction)),
       onCalibration(std::move(onCalibrationAction)),
       onAbout(std::move(onAboutAction)),
+      onInputMidiReference(std::move(onInputMidiReferenceAction)),
       onOnlineManual(std::move(onOnlineManualAction)),
       onOurMusic(std::move(onOurMusicAction))
 {
@@ -38,6 +39,8 @@ juce::PopupMenu MainMenuBarModel::getMenuForIndex(int topLevelMenuIndex, const j
     {
         menu.addItem(30, "About ECMapper");
         menu.addSeparator();
+        menu.addItem(33, "Input Midi reference");
+        menu.addSeparator();
         menu.addItem(31, "Online manual");
         menu.addItem(32, "Our music as Tic Tic");
     }
@@ -61,6 +64,8 @@ void MainMenuBarModel::menuItemSelected(const int menuItemID, int topLevelMenuIn
         onCalibration();
     else if (menuItemID == 30 && onAbout)
         onAbout();
+    else if (menuItemID == 33 && onInputMidiReference)
+        onInputMidiReference();
     else if (menuItemID == 31 && onOnlineManual)
         onOnlineManual();
     else if (menuItemID == 32 && onOurMusic)

@@ -107,7 +107,9 @@ AppLookAndFeel::AppLookAndFeel()
 juce::Font AppLookAndFeel::getTextButtonFont(juce::TextButton& button, int buttonHeight)
 {
     float size = juce::jmin(14.0f, static_cast<float>(buttonHeight) * 0.58f);
-    if (button.getWidth() > 0 && button.getWidth() < 40)
+    if (button.getProperties().contains("largeIcon"))
+        size = juce::jmin(24.0f, static_cast<float>(buttonHeight) * 1.05f);
+    else if (button.getWidth() > 0 && button.getWidth() < 40)
         size = juce::jmin(size, 11.0f);
     return juce::Font(juce::FontOptions(size, juce::Font::plain));
 }

@@ -12,7 +12,7 @@ public:
                      Action onSavePresetAction,
                      Action onBrowsePresetsAction,
                      Action onAudioSettingsAction, Action onCalibrationAction = {},
-                     Action onAboutAction = {},
+                     Action onAboutAction = {}, Action onInputMidiReferenceAction = {},
                      Action onOnlineManualAction = {}, Action onOurMusicAction = {});
     juce::StringArray getMenuBarNames() override;
     juce::PopupMenu getMenuForIndex(int topLevelMenuIndex, const juce::String& menuName) override;
@@ -25,6 +25,7 @@ private:
     Action onAudioSettings;
     Action onCalibration;
     Action onAbout;
+    Action onInputMidiReference;
     Action onOnlineManual;
     Action onOurMusic;
 };

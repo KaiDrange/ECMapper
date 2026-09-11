@@ -17,15 +17,7 @@ constexpr int kPresetParameterDefaultIndex = 0;
 
 int transposeFromCc(int ccValue)
 {
-    ccValue = juce::jlimit(0, 127, ccValue);
-
-    if (ccValue == 64)
-        return 0;
-
-    if (ccValue < 64)
-        return juce::jlimit(-96, 0, juce::roundToInt(juce::jmap(static_cast<float>(ccValue), 0.0f, 63.0f, -96.0f, -1.0f)));
-
-    return juce::jlimit(0, 96, juce::roundToInt(juce::jmap(static_cast<float>(ccValue), 65.0f, 127.0f, 1.0f, 96.0f)));
+    return juce::jlimit(0, 127, ccValue) - 64;
 }
 
 bool enableFromCc(const int ccValue)
