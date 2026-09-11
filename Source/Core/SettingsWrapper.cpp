@@ -113,6 +113,16 @@ int SettingsWrapper::getCurrentTabIndex(juce::ValueTree& rootState) {
     return vTree.getProperty(id_activeTab, default_activeTab);
 }
 
+void SettingsWrapper::setCurrentCalibrationTabIndex(int index, juce::ValueTree& rootState) {
+    auto vTree = getSettingsTree(rootState);
+    vTree.setProperty(id_activeCalibrationTab, index, nullptr);
+}
+
+int SettingsWrapper::getCurrentCalibrationTabIndex(juce::ValueTree& rootState) {
+    auto vTree = getSettingsTree(rootState);
+    return vTree.getProperty(id_activeCalibrationTab, default_activeCalibrationTab);
+}
+
 AppRole SettingsWrapper::getAppRole(juce::ValueTree& rootState) {
     auto settings = getSettingsTree(rootState);
     return (AppRole)(int)settings.getProperty(id_appRole, (int)AppRole::Host);

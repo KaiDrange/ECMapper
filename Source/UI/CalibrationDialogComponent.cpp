@@ -88,8 +88,7 @@ void CalibrationDialogComponent::DeviceCalibrationPanel::updateValues()
 }
 
 CalibrationDialogComponent::CalibrationDialogComponent(juce::ValueTree& state)
-    : state(state),
-      tabs(juce::TabbedButtonBar::TabsAtTop)
+    : state(state)
 {
     alphaPanel = std::make_unique<DeviceCalibrationPanel>(InstrumentType::Alpha, state, this);
     tauPanel = std::make_unique<DeviceCalibrationPanel>(InstrumentType::Tau, state, this);
@@ -101,6 +100,8 @@ CalibrationDialogComponent::CalibrationDialogComponent(juce::ValueTree& state)
     tabs.setTabBarDepth(34);
     tabs.setColour(juce::TabbedComponent::outlineColourId, juce::Colours::transparentBlack);
     tabs.getTabbedButtonBar().setColour(juce::TabbedComponent::backgroundColourId, juce::Colours::transparentBlack);
+    tabs.onTabChanged = [this](int index) { handleSelectedTabChanged(index); };
+    tabs.setCurrentTabIndex(juce::jlimit(0, 2, SettingsWrapper::getCurrentCalibrationTabIndex(state)));
     
     addAndMakeVisible(tabs);
 
@@ -109,6 +110,11 @@ CalibrationDialogComponent::CalibrationDialogComponent(juce::ValueTree& state)
     addAndMakeVisible(closeButton);
 
     setSize(450, 400);
+}
+
+void CalibrationDialogComponent::handleSelectedTabChanged(int index)
+{
+    SettingsWrapper::setCurrentCalibrationTabIndex(juce::jlimit(0, 2, index), state);
 }
 
 void CalibrationDialogComponent::paint(juce::Graphics& g)

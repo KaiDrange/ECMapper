@@ -36,6 +36,7 @@ public:
     static inline const juce::Identifier id_keyMappingType { "keyMappingType" };
     static inline const juce::Identifier id_mappingValue { "mappingValue" };
     static inline const juce::Identifier id_zone { "zone" };
+    static inline const juce::Identifier id_ecMapperVersion { "ecmapperVersion" };
 
     static LayoutKey getLayoutKey(KeyId keyId, juce::ValueTree& rootState);
     static void setLayoutKey(LayoutKey& key, juce::ValueTree& rootState);
@@ -46,6 +47,7 @@ public:
     static void setKeyMappingValue(KeyId keyId, juce::String keyMappingValue, juce::ValueTree& rootState);
     
     static juce::ValueTree getLayoutTree(InstrumentType deviceType, juce::ValueTree& rootState);
+    static juce::ValueTree createPersistentLayoutTree(InstrumentType deviceType, juce::ValueTree& rootState);
     static LayoutKey getLayoutKeyFromKeyTree(juce::ValueTree keyTree);
     static InstrumentType getInstrumentTypeFromKeyTree(juce::ValueTree keyTree);
     static InstrumentType getInstrumentTypeFromLayoutTree(juce::ValueTree layoutTree);

@@ -64,9 +64,15 @@ int main() {
     ok &= expect(SettingsWrapper::getCalibrationBool(InstrumentType::Alpha, SettingsWrapper::id_invertStripDirection, false, root),
                  "alpha invert strip direction should persist in calibration state");
 
+    dialog.tabs.setCurrentTabIndex(2);
+    ok &= expect(SettingsWrapper::getCurrentCalibrationTabIndex(root) == 2,
+                 "selected calibration tab should persist in settings");
+
     CalibrationDialogComponent reopenedDialog(root);
     ok &= expect(reopenedDialog.alphaPanel->invertStripDirectionButton.getToggleState(),
                  "alpha invert strip direction should restore from calibration state");
+    ok &= expect(reopenedDialog.tabs.getCurrentTabIndex() == 2,
+                 "reopened calibration dialog should restore the last selected tab");
 
     reopenedDialog.alphaPanel->resetButton.triggerClick();
     juce::MessageManager::getInstance()->runDispatchLoopUntil(50);

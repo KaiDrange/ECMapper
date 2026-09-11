@@ -17,6 +17,7 @@ public:
     static inline const juce::Identifier id_midi2Mode {"midi2Mode"};
     static inline const juce::Identifier id_pluginOutputMode {"pluginOutputMode"};
     static inline const juce::Identifier id_activeTab {"activetab"};
+    static inline const juce::Identifier id_activeCalibrationTab {"activecalibrationtab"};
     
     static inline const juce::Identifier id_appRole { "appRole" };
     static inline const juce::Identifier id_clientListenIP { "clientListenIP" };
@@ -52,6 +53,8 @@ public:
     static OutputTransportMode getPluginOutputMode(juce::ValueTree& rootState);
     static void setCurrentTabIndex(int index, juce::ValueTree& rootState);
     static int getCurrentTabIndex(juce::ValueTree& rootState);
+    static void setCurrentCalibrationTabIndex(int index, juce::ValueTree& rootState);
+    static int getCurrentCalibrationTabIndex(juce::ValueTree& rootState);
     
     static AppRole getAppRole(juce::ValueTree& rootState);
     static void setAppRole(AppRole role, juce::ValueTree& rootState);
@@ -88,6 +91,7 @@ private:
     static constexpr bool default_midi2Mode = false;
     static constexpr int default_pluginOutputMode = static_cast<int>(OutputTransportMode::LegacyMidi);
     static constexpr int default_activeTab = 0;
+    static constexpr int default_activeCalibrationTab = 0;
 
     static void cleanupLegacyDeviceNodes(juce::ValueTree& devicesNode);
 };

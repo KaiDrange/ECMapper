@@ -2,6 +2,7 @@
 #include <JuceHeader.h>
 #include "../Core/Enums.h"
 #include "../Core/SettingsWrapper.h"
+#include "TabButtonBarComponent.h"
 
 namespace ecm {
 
@@ -20,6 +21,7 @@ private:
     void updateSliders(InstrumentType type);
     void resetToDefaults(InstrumentType type);
     void closeDialog();
+    void handleSelectedTabChanged(int index);
 
     struct DeviceCalibrationPanel : public juce::Component
     {
@@ -51,7 +53,7 @@ private:
     };
 
     juce::ValueTree& state;
-    juce::TabbedComponent tabs;
+    TabButtonBarComponent tabs;
     std::unique_ptr<DeviceCalibrationPanel> alphaPanel;
     std::unique_ptr<DeviceCalibrationPanel> tauPanel;
     std::unique_ptr<DeviceCalibrationPanel> picoPanel;

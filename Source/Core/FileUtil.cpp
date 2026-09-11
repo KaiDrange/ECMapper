@@ -36,7 +36,7 @@ void FileUtil::saveLayout(InstrumentType instrumentType, juce::ValueTree& rootSt
         [chooser, instrumentType, rootState](const juce::FileChooser& fc) mutable {
             auto file = fc.getResult();
             if (file != juce::File()) {
-                auto layoutTree = LayoutWrapper::getLayoutTree(instrumentType, rootState);
+                auto layoutTree = LayoutWrapper::createPersistentLayoutTree(instrumentType, rootState);
                 if (auto xml = layoutTree.createXml()) {
                     xml->writeTo(file);
                 }

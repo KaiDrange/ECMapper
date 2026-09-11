@@ -90,13 +90,15 @@ int main() {
     ZoneWrapper::setEnabled(InstrumentType::Alpha, Zone::Zone1, true, pluginState.state);
     configLookups[0].updateAll();
 
+    bool ok = true;
+
     juce::ValueTree loadedRoot { "LoadedRoot" };
     auto loadedKey = makeNoteKey(0, 67);
     LayoutWrapper::setLayoutKey(loadedKey, loadedRoot);
     auto loadedLayout = LayoutWrapper::getLayoutTree(InstrumentType::Alpha, loadedRoot);
+    ok &= expect(!loadedLayout.hasProperty(LayoutWrapper::id_ecMapperVersion),
+                 "legacy layouts without an ECMapper version should still be supported");
     LayoutWrapper::getLayoutTree(InstrumentType::Alpha, pluginState.state).copyPropertiesAndChildrenFrom(loadedLayout, nullptr);
-
-    bool ok = true;
     ok &= expect(configLookups[0].keys[0][0].mapType == KeyMappingType::Note,
                  "layout import should immediately populate runtime key mapping without an extra edit");
     ok &= expect(configLookups[0].keys[0][0].notes[0] == 67,
@@ -114,6 +116,21 @@ int main() {
                  "replacing a layout should immediately populate newly imported keys");
     ok &= expect(configLookups[0].keys[0][1].notes[0] == 71,
                  "replacing a layout should immediately refresh the new imported note value");
+
+    auto persistedLayout = LayoutWrapper::createPersistentLayoutTree(InstrumentType::Alpha, replacementRoot);
+    ok &= expect(persistedLayout.getProperty(LayoutWrapper::id_ecMapperVersion).toString() == ProjectInfo::versionString,
+                 "saved layouts should include the current ECMapper version");
+
+    const auto persistedXml = persistedLayout.createXml();
+    ok &= expect(persistedXml != nullptr,
+                 "layout export should produce XML");
+    if (persistedXml != nullptr) {
+        const auto roundTrippedLayout = juce::ValueTree::fromXml(*persistedXml);
+        ok &= expect(roundTrippedLayout.isValid(),
+                     "layout export should produce valid XML");
+        ok &= expect(roundTrippedLayout.getProperty(LayoutWrapper::id_ecMapperVersion).toString() == ProjectInfo::versionString,
+                     "serialized layout XML should preserve the ECMapper version");
+    }
 
     pluginState.state.removeListener(&handler);
     juce::Logger::setCurrentLogger(nullptr);

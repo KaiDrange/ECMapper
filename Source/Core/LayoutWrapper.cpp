@@ -7,6 +7,12 @@ juce::ValueTree LayoutWrapper::getLayoutTree(InstrumentType deviceType, juce::Va
     return deviceChild.getOrCreateChildWithName(id_layout, nullptr);
 }
 
+juce::ValueTree LayoutWrapper::createPersistentLayoutTree(InstrumentType deviceType, juce::ValueTree& rootState) {
+    auto layoutTree = getLayoutTree(deviceType, rootState).createCopy();
+    layoutTree.setProperty(id_ecMapperVersion, ProjectInfo::versionString, nullptr);
+    return layoutTree;
+}
+
 juce::ValueTree LayoutWrapper::getKeyTree(KeyId keyId, juce::ValueTree& rootState) {
     auto layoutTree = getLayoutTree(keyId.deviceType, rootState);
     return layoutTree.getOrCreateChildWithName(id_key + "_" + juce::String(keyId.course) + "_" + juce::String(keyId.keyNo), nullptr);
