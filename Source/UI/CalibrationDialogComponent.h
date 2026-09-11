@@ -37,6 +37,7 @@ private:
         juce::Slider yawSensitivitySlider;
         juce::Slider rollSensitivitySlider;
         juce::Slider pressureSensitivitySlider;
+        juce::ToggleButton invertStripDirectionButton;
 
         juce::Label breathThresholdLabel;
         juce::Label breathSensitivityLabel;

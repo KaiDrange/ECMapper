@@ -150,6 +150,7 @@ private:
     float breathZeroThreshold_[3] = {0.03125f, 0.03125f, 0.125f};
     float stripZeroThreshold_[3] = {0.0366f, 0.0366f, 0.12f};
     float stripSensitivity_[3] = {1.3f, 1.3f, 1.2f};
+    bool invertStripDirection_[3] = {false, false, false};
     float yawSensitivity_[3] = {1.7f, 1.7f, 1.7f};
     float rollSensitivity_[3] = {1.7f, 1.7f, 1.7f};
     float pressureSensitivity_[3] = {1.7f, 1.7f, 1.7f};
@@ -217,6 +218,7 @@ private:
     static int normalizeZoneIndex(int zoneIndex);
     void sendMidiBufferToOutput(const juce::MidiBuffer& buffer, juce::MidiOutput* output) const;
     void sendMidiBufferToDistinctOutputs(const juce::MidiBuffer& buffer, const std::array<juce::MidiOutput*, 3>& outputs, juce::MidiOutput* fallbackOutput) const;
+    static float applyStripCalibration(float eigenValue, bool invertStripDirection, float zeroThreshold, float sensitivity);
     
     struct MidiNote {
         int channel;

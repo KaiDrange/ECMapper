@@ -3,6 +3,13 @@
 
 namespace ecm {
 
+namespace {
+
+constexpr float calibrationThresholdMin = 0.0f;
+constexpr float calibrationThresholdMax = 0.2f;
+
+}
+
 CalibrationDialogComponent::DeviceCalibrationPanel::DeviceCalibrationPanel(InstrumentType type, juce::ValueTree& state, juce::Slider::Listener* listener)
     : type(type), state(state)
 {
@@ -15,13 +22,20 @@ CalibrationDialogComponent::DeviceCalibrationPanel::DeviceCalibrationPanel(Instr
         addAndMakeVisible(s);
     };
 
-    setupSlider(breathThresholdSlider, breathThresholdLabel, "Breath Threshold", 0.0f, 1.0f, 0.001f);
+    setupSlider(breathThresholdSlider, breathThresholdLabel, "Breath Threshold", calibrationThresholdMin, calibrationThresholdMax, 0.001f);
     setupSlider(breathSensitivitySlider, breathSensitivityLabel, "Breath Sensitivity", 0.5f, 3.0f, 0.01f);
-    setupSlider(stripThresholdSlider, stripThresholdLabel, "Strip Threshold", 0.0f, 1.0f, 0.001f);
+    setupSlider(stripThresholdSlider, stripThresholdLabel, "Strip Threshold", calibrationThresholdMin, calibrationThresholdMax, 0.001f);
     setupSlider(stripSensitivitySlider, stripSensitivityLabel, "Strip Sensitivity", 0.5f, 3.0f, 0.01f);
     setupSlider(yawSensitivitySlider, yawSensitivityLabel, "Yaw Sensitivity", 0.5f, 3.0f, 0.01f);
     setupSlider(rollSensitivitySlider, rollSensitivityLabel, "Roll Sensitivity", 0.5f, 3.0f, 0.01f);
     setupSlider(pressureSensitivitySlider, pressureSensitivityLabel, "Pressure Sensitivity", 0.5f, 3.0f, 0.01f);
+
+    invertStripDirectionButton.setButtonText("Invert strip direction");
+    invertStripDirectionButton.setClickingTogglesState(true);
+    invertStripDirectionButton.onClick = [this]() {
+        SettingsWrapper::setCalibrationBool(this->type, SettingsWrapper::id_invertStripDirection, invertStripDirectionButton.getToggleState(), this->state);
+    };
+    addAndMakeVisible(invertStripDirectionButton);
 
     resetButton.setButtonText("Reset to Defaults");
     resetButton.onClick = [this]() {
@@ -52,6 +66,8 @@ void CalibrationDialogComponent::DeviceCalibrationPanel::resized()
     layoutRow(rollSensitivityLabel, rollSensitivitySlider, area.getY() + 5 * (h + gap));
     layoutRow(pressureSensitivityLabel, pressureSensitivitySlider, area.getY() + 6 * (h + gap));
 
+    invertStripDirectionButton.setBounds(area.getX(), area.getY() + 7 * (h + gap), area.getWidth(), h);
+
     resetButton.setBounds(area.getX(), area.getBottom() - 30, area.getWidth(), 30);
 }
 
@@ -68,6 +84,7 @@ void CalibrationDialogComponent::DeviceCalibrationPanel::updateValues()
     yawSensitivitySlider.setValue(SettingsWrapper::getCalibrationValue(type, SettingsWrapper::id_yawSensitivity, 1.7f, state), juce::dontSendNotification);
     rollSensitivitySlider.setValue(SettingsWrapper::getCalibrationValue(type, SettingsWrapper::id_rollSensitivity, 1.7f, state), juce::dontSendNotification);
     pressureSensitivitySlider.setValue(SettingsWrapper::getCalibrationValue(type, SettingsWrapper::id_pressureSensitivity, 1.7f, state), juce::dontSendNotification);
+    invertStripDirectionButton.setToggleState(SettingsWrapper::getCalibrationBool(type, SettingsWrapper::id_invertStripDirection, false, state), juce::dontSendNotification);
 }
 
 CalibrationDialogComponent::CalibrationDialogComponent(juce::ValueTree& state)

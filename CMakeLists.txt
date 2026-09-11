@@ -324,3 +324,41 @@ target_include_directories(LayoutLoadListenerTest PRIVATE Source)
 target_compile_definitions(LayoutLoadListenerTest PRIVATE ECMAPPER_ENABLE_HARDWARE=0 JUCE_MODAL_LOOPS_PERMITTED=1)
 juce_generate_juce_header(LayoutLoadListenerTest)
 
+
+juce_add_console_app(CalibrationDialogThresholdRangeTest
+        PRODUCT_NAME "CalibrationDialogThresholdRangeTest"
+        VERSION "1.0.0"
+        COMPANY_NAME "Tic Tech"
+        BUNDLE_ID "com.tictech.ecmapper.calibrationdialogthresholdrangetest"
+)
+
+target_sources(CalibrationDialogThresholdRangeTest PRIVATE
+        Source/Tests/CalibrationDialogThresholdRangeTest.cpp
+        Source/UI/CalibrationDialogComponent.cpp
+        Source/UI/AppStyle.cpp
+        ${CORE_SOURCES}
+)
+
+target_link_libraries(CalibrationDialogThresholdRangeTest PRIVATE ${COMMON_LIBS})
+target_include_directories(CalibrationDialogThresholdRangeTest PRIVATE Source)
+target_compile_definitions(CalibrationDialogThresholdRangeTest PRIVATE ECMAPPER_ENABLE_HARDWARE=0 JUCE_MODAL_LOOPS_PERMITTED=1)
+juce_generate_juce_header(CalibrationDialogThresholdRangeTest)
+
+
+juce_add_console_app(StripDirectionCalibrationTest
+        PRODUCT_NAME "StripDirectionCalibrationTest"
+        VERSION "1.0.0"
+        COMPANY_NAME "Tic Tech"
+        BUNDLE_ID "com.tictech.ecmapper.stripdirectioncalibrationtest"
+)
+
+target_sources(StripDirectionCalibrationTest PRIVATE
+        Source/Tests/StripDirectionCalibrationTest.cpp
+        ${CORE_SOURCES}
+)
+
+target_link_libraries(StripDirectionCalibrationTest PRIVATE ${COMMON_LIBS})
+target_include_directories(StripDirectionCalibrationTest PRIVATE Source)
+target_compile_definitions(StripDirectionCalibrationTest PRIVATE ECMAPPER_ENABLE_HARDWARE=0 JUCE_MODAL_LOOPS_PERMITTED=1)
+juce_generate_juce_header(StripDirectionCalibrationTest)
+

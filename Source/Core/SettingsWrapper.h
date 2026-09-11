@@ -27,6 +27,7 @@ public:
     static inline const juce::Identifier id_breathSensitivity { "breathSensitivity" };
     static inline const juce::Identifier id_stripThreshold { "stripThreshold" };
     static inline const juce::Identifier id_stripSensitivity { "stripSensitivity" };
+    static inline const juce::Identifier id_invertStripDirection { "invertStripDirection" };
     static inline const juce::Identifier id_yawSensitivity { "yawSensitivity" };
     static inline const juce::Identifier id_rollSensitivity { "rollSensitivity" };
     static inline const juce::Identifier id_pressureSensitivity { "pressureSensitivity" };
@@ -61,6 +62,8 @@ public:
     
     static void setCalibrationValue(InstrumentType type, const juce::Identifier& param, float value, juce::ValueTree& rootState);
     static float getCalibrationValue(InstrumentType type, const juce::Identifier& param, float defaultValue, juce::ValueTree& rootState);
+    static void setCalibrationBool(InstrumentType type, const juce::Identifier& param, bool value, juce::ValueTree& rootState);
+    static bool getCalibrationBool(InstrumentType type, const juce::Identifier& param, bool defaultValue, juce::ValueTree& rootState);
     static void resetCalibration(InstrumentType type, juce::ValueTree& rootState);
     
     static void saveDeviceSettings(const ConnectedDevice& device, juce::ValueTree& rootState);

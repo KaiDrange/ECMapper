@@ -271,6 +271,7 @@ void MidiService::updateCalibration() {
         breathZeroThreshold_[idx] = SettingsWrapper::getCalibrationValue(defaults[i].type, SettingsWrapper::id_breathThreshold, defaults[i].breath, pluginState_->state);
         stripZeroThreshold_[idx] = SettingsWrapper::getCalibrationValue(defaults[i].type, SettingsWrapper::id_stripThreshold, defaults[i].stripT, pluginState_->state);
         stripSensitivity_[idx] = SettingsWrapper::getCalibrationValue(defaults[i].type, SettingsWrapper::id_stripSensitivity, defaults[i].stripG, pluginState_->state);
+        invertStripDirection_[idx] = SettingsWrapper::getCalibrationBool(defaults[i].type, SettingsWrapper::id_invertStripDirection, false, pluginState_->state);
         yawSensitivity_[idx] = SettingsWrapper::getCalibrationValue(defaults[i].type, SettingsWrapper::id_yawSensitivity, 1.7f, pluginState_->state);
         rollSensitivity_[idx] = SettingsWrapper::getCalibrationValue(defaults[i].type, SettingsWrapper::id_rollSensitivity, 1.7f, pluginState_->state);
         pressureSensitivity_[idx] = SettingsWrapper::getCalibrationValue(defaults[i].type, SettingsWrapper::id_pressureSensitivity, 1.7f, pluginState_->state);
@@ -306,6 +307,7 @@ void MidiService::valueTreePropertyChanged(juce::ValueTree& tree, const juce::Id
         property == SettingsWrapper::id_breathSensitivity ||
         property == SettingsWrapper::id_stripThreshold ||
         property == SettingsWrapper::id_stripSensitivity ||
+        property == SettingsWrapper::id_invertStripDirection ||
         property == SettingsWrapper::id_yawSensitivity ||
         property == SettingsWrapper::id_rollSensitivity ||
         property == SettingsWrapper::id_pressureSensitivity ||
@@ -412,7 +414,12 @@ void MidiService::processMessage(const osc::Message& oscMsg, osc::Message& outgo
             if (stripIndex < 0 || stripIndex > 1) break;
 
             const bool stripOff = !oscMsg.active;
-            ehStrips_[stripIndex][deviceIndex] = stripOff ? 0.0f : std::max((oscMsg.value - stripZeroThreshold_[deviceIndex]) * stripSensitivity_[deviceIndex], 0.0f);
+            ehStrips_[stripIndex][deviceIndex] = stripOff
+                                              ? 0.0f
+                                              : applyStripCalibration(oscMsg.value,
+                                                                      invertStripDirection_[deviceIndex],
+                                                                      stripZeroThreshold_[deviceIndex],
+                                                                      stripSensitivity_[deviceIndex]);
             
             if (stripOff) {
                 relStart_ehStrips_[stripIndex][deviceIndex] = -1.0f;
@@ -1562,6 +1569,15 @@ void MidiService::addStripValueMessage(InstrumentType deviceType, int channel, f
         else if (midiValue.valueType == MidiValueType::CC)
             sink.pushEvent(PerformanceEvent::controllerChange(resolvedChannel, -1, midiValue.ccNo, val, false, eventTime, zoneIndex));
     }
+}
+
+float MidiService::applyStripCalibration(float eigenValue, bool invertStripDirection, float zeroThreshold, float sensitivity) {
+    juce::ignoreUnused(sensitivity);
+
+    const float orientedValue = invertStripDirection ? eigenValue : 1.0f - eigenValue;
+    const float thresholdedValue = std::max(orientedValue - zeroThreshold, 0.0f);
+    const float remainingRange = std::max(1.0f - zeroThreshold, std::numeric_limits<float>::epsilon());
+    return std::clamp(thresholdedValue / remainingRange, 0.0f, 1.0f);
 }
 
 int MidiService::normalizeZoneIndex(int zoneIndex)

@@ -169,6 +169,23 @@ float SettingsWrapper::getCalibrationValue(InstrumentType type, const juce::Iden
     return devNode.getProperty(param, defaultValue);
 }
 
+void SettingsWrapper::setCalibrationBool(InstrumentType type, const juce::Identifier& param, bool value, juce::ValueTree& rootState) {
+    auto settings = getSettingsTree(rootState);
+    auto calibration = settings.getOrCreateChildWithName(id_calibration, nullptr);
+    auto devNode = calibration.getOrCreateChildWithName(getDeviceNodeName(type), nullptr);
+    devNode.setProperty(param, value, nullptr);
+    rootState.setProperty(id_calibrationRevision, static_cast<int>(rootState.getProperty(id_calibrationRevision, 0)) + 1, nullptr);
+}
+
+bool SettingsWrapper::getCalibrationBool(InstrumentType type, const juce::Identifier& param, bool defaultValue, juce::ValueTree& rootState) {
+    auto settings = getSettingsTree(rootState);
+    auto calibration = settings.getChildWithName(id_calibration);
+    if (!calibration.isValid()) return defaultValue;
+    auto devNode = calibration.getChildWithName(getDeviceNodeName(type));
+    if (!devNode.isValid()) return defaultValue;
+    return devNode.getProperty(param, defaultValue);
+}
+
 void SettingsWrapper::resetCalibration(InstrumentType type, juce::ValueTree& rootState) {
     auto settings = getSettingsTree(rootState);
     auto calibration = settings.getChildWithName(id_calibration);
