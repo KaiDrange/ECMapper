@@ -335,7 +335,7 @@ void StandaloneAppMainWindow::updateMidiOutput()
 
     if (processor != nullptr)
     {
-        auto* primaryOutput = isMidi2ModeEnabled() ? currentOutput : nullptr;
+        juce::MidiOutput* primaryOutput = nullptr;
         processorPlayer.setMidiOutput(primaryOutput);
         processor->setMidiOutput(primaryOutput);
 

@@ -10,41 +10,50 @@ Midi2Protocol::Midi2Protocol(uint8_t group) : group_(group) {
 }
 
 void Midi2Protocol::renderEvent(juce::MidiBuffer& buffer, const PerformanceEvent& event) {
+    const auto group = groupForEvent(event);
+
     switch (event.kind) {
         case PerformanceEventKind::NoteOn:
-            addNoteOn(buffer, event.channel, event.noteNumber, event.velocity, event.sampleOffset);
+            addNoteOn(buffer, group, event.channel, event.noteNumber, event.velocity, event.sampleOffset);
             break;
         case PerformanceEventKind::NoteOff:
-            addNoteOff(buffer, event.channel, event.noteNumber, event.velocity, event.sampleOffset);
+            addNoteOff(buffer, group, event.channel, event.noteNumber, event.velocity, event.sampleOffset);
             break;
         case PerformanceEventKind::PitchBend:
-            addPitchBend(buffer, event.channel, event.perNote ? event.noteNumber : -1, event.value, event.sampleOffset);
+            addPitchBend(buffer, group, event.channel, event.perNote ? event.noteNumber : -1, event.value, event.sampleOffset);
             break;
         case PerformanceEventKind::ChannelPressure:
-            addChannelPressure(buffer, event.channel, event.perNote ? event.noteNumber : -1, event.value, event.sampleOffset);
+            addChannelPressure(buffer, group, event.channel, event.perNote ? event.noteNumber : -1, event.value, event.sampleOffset);
             break;
         case PerformanceEventKind::PolyAftertouch:
-            addPolyAftertouch(buffer, event.channel, event.noteNumber, event.value, event.sampleOffset);
+            addPolyAftertouch(buffer, group, event.channel, event.noteNumber, event.value, event.sampleOffset);
             break;
         case PerformanceEventKind::Controller:
-            addCC(buffer, event.channel, event.perNote ? event.noteNumber : -1, event.controller, event.value, event.sampleOffset);
+            addCC(buffer, group, event.channel, event.perNote ? event.noteNumber : -1, event.controller, event.value, event.sampleOffset);
             break;
         case PerformanceEventKind::ProgramChange:
-            addProgramChange(buffer, event.channel, event.program, event.sampleOffset);
+            addProgramChange(buffer, group, event.channel, event.program, event.sampleOffset);
             break;
         case PerformanceEventKind::AllNotesOff:
-            addAllNotesOff(buffer, event.channel, event.sampleOffset);
+            addAllNotesOff(buffer, group, event.channel, event.sampleOffset);
             break;
         case PerformanceEventKind::MidiStart:
-            addMidiStart(buffer, event.sampleOffset);
+            addMidiStart(buffer, group, event.sampleOffset);
             break;
         case PerformanceEventKind::MidiStop:
-            addMidiStop(buffer, event.sampleOffset);
+            addMidiStop(buffer, group, event.sampleOffset);
             break;
         case PerformanceEventKind::MidiContinue:
-            addMidiContinue(buffer, event.sampleOffset);
+            addMidiContinue(buffer, group, event.sampleOffset);
             break;
     }
+}
+
+uint8_t Midi2Protocol::groupForEvent(const PerformanceEvent& event) const {
+    if (event.zoneIndex >= 0 && event.zoneIndex < 3)
+        return static_cast<uint8_t>(event.zoneIndex);
+
+    return group_;
 }
 
 // Helper to bypass MidiBuffer::addEvent validation which fails for UMP in JUCE 9.0.1
@@ -86,83 +95,83 @@ static uint16_t scaleTo16Bit(float value) {
     return static_cast<uint16_t>(static_cast<double>(value) * 65536.0);
 }
 
-void Midi2Protocol::addNoteOn(juce::MidiBuffer& buffer, int channel, int noteNumber, float velocity, int eventTime) {
-    auto ump = Factory::makeNoteOnV2(group_, (uint8_t)(channel - 1), (uint8_t)noteNumber, Factory::NoteAttributeKind::none, scaleTo16Bit(velocity), 0);
+void Midi2Protocol::addNoteOn(juce::MidiBuffer& buffer, uint8_t group, int channel, int noteNumber, float velocity, int eventTime) {
+    auto ump = Factory::makeNoteOnV2(group, (uint8_t)(channel - 1), (uint8_t)noteNumber, Factory::NoteAttributeKind::none, scaleTo16Bit(velocity), 0);
     addToBuffer(buffer, ump.data(), (int)ump.size(), eventTime);
 }
 
-void Midi2Protocol::addNoteOff(juce::MidiBuffer& buffer, int channel, int noteNumber, float velocity, int eventTime) {
-    auto ump = Factory::makeNoteOffV2(group_, (uint8_t)(channel - 1), (uint8_t)noteNumber, Factory::NoteAttributeKind::none, scaleTo16Bit(velocity), 0);
+void Midi2Protocol::addNoteOff(juce::MidiBuffer& buffer, uint8_t group, int channel, int noteNumber, float velocity, int eventTime) {
+    auto ump = Factory::makeNoteOffV2(group, (uint8_t)(channel - 1), (uint8_t)noteNumber, Factory::NoteAttributeKind::none, scaleTo16Bit(velocity), 0);
     addToBuffer(buffer, ump.data(), (int)ump.size(), eventTime);
 }
 
-void Midi2Protocol::addPitchBend(juce::MidiBuffer& buffer, int channel, int noteNumber, float value, int eventTime) {
+void Midi2Protocol::addPitchBend(juce::MidiBuffer& buffer, uint8_t group, int channel, int noteNumber, float value, int eventTime) {
     uint32_t scaled = scaleTo32Bit(value);
     if (noteNumber == -1) {
         juce::Logger::writeToLog("Midi2Protocol: Channel Pitch Bend - channel=" + juce::String(channel) + 
                                  ", value=" + juce::String(value) + ", scaled=" + juce::String((juce::int64)scaled));
-        auto ump = Factory::makePitchBendV2(group_, (uint8_t)(channel - 1), scaled);
+        auto ump = Factory::makePitchBendV2(group, (uint8_t)(channel - 1), scaled);
         addToBuffer(buffer, ump.data(), (int)ump.size(), eventTime);
     } else {
         juce::Logger::writeToLog("Midi2Protocol: Per-Note Pitch Bend - channel=" + juce::String(channel) + 
                                  ", note=" + juce::String(noteNumber) + ", value=" + juce::String(value) + 
                                  ", scaled=" + juce::String((juce::int64)scaled));
-        auto ump = Factory::makePerNotePitchBendV2(group_, (uint8_t)(channel - 1), (uint8_t)noteNumber, scaled);
+        auto ump = Factory::makePerNotePitchBendV2(group, (uint8_t)(channel - 1), (uint8_t)noteNumber, scaled);
         addToBuffer(buffer, ump.data(), (int)ump.size(), eventTime);
     }
 }
 
-void Midi2Protocol::addChannelPressure(juce::MidiBuffer& buffer, int channel, int noteNumber, float value, int eventTime) {
+void Midi2Protocol::addChannelPressure(juce::MidiBuffer& buffer, uint8_t group, int channel, int noteNumber, float value, int eventTime) {
     if (noteNumber == -1) {
-        auto ump = Factory::makeChannelPressureV2(group_, (uint8_t)(channel - 1), scaleTo32Bit(value));
+        auto ump = Factory::makeChannelPressureV2(group, (uint8_t)(channel - 1), scaleTo32Bit(value));
         addToBuffer(buffer, ump.data(), (int)ump.size(), eventTime);
     } else {
-        auto ump = Factory::makePolyPressureV2(group_, (uint8_t)(channel - 1), (uint8_t)noteNumber, scaleTo32Bit(value));
+        auto ump = Factory::makePolyPressureV2(group, (uint8_t)(channel - 1), (uint8_t)noteNumber, scaleTo32Bit(value));
         addToBuffer(buffer, ump.data(), (int)ump.size(), eventTime);
     }
 }
 
-void Midi2Protocol::addPolyAftertouch(juce::MidiBuffer& buffer, int channel, int noteNumber, float value, int eventTime) {
-    auto ump = Factory::makePolyPressureV2(group_, (uint8_t)(channel - 1), (uint8_t)noteNumber, scaleTo32Bit(value));
+void Midi2Protocol::addPolyAftertouch(juce::MidiBuffer& buffer, uint8_t group, int channel, int noteNumber, float value, int eventTime) {
+    auto ump = Factory::makePolyPressureV2(group, (uint8_t)(channel - 1), (uint8_t)noteNumber, scaleTo32Bit(value));
     addToBuffer(buffer, ump.data(), (int)ump.size(), eventTime);
 }
 
-void Midi2Protocol::addCC(juce::MidiBuffer& buffer, int channel, int noteNumber, int ccNumber, float value, int eventTime) {
+void Midi2Protocol::addCC(juce::MidiBuffer& buffer, uint8_t group, int channel, int noteNumber, int ccNumber, float value, int eventTime) {
     if (noteNumber == -1) {
-        auto ump = Factory::makeControlChangeV2(group_, (uint8_t)(channel - 1), (uint8_t)ccNumber, scaleTo32Bit(value));
+        auto ump = Factory::makeControlChangeV2(group, (uint8_t)(channel - 1), (uint8_t)ccNumber, scaleTo32Bit(value));
         addToBuffer(buffer, ump.data(), (int)ump.size(), eventTime);
     } else {
         if (ccNumber == 74 || ccNumber == 71 || ccNumber == 1 || ccNumber == 2 || ccNumber == 7 || ccNumber == 10 || ccNumber == 11) {
-            auto ump = Factory::makeRegisteredPerNoteControllerV2(group_, (uint8_t)(channel - 1), (uint8_t)noteNumber, (uint8_t)ccNumber, scaleTo32Bit(value));
+            auto ump = Factory::makeRegisteredPerNoteControllerV2(group, (uint8_t)(channel - 1), (uint8_t)noteNumber, (uint8_t)ccNumber, scaleTo32Bit(value));
             addToBuffer(buffer, ump.data(), (int)ump.size(), eventTime);
         } else {
-            auto ump = Factory::makeAssignablePerNoteControllerV2(group_, (uint8_t)(channel - 1), (uint8_t)noteNumber, (uint8_t)ccNumber, scaleTo32Bit(value));
+            auto ump = Factory::makeAssignablePerNoteControllerV2(group, (uint8_t)(channel - 1), (uint8_t)noteNumber, (uint8_t)ccNumber, scaleTo32Bit(value));
             addToBuffer(buffer, ump.data(), (int)ump.size(), eventTime);
         }
     }
 }
 
-void Midi2Protocol::addProgramChange(juce::MidiBuffer& buffer, int channel, int program, int eventTime) {
-    auto ump = Factory::makeProgramChangeV2(group_, (uint8_t)(channel - 1), 0, (uint8_t)program, 0, 0);
+void Midi2Protocol::addProgramChange(juce::MidiBuffer& buffer, uint8_t group, int channel, int program, int eventTime) {
+    auto ump = Factory::makeProgramChangeV2(group, (uint8_t)(channel - 1), 0, (uint8_t)program, 0, 0);
     addToBuffer(buffer, ump.data(), (int)ump.size(), eventTime);
 }
 
-void Midi2Protocol::addAllNotesOff(juce::MidiBuffer& buffer, int channel, int eventTime) {
-    addCC(buffer, channel, -1, 123, 0.0f, eventTime);
+void Midi2Protocol::addAllNotesOff(juce::MidiBuffer& buffer, uint8_t group, int channel, int eventTime) {
+    addCC(buffer, group, channel, -1, 123, 0.0f, eventTime);
 }
 
-void Midi2Protocol::addMidiStart(juce::MidiBuffer& buffer, int eventTime) {
-    auto ump = Factory::makeStart(group_);
+void Midi2Protocol::addMidiStart(juce::MidiBuffer& buffer, uint8_t group, int eventTime) {
+    auto ump = Factory::makeStart(group);
     addToBuffer(buffer, ump.data(), (int)ump.size(), eventTime);
 }
 
-void Midi2Protocol::addMidiStop(juce::MidiBuffer& buffer, int eventTime) {
-    auto ump = Factory::makeStop(group_);
+void Midi2Protocol::addMidiStop(juce::MidiBuffer& buffer, uint8_t group, int eventTime) {
+    auto ump = Factory::makeStop(group);
     addToBuffer(buffer, ump.data(), (int)ump.size(), eventTime);
 }
 
-void Midi2Protocol::addMidiContinue(juce::MidiBuffer& buffer, int eventTime) {
-    auto ump = Factory::makeContinue(group_);
+void Midi2Protocol::addMidiContinue(juce::MidiBuffer& buffer, uint8_t group, int eventTime) {
+    auto ump = Factory::makeContinue(group);
     addToBuffer(buffer, ump.data(), (int)ump.size(), eventTime);
 }
 
@@ -187,7 +196,7 @@ void Midi2Protocol::addIdentification(juce::MidiBuffer& buffer, int eventTime) {
                .withMidi1Support(true)
                .withMidi2Support(true)
                .withStaticFunctionBlocks(true)
-               .withNumFunctionBlocks(1)
+               .withNumFunctionBlocks(3)
                .withReceiveJRSupport(false)
                .withTransmitJRSupport(false);
     
@@ -205,19 +214,24 @@ void Midi2Protocol::addIdentification(juce::MidiBuffer& buffer, int eventTime) {
         addToBuffer(buffer, view.data(), (int)view.size(), eventTime);
     });
     
-    BlockInfo block;
-    block = block.withFirstGroup(0)
-                 .withNumGroups(16)
-                 .withDirection(BlockDirection::bidirectional)
-                 .withUiHint(BlockUiHint::bidirectional)
-                 .withEnabled(true);
-    
-    auto blockPkt = Factory::makeFunctionBlockInfoNotification(0, block);
-    addToBuffer(buffer, blockPkt.data(), (int)blockPkt.size(), eventTime);
+    for (uint8_t zoneIndex = 0; zoneIndex < 3; ++zoneIndex)
+    {
+        BlockInfo block;
+        block = block.withFirstGroup(zoneIndex)
+                     .withNumGroups(1)
+                     .withDirection(BlockDirection::bidirectional)
+                     .withUiHint(BlockUiHint::bidirectional)
+                     .withEnabled(true);
 
-    Factory::makeFunctionBlockNameNotification(0, "Main", [&](const View& view) {
-        addToBuffer(buffer, view.data(), (int)view.size(), eventTime);
-    });
+        auto blockPkt = Factory::makeFunctionBlockInfoNotification(zoneIndex, block);
+        addToBuffer(buffer, blockPkt.data(), (int)blockPkt.size(), eventTime);
+
+        Factory::makeFunctionBlockNameNotification(zoneIndex,
+                                                   "Zone " + juce::String((int) zoneIndex + 1),
+                                                   [&](const View& view) {
+                                                       addToBuffer(buffer, view.data(), (int)view.size(), eventTime);
+                                                   });
+    }
 
     StreamConfiguration config;
     config = config.withProtocol(PacketProtocol::MIDI_2_0)

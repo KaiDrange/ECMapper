@@ -15,8 +15,9 @@ MidiService::MidiService(ConfigLookup (&configLookups)[3], juce::CriticalSection
 }
 
 MidiService::~MidiService() {
-    if (virtualUmpInput_.isAlive())
-        virtualUmpInput_.removeConsumer(*this);
+    for (auto& virtualUmpInput : virtualUmpInputs_)
+        if (virtualUmpInput.isAlive())
+            virtualUmpInput.removeConsumer(*this);
 
     stop();
     
@@ -173,14 +174,36 @@ void MidiService::stop() {
         }
     }
 
+    if (umpInput_.isAlive())
+        umpInput_.removeConsumer(*this);
+
+    {
+        const juce::ScopedLock sl(umpOutputLock_);
+
+        for (auto& virtualUmpInput : virtualUmpInputs_)
+        {
+            if (virtualUmpInput.isAlive())
+                virtualUmpInput.removeConsumer(*this);
+
+            virtualUmpInput = {};
+        }
+
+        for (auto& virtualEndpoint : virtualEndpoints_)
+            virtualEndpoint = {};
+
+        for (auto& directUmpOutput : directUmpOutputs_)
+            directUmpOutput = {};
+
+        virtualUmpOutput_ = {};
+        virtualUmpInputMirror_ = {};
+        isVirtualTarget_ = false;
+    }
+
     if (virtualMidiLock_ != nullptr && isFirstInstance_)
     {
         virtualMidiLock_->exit();
         isFirstInstance_ = false;
     }
-
-    if (umpInput_.isAlive())
-        umpInput_.removeConsumer(*this);
 
     initialized_ = false;
     pluginState_ = nullptr;
@@ -207,10 +230,14 @@ void MidiService::sendIdentification()
     // Send to the primary selected output
     drainDirectUMPs(identBuffer, true); // Silent if failed, because we might send to virtual next
     
-    // Also explicitly send to the virtual output if it's alive and NOT already the primary
-    if (isFirstInstance_ && directUmpOutput_.isAlive() && !isVirtualTarget_)
+    const bool hasDirectMidi2Output = std::any_of(directUmpOutputs_.begin(), directUmpOutputs_.end(), [](const auto& output) {
+        return output.isAlive();
+    });
+
+    // Also explicitly send to the virtual outputs if they are alive and NOT already the primary
+    if (isFirstInstance_ && hasDirectMidi2Output && !isVirtualTarget_)
     {
-        juce::Logger::writeToLog("MidiService: Explicitly sending identification to virtual UMP output.");
+        juce::Logger::writeToLog("MidiService: Explicitly sending identification to virtual UMP outputs.");
         for (const auto meta : identBuffer)
         {
             if (isMidi2Mode_)
@@ -221,8 +248,10 @@ void MidiService::sendIdentification()
                 {
                     juce::universal_midi_packets::Iterator begin(data, numWords);
                     juce::universal_midi_packets::Iterator end(data + numWords, 0);
-                    if (directUmpOutput_.isAlive())
-                        directUmpOutput_.send(begin, end);
+
+                    for (auto& directUmpOutput : directUmpOutputs_)
+                        if (directUmpOutput.isAlive())
+                            directUmpOutput.send(begin, end);
                 }
             }
         }
@@ -552,10 +581,12 @@ void MidiService::handleRemotePerformanceData(osc::Message& oscMsg, juce::MidiBu
 void MidiService::drainPendingMidiMessages(juce::MidiBuffer& buffer, int eventTime) {
     const juce::ScopedLock sl(pendingMessageLock_);
     const juce::ScopedLock sl2(umpOutputLock_);
-    
-    auto& output = isVirtualTarget_ ? directUmpOutput_ : umpOutput_;
 
-    if (output.isAlive())
+    const bool hasDirectMidi2Output = std::any_of(directUmpOutputs_.begin(), directUmpOutputs_.end(), [](const auto& output) {
+        return output.isAlive();
+    });
+
+    if ((isVirtualTarget_ && isMidi2Mode_ && hasDirectMidi2Output) || umpOutput_.isAlive())
     {
         drainDirectUMPs(pendingMidiBuffer_);
     }
@@ -594,9 +625,13 @@ void MidiService::drainDirectUMPs(juce::MidiBuffer& buffer, bool silentIfFailed)
 {
     const juce::ScopedLock sl(umpOutputLock_);
 
-    auto& output = isVirtualTarget_ ? directUmpOutput_ : umpOutput_;
+    const bool useDirectMidi2Outputs = isVirtualTarget_ && isMidi2Mode_;
+    const bool hasDirectMidi2Output = std::any_of(directUmpOutputs_.begin(), directUmpOutputs_.end(), [](const auto& output) {
+        return output.isAlive();
+    });
+    const bool hasTargetOutput = useDirectMidi2Outputs ? hasDirectMidi2Output : umpOutput_.isAlive();
 
-    if (output.isAlive())
+    if (hasTargetOutput)
     {
         if (!buffer.isEmpty())
             juce::Logger::writeToLog("MidiService: Draining " + juce::String(buffer.getNumEvents()) + " events to " + (isVirtualTarget_ ? "direct/virtual" : "primary") + " output.");
@@ -612,8 +647,19 @@ void MidiService::drainDirectUMPs(juce::MidiBuffer& buffer, bool silentIfFailed)
                 {
                     juce::universal_midi_packets::Iterator begin(data, numWords);
                     juce::universal_midi_packets::Iterator end(data + numWords, 0);
-                    if (output.isAlive())
-                        output.send(begin, end);
+
+                    if (useDirectMidi2Outputs)
+                    {
+                        const auto group = juce::universal_midi_packets::Utils::getGroup(data[0]);
+                        const auto zoneIndex = group < directUmpOutputs_.size() ? static_cast<size_t>(group) : size_t { 0 };
+                        auto& output = directUmpOutputs_[zoneIndex];
+                        if (output.isAlive())
+                            output.send(begin, end);
+                    }
+                    else if (umpOutput_.isAlive())
+                    {
+                        umpOutput_.send(begin, end);
+                    }
                 }
             }
             else
@@ -634,8 +680,8 @@ void MidiService::drainDirectUMPs(juce::MidiBuffer& buffer, bool silentIfFailed)
                     juce::universal_midi_packets::Conversion::toMidi1({ umpGroup_, juce::Span<const std::byte>(reinterpret_cast<const std::byte*>(data), size) }, [&](const juce::universal_midi_packets::View& view) {
                         juce::universal_midi_packets::Iterator begin(view.data(), view.size());
                         juce::universal_midi_packets::Iterator end(view.data() + view.size(), 0);
-                        if (output.isAlive())
-                            output.send(begin, end);
+                        if (umpOutput_.isAlive())
+                            umpOutput_.send(begin, end);
                     });
                 }
                 else
@@ -658,8 +704,14 @@ juce::universal_midi_packets::EndpointId MidiService::getCorrectedEndpointId(juc
     {
         if (isMidi2Mode_)
         {
-            if (virtualEndpoint_.isAlive())
-                return virtualEndpoint_.getId();
+            auto zoneIndex = 0;
+            if (name.containsIgnoreCase("Zone 2"))
+                zoneIndex = 1;
+            else if (name.containsIgnoreCase("Zone 3"))
+                zoneIndex = 2;
+
+            if (virtualEndpoints_[static_cast<size_t>(zoneIndex)].isAlive())
+                return virtualEndpoints_[static_cast<size_t>(zoneIndex)].getId();
         }
         else if (virtualUmpOutput_.has_value() && *virtualUmpOutput_)
         {
@@ -697,6 +749,29 @@ void MidiService::setMidiOutput(juce::MidiOutput* output)
     if (output == nullptr)
     {
         const juce::ScopedLock sl(umpOutputLock_);
+        const bool canUseInternalDirectOutput = isMidi2Mode_ && isFirstInstance_ && std::all_of(virtualEndpoints_.begin(), virtualEndpoints_.end(), [](const auto& endpoint) {
+            return endpoint.isAlive();
+        });
+
+        if (canUseInternalDirectOutput)
+        {
+            midiOutputName_ = "ECMapper Direct UMP";
+            isVirtualTarget_ = true;
+            lastEndpointId_ = {};
+            umpOutput_ = {};
+
+            if (!umpSession_.has_value())
+                umpSession_ = juce::universal_midi_packets::Endpoints::getInstance()->makeSession("ECMapperUMP");
+
+            if (umpSession_.has_value())
+                for (size_t zoneIndex = 0; zoneIndex < directUmpOutputs_.size(); ++zoneIndex)
+                    if (!directUmpOutputs_[zoneIndex].isAlive())
+                        directUmpOutputs_[zoneIndex] = umpSession_->connectOutput(virtualEndpoints_[zoneIndex].getId());
+
+            juce::Logger::writeToLog("MidiService: No MIDI output selected. Falling back to internal direct output.");
+            return;
+        }
+
         umpOutput_ = {};
         lastEndpointId_ = {};
         midiOutputName_ = "None";
@@ -719,22 +794,12 @@ void MidiService::setMidiOutput(juce::MidiOutput* output)
     {
         juce::Logger::writeToLog("MidiService: Selected output is virtual (" + midiOutputName_ + "). Using internal direct connection.");
         umpOutput_ = {};
-        
-        // Ensure directUmpOutput_ is alive if we are the first instance
-        if (isFirstInstance_ && (!directUmpOutput_.isAlive()))
-        {
-            if (isMidi2Mode_)
-            {
-                if (virtualEndpoint_.isAlive())
-                {
-                    directUmpOutput_ = umpSession_->connectOutput(virtualEndpoint_.getId());
-                }
-            }
-            else if (virtualUmpOutput_.has_value() && *virtualUmpOutput_)
-            {
-                directUmpOutput_ = umpSession_->connectOutput(virtualUmpOutput_->getId());
-            }
-        }
+
+        if (isMidi2Mode_ && isFirstInstance_ && umpSession_.has_value())
+            for (size_t zoneIndex = 0; zoneIndex < directUmpOutputs_.size(); ++zoneIndex)
+                if (!directUmpOutputs_[zoneIndex].isAlive() && virtualEndpoints_[zoneIndex].isAlive())
+                    directUmpOutputs_[zoneIndex] = umpSession_->connectOutput(virtualEndpoints_[zoneIndex].getId());
+
         return;
     }
 
@@ -1008,28 +1073,150 @@ void MidiService::consume (juce::universal_midi_packets::Iterator b, juce::unive
 
 void MidiService::updateVirtualOutput()
 {
-    juce::Logger::writeToLog("MidiService: Internal virtual MIDI outputs are disabled.");
+    const auto clearMidi2VirtualOutputs = [this]() {
+        for (auto& virtualUmpInput : virtualUmpInputs_)
+        {
+            if (virtualUmpInput.isAlive())
+                virtualUmpInput.removeConsumer(*this);
+
+            virtualUmpInput = {};
+        }
+
+        for (auto& directUmpOutput : directUmpOutputs_)
+            directUmpOutput = {};
+
+        for (auto& virtualEndpoint : virtualEndpoints_)
+            virtualEndpoint = {};
+    };
+
+    if (virtualMidiLock_ == nullptr)
+    {
+        juce::Logger::writeToLog("MidiService: Initializing InterProcessLock for virtual MIDI.");
+        virtualMidiLock_ = std::make_unique<juce::InterProcessLock>("ECMapper_VirtualMidi_Lock");
+    }
 
     const juce::ScopedLock sl(umpOutputLock_);
 
-    if (virtualUmpInput_.isAlive())
-        virtualUmpInput_.removeConsumer(*this);
+    if (!isMidi2Mode_)
+    {
+        clearMidi2VirtualOutputs();
+        isVirtualTarget_ = false;
 
-    virtualEndpoint_ = {};
-    virtualUmpInput_ = {};
-    virtualUmpOutput_ = {};
-    virtualUmpInputMirror_ = {};
-    directUmpOutput_ = {};
-    isVirtualTarget_ = false;
-    isFirstInstance_ = false;
+        if (virtualUmpOutput_.has_value() && *virtualUmpOutput_)
+        {
+            juce::Logger::writeToLog("MidiService: Closing legacy virtual output.");
+            virtualUmpOutput_ = {};
+            virtualUmpInputMirror_ = {};
+        }
+
+        if (virtualMidiLock_ != nullptr && isFirstInstance_)
+        {
+            virtualMidiLock_->exit();
+            isFirstInstance_ = false;
+        }
+
+        return;
+    }
+
+    if (!isFirstInstance_)
+        isFirstInstance_ = virtualMidiLock_->enter(0);
+
+    if (!isFirstInstance_)
+    {
+        juce::Logger::writeToLog("MidiService: Another instance manages the Direct virtual MIDI output.");
+        return;
+    }
+
+    juce::Logger::writeToLog("MidiService: This is the first instance. Managing virtual port.");
+
+    if (virtualUmpOutput_.has_value() && *virtualUmpOutput_)
+    {
+        juce::Logger::writeToLog("MidiService: Closing legacy virtual output.");
+        virtualUmpOutput_ = {};
+        virtualUmpInputMirror_ = {};
+    }
+
+    const bool needsCreation = std::any_of(virtualEndpoints_.begin(), virtualEndpoints_.end(), [](const auto& endpoint) {
+        return !endpoint.isAlive();
+    });
+
+    if (!needsCreation)
+    {
+        juce::Logger::writeToLog("MidiService: Virtual MIDI 2.0 ports already exist.");
+        return;
+    }
+
+    if (!umpSession_.has_value())
+    {
+        juce::Logger::writeToLog("MidiService: Creating UMP session.");
+        umpSession_ = juce::universal_midi_packets::Endpoints::getInstance()->makeSession("ECMapperUMP");
+    }
+
+    if (!umpSession_.has_value())
+    {
+        juce::Logger::writeToLog("MidiService: Failed to create UMP session.");
+        return;
+    }
+
+    using namespace juce::universal_midi_packets;
+
+    clearMidi2VirtualOutputs();
+
+    DeviceInfo devInfo;
+    devInfo.manufacturer = { std::byte { 0x7D }, std::byte { 0x00 }, std::byte { 0x00 } };
+    devInfo.family = { std::byte { 0x01 }, std::byte { 0x00 } };
+    devInfo.modelNumber = { std::byte { 0x01 }, std::byte { 0x00 } };
+    devInfo.revision = { std::byte { 0x01 }, std::byte { 0x00 }, std::byte { 0x00 }, std::byte { 0x00 } };
+
+    for (size_t zoneIndex = 0; zoneIndex < virtualEndpoints_.size(); ++zoneIndex)
+    {
+        const auto zoneNumber = static_cast<int>(zoneIndex) + 1;
+        juce::Logger::writeToLog("MidiService: Creating VirtualEndpoint (MIDI 2.0) for Zone " + juce::String(zoneNumber) + ".");
+
+        const auto blocks = std::array {
+            Block {}.withName("Zone " + juce::String(zoneNumber))
+                    .withDirection(BlockDirection::bidirectional)
+                    .withUiHint(BlockUiHint::bidirectional)
+                    .withEnabled(true)
+                    .withFirstGroup(static_cast<uint8_t>(zoneIndex))
+                    .withNumGroups(1)
+                    .withMIDI1ProxyKind(BlockMIDI1ProxyKind::inapplicable)
+        };
+
+        virtualEndpoints_[zoneIndex] = umpSession_->createVirtualEndpoint("ECMapper Direct UMP Zone " + juce::String(zoneNumber),
+                                                                           devInfo,
+                                                                           "ECMapper-Direct-UMP-Zone-" + juce::String(zoneNumber),
+                                                                           PacketProtocol::MIDI_2_0,
+                                                                           blocks,
+                                                                           BlocksAreStatic::yes);
+
+        if (!virtualEndpoints_[zoneIndex].isAlive())
+        {
+            juce::Logger::writeToLog("MidiService: Failed to create virtual MIDI 2.0 endpoint for Zone " + juce::String(zoneNumber) + ".");
+            continue;
+        }
+
+        juce::Logger::writeToLog("MidiService: Successfully created virtual MIDI 2.0 endpoint for Zone " + juce::String(zoneNumber) + ".");
+        directUmpOutputs_[zoneIndex] = umpSession_->connectOutput(virtualEndpoints_[zoneIndex].getId());
+
+        virtualUmpInputs_[zoneIndex] = umpSession_->connectInput(virtualEndpoints_[zoneIndex].getId(), PacketProtocol::MIDI_2_0);
+        if (virtualUmpInputs_[zoneIndex].isAlive())
+            virtualUmpInputs_[zoneIndex].addConsumer(*this);
+    }
+
+    sendIdentification();
+    endpointsChanged();
 }
 
 bool MidiService::isVirtualOutputActive() const
 {
     const juce::ScopedLock sl(umpOutputLock_);
-    if (isMidi2Mode_)
-        return virtualEndpoint_.isAlive();
-    return virtualUmpOutput_.has_value() && *virtualUmpOutput_;
+    if (!isMidi2Mode_)
+        return false;
+
+    return std::any_of(virtualEndpoints_.begin(), virtualEndpoints_.end(), [](const auto& endpoint) {
+        return endpoint.isAlive();
+    });
 }
 
 bool MidiService::isUsingUMPPath() const
@@ -1709,12 +1896,15 @@ void MidiService::processMessage (juce::universal_midi_packets::BytesOnGroup msg
         }
     };
 
-    if (isVirtualTarget_) {
-        sendToOutput(directUmpOutput_);
+    if (isVirtualTarget_ && isMidi2Mode_) {
+        if (msg.group < directUmpOutputs_.size())
+            sendToOutput(directUmpOutputs_[msg.group]);
     } else {
         sendToOutput(umpOutput_);
-        if (isFirstInstance_)
-            sendToOutput(directUmpOutput_);
+
+        if (isFirstInstance_ && isMidi2Mode_)
+            for (auto& directUmpOutput : directUmpOutputs_)
+                sendToOutput(directUmpOutput);
     }
 }
 
@@ -1737,12 +1927,23 @@ void MidiService::deviceAdded (juce::midi_ci::MUID x) {
     const size_t numWords = (size_t)disc.size();
     
     const juce::ScopedLock sl(umpOutputLock_);
-    auto& output = isVirtualTarget_ ? directUmpOutput_ : umpOutput_;
-    if (output.isAlive())
+    if (isVirtualTarget_ && isMidi2Mode_)
+    {
+        for (auto& directUmpOutput : directUmpOutputs_)
+        {
+            if (!directUmpOutput.isAlive())
+                continue;
+
+            juce::universal_midi_packets::Iterator begin(data, numWords);
+            juce::universal_midi_packets::Iterator end(data + numWords, 0);
+            directUmpOutput.send(begin, end);
+        }
+    }
+    else if (umpOutput_.isAlive())
     {
         juce::universal_midi_packets::Iterator begin(data, numWords);
         juce::universal_midi_packets::Iterator end(data + numWords, 0);
-        output.send(begin, end);
+        umpOutput_.send(begin, end);
     }
 
     // 2. Inquiry profiles for the new device
@@ -1878,12 +2079,15 @@ void MidiService::sendCISysex (int group, juce::midi_ci::MUID destinationMUID, s
         }
     };
 
-    if (isVirtualTarget_) {
-        sendToOutput(directUmpOutput_);
+    if (isVirtualTarget_ && isMidi2Mode_) {
+        if (group >= 0 && static_cast<size_t>(group) < directUmpOutputs_.size())
+            sendToOutput(directUmpOutputs_[static_cast<size_t>(group)]);
     } else {
         sendToOutput(umpOutput_);
-        if (isFirstInstance_)
-            sendToOutput(directUmpOutput_);
+
+        if (isFirstInstance_ && isMidi2Mode_)
+            for (auto& directUmpOutput : directUmpOutputs_)
+                sendToOutput(directUmpOutput);
     }
 }
 
@@ -1942,12 +2146,15 @@ void MidiService::sendIdentityResponse (int group, std::byte deviceID) {
         }
     };
 
-    if (isVirtualTarget_) {
-        sendToOutput(directUmpOutput_);
+    if (isVirtualTarget_ && isMidi2Mode_) {
+        if (group >= 0 && static_cast<size_t>(group) < directUmpOutputs_.size())
+            sendToOutput(directUmpOutputs_[static_cast<size_t>(group)]);
     } else {
         sendToOutput(umpOutput_);
-        if (isFirstInstance_)
-            sendToOutput(directUmpOutput_);
+
+        if (isFirstInstance_ && isMidi2Mode_)
+            for (auto& directUmpOutput : directUmpOutputs_)
+                sendToOutput(directUmpOutput);
     }
 }
 

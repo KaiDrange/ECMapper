@@ -139,17 +139,13 @@ void ConfigLookup::updateKeyUnlocked(LayoutWrapper::KeyId keyId) {
 
         bool midi2 = SettingsWrapper::getMidi2Mode(pluginState.state);
         float maxPb = 1.0f;
-        
-        if (midi2) {
-            maxPb = 128.0f;
-        } else {
-            if (key.output == MidiChannelType::MPE_Low)
-                maxPb = (float)SettingsWrapper::getLowerMPEPB(pluginState.state);
-            else if (key.output == MidiChannelType::MPE_High)
-                maxPb = (float)SettingsWrapper::getUpperMPEPB(pluginState.state);
-            else
-                maxPb = (float)ZoneWrapper::getChannelMaxPitchbend(layoutKey.keyId.deviceType, layoutKey.zone, pluginState.state);
-        }
+
+        if (key.output == MidiChannelType::MPE_Low)
+            maxPb = (float)SettingsWrapper::getLowerMPEPB(pluginState.state);
+        else if (key.output == MidiChannelType::MPE_High)
+            maxPb = (float)SettingsWrapper::getUpperMPEPB(pluginState.state);
+        else
+            maxPb = (float)ZoneWrapper::getChannelMaxPitchbend(layoutKey.keyId.deviceType, layoutKey.zone, pluginState.state);
 
         key.pbRange = getSafePbRange((float)keyPB, maxPb);
         

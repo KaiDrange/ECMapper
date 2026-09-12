@@ -6,10 +6,12 @@
 #include <JuceHeader.h>
 
 #include "Core/ConfigLookup.h"
+#include "Core/LayoutWrapper.h"
 #include "Core/MidiService.h"
 #include "Core/OSCMessage.h"
 #include "Core/PerformanceEventSink.h"
 #include "Core/SettingsWrapper.h"
+#include "Core/ZoneWrapper.h"
 
 namespace {
 
@@ -196,6 +198,44 @@ bool verifyCenteredNoteOnAndStrideLimitedTransition() {
     return ok;
 }
 
+bool verifyMidi2KeyPitchBendScalingMatchesLegacy()
+{
+    using namespace ecm;
+
+    DummyProcessor processor;
+    juce::AudioProcessorValueTreeState pluginState(processor, nullptr, "TestState", {});
+    juce::CriticalSection stateLock;
+
+    LayoutWrapper::LayoutKey layoutKey;
+    layoutKey.keyId = { 0, 0, InstrumentType::Alpha };
+    layoutKey.keyType = EigenharpKeyType::Normal;
+    layoutKey.keyColour = KeyColour::Off;
+    layoutKey.zone = Zone::Zone1;
+    layoutKey.keyMappingType = KeyMappingType::Note;
+    layoutKey.mappingValue = "60";
+    LayoutWrapper::setLayoutKey(layoutKey, pluginState.state);
+
+    ZoneWrapper::setMidiChannelType(InstrumentType::Alpha, Zone::Zone1, MidiChannelType::Chan1, pluginState.state);
+    ZoneWrapper::setKeyPitchbend(InstrumentType::Alpha, Zone::Zone1, 1, pluginState.state);
+    ZoneWrapper::setChannelMaxPitchbend(InstrumentType::Alpha, Zone::Zone1, 48, pluginState.state);
+
+    auto getPitchBendRange = [&](bool midi2Mode) {
+        SettingsWrapper::setMidi2Mode(midi2Mode, pluginState.state);
+        ConfigLookup lookup(InstrumentType::Alpha, pluginState, stateLock);
+        lookup.updateAll();
+        return lookup.keys[0][0].pbRange;
+    };
+
+    const float legacyRange = getPitchBendRange(false);
+    const float midi2Range = getPitchBendRange(true);
+    const float expectedRange = 1.0f / 48.0f;
+
+    bool ok = true;
+    ok &= expectNear(legacyRange, expectedRange, 1.0e-6f, "legacy key pitch bend scaling should match the configured channel max range");
+    ok &= expectNear(midi2Range, expectedRange, 1.0e-6f, "MIDI 2.0 key pitch bend scaling should match the configured channel max range");
+    return ok;
+}
+
 } // namespace
 
 int main() {
@@ -205,7 +245,8 @@ int main() {
     SilentLogger logger;
     juce::Logger::setCurrentLogger(&logger);
 
-    const bool ok = verifyCenteredNoteOnAndStrideLimitedTransition();
+    const bool ok = verifyCenteredNoteOnAndStrideLimitedTransition()
+                 && verifyMidi2KeyPitchBendScalingMatchesLegacy();
     juce::Logger::setCurrentLogger(nullptr);
 
     if (!ok)
