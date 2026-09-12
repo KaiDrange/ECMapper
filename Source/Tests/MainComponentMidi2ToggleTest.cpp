@@ -7,6 +7,14 @@
 
 namespace {
 
+bool midiBufferIsEmpty(const juce::MidiBuffer& buffer)
+{
+    for (const auto _ : buffer)
+        juce::ignoreUnused(_);
+
+    return buffer.isEmpty();
+}
+
 bool expect(bool condition, const char* message)
 {
     if (!condition)
@@ -71,6 +79,76 @@ int main()
     ok &= expect(component.lowerMPEVoiceCount.isEnabled() && component.upperMPEVoiceCount.isEnabled()
                  && component.lowerMPEPitchbendRange.isEnabled() && component.upperMPEPitchbendRange.isEnabled(),
                  "MIDI 2.0 mode should keep MPE controls enabled when channel layout is still used");
+
+    juce::ValueTree legacyDevice(ecm::LayoutWrapper::id_device + juce::String((int)ecm::InstrumentType::Alpha));
+    auto legacyLayout = legacyDevice.getOrCreateChildWithName(ecm::LayoutWrapper::id_layout, nullptr);
+    auto legacyKey = legacyLayout.getOrCreateChildWithName(ecm::LayoutWrapper::id_key + juce::String("_0_4"), nullptr);
+    legacyKey.setProperty(ecm::LayoutWrapper::id_keyType, (int)ecm::EigenharpKeyType::Normal, nullptr);
+    legacyKey.setProperty(ecm::LayoutWrapper::id_keyColour, (int)ecm::KeyColour::Off, nullptr);
+    legacyKey.setProperty(ecm::LayoutWrapper::id_zone, (int)ecm::Zone::Zone1, nullptr);
+    legacyKey.setProperty(ecm::LayoutWrapper::id_keyMappingType, (int)ecm::KeyMappingType::Note, nullptr);
+    legacyKey.setProperty(ecm::LayoutWrapper::id_mappingValue, "72", nullptr);
+    processor.state.state.addChild(legacyDevice, -1, nullptr);
+
+    component.selectTab(1);
+    component.refreshFromState();
+    ok &= expect(ecm::LayoutWrapper::getLayoutKey({ 0, 4, ecm::InstrumentType::Alpha }, processor.state.state).mappingValue == "72",
+                 "a legacy alpha layout should remain readable before editing the lower MPE pitch-bend range");
+
+    juce::MidiBuffer startupMessages;
+    processor.getMidiService().drainPendingMidiMessages(startupMessages, 0);
+
+    component.lowerMPEPitchbendRange.setValue(11);
+    component.lowerMPEPitchbendRange.input.onFocusLost();
+    component.refreshFromState();
+
+    juce::MidiBuffer pendingMessagesAfterPbEdit;
+    processor.getMidiService().drainPendingMidiMessages(pendingMessagesAfterPbEdit, 0);
+
+    ok &= expect(ecm::SettingsWrapper::getLowerMPEPB(processor.state.state) == 11,
+                 "editing the lower MPE pitch-bend range through the main component should update the stored setting");
+    ok &= expect(ecm::LayoutWrapper::getLayoutKey({ 0, 4, ecm::InstrumentType::Alpha }, processor.state.state).mappingValue == "72",
+                 "editing the lower MPE pitch-bend range should not clear a migrated alpha layout");
+    ok &= expect(!processor.state.state.getChildWithName(ecm::LayoutWrapper::id_device + juce::String((int)ecm::InstrumentType::Alpha)).isValid(),
+                 "editing the lower MPE pitch-bend range should normalize legacy root device data out of the root state");
+    ok &= expect(ecm::SettingsWrapper::getPresetTree(processor.state.state)
+                     .getChildWithName(ecm::LayoutWrapper::id_device + juce::String((int)ecm::InstrumentType::Alpha))
+                     .isValid(),
+                 "editing the lower MPE pitch-bend range should keep the alpha device tree inside the preset subtree");
+    ok &= expect(midiBufferIsEmpty(pendingMessagesAfterPbEdit),
+                 "editing the lower MPE pitch-bend range through the UI should not queue a live legacy transport layout reset");
+
+    auto loadedPicoKey = ecm::LayoutWrapper::KeyId { 0, 3, ecm::InstrumentType::Pico };
+    auto loadedPicoLayout = ecm::SettingsWrapper::getPresetTree(processor.state.state)
+        .getOrCreateChildWithName(ecm::LayoutWrapper::id_device + juce::String((int)ecm::InstrumentType::Pico), nullptr)
+        .getOrCreateChildWithName(ecm::LayoutWrapper::id_layout, nullptr);
+    auto presetPicoKey = loadedPicoLayout.getOrCreateChildWithName(ecm::LayoutWrapper::id_key + juce::String("_0_3"), nullptr);
+    presetPicoKey.setProperty(ecm::LayoutWrapper::id_keyType, (int)ecm::EigenharpKeyType::Normal, nullptr);
+    presetPicoKey.setProperty(ecm::LayoutWrapper::id_keyColour, (int)ecm::KeyColour::Off, nullptr);
+    presetPicoKey.setProperty(ecm::LayoutWrapper::id_zone, (int)ecm::Zone::Zone1, nullptr);
+    presetPicoKey.setProperty(ecm::LayoutWrapper::id_keyMappingType, (int)ecm::KeyMappingType::Note, nullptr);
+    presetPicoKey.setProperty(ecm::LayoutWrapper::id_mappingValue, "67", nullptr);
+
+    juce::ValueTree stalePicoDevice(ecm::LayoutWrapper::id_device + juce::String((int)ecm::InstrumentType::Pico));
+    auto stalePicoLayout = stalePicoDevice.getOrCreateChildWithName(ecm::LayoutWrapper::id_layout, nullptr);
+    auto stalePicoKey = stalePicoLayout.getOrCreateChildWithName(ecm::LayoutWrapper::id_key + juce::String("_0_3"), nullptr);
+    stalePicoKey.setProperty(ecm::LayoutWrapper::id_keyType, (int)ecm::EigenharpKeyType::Normal, nullptr);
+    stalePicoKey.setProperty(ecm::LayoutWrapper::id_keyColour, (int)ecm::KeyColour::Off, nullptr);
+    stalePicoKey.setProperty(ecm::LayoutWrapper::id_zone, (int)ecm::Zone::Zone1, nullptr);
+    stalePicoKey.setProperty(ecm::LayoutWrapper::id_keyMappingType, (int)ecm::KeyMappingType::Note, nullptr);
+    stalePicoKey.setProperty(ecm::LayoutWrapper::id_mappingValue, "0", nullptr);
+    processor.state.state.addChild(stalePicoDevice, -1, nullptr);
+
+    component.selectTab(3);
+    component.refreshFromState();
+    component.lowerMPEPitchbendRange.setValue(13);
+    component.lowerMPEPitchbendRange.input.onFocusLost();
+    component.refreshFromState();
+
+    ok &= expect(ecm::LayoutWrapper::getLayoutKey(loadedPicoKey, processor.state.state).mappingValue == "67",
+                 "editing the lower MPE pitch-bend range should preserve an already-loaded pico layout when duplicate legacy root data exists");
+    ok &= expect(!processor.state.state.getChildWithName(ecm::LayoutWrapper::id_device + juce::String((int)ecm::InstrumentType::Pico)).isValid(),
+                 "editing the lower MPE pitch-bend range should still remove stale pico root device data after migration");
 
     processor.getMidiService().stop();
     processor.getMidiService().start(processor.state, &processor.getHardwareService());

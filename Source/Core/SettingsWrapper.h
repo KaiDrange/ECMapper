@@ -100,6 +100,7 @@ private:
 
     static void cleanupLegacyDeviceNodes(juce::ValueTree& devicesNode);
     static bool isLegacyPresetProperty(const juce::Identifier& property);
+    static void mergeLegacyTreeIntoPresetTree(juce::ValueTree& targetTree, const juce::ValueTree& legacyTree);
     static void migrateLegacyPresetProperties(juce::ValueTree& rootState, juce::ValueTree& presetTree);
     static void migrateLegacyDeviceNodes(juce::ValueTree& rootState, juce::ValueTree& presetTree);
 };

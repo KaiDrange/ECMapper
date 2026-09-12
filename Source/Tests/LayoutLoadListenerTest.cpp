@@ -166,6 +166,32 @@ int main() {
     ok &= expect(LayoutWrapper::getLayoutKey({ 0, 2, InstrumentType::Alpha }, legacyState).mappingValue == "75",
                  "migrated preset layouts should remain readable through the wrappers");
 
+    juce::ValueTree duplicateState { "DuplicateState" };
+    auto presetTreeWithLoadedLayout = SettingsWrapper::getPresetTree(duplicateState);
+    auto loadedPresetDevice = presetTreeWithLoadedLayout.getOrCreateChildWithName(LayoutWrapper::id_device + juce::String((int)InstrumentType::Pico), nullptr);
+    auto loadedPresetLayout = loadedPresetDevice.getOrCreateChildWithName(LayoutWrapper::id_layout, nullptr);
+    auto loadedPresetKey = loadedPresetLayout.getOrCreateChildWithName(LayoutWrapper::id_key + juce::String("_0_3"), nullptr);
+    loadedPresetKey.setProperty(LayoutWrapper::id_keyType, (int)EigenharpKeyType::Normal, nullptr);
+    loadedPresetKey.setProperty(LayoutWrapper::id_keyColour, (int)KeyColour::Off, nullptr);
+    loadedPresetKey.setProperty(LayoutWrapper::id_zone, (int)Zone::Zone1, nullptr);
+    loadedPresetKey.setProperty(LayoutWrapper::id_keyMappingType, (int)KeyMappingType::Note, nullptr);
+    loadedPresetKey.setProperty(LayoutWrapper::id_mappingValue, "67", nullptr);
+
+    auto staleLegacyDevice = duplicateState.getOrCreateChildWithName(LayoutWrapper::id_device + juce::String((int)InstrumentType::Pico), nullptr);
+    auto staleLegacyLayout = staleLegacyDevice.getOrCreateChildWithName(LayoutWrapper::id_layout, nullptr);
+    auto staleLegacyKey = staleLegacyLayout.getOrCreateChildWithName(LayoutWrapper::id_key + juce::String("_0_3"), nullptr);
+    staleLegacyKey.setProperty(LayoutWrapper::id_keyType, (int)EigenharpKeyType::Normal, nullptr);
+    staleLegacyKey.setProperty(LayoutWrapper::id_keyColour, (int)KeyColour::Off, nullptr);
+    staleLegacyKey.setProperty(LayoutWrapper::id_zone, (int)Zone::Zone1, nullptr);
+    staleLegacyKey.setProperty(LayoutWrapper::id_keyMappingType, (int)KeyMappingType::Note, nullptr);
+    staleLegacyKey.setProperty(LayoutWrapper::id_mappingValue, "0", nullptr);
+
+    SettingsWrapper::setLowerMPEPB(11, duplicateState);
+    ok &= expect(LayoutWrapper::getLayoutKey({ 0, 3, InstrumentType::Pico }, duplicateState).mappingValue == "67",
+                 "normalizing duplicate legacy device trees should preserve the already-loaded preset layout mapping");
+    ok &= expect(!duplicateState.getChildWithName(LayoutWrapper::id_device + juce::String((int)InstrumentType::Pico)).isValid(),
+                 "normalizing duplicate legacy device trees should still remove the legacy root device node");
+
     auto persistentState = SettingsWrapper::createPersistentStateTree(pluginState.state);
     ok &= expect(persistentState.hasProperty(SettingsWrapper::id_ecMapperVersion),
                  "persistent full state should include a root ECMapper version");

@@ -91,6 +91,21 @@ bool containsNoteOn(const std::vector<ecm::PerformanceEvent>& events, int noteNu
     return false;
 }
 
+std::vector<std::vector<uint8_t>> collectMidiMessages(const juce::MidiBuffer& buffer)
+{
+    std::vector<std::vector<uint8_t>> messages;
+
+    for (const auto metadata : buffer)
+    {
+        auto message = metadata.getMessage();
+        const auto* data = message.getRawData();
+        const auto size = static_cast<size_t>(message.getRawDataSize());
+        messages.emplace_back(data, data + size);
+    }
+
+    return messages;
+}
+
 ecm::osc::Message makeKeyMessage(float pressure, float roll, float yaw, uint64_t timestamp) {
     ecm::osc::Message message;
     message.type = ecm::osc::MessageType::Key;
@@ -103,6 +118,12 @@ ecm::osc::Message makeKeyMessage(float pressure, float roll, float yaw, uint64_t
     message.yaw = yaw;
     message.timestamp = timestamp;
     std::strncpy(message.devId, "test-device", 63);
+    return message;
+}
+
+ecm::osc::Message makeKeyMessageForKey(unsigned int keyNo, float pressure, float roll, float yaw, uint64_t timestamp) {
+    auto message = makeKeyMessage(pressure, roll, yaw, timestamp);
+    message.key = keyNo;
     return message;
 }
 
@@ -462,6 +483,117 @@ bool verifySingleChannelStripPitchBendKeepsFullRange()
     return ok;
 }
 
+bool verifyMpePitchbendEditDoesNotQueueLegacyLayoutReset()
+{
+    using namespace ecm;
+
+    DummyProcessor processor;
+    juce::AudioProcessorValueTreeState pluginState(processor, nullptr, "TestState", {});
+    juce::CriticalSection stateLock;
+    ConfigLookup configLookups[] = {
+        ConfigLookup(InstrumentType::Alpha, pluginState, stateLock),
+        ConfigLookup(InstrumentType::Tau, pluginState, stateLock),
+        ConfigLookup(InstrumentType::Pico, pluginState, stateLock)
+    };
+
+    SettingsWrapper::setMidi2Mode(false, pluginState.state);
+    SettingsWrapper::setLowerMPEVoiceCount(5, pluginState.state);
+    SettingsWrapper::setUpperMPEVoiceCount(3, pluginState.state);
+    SettingsWrapper::setLowerMPEPB(48, pluginState.state);
+    SettingsWrapper::setUpperMPEPB(48, pluginState.state);
+
+    auto firstLayoutKey = makeLayoutKey(KeyMappingType::Note, "60");
+    LayoutWrapper::setLayoutKey(firstLayoutKey, pluginState.state);
+
+    auto secondLayoutKey = makeLayoutKey(KeyMappingType::Note, "62");
+    secondLayoutKey.keyId.keyNo = 1;
+    LayoutWrapper::setLayoutKey(secondLayoutKey, pluginState.state);
+
+    ZoneWrapper::setMidiChannelType(InstrumentType::Alpha, Zone::Zone1, MidiChannelType::MPE_Low, pluginState.state);
+
+    for (auto& lookup : configLookups)
+        lookup.updateAll();
+
+    MidiService midiService(configLookups, stateLock);
+    midiService.start(pluginState, nullptr);
+    midiService.setRuntimeConfigSnapshot(std::make_unique<MidiService::RuntimeConfigSnapshot>(
+        configLookups,
+        midiService.getProtocol(),
+        midiService.getVoiceRouter(),
+        midiService.getExpressionPolicy()));
+
+    juce::MidiBuffer startupMessages;
+    midiService.drainPendingMidiMessages(startupMessages, 0);
+
+    SettingsWrapper::setLowerMPEPB(12, pluginState.state);
+
+    juce::MidiBuffer queuedMessages;
+    midiService.drainPendingMidiMessages(queuedMessages, 0);
+
+    const auto presetTreeAfterPitchbendEdit = SettingsWrapper::getPresetTree(pluginState.state);
+    const bool presetHasNestedPreset = presetTreeAfterPitchbendEdit.getChildWithName(SettingsWrapper::id_preset).isValid();
+    const bool alphaLayoutRemainsInPreset = presetTreeAfterPitchbendEdit
+        .getChildWithName(LayoutWrapper::id_device + juce::String((int)InstrumentType::Alpha))
+        .getChildWithName(LayoutWrapper::id_layout)
+        .getChildWithName(LayoutWrapper::id_key + juce::String("_0_0"))
+        .isValid();
+
+    const uint64_t startTimestamp = 1'000'000ULL;
+    osc::Message outgoingMessage;
+    juce::MidiBuffer midiBuffer;
+
+    auto sendNoteOn = [&](unsigned int keyNo, int noteNo, uint64_t timestampBase) {
+        CapturingSink sink;
+        for (int i = 0; i < 6; ++i)
+        {
+            auto message = makeKeyMessageForKey(keyNo, 0.7f, 0.0f, 0.0f, timestampBase + static_cast<uint64_t>(i) * 10'000ULL);
+            midiService.processMessage(message, outgoingMessage, midiBuffer, sink, 0, nullptr);
+        }
+
+        const PerformanceEvent* noteOn = nullptr;
+        for (const auto& event : sink.events)
+        {
+            if (event.kind == PerformanceEventKind::NoteOn && event.noteNumber == noteNo)
+            {
+                noteOn = &event;
+                break;
+            }
+        }
+
+        return noteOn != nullptr ? noteOn->channel : -1;
+    };
+
+    const int firstChannel = sendNoteOn(0, 60, startTimestamp);
+    const int secondChannel = sendNoteOn(1, 62, startTimestamp + 100'000ULL);
+
+    juce::MidiBuffer refreshedLayout;
+    midiService.createLayoutRPNs(refreshedLayout);
+
+    const auto refreshedMessages = collectMidiMessages(refreshedLayout);
+    const auto queuedMidiMessages = collectMidiMessages(queuedMessages);
+
+    bool ok = true;
+    ok &= expect(queuedMessages.isEmpty(),
+                 "changing lower MPE pitch bend should not queue a live legacy MPE layout reset");
+    ok &= expect(!presetHasNestedPreset,
+                 "changing lower MPE pitch bend through a MidiService listener should not create a nested preset subtree");
+    ok &= expect(alphaLayoutRemainsInPreset,
+                 "changing lower MPE pitch bend through a MidiService listener should keep layout keys in the root preset subtree");
+    ok &= expect(LayoutWrapper::getLayoutKey({ 0, 0, InstrumentType::Alpha }, pluginState.state).mappingValue == "60",
+                 "changing lower MPE pitch bend through a MidiService listener should not clear mapped keys to default C-2 values");
+    ok &= expect(firstChannel == 2,
+                 "the first active lower-zone MPE note should still use the first member channel");
+    ok &= expect(secondChannel == 3,
+                 "changing lower MPE pitch bend should not reset active lower-zone voice allocation before the next note");
+    ok &= expect(!refreshedMessages.empty(),
+                 "rebuilding the transport layout after an MPE pitch-bend edit should still produce layout messages");
+    ok &= expect(refreshedMessages != queuedMidiMessages,
+                 "the retained transport layout definition should not be emitted immediately when only the MPE pitch-bend range changes");
+
+    midiService.stop();
+    return ok;
+}
+
 bool verifyMidiMessageKeysEmitMappedMessages()
 {
     using namespace ecm;
@@ -565,6 +697,7 @@ int main() {
                  && verifyMidi2KeyPitchBendScalingMatchesLegacy()
                  && verifyMpeMasterPitchBendUsesChannelMaxRange()
                  && verifySingleChannelStripPitchBendKeepsFullRange()
+                 && verifyMpePitchbendEditDoesNotQueueLegacyLayoutReset()
                  && verifyMidiMessageKeysEmitMappedMessages();
     juce::Logger::setCurrentLogger(nullptr);
 

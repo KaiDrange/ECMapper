@@ -310,25 +310,33 @@ void MidiService::updateCalibration() {
 
 void MidiService::valueTreePropertyChanged(juce::ValueTree& tree, const juce::Identifier& property)
 {
-    if (property == SettingsWrapper::id_lowerMPEVoiceCount || 
-        property == SettingsWrapper::id_upperMPEVoiceCount ||
-        property == SettingsWrapper::id_lowerMPEPB ||
-        property == SettingsWrapper::id_upperMPEPB)
+    juce::ignoreUnused(tree);
+
+    const bool mpeVoiceCountChanged = property == SettingsWrapper::id_lowerMPEVoiceCount
+                                   || property == SettingsWrapper::id_upperMPEVoiceCount;
+    const bool mpePitchbendChanged = property == SettingsWrapper::id_lowerMPEPB
+                                  || property == SettingsWrapper::id_upperMPEPB;
+
+    if (mpeVoiceCountChanged || mpePitchbendChanged)
     {
+        if (pluginState_ == nullptr)
+            return;
+
         const juce::ScopedLock stateGuard(stateLock_);
-        int lowerChannelCount = SettingsWrapper::getLowerMPEVoiceCount(tree);
-        mpeZone_.setLowerZone(lowerChannelCount, SettingsWrapper::getLowerMPEPB(tree), 2);
+        auto& rootState = pluginState_->state;
+        int lowerChannelCount = SettingsWrapper::getLowerMPEVoiceCount(rootState);
+        mpeZone_.setLowerZone(lowerChannelCount, SettingsWrapper::getLowerMPEPB(rootState), 2);
         
         if (lowerChannelCount < 14) {
-            int upperChannelCount = SettingsWrapper::getUpperMPEVoiceCount(tree);
-            mpeZone_.setUpperZone(upperChannelCount, SettingsWrapper::getUpperMPEPB(tree), 2);
+            int upperChannelCount = SettingsWrapper::getUpperMPEVoiceCount(rootState);
+            mpeZone_.setUpperZone(upperChannelCount, SettingsWrapper::getUpperMPEPB(rootState), 2);
         }
 
-        if (transportSession_) {
+        if (mpeVoiceCountChanged && transportSession_) {
             const juce::ScopedLock sl(pendingMessageLock_);
             transportSession_->setupTransport(pendingMidiBuffer_, mpeZone_);
         }
-        if (voiceRouter_)
+        if (mpeVoiceCountChanged && voiceRouter_)
             voiceRouter_->configureLayout(mpeZone_);
     }
     

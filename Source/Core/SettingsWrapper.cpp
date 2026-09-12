@@ -11,6 +11,28 @@ bool SettingsWrapper::isLegacyPresetProperty(const juce::Identifier& property) {
         || property == id_pluginOutputMode;
 }
 
+void SettingsWrapper::mergeLegacyTreeIntoPresetTree(juce::ValueTree& targetTree, const juce::ValueTree& legacyTree) {
+    if (!targetTree.isValid() || !legacyTree.isValid())
+        return;
+
+    for (int propertyIndex = 0; propertyIndex < legacyTree.getNumProperties(); ++propertyIndex) {
+        const auto property = legacyTree.getPropertyName(propertyIndex);
+        if (!targetTree.hasProperty(property))
+            targetTree.setProperty(property, legacyTree.getProperty(property), nullptr);
+    }
+
+    for (int childIndex = 0; childIndex < legacyTree.getNumChildren(); ++childIndex) {
+        auto legacyChild = legacyTree.getChild(childIndex);
+        auto existingChild = targetTree.getChildWithName(legacyChild.getType());
+
+        if (existingChild.isValid()) {
+            mergeLegacyTreeIntoPresetTree(existingChild, legacyChild);
+        } else {
+            targetTree.addChild(legacyChild.createCopy(), -1, nullptr);
+        }
+    }
+}
+
 void SettingsWrapper::addListener(juce::ValueTree::Listener* listener, juce::ValueTree& rootState) {
     rootState.addListener(listener);
 
@@ -85,7 +107,7 @@ void SettingsWrapper::migrateLegacyDeviceNodes(juce::ValueTree& rootState, juce:
 
         auto existing = presetTree.getChildWithName(child.getType());
         if (existing.isValid()) {
-            existing.copyPropertiesAndChildrenFrom(child, nullptr);
+            mergeLegacyTreeIntoPresetTree(existing, child);
         } else {
             presetTree.addChild(child.createCopy(), -1, nullptr);
         }
