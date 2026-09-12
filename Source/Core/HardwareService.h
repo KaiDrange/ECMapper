@@ -61,7 +61,7 @@ public:
     public:
         virtual ~Listener() = default;
         virtual void deviceListChanged() = 0;
-        virtual void deviceNeedsLEDSync(const std::string& devId, InstrumentType type, bool isRequest) {}
+        virtual void deviceNeedsLEDSync(const std::string&, InstrumentType, bool) {}
     };
 
     void addListener(Listener* listener) { listeners_.add(listener); }

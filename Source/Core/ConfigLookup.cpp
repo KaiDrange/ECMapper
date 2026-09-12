@@ -16,12 +16,19 @@ int getTransposeForZone(InstrumentType deviceType, Zone zone, juce::AudioProcess
 
 }
 
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wshadow-field-in-constructor"
+#endif
 ConfigLookup::ConfigLookup(InstrumentType deviceType, juce::AudioProcessorValueTreeState& pluginState, juce::CriticalSection& stateLock)
-    : stateLock_(stateLock), pluginState(pluginState), deviceType(deviceType) {
+    : stateLock_(stateLock), deviceType(deviceType), pluginState(pluginState) {
 }
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
 
 ConfigLookup::ConfigLookup(const ConfigLookup& other)
-    : stateLock_(other.stateLock_), pluginState(other.pluginState), deviceType(other.deviceType)
+    : stateLock_(other.stateLock_), deviceType(other.deviceType), pluginState(other.pluginState)
 {
     controlLights = other.controlLights;
     for (int course = 0; course < 3; ++course) {
@@ -99,15 +106,15 @@ void ConfigLookup::updateKeyUnlocked(LayoutWrapper::KeyId keyId) {
         key.keyType = layoutKey.keyType;
         key.mapType = layoutKey.keyMappingType;
         key.keyColour = layoutKey.keyColour;
-        for (int i = 0; i < 4; i++)
+        for (std::size_t i = 0; i < std::size(key.notes); ++i)
             key.notes[i] = -1;
             
         if (key.mapType == KeyMappingType::Chord) {
             juce::StringArray chordParts;
             Utils::splitString(layoutKey.mappingValue, ";", chordParts);
             if (chordParts.size() == 5) {
-                for (int i = 0; i < 4; i++) {
-                    int noteNumber = chordParts[i+1].getIntValue();
+                for (std::size_t i = 0; i < std::size(key.notes); ++i) {
+                    const int noteNumber = chordParts[static_cast<int>(i) + 1].getIntValue();
                     key.notes[i] = noteNumber < 0
                        ? -1
                        : std::clamp(noteNumber + getTransposeForZone(layoutKey.keyId.deviceType, layoutKey.zone, pluginState), 0, 127);

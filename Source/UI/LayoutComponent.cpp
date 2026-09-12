@@ -4,6 +4,11 @@
 
 namespace ecm {
 
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wshadow-field-in-constructor"
+#pragma clang diagnostic ignored "-Wshadow-field"
+#endif
 LayoutComponent::LayoutComponent(InstrumentType deviceType, float widthFactor, float heightFactor, juce::AudioProcessorValueTreeState& pluginState) 
     : PanelComponent(widthFactor, heightFactor), 
       deviceType(deviceType), 
@@ -66,29 +71,36 @@ LayoutComponent::LayoutComponent(InstrumentType deviceType, float widthFactor, f
     showHidePanels();
     enableDisableMenuButtons(false);
 }
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
 
 LayoutComponent::~LayoutComponent() = default;
 
 void LayoutComponent::resized() {
     auto area = getLocalBounds();
-    auto margin = area.getWidth() * 0.02f;
+    const auto areaWidth = static_cast<float>(area.getWidth());
+    const auto areaHeight = static_cast<float>(area.getHeight());
+    auto margin = areaWidth * 0.02f;
     area.reduce(static_cast<int>(margin), static_cast<int>(margin));
     
-    auto menuArea = area.removeFromRight(static_cast<int>(area.getWidth() * 0.4f));
-    mapTypeMenuButton.setBounds(menuArea.removeFromTop(static_cast<int>(area.getHeight() * 0.04f)));
-    colourMenuButton.setBounds(menuArea.removeFromTop(static_cast<int>(area.getHeight() * 0.04f)));
-    zoneMenuButton.setBounds(menuArea.removeFromTop(static_cast<int>(area.getHeight() * 0.04f)));
+    auto menuArea = area.removeFromRight(static_cast<int>(areaWidth * 0.4f));
+    mapTypeMenuButton.setBounds(menuArea.removeFromTop(static_cast<int>(areaHeight * 0.04f)));
+    colourMenuButton.setBounds(menuArea.removeFromTop(static_cast<int>(areaHeight * 0.04f)));
+    zoneMenuButton.setBounds(menuArea.removeFromTop(static_cast<int>(areaHeight * 0.04f)));
     
     menuArea.removeFromTop(15);
     chordSectionComponent.setBounds(menuArea);
     appCtrlSectionComponent.setBounds(menuArea);
     midiMessageSectionComponent.setBounds(menuArea.removeFromTop(area.getHeight()));
 
-    auto keyWidth = area.getWidth() / 8.0f;
-    auto keyHeight = area.getHeight() / 24.0f;
-    auto percKeyWidth = area.getWidth() / 4.0f;
-    auto percKeyHeight = area.getHeight() / 16.0f;
-    auto buttonDiameter = area.getHeight() / 28.0f;
+    const auto innerWidth = static_cast<float>(area.getWidth());
+    const auto innerHeight = static_cast<float>(area.getHeight());
+    auto keyWidth = innerWidth / 8.0f;
+    auto keyHeight = innerHeight / 24.0f;
+    auto percKeyWidth = innerWidth / 4.0f;
+    auto percKeyHeight = innerHeight / 16.0f;
+    auto buttonDiameter = innerHeight / 28.0f;
     
     int currentKeyIndex = 0;
     for (int j = 0; j < getKeyRowCount(); j++) {
@@ -337,8 +349,18 @@ int LayoutComponent::getTotalKeyCount() const { return normalKeyCount + percKeyC
 int LayoutComponent::getPercKeyStartIndex() const { return normalKeyCount; }
 int LayoutComponent::getButtonStartIndex() const { return normalKeyCount + percKeyCount; }
 
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wshadow"
+#pragma clang diagnostic ignored "-Wswitch-enum"
+#endif
 void LayoutComponent::setKeyCounts(InstrumentType deviceType) {
     switch(deviceType) {
+        case InstrumentType::None:
+            normalKeyCount = 0; percKeyCount = 0; keyRowCount = 0;
+            for (int& keyRowLength : keyRowLengths) keyRowLength = 0;
+            buttonCount = 0; stripCount = 0;
+            break;
         case InstrumentType::Alpha:
             normalKeyCount = 120; percKeyCount = 12; keyRowCount = 5;
             for (int i=0; i<5; ++i) keyRowLengths[i] = 24;
@@ -357,5 +379,8 @@ void LayoutComponent::setKeyCounts(InstrumentType deviceType) {
         default: break;
     }
 }
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
 
 } // namespace ecm

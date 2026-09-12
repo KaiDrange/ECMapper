@@ -7,6 +7,7 @@ namespace ecm {
 struct Utils {
     static juce::Colour keyColourEnumToColour(KeyColour colour) {
         switch (colour) {
+            case KeyColour::Off: return juce::Colour(0x00000000);
             case KeyColour::Green: return juce::Colour(0xFF00FF00);
             case KeyColour::Red: return juce::Colour(0xFFFF0000);
             case KeyColour::Yellow: return juce::Colour(0xFFFFFF00);

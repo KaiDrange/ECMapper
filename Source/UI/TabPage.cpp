@@ -20,6 +20,10 @@ void configureViewButton(juce::TextButton& button)
 
 }
 
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wshadow-field-in-constructor"
+#endif
 TabPage::TabPage(int tabIndex, InstrumentType deviceType, juce::AudioProcessorValueTreeState& pluginState, ECMapperAudioProcessor& processor) 
     : deviceType(deviceType), 
       tabIndex_(tabIndex),
@@ -91,6 +95,9 @@ TabPage::TabPage(int tabIndex, InstrumentType deviceType, juce::AudioProcessorVa
     setRightPanelView(rightPanelView);
     setActive(isVisible());
 }
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
 
 TabPage::~TabPage() {
     stopTimer();
@@ -149,16 +156,20 @@ void TabPage::refreshFromState()
 void TabPage::resized() {
     auto area = getLocalBounds();
     area.reduce(5, 5);
-    
-    keyboard.setBounds(area.removeFromLeft(static_cast<int>(area.getWidth() * 0.1f)));
-    area.removeFromLeft(static_cast<int>(area.getWidth() * 0.01f));
-    
-    auto btnArea = area.removeFromTop(static_cast<int>(area.getHeight() * 0.05f));
-    loadMappingButton.setBounds(btnArea.removeFromLeft(static_cast<int>(area.getWidth() * 0.1f)));
-    saveMappingButton.setBounds(btnArea.removeFromLeft(static_cast<int>(area.getWidth() * 0.1f)));
-    clearMappingButton.setBounds(btnArea.removeFromLeft(static_cast<int>(area.getWidth() * 0.1f)));
 
-    auto layoutWidth = static_cast<int>(area.getWidth() * 0.38f);
+    const auto areaWidth = static_cast<float>(area.getWidth());
+    const auto areaHeight = static_cast<float>(area.getHeight());
+    
+    keyboard.setBounds(area.removeFromLeft(static_cast<int>(areaWidth * 0.1f)));
+    area.removeFromLeft(static_cast<int>(areaWidth * 0.01f));
+    
+    auto btnArea = area.removeFromTop(static_cast<int>(areaHeight * 0.05f));
+    loadMappingButton.setBounds(btnArea.removeFromLeft(static_cast<int>(areaWidth * 0.1f)));
+    saveMappingButton.setBounds(btnArea.removeFromLeft(static_cast<int>(areaWidth * 0.1f)));
+    clearMappingButton.setBounds(btnArea.removeFromLeft(static_cast<int>(areaWidth * 0.1f)));
+
+    const auto contentWidth = static_cast<float>(area.getWidth());
+    auto layoutWidth = static_cast<int>(contentWidth * 0.38f);
     layoutPanel->setBounds(area.removeFromLeft(layoutWidth));
     area.removeFromLeft(10);
     

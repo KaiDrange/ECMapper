@@ -19,8 +19,7 @@ public:
               osc::MessageFifo& outgoingOSCQueue,
               Logger& logger);
     ~OSCBridge() override;
-    
-    // HardwareService::Listener overrides
+
     void deviceListChanged() override;
 
     void setSenderEnabled(bool enabled);
@@ -38,7 +37,7 @@ public:
 
 private:
     void oscMessageReceived(const juce::OSCMessage& message) override;
-    void oscBundleReceived(const juce::OSCBundle& bundle) override {}
+    void oscBundleReceived(const juce::OSCBundle&) override {}
     void timerCallback() override;
     void run() override;
     
@@ -94,12 +93,6 @@ private:
 
     void sendOutgoingMessages();
     void sendPing(Connection* conn);
-    
-    // We need another queue to mirror hardwareToMapperQueue_ without consuming it
-    // Actually, OSCBridge should probably be another consumer of a separate "broadcast" queue
-    // Or we just peak. But MessageFifo is a FIFO.
-    // I'll add a method to MessageFifo to support multiple consumers or just have 
-    // the producer push to both.
 };
 
 } // namespace ecm

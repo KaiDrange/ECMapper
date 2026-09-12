@@ -15,6 +15,8 @@ constexpr int kTransposeCcNumber = 22;
 constexpr int kZoneEnableCcNumber = 23;
 constexpr int kPresetParameterDefaultIndex = 0;
 
+bool ecmapperAppendDirectVst3Events(juce::AudioProcessor& processor, Steinberg::Vst::IEventList& outputEvents);
+
 int transposeFromCc(int ccValue)
 {
     return juce::jlimit(0, 127, ccValue) - 64;
@@ -297,6 +299,7 @@ void ECMapperAudioProcessor::releaseResources() {
 }
 
 bool ECMapperAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
+    juce::ignoreUnused(layouts);
     return true;
 }
 
@@ -1147,10 +1150,10 @@ bool ECMapperAudioProcessor::exportPresetBankToFile(const juce::File& file) cons
     return ecm::PresetBankFileUtil::writePresetBankFile(file, bankCopy);
 }
 
-int ECMapperAudioProcessor::transposeIndex(ecm::InstrumentType deviceType, ecm::Zone zone)
+std::size_t ECMapperAudioProcessor::transposeIndex(ecm::InstrumentType deviceType, ecm::Zone zone)
 {
-    const auto deviceIndex = static_cast<int>(deviceType) - 1;
-    const auto zoneIndex = static_cast<int>(zone) - 1;
+    const auto deviceIndex = static_cast<std::size_t>(static_cast<int>(deviceType) - 1);
+    const auto zoneIndex = static_cast<std::size_t>(static_cast<int>(zone) - 1);
     return deviceIndex * 3 + zoneIndex;
 }
 
@@ -1189,13 +1192,10 @@ void ECMapperAudioProcessor::deviceListChanged() {}
 
 void ECMapperAudioProcessor::deviceNeedsLEDSync(const std::string& devId, const ecm::InstrumentType type, const bool isRequest) {
     if (hardwareService.getAppRole() == ecm::AppRole::Client) {
-        // Only return if Control LEDs is on
         if (hardwareService.isDeviceAuthorizedForLEDs(devId)) {
             midiService.resendLEDs(devId.c_str(), type, &outgoingOSCQueue, isRequest);
         }
     } else if (hardwareService.getAppRole() == ecm::AppRole::Host) {
-        // If it's a local device, send to mapperToHardwareQueue
-        // We know it's a Host, so if it's not a remote device, it's local.
         bool isRemote = false;
         const auto devices = hardwareService.getConnectedDevices();
         for (const auto& d : devices) {
@@ -1210,7 +1210,6 @@ void ECMapperAudioProcessor::deviceNeedsLEDSync(const std::string& devId, const 
                 midiService.resendLEDs(devId.c_str(), type, &mapperToHardwareQueue, isRequest);
             }
         } else {
-            // It's a remote device on a host (which shouldn't happen much, but still)
             midiService.resendLEDs(devId.c_str(), type, &outgoingOSCQueue, isRequest);
         }
     }
@@ -1323,7 +1322,7 @@ bool ecmapperAppendDirectVst3Events(juce::AudioProcessor& processor, Steinberg::
 
             case ecm::Vst3DirectEventKind::LegacyCC:
                 event.type = Event::kLegacyMIDICCOutEvent;
-                event.midiCCOut.channel = static_cast<uint8>(sourceEvent.channel);
+                event.midiCCOut.channel = static_cast<int8>(sourceEvent.channel);
                 event.midiCCOut.controlNumber = static_cast<uint8>(sourceEvent.controller);
                 event.midiCCOut.value = static_cast<int8>(juce::jlimit(0, 127, juce::roundToInt(sourceEvent.value * 127.0)));
                 event.midiCCOut.value2 = static_cast<int8>(juce::jlimit(0, 127, juce::roundToInt(sourceEvent.value2 * 127.0)));

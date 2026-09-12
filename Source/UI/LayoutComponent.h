@@ -16,6 +16,8 @@ class LayoutComponent : public PanelComponent,
                         public ChordSectionComponent::Listener,
                         public AppCtrlSectionComponent::Listener {
 public:
+    using juce::Component::keyPressed;
+
     LayoutComponent(InstrumentType model, float widthFactor, float heightFactor, juce::AudioProcessorValueTreeState& pluginState);
     ~LayoutComponent() override;
 

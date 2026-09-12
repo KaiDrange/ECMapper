@@ -208,7 +208,6 @@ void MainComponent::resized() {
     controlArea.removeFromRight(12);
     auto controlWidth = 120;
     auto modeWidth = isStandaloneApp_ ? standaloneMidi20ButtonWidth : pluginVst3DirectButtonWidth;
-    auto modeGap = 2;
 
     upperMPEPitchbendRange.setBounds(controlArea.removeFromRight(controlWidth).withHeight(28));
     controlArea.removeFromRight(8);

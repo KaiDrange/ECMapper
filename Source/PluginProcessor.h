@@ -44,9 +44,9 @@ public:
 
     int getNumPrograms() override { return 1; }
     int getCurrentProgram() override { return 0; }
-    void setCurrentProgram (int index) override {}
-    const juce::String getProgramName (int index) override { return {}; }
-    void changeProgramName (int index, const juce::String& newName) override {}
+    void setCurrentProgram (int) override {}
+    const juce::String getProgramName (int) override { return {}; }
+    void changeProgramName (int, const juce::String&) override {}
 
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
@@ -139,7 +139,7 @@ private:
     void registerZoneParameterListeners();
     void unregisterZoneParameterListeners();
     static bool isZoneRuntimeParameter(const juce::String& parameterID);
-    static int transposeIndex(ecm::InstrumentType deviceType, ecm::Zone zone);
+    static std::size_t transposeIndex(ecm::InstrumentType deviceType, ecm::Zone zone);
     juce::ValueTree getPresetSnapshot(int slot) const;
     void applyPresetState(const juce::ValueTree& snapshot);
     void refreshDerivedStateAfterPresetChange();

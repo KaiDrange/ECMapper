@@ -234,7 +234,7 @@ void HardwareService::run() {
         
         if (appRole_ == AppRole::Client) {
             static uint32_t lastStaleCheck = 0;
-            uint32_t now = juce::Time::getMillisecondCounter();
+            const uint32_t now = juce::Time::getMillisecondCounter();
             if (now - lastStaleCheck > 1000) {
                 checkStaleDevices();
                 lastStaleCheck = now;
@@ -250,12 +250,8 @@ bool HardwareService::isDeviceAuthorizedForLEDs(const std::string& devId) const 
     for (const auto& d : connectedDevices_) {
         if (d.dev == devId) {
             if (d.isRemote) {
-                // For remote devices (Client mode), we check the first target (the host we are receiving from)
                 return !d.oscTargets.empty() && d.oscTargets[0].receiveLEDs;
             } else {
-                // For local devices (Host mode), we check if ANY target is authorized to send back LEDs 
-                // OR if local control is enabled (though MidiService handles local separately)
-                // Actually, for a Host, we just check if it's in Transmit mode and has an authorized target
                 for (const auto& t : d.oscTargets) {
                     if (t.receiveLEDs) return true;
                 }
