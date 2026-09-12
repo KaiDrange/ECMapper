@@ -12,13 +12,27 @@ bool SettingsWrapper::isLegacyPresetProperty(const juce::Identifier& property) {
 }
 
 void SettingsWrapper::addListener(juce::ValueTree::Listener* listener, juce::ValueTree& rootState) {
-    auto vTree = getSettingsTree(rootState);
-    vTree.addListener(listener);
+    rootState.addListener(listener);
+
+    auto settingsTree = getSettingsTree(rootState);
+    if (settingsTree != rootState)
+        settingsTree.addListener(listener);
+
+    auto presetTree = getPresetTree(rootState);
+    if (presetTree != rootState && presetTree != settingsTree)
+        presetTree.addListener(listener);
 }
 
 void SettingsWrapper::removeListener(juce::ValueTree::Listener* listener, juce::ValueTree& rootState) {
-    auto vTree = getSettingsTree(rootState);
-    vTree.removeListener(listener);
+    rootState.removeListener(listener);
+
+    auto settingsTree = getSettingsTree(rootState);
+    if (settingsTree != rootState)
+        settingsTree.removeListener(listener);
+
+    auto presetTree = getPresetTree(rootState);
+    if (presetTree != rootState && presetTree != settingsTree)
+        presetTree.removeListener(listener);
 }
 
 void SettingsWrapper::cleanupLegacyDeviceNodes(juce::ValueTree& devicesNode) {

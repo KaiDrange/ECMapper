@@ -249,15 +249,9 @@ void ConfigLookup::updateBreathUnlocked(Zone zone) {
     
     breath[zoneIdx].midiValue = ZoneWrapper::getMidiValue(deviceType, zone, ZoneWrapper::id_breath, ZoneWrapper::default_breath, pluginState.state);
     
-    float globalPB = 48.0f;
-    if (midiChannelType == MidiChannelType::MPE_Low)
-        globalPB = (float)SettingsWrapper::getLowerMPEPB(pluginState.state);
-    else if (midiChannelType == MidiChannelType::MPE_High)
-        globalPB = (float)SettingsWrapper::getUpperMPEPB(pluginState.state);
-    else
-        globalPB = (float)ZoneWrapper::getChannelMaxPitchbend(deviceType, zone, pluginState.state);
+    const float globalPB = (float)ZoneWrapper::getChannelMaxPitchbend(deviceType, zone, pluginState.state);
 
-    breath[zoneIdx].pbRange = SettingsWrapper::getMidi2Mode(pluginState.state) ? (globalPB / 128.0f) : 1.0f;
+    breath[zoneIdx].pbRange = 1.0f;
 
     if (breath[zoneIdx].midiValue.valueType == MidiValueType::Pitchbend) {
         juce::Logger::writeToLog("ConfigLookup: PB Settings for Breath (Zone " + juce::String(zoneIdx) + ") - targetPB=" + juce::String(globalPB) + 
@@ -301,15 +295,9 @@ void ConfigLookup::updateStripsUnlocked(Zone zone) {
     strip2[zoneIdx].absMidiValue = ZoneWrapper::getMidiValue(deviceType, zone, ZoneWrapper::id_strip2Abs, ZoneWrapper::default_strip2Abs, pluginState.state);
     strip2[zoneIdx].relMidiValue = ZoneWrapper::getMidiValue(deviceType, zone, ZoneWrapper::id_strip2Rel, ZoneWrapper::default_strip2Rel, pluginState.state);
     
-    float globalPB = 48.0f;
-    if (midiChannelType == MidiChannelType::MPE_Low)
-        globalPB = (float)SettingsWrapper::getLowerMPEPB(pluginState.state);
-    else if (midiChannelType == MidiChannelType::MPE_High)
-        globalPB = (float)SettingsWrapper::getUpperMPEPB(pluginState.state);
-    else
-        globalPB = (float)ZoneWrapper::getChannelMaxPitchbend(deviceType, zone, pluginState.state);
+    const float globalPB = (float)ZoneWrapper::getChannelMaxPitchbend(deviceType, zone, pluginState.state);
 
-    strip1[zoneIdx].pbRange = strip2[zoneIdx].pbRange = SettingsWrapper::getMidi2Mode(pluginState.state) ? (globalPB / 128.0f) : 1.0f;
+    strip1[zoneIdx].pbRange = strip2[zoneIdx].pbRange = 1.0f;
 
     if (strip1[zoneIdx].absMidiValue.valueType == MidiValueType::Pitchbend || strip1[zoneIdx].relMidiValue.valueType == MidiValueType::Pitchbend) {
         juce::Logger::writeToLog("ConfigLookup: PB Settings for Strip 1 (Zone " + juce::String(zoneIdx) + ") - targetPB=" + juce::String(globalPB) + 

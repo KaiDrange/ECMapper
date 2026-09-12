@@ -106,6 +106,18 @@ ecm::osc::Message makeKeyMessage(float pressure, float roll, float yaw, uint64_t
     return message;
 }
 
+ecm::osc::Message makeStripMessage(ecm::InstrumentType deviceType, unsigned int strip, float value, bool active = true)
+{
+    ecm::osc::Message message;
+    message.type = ecm::osc::MessageType::Strip;
+    message.device = deviceType;
+    message.strip = strip;
+    message.active = active;
+    message.value = value;
+    std::strncpy(message.devId, "test-device", 63);
+    return message;
+}
+
 ecm::LayoutWrapper::LayoutKey makeLayoutKey(ecm::KeyMappingType mappingType, const juce::String& mappingValue)
 {
     ecm::LayoutWrapper::LayoutKey layoutKey;
@@ -297,6 +309,159 @@ bool verifyMidi2KeyPitchBendScalingMatchesLegacy()
     return ok;
 }
 
+bool verifyMpeMasterPitchBendUsesChannelMaxRange()
+{
+    using namespace ecm;
+
+    bool ok = true;
+    auto verifyMode = [&](bool midi2Mode) {
+        DummyProcessor processor;
+        juce::AudioProcessorValueTreeState pluginState(processor, nullptr, "TestState", {});
+        juce::CriticalSection stateLock;
+
+        LayoutWrapper::LayoutKey layoutKey;
+        layoutKey.keyId = { 0, 0, InstrumentType::Alpha };
+        layoutKey.keyType = EigenharpKeyType::Normal;
+        layoutKey.keyColour = KeyColour::Off;
+        layoutKey.zone = Zone::Zone1;
+        layoutKey.keyMappingType = KeyMappingType::Note;
+        layoutKey.mappingValue = "60";
+        LayoutWrapper::setLayoutKey(layoutKey, pluginState.state);
+
+        SettingsWrapper::setMidi2Mode(midi2Mode, pluginState.state);
+        SettingsWrapper::setLowerMPEPB(1, pluginState.state);
+        ZoneWrapper::setMidiChannelType(InstrumentType::Alpha, Zone::Zone1, MidiChannelType::MPE_Low, pluginState.state);
+        ZoneWrapper::setKeyPitchbend(InstrumentType::Alpha, Zone::Zone1, 1, pluginState.state);
+        ZoneWrapper::setChannelMaxPitchbend(InstrumentType::Alpha, Zone::Zone1, 12, pluginState.state);
+        ZoneWrapper::setMidiValue(InstrumentType::Alpha,
+                                  Zone::Zone1,
+                                  ZoneWrapper::id_breath,
+                                  { MidiValueType::Pitchbend, 0 },
+                                  pluginState.state);
+        ZoneWrapper::setMidiValue(InstrumentType::Alpha,
+                                  Zone::Zone1,
+                                  ZoneWrapper::id_strip1Abs,
+                                  { MidiValueType::Pitchbend, 0 },
+                                  pluginState.state);
+
+        ConfigLookup lookup(InstrumentType::Alpha, pluginState, stateLock);
+        lookup.updateAll();
+
+        const char* modeName = midi2Mode ? "MIDI 2.0" : "legacy MIDI";
+        ok &= expectNear(lookup.keys[0][0].pbRange, 1.0f, 1.0e-6f,
+                         midi2Mode
+                             ? "MPE member-note pitch bend should use the full range when key pitch bend matches the lower-zone per-note range in MIDI 2.0 mode"
+                             : "MPE member-note pitch bend should use the full range when key pitch bend matches the lower-zone per-note range in legacy MIDI mode");
+        ok &= expectNear(lookup.breath[0].pbRange, 1.0f, 1.0e-6f,
+                         midi2Mode
+                             ? "MPE master-channel breath pitch bend should keep the full pitch-bend range in MIDI 2.0 mode"
+                             : "MPE master-channel breath pitch bend should keep the full pitch-bend range in legacy MIDI mode");
+        ok &= expectNear(lookup.strip1[0].pbRange, 1.0f, 1.0e-6f,
+                         midi2Mode
+                             ? "MPE master-channel strip pitch bend should keep the full pitch-bend range in MIDI 2.0 mode"
+                             : "MPE master-channel strip pitch bend should keep the full pitch-bend range in legacy MIDI mode");
+
+        juce::ignoreUnused(modeName);
+    };
+
+    verifyMode(false);
+    verifyMode(true);
+    return ok;
+}
+
+bool verifySingleChannelStripPitchBendKeepsFullRange()
+{
+    using namespace ecm;
+
+    bool ok = true;
+    auto verifyMode = [&](bool midi2Mode) {
+        DummyProcessor processor;
+        juce::AudioProcessorValueTreeState pluginState(processor, nullptr, "TestState", {});
+        juce::CriticalSection stateLock;
+        ConfigLookup configLookups[] = {
+            ConfigLookup(InstrumentType::Alpha, pluginState, stateLock),
+            ConfigLookup(InstrumentType::Tau, pluginState, stateLock),
+            ConfigLookup(InstrumentType::Pico, pluginState, stateLock)
+        };
+
+        SettingsWrapper::setMidi2Mode(midi2Mode, pluginState.state);
+        ZoneWrapper::setMidiChannelType(InstrumentType::Alpha, Zone::Zone1, MidiChannelType::Chan1, pluginState.state);
+        ZoneWrapper::setChannelMaxPitchbend(InstrumentType::Alpha, Zone::Zone1, 12, pluginState.state);
+        ZoneWrapper::setMidiValue(InstrumentType::Alpha,
+                                  Zone::Zone1,
+                                  ZoneWrapper::id_strip1Abs,
+                                  { MidiValueType::Pitchbend, 0 },
+                                  pluginState.state);
+        ZoneWrapper::setMidiValue(InstrumentType::Alpha,
+                                  Zone::Zone1,
+                                  ZoneWrapper::id_strip1Rel,
+                                  { MidiValueType::Off, 0 },
+                                  pluginState.state);
+        ZoneWrapper::setMidiValue(InstrumentType::Alpha,
+                                  Zone::Zone1,
+                                  ZoneWrapper::id_breath,
+                                  { MidiValueType::Pitchbend, 0 },
+                                  pluginState.state);
+
+        for (auto& lookup : configLookups)
+            lookup.updateAll();
+
+        MidiService midiService(configLookups, stateLock);
+        midiService.start(pluginState, nullptr);
+        midiService.setRuntimeConfigSnapshot(std::make_unique<MidiService::RuntimeConfigSnapshot>(
+            configLookups,
+            midiService.getProtocol(),
+            midiService.getVoiceRouter(),
+            midiService.getExpressionPolicy()));
+
+        CapturingSink sink;
+        osc::Message outgoingMessage;
+        juce::MidiBuffer midiBuffer;
+        midiService.processMessage(makeStripMessage(InstrumentType::Alpha, 1, 0.0f), outgoingMessage, midiBuffer, sink, 0, nullptr);
+
+        const PerformanceEvent* stripPitchBend = nullptr;
+        for (const auto& event : sink.events)
+        {
+            if (event.kind == PerformanceEventKind::PitchBend)
+                stripPitchBend = &event;
+        }
+
+        ok &= expectNear(configLookups[0].breath[0].pbRange, 1.0f, 1.0e-6f,
+                         midi2Mode
+                             ? "single-channel breath pitch bend should keep the full pitch-bend range in MIDI 2.0 mode"
+                             : "single-channel breath pitch bend should keep the full pitch-bend range in legacy MIDI mode");
+        ok &= expectNear(configLookups[0].strip1[0].pbRange, 1.0f, 1.0e-6f,
+                         midi2Mode
+                             ? "single-channel strip pitch bend should keep the full pitch-bend range in MIDI 2.0 mode"
+                             : "single-channel strip pitch bend should keep the full pitch-bend range in legacy MIDI mode");
+        ok &= expect(stripPitchBend != nullptr,
+                     midi2Mode
+                         ? "processing a strip message should emit a pitch-bend event in MIDI 2.0 mode"
+                         : "processing a strip message should emit a pitch-bend event in legacy MIDI mode");
+        if (stripPitchBend != nullptr)
+        {
+            ok &= expectNear(stripPitchBend->value, 1.0f, 1.0e-6f,
+                             midi2Mode
+                                 ? "single-channel strip pitch bend should reach the full protocol range in MIDI 2.0 mode"
+                                 : "single-channel strip pitch bend should reach the full protocol range in legacy MIDI mode");
+            ok &= expect(stripPitchBend->channel == 1,
+                         midi2Mode
+                             ? "single-channel strip pitch bend should be emitted on the configured zone channel in MIDI 2.0 mode"
+                             : "single-channel strip pitch bend should be emitted on the configured zone channel in legacy MIDI mode");
+            ok &= expect(!stripPitchBend->perNote,
+                         midi2Mode
+                             ? "single-channel strip pitch bend should remain channel-wide in MIDI 2.0 mode"
+                             : "single-channel strip pitch bend should remain channel-wide in legacy MIDI mode");
+        }
+
+        midiService.stop();
+    };
+
+    verifyMode(false);
+    verifyMode(true);
+    return ok;
+}
+
 bool verifyMidiMessageKeysEmitMappedMessages()
 {
     using namespace ecm;
@@ -398,6 +563,8 @@ int main() {
 
     const bool ok = verifyCenteredNoteOnAndStrideLimitedTransition()
                  && verifyMidi2KeyPitchBendScalingMatchesLegacy()
+                 && verifyMpeMasterPitchBendUsesChannelMaxRange()
+                 && verifySingleChannelStripPitchBendKeepsFullRange()
                  && verifyMidiMessageKeysEmitMappedMessages();
     juce::Logger::setCurrentLogger(nullptr);
 

@@ -381,6 +381,23 @@ target_include_directories(HardwareServiceModeSanitizationTest PRIVATE Source)
 target_compile_definitions(HardwareServiceModeSanitizationTest PRIVATE ECMAPPER_ENABLE_HARDWARE=0 JUCE_MODAL_LOOPS_PERMITTED=1)
 juce_generate_juce_header(HardwareServiceModeSanitizationTest)
 
+juce_add_console_app(SettingsWrapperPresetListenerTest
+        PRODUCT_NAME "SettingsWrapperPresetListenerTest"
+        VERSION "1.0.0"
+        COMPANY_NAME "Tic Tech"
+        BUNDLE_ID "com.tictech.ecmapper.settingswrapperpresetlistenertest"
+)
+
+target_sources(SettingsWrapperPresetListenerTest PRIVATE
+        Source/Tests/SettingsWrapperPresetListenerTest.cpp
+        ${CORE_SOURCES}
+)
+
+target_link_libraries(SettingsWrapperPresetListenerTest PRIVATE ${COMMON_LIBS})
+target_include_directories(SettingsWrapperPresetListenerTest PRIVATE Source)
+target_compile_definitions(SettingsWrapperPresetListenerTest PRIVATE ECMAPPER_ENABLE_HARDWARE=0 JUCE_MODAL_LOOPS_PERMITTED=1)
+juce_generate_juce_header(SettingsWrapperPresetListenerTest)
+
 juce_add_console_app(MainMenuBarModelTest
         PRODUCT_NAME "MainMenuBarModelTest"
         VERSION "1.0.0"
