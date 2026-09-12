@@ -90,13 +90,17 @@ void ConfigLookup::updateKeyUnlocked(LayoutWrapper::KeyId keyId) {
     LayoutWrapper::LayoutKey layoutKey = LayoutWrapper::getLayoutKey(keyId, pluginState.state);
     jassert(layoutKey.keyId.course >= 0 && layoutKey.keyId.course < 3);
     jassert(layoutKey.keyId.keyNo >= 0 && layoutKey.keyId.keyNo < 120);
+
+    const auto effectiveZone = layoutKey.zone == Zone::NoZone && layoutKey.keyMappingType == KeyMappingType::MidiMsg
+        ? Zone::Zone1
+        : layoutKey.zone;
     
     bool setKeyToDefault = false;
     if (layoutKey.keyMappingType == KeyMappingType::None)
         setKeyToDefault = true;
-    if (layoutKey.zone == Zone::NoZone)
+    if (effectiveZone == Zone::NoZone)
         setKeyToDefault = true;
-    if (!ZoneWrapper::getEnabled(layoutKey.keyId.deviceType, layoutKey.zone, pluginState.state))
+    if (!ZoneWrapper::getEnabled(layoutKey.keyId.deviceType, effectiveZone, pluginState.state))
         setKeyToDefault = true;
     
     Key key;
@@ -127,10 +131,10 @@ void ConfigLookup::updateKeyUnlocked(LayoutWrapper::KeyId keyId) {
                 : -1;
         }
         
-        key.pressure = ZoneWrapper::getMidiValue(layoutKey.keyId.deviceType, layoutKey.zone, ZoneWrapper::id_pressure, ZoneWrapper::default_pressure, pluginState.state);
-        key.roll = ZoneWrapper::getMidiValue(layoutKey.keyId.deviceType, layoutKey.zone, ZoneWrapper::id_roll, ZoneWrapper::default_roll, pluginState.state);
-        key.yaw = ZoneWrapper::getMidiValue(layoutKey.keyId.deviceType, layoutKey.zone, ZoneWrapper::id_yaw, ZoneWrapper::default_yaw, pluginState.state);
-        key.output = ZoneWrapper::getMidiChannelType(layoutKey.keyId.deviceType, layoutKey.zone, pluginState.state);
+        key.pressure = ZoneWrapper::getMidiValue(layoutKey.keyId.deviceType, effectiveZone, ZoneWrapper::id_pressure, ZoneWrapper::default_pressure, pluginState.state);
+        key.roll = ZoneWrapper::getMidiValue(layoutKey.keyId.deviceType, effectiveZone, ZoneWrapper::id_roll, ZoneWrapper::default_roll, pluginState.state);
+        key.yaw = ZoneWrapper::getMidiValue(layoutKey.keyId.deviceType, effectiveZone, ZoneWrapper::id_yaw, ZoneWrapper::default_yaw, pluginState.state);
+        key.output = ZoneWrapper::getMidiChannelType(layoutKey.keyId.deviceType, effectiveZone, pluginState.state);
         
         auto keyPB = ZoneWrapper::getKeyPitchbend(layoutKey.keyId.deviceType, layoutKey.zone, pluginState.state);
         auto getSafePbRange = [](float pb, float maxPb) {
@@ -145,7 +149,7 @@ void ConfigLookup::updateKeyUnlocked(LayoutWrapper::KeyId keyId) {
         else if (key.output == MidiChannelType::MPE_High)
             maxPb = (float)SettingsWrapper::getUpperMPEPB(pluginState.state);
         else
-            maxPb = (float)ZoneWrapper::getChannelMaxPitchbend(layoutKey.keyId.deviceType, layoutKey.zone, pluginState.state);
+            maxPb = (float)ZoneWrapper::getChannelMaxPitchbend(layoutKey.keyId.deviceType, effectiveZone, pluginState.state);
 
         key.pbRange = getSafePbRange((float)keyPB, maxPb);
         
@@ -187,7 +191,6 @@ void ConfigLookup::updateKeyUnlocked(LayoutWrapper::KeyId keyId) {
         if (key.mapType != KeyMappingType::AppCtrl) {
             key.appCtrlType = 0;
             key.appCtrlValue = 0;
-            key.cmdType = 0;
         }
         else {
             juce::StringArray appCtrlParts;

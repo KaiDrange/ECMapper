@@ -3,6 +3,7 @@
 #include "Core/HardwareService.h"
 #include "Core/Logger.h"
 #include "Core/OSCBridge.h"
+#include "Core/SettingsWrapper.h"
 
 namespace {
 
@@ -335,6 +336,109 @@ bool runLedHandoverScenario(int port) {
     return true;
 }
 
+bool runStartupRoleDetectionScenario()
+{
+    using namespace ecm;
+
+    if (!expect(HardwareService::resolveStartupAppRole(AppRole::Client, false, true) == AppRole::Host,
+                "Expected a hardware-capable first instance to start in Host mode when the discovery port is free."))
+        return false;
+
+    if (!expect(HardwareService::resolveStartupAppRole(AppRole::Host, true, true) == AppRole::Client,
+                "Expected a later hardware-capable instance to start in Client mode when the discovery port is already in use."))
+        return false;
+
+    if (!expect(HardwareService::resolveStartupAppRole(AppRole::Host, false, false) == AppRole::Client,
+                "Expected builds without local hardware support to stay in Client mode."))
+        return false;
+
+    if (!HardwareService::supportsLocalHardware())
+        return true;
+
+    if (!expect(!OSCBridge::isPortOccupied(12121), "Expected the discovery port to be free before the startup role scenario begins."))
+        return false;
+
+    {
+        osc::MessageFifo hardwareToMapperQueue;
+        osc::MessageFifo mapperToHardwareQueue;
+        HardwareService hardwareService(hardwareToMapperQueue, mapperToHardwareQueue);
+        juce::ValueTree state("Root");
+        SettingsWrapper::setAppRole(AppRole::Client, state);
+        hardwareService.startService(&state);
+
+        if (!expect(hardwareService.getAppRole() == AppRole::Host,
+                    "Expected the first instance to start in Host mode when the discovery port is free.")) {
+            hardwareService.stopService();
+            return false;
+        }
+
+        if (!expect(SettingsWrapper::getAppRole(state) == AppRole::Host,
+                    "Expected the saved role to be updated to Host for the first instance.")) {
+            hardwareService.stopService();
+            return false;
+        }
+
+        hardwareService.stopService();
+    }
+
+    juce::DatagramSocket discoveryOccupier;
+    if (!expect(discoveryOccupier.bindToPort(12121), "Expected to occupy the discovery port for the second-instance startup role scenario."))
+        return false;
+
+    {
+        osc::MessageFifo hardwareToMapperQueue;
+        osc::MessageFifo mapperToHardwareQueue;
+        HardwareService hardwareService(hardwareToMapperQueue, mapperToHardwareQueue);
+        juce::ValueTree state("Root");
+        SettingsWrapper::setAppRole(AppRole::Host, state);
+        hardwareService.startService(&state);
+
+        if (!expect(hardwareService.getAppRole() == AppRole::Client,
+                    "Expected a later instance to start in Client mode when the discovery port is already in use.")) {
+            hardwareService.stopService();
+            return false;
+        }
+
+        if (!expect(SettingsWrapper::getAppRole(state) == AppRole::Client,
+                    "Expected the saved role to be updated to Client for later instances.")) {
+            hardwareService.stopService();
+            return false;
+        }
+
+        hardwareService.stopService();
+    }
+
+    return expect(!OSCBridge::isPortOccupied(12121), "Expected the discovery port to be released after the startup role scenario.");
+}
+
+bool runPicoRoundKeyRoutingScenario()
+{
+#if !ECMAPPER_ENABLE_HARDWARE
+    return true;
+#else
+    using namespace ecm;
+
+    osc::MessageFifo hardwareToMapperQueue;
+    osc::MessageFifo mapperToHardwareQueue;
+    HardwareService hardwareService(hardwareToMapperQueue, mapperToHardwareQueue);
+
+    hardwareService.connected("pico-test", EigenApi::PICO);
+    hardwareService.button("pico-test", 123456ULL, 2, true);
+
+    osc::Message message;
+    if (!expect(hardwareToMapperQueue.read(message),
+                "Expected a Pico round-key press to be forwarded to the mapper queue."))
+        return false;
+
+    return expect(message.type == osc::MessageType::Key
+                      && message.device == InstrumentType::Pico
+                      && message.course == 1
+                      && message.key == 2
+                      && message.active,
+                  "Expected a Pico round-key press to arrive as a course-1 key event for layout mapping.");
+#endif
+}
+
 } // namespace
 
 int main() {
@@ -354,6 +458,12 @@ int main() {
         return 1;
 
     if (!runLedHandoverScenario(port + 2))
+        return 1;
+
+    if (!runStartupRoleDetectionScenario())
+        return 1;
+
+    if (!runPicoRoundKeyRoutingScenario())
         return 1;
 
     std::cout << "OSCBridgeLifecycleTest passed on port " << port << std::endl;

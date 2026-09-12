@@ -106,6 +106,67 @@ ecm::osc::Message makeKeyMessage(float pressure, float roll, float yaw, uint64_t
     return message;
 }
 
+ecm::LayoutWrapper::LayoutKey makeLayoutKey(ecm::KeyMappingType mappingType, const juce::String& mappingValue)
+{
+    ecm::LayoutWrapper::LayoutKey layoutKey;
+    layoutKey.keyId = { 0, 0, ecm::InstrumentType::Alpha };
+    layoutKey.keyType = ecm::EigenharpKeyType::Normal;
+    layoutKey.keyColour = ecm::KeyColour::Off;
+    layoutKey.zone = ecm::Zone::Zone1;
+    layoutKey.keyMappingType = mappingType;
+    layoutKey.mappingValue = mappingValue;
+    return layoutKey;
+}
+
+bool containsProgramChange(const juce::MidiBuffer& buffer, int channel, int program)
+{
+    for (const auto metadata : buffer)
+    {
+        const auto message = metadata.getMessage();
+        if (message.isProgramChange() && message.getChannel() == channel && message.getProgramChangeNumber() == program)
+            return true;
+    }
+
+    return false;
+}
+
+bool containsControllerChange(const juce::MidiBuffer& buffer, int channel, int controller, int value)
+{
+    for (const auto metadata : buffer)
+    {
+        const auto message = metadata.getMessage();
+        if (message.isController() && message.getChannel() == channel
+            && message.getControllerNumber() == controller && message.getControllerValue() == value)
+            return true;
+    }
+
+    return false;
+}
+
+int countControllerChangeMessages(const juce::MidiBuffer& buffer, int channel, int controller, int value)
+{
+    int count = 0;
+    for (const auto metadata : buffer)
+    {
+        const auto message = metadata.getMessage();
+        if (message.isController() && message.getChannel() == channel
+            && message.getControllerNumber() == controller && message.getControllerValue() == value)
+            ++count;
+    }
+
+    return count;
+}
+
+int countAllNotesOffMessages(const juce::MidiBuffer& buffer)
+{
+    int count = 0;
+    for (const auto metadata : buffer)
+        if (metadata.getMessage().isAllNotesOff())
+            ++count;
+
+    return count;
+}
+
 void configureMappedKey(ecm::ConfigLookup& configLookup) {
     auto& key = configLookup.keys[0][0];
     key.keyId = { 0, 0, ecm::InstrumentType::Alpha };
@@ -236,6 +297,96 @@ bool verifyMidi2KeyPitchBendScalingMatchesLegacy()
     return ok;
 }
 
+bool verifyMidiMessageKeysEmitMappedMessages()
+{
+    using namespace ecm;
+
+    DummyProcessor processor;
+    juce::AudioProcessorValueTreeState pluginState(processor, nullptr, "TestState", {});
+    juce::CriticalSection stateLock;
+    ConfigLookup configLookups[] = {
+        ConfigLookup(InstrumentType::Alpha, pluginState, stateLock),
+        ConfigLookup(InstrumentType::Tau, pluginState, stateLock),
+        ConfigLookup(InstrumentType::Pico, pluginState, stateLock)
+    };
+
+    SettingsWrapper::setMidi2Mode(false, pluginState.state);
+    ZoneWrapper::setMidiChannelType(InstrumentType::Alpha, Zone::Zone1, MidiChannelType::Chan1, pluginState.state);
+
+    auto exerciseMapping = [&](const juce::String& mappingValue, const Zone zone = Zone::Zone1) {
+        auto layoutKey = makeLayoutKey(KeyMappingType::MidiMsg, mappingValue);
+        layoutKey.zone = zone;
+        LayoutWrapper::setLayoutKey(layoutKey, pluginState.state);
+
+        MidiService midiService(configLookups, stateLock);
+        midiService.start(pluginState, nullptr);
+        midiService.setRuntimeConfigSnapshot(std::make_unique<MidiService::RuntimeConfigSnapshot>(
+            configLookups,
+            midiService.getProtocol(),
+            midiService.getVoiceRouter(),
+            midiService.getExpressionPolicy()));
+
+        osc::Message outgoingMessage;
+        juce::MidiBuffer midiBuffer;
+        auto message = makeKeyMessage(0.0f, 0.0f, 0.0f, 1'000'000ULL);
+        midiService.processMessage(message, outgoingMessage, midiBuffer, 0, nullptr);
+        midiService.stop();
+        return midiBuffer;
+    };
+
+    auto exercisePressAndReleaseMapping = [&](const juce::String& mappingValue, const Zone zone = Zone::Zone1) {
+        auto layoutKey = makeLayoutKey(KeyMappingType::MidiMsg, mappingValue);
+        layoutKey.zone = zone;
+        LayoutWrapper::setLayoutKey(layoutKey, pluginState.state);
+
+        MidiService midiService(configLookups, stateLock);
+        midiService.start(pluginState, nullptr);
+        midiService.setRuntimeConfigSnapshot(std::make_unique<MidiService::RuntimeConfigSnapshot>(
+            configLookups,
+            midiService.getProtocol(),
+            midiService.getVoiceRouter(),
+            midiService.getExpressionPolicy()));
+
+        osc::Message outgoingMessage;
+        juce::MidiBuffer midiBuffer;
+        auto press = makeKeyMessage(0.0f, 0.0f, 0.0f, 1'000'000ULL);
+        midiService.processMessage(press, outgoingMessage, midiBuffer, 0, nullptr);
+
+        auto release = press;
+        release.active = false;
+        release.timestamp += 1'000ULL;
+        midiService.processMessage(release, outgoingMessage, midiBuffer, 0, nullptr);
+
+        midiService.stop();
+        return midiBuffer;
+    };
+
+    bool ok = true;
+
+    const auto ccBuffer = exerciseMapping("Trigger;CC;74;0;127");
+    ok &= expect(containsControllerChange(ccBuffer, 1, 74, 127), "trigger CC command keys should emit the configured controller message on press");
+
+    const auto pcBuffer = exerciseMapping("Trigger;PC;0;0;10");
+    ok &= expect(containsProgramChange(pcBuffer, 1, 10), "trigger program-change command keys should emit the configured program change on press");
+
+    const auto allNotesOffBuffer = exerciseMapping("Trigger;AllNotesOff;0;0;0");
+    ok &= expect(countAllNotesOffMessages(allNotesOffBuffer) == 16, "all-notes-off command keys should emit all-notes-off on every MIDI channel");
+
+    const auto momentaryBuffer = exercisePressAndReleaseMapping("Momentary;CC;74;12;99");
+    ok &= expect(containsControllerChange(momentaryBuffer, 1, 74, 99), "momentary CC command keys should emit the configured on value on press");
+    ok &= expect(containsControllerChange(momentaryBuffer, 1, 74, 12), "momentary CC command keys should emit the configured off value on release");
+
+    const auto latchBuffer = exercisePressAndReleaseMapping("Latch;CC;74;12;99");
+    ok &= expect(countControllerChangeMessages(latchBuffer, 1, 74, 99) == 1,
+                 "latch CC command keys should not emit an extra off message on release");
+
+    const auto noZoneBuffer = exerciseMapping("Trigger;CC;74;0;127", Zone::NoZone);
+    ok &= expect(containsControllerChange(noZoneBuffer, 1, 74, 127),
+                 "command keys without an explicit zone should still emit their configured MIDI message");
+
+    return ok;
+}
+
 } // namespace
 
 int main() {
@@ -246,7 +397,8 @@ int main() {
     juce::Logger::setCurrentLogger(&logger);
 
     const bool ok = verifyCenteredNoteOnAndStrideLimitedTransition()
-                 && verifyMidi2KeyPitchBendScalingMatchesLegacy();
+                 && verifyMidi2KeyPitchBendScalingMatchesLegacy()
+                 && verifyMidiMessageKeysEmitMappedMessages();
     juce::Logger::setCurrentLogger(nullptr);
 
     if (!ok)

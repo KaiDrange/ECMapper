@@ -81,8 +81,12 @@ juce::ValueTree createPresetSnapshotRoot(const juce::ValueTree& stateTree)
     snapshot.setProperty(ecm::SettingsWrapper::id_ecMapperVersion, ProjectInfo::versionString, nullptr);
 
     auto presetTree = stateTree.getChildWithName(ecm::SettingsWrapper::id_preset);
-    if (presetTree.isValid())
-        snapshot.addChild(presetTree.createCopy(), -1, nullptr);
+    if (presetTree.isValid()) {
+        auto presetCopy = presetTree.createCopy();
+        presetCopy.removeProperty(ecm::SettingsWrapper::id_midi2Mode, nullptr);
+        presetCopy.removeProperty(ecm::SettingsWrapper::id_pluginOutputMode, nullptr);
+        snapshot.addChild(presetCopy, -1, nullptr);
+    }
 
     return snapshot;
 }
@@ -726,11 +730,16 @@ void ECMapperAudioProcessor::updateGlobalSettings() {
         const juce::ScopedLock stateGuard(presetStateLock_);
         role = ecm::SettingsWrapper::getAppRole(state.state);
 
-        if (!ecm::HardwareService::supportsLocalHardware()) {
-            role = ecm::AppRole::Client;
-        } else if (role == ecm::AppRole::Host && hardwareService.getAppRole() != ecm::AppRole::Host && ecm::OSCBridge::isPortOccupied(12121)) {
-            logger.log("Host detected on network (port 12121 busy). Auto-switching to Client mode.");
-            role = ecm::AppRole::Client;
+        if (!hardwareService.isServiceRunning()) {
+            const auto resolvedRole = ecm::HardwareService::resolveStartupAppRole(role,
+                                                                                  ecm::OSCBridge::isPortOccupied(12121));
+
+            if (resolvedRole != role)
+                logger.log(resolvedRole == ecm::AppRole::Client
+                               ? "Host detected on network (port 12121 busy). Auto-switching to Client mode."
+                               : "Discovery port 12121 is free. Auto-switching to Host mode for the first instance.");
+
+            role = resolvedRole;
         }
 
         if (ecm::SettingsWrapper::getAppRole(state.state) != role)
@@ -860,12 +869,18 @@ void ECMapperAudioProcessor::applyPresetState(const juce::ValueTree& snapshot)
     if (!snapshot.isValid())
         return;
 
+    auto snapshotCopy = snapshot.createCopy();
+    if (auto presetTree = snapshotCopy.getChildWithName(ecm::SettingsWrapper::id_preset); presetTree.isValid()) {
+        presetTree.removeProperty(ecm::SettingsWrapper::id_midi2Mode, nullptr);
+        presetTree.removeProperty(ecm::SettingsWrapper::id_pluginOutputMode, nullptr);
+    }
+
     const juce::ScopedLock stateGuard(presetStateLock_);
     {
         const juce::ScopedValueSetter batchGuard(presetBatchInProgress_, true);
         auto& liveState = state.state;
         ecm::SettingsWrapper::normalizeStateTree(liveState);
-        mergeTreeIntoLive(liveState, snapshot);
+        mergeTreeIntoLive(liveState, snapshotCopy);
         ecm::SettingsWrapper::normalizeStateTree(liveState);
 
         for (int device = static_cast<int>(ecm::InstrumentType::Alpha); device <= static_cast<int>(ecm::InstrumentType::Pico); ++device) {

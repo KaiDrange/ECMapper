@@ -1,8 +1,20 @@
 #include "HardwareService.h"
+#include "OSCBridge.h"
 #include "SettingsWrapper.h"
 #include <iostream>
 
 namespace ecm {
+
+AppRole HardwareService::resolveStartupAppRole(AppRole requestedRole,
+                                               const bool discoveryPortOccupied,
+                                               const bool localHardwareSupported) noexcept {
+    juce::ignoreUnused(requestedRole);
+
+    if (!localHardwareSupported)
+        return AppRole::Client;
+
+    return discoveryPortOccupied ? AppRole::Client : AppRole::Host;
+}
 
 HardwareService::HardwareService(osc::MessageFifo& hardwareToMapperQueue, 
                                  osc::MessageFifo& mapperToHardwareQueue)
@@ -15,16 +27,22 @@ HardwareService::~HardwareService() {
     stopService();
 }
 
-void HardwareService::startService(juce::ValueTree* state) {
+void HardwareService::startService(juce::ValueTree* state, bool resolveRoleFromDiscoveryPort) {
     state_ = state;
     if (isThreadRunning()) return;
-    
-    if (state_) appRole_ = SettingsWrapper::getAppRole(*state_);
 
-    if (!supportsLocalHardware() && appRole_ == AppRole::Host) {
-        appRole_ = AppRole::Client;
-        if (state_) SettingsWrapper::setAppRole(appRole_, *state_);
+    if (resolveRoleFromDiscoveryPort)
+    {
+        const auto requestedRole = state_ != nullptr ? SettingsWrapper::getAppRole(*state_) : appRole_;
+        appRole_ = resolveStartupAppRole(requestedRole, OSCBridge::isPortOccupied(12121));
     }
+    else if (state_ != nullptr)
+    {
+        appRole_ = SettingsWrapper::getAppRole(*state_);
+    }
+
+    if (state_ != nullptr)
+        SettingsWrapper::setAppRole(appRole_, *state_);
 
 #if ECMAPPER_ENABLE_HARDWARE
     // Re-create the Eigenharp instance to ensure a clean discovery state
@@ -415,6 +433,10 @@ void HardwareService::key(const char* dev, unsigned long long t, unsigned course
     }
 }
 
+void HardwareService::button(const char* dev, unsigned long long t, unsigned key, bool a) {
+    this->key(dev, t, 1, key, a, 0.0f, 0.0f, 0.0f);
+}
+
 void HardwareService::breath(const char* dev, unsigned long long t, float val) {
     const juce::ScopedLock sl(deviceListLock_);
     for (const auto& d : connectedDevices_) {
@@ -694,7 +716,7 @@ void HardwareService::setAppRole(AppRole role) {
         }
     }
     
-    startService(state_);
+    startService(state_, false);
     
     std::vector<std::string> devicesToSync;
     if (appRole_ == AppRole::Host) {

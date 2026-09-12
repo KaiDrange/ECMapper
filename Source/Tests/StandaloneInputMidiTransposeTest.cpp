@@ -2,6 +2,8 @@
 #include "PluginProcessor.h"
 #undef private
 
+#include "Core/LayoutWrapper.h"
+#include "Core/SettingsWrapper.h"
 #include "Core/ZoneWrapper.h"
 
 #include <cmath>
@@ -34,6 +36,150 @@ bool applyTransposeMessage(ECMapperAudioProcessor& processor, int channel, int c
     juce::MidiBuffer midiMessages;
     midiMessages.addEvent(juce::MidiMessage::controllerEvent(channel, 22, ccValue), 0);
     return processor.applyZoneControlMessages(midiMessages);
+}
+
+bool verifyPluginDirectMidiMessageKeyRouting()
+{
+    using namespace ecm;
+
+    ECMapperAudioProcessor processor;
+    SettingsWrapper::setPluginOutputMode(OutputTransportMode::Vst3Direct, processor.state.state);
+    SettingsWrapper::setMidi2Mode(false, processor.state.state);
+    ZoneWrapper::setMidiChannelType(InstrumentType::Alpha, Zone::Zone1, MidiChannelType::Chan1, processor.state.state);
+
+    LayoutWrapper::LayoutKey layoutKey;
+    layoutKey.keyId = { 0, 0, InstrumentType::Alpha };
+    layoutKey.keyType = EigenharpKeyType::Normal;
+    layoutKey.keyColour = KeyColour::Off;
+    layoutKey.zone = Zone::Zone1;
+    layoutKey.keyMappingType = KeyMappingType::MidiMsg;
+    layoutKey.mappingValue = "Trigger;CC;74;0;127";
+    LayoutWrapper::setLayoutKey(layoutKey, processor.state.state);
+
+    processor.prepareToPlay(48000.0, 64);
+
+    osc::Message message;
+    message.type = osc::MessageType::Key;
+    message.device = InstrumentType::Alpha;
+    message.course = 0;
+    message.key = 0;
+    message.active = true;
+    message.timestamp = 1'000'000ULL;
+    std::strncpy(message.devId, "test-device", 63);
+    processor.hardwareToMapperQueue.add(message);
+
+    juce::AudioBuffer<float> audioBuffer(2, 64);
+    juce::MidiBuffer midiMessages;
+    processor.processBlock(audioBuffer, midiMessages);
+    processor.releaseResources();
+
+    const auto directEvents = processor.drainPendingVst3DirectEvents();
+    for (const auto& event : directEvents)
+    {
+        if (event.kind == Vst3DirectEventKind::LegacyCC
+            && event.channel == 0
+            && event.controller == 74
+            && std::abs(event.value - 1.0) < 1.0e-6)
+            return true;
+    }
+
+    return expect(false, "plugin direct mode should forward MIDI message command keys as legacy controller events");
+}
+
+bool verifyPluginDirectMidiMessageKeyRoutingWithoutZone()
+{
+    using namespace ecm;
+
+    ECMapperAudioProcessor processor;
+    SettingsWrapper::setPluginOutputMode(OutputTransportMode::Vst3Direct, processor.state.state);
+    SettingsWrapper::setMidi2Mode(false, processor.state.state);
+    ZoneWrapper::setMidiChannelType(InstrumentType::Alpha, Zone::Zone1, MidiChannelType::Chan1, processor.state.state);
+
+    LayoutWrapper::LayoutKey layoutKey;
+    layoutKey.keyId = { 0, 0, InstrumentType::Alpha };
+    layoutKey.keyType = EigenharpKeyType::Normal;
+    layoutKey.keyColour = KeyColour::Off;
+    layoutKey.zone = Zone::NoZone;
+    layoutKey.keyMappingType = KeyMappingType::MidiMsg;
+    layoutKey.mappingValue = "Trigger;CC;74;0;127";
+    LayoutWrapper::setLayoutKey(layoutKey, processor.state.state);
+
+    processor.prepareToPlay(48000.0, 64);
+
+    osc::Message message;
+    message.type = osc::MessageType::Key;
+    message.device = InstrumentType::Alpha;
+    message.course = 0;
+    message.key = 0;
+    message.active = true;
+    message.timestamp = 1'000'000ULL;
+    std::strncpy(message.devId, "test-device", 63);
+    processor.hardwareToMapperQueue.add(message);
+
+    juce::AudioBuffer<float> audioBuffer(2, 64);
+    juce::MidiBuffer midiMessages;
+    processor.processBlock(audioBuffer, midiMessages);
+    processor.releaseResources();
+
+    const auto directEvents = processor.drainPendingVst3DirectEvents();
+    for (const auto& event : directEvents)
+    {
+        if (event.kind == Vst3DirectEventKind::LegacyCC
+            && event.channel == 0
+            && event.controller == 74
+            && std::abs(event.value - 1.0) < 1.0e-6)
+            return true;
+    }
+
+    return expect(false, "plugin direct mode should still forward MIDI message command keys when the key has no explicit zone");
+}
+
+bool verifyPresetLoadingPreservesTransportModes()
+{
+    using namespace ecm;
+
+    ECMapperAudioProcessor processor;
+
+    SettingsWrapper::setMidi2Mode(false, processor.state.state);
+    SettingsWrapper::setPluginOutputMode(OutputTransportMode::LegacyMidi, processor.state.state);
+    ZoneWrapper::setTranspose(InstrumentType::Alpha, Zone::Zone1, 5, processor.state.state);
+    if (!processor.savePresetSlot(2, "Legacy Transport Test"))
+        return expect(false, "saving the legacy transport preset should succeed");
+
+    SettingsWrapper::setMidi2Mode(true, processor.state.state);
+    SettingsWrapper::setPluginOutputMode(OutputTransportMode::Vst3Direct, processor.state.state);
+    ZoneWrapper::setTranspose(InstrumentType::Alpha, Zone::Zone1, 9, processor.state.state);
+    if (!processor.savePresetSlot(3, "Direct Transport Test"))
+        return expect(false, "saving the direct transport preset should succeed");
+
+    SettingsWrapper::setMidi2Mode(true, processor.state.state);
+    SettingsWrapper::setPluginOutputMode(OutputTransportMode::Vst3Direct, processor.state.state);
+    ZoneWrapper::setTranspose(InstrumentType::Alpha, Zone::Zone1, 1, processor.state.state);
+    if (!processor.loadPresetSlot(2))
+        return expect(false, "loading preset slot 2 should succeed");
+
+    bool ok = true;
+    ok &= expect(ZoneWrapper::getTranspose(InstrumentType::Alpha, Zone::Zone1, processor.state.state) == 5,
+                 "loading preset slot 2 should still restore preset-controlled transpose");
+    ok &= expect(SettingsWrapper::getMidi2Mode(processor.state.state),
+                 "loading another preset should not switch the current MIDI 2.0 mode");
+    ok &= expect(SettingsWrapper::getPluginOutputMode(processor.state.state) == OutputTransportMode::Vst3Direct,
+                 "loading another preset should not switch the current plugin direct/legacy mode");
+
+    SettingsWrapper::setMidi2Mode(false, processor.state.state);
+    SettingsWrapper::setPluginOutputMode(OutputTransportMode::LegacyMidi, processor.state.state);
+    ZoneWrapper::setTranspose(InstrumentType::Alpha, Zone::Zone1, -2, processor.state.state);
+    if (!processor.loadPresetSlot(3))
+        return expect(false, "loading preset slot 3 should succeed");
+
+    ok &= expect(ZoneWrapper::getTranspose(InstrumentType::Alpha, Zone::Zone1, processor.state.state) == 9,
+                 "loading preset slot 3 should still restore preset-controlled transpose");
+    ok &= expect(!SettingsWrapper::getMidi2Mode(processor.state.state),
+                 "loading a preset should not force MIDI 2.0 mode on when it is currently off");
+    ok &= expect(SettingsWrapper::getPluginOutputMode(processor.state.state) == OutputTransportMode::LegacyMidi,
+                 "loading a preset should not force plugin direct mode on when legacy mode is currently selected");
+
+    return ok;
 }
 
 } // namespace
@@ -75,6 +221,10 @@ int main()
                  && getTransposeValue(processor, ecm::InstrumentType::Tau, ecm::Zone::Zone2) == 63
                  && getTransposeValue(processor, ecm::InstrumentType::Pico, ecm::Zone::Zone3) == 63,
                  "CC 22 value 127 should map to +63 semitones across all devices and zones");
+
+    ok &= verifyPluginDirectMidiMessageKeyRouting();
+    ok &= verifyPluginDirectMidiMessageKeyRoutingWithoutZone();
+    ok &= verifyPresetLoadingPreservesTransportModes();
 
     if (!ok)
         return 1;

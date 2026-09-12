@@ -27,7 +27,11 @@ public:
                     osc::MessageFifo& mapperToHardwareQueue);
     ~HardwareService() override;
     
-    void startService(juce::ValueTree* state = nullptr);
+    static AppRole resolveStartupAppRole(AppRole requestedRole,
+                                         bool discoveryPortOccupied,
+                                         bool localHardwareSupported = supportsLocalHardware()) noexcept;
+
+    void startService(juce::ValueTree* state = nullptr, bool resolveRoleFromDiscoveryPort = true);
     void stopService();
     bool isServiceRunning() const { return isThreadRunning(); }
 
@@ -78,6 +82,7 @@ public:
 
     // EigenApi::Callback overrides
     void key(const char* dev, unsigned long long t, unsigned course, unsigned key, bool a, float p, float r, float y) override;
+    void button(const char* dev, unsigned long long t, unsigned key, bool a) override;
     void breath(const char* dev, unsigned long long t, float val) override;
     void strip(const char* dev, unsigned long long t, unsigned strip, float val, bool a) override;
     void pedal(const char* dev, unsigned long long t, unsigned pedal, float val) override;
