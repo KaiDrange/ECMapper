@@ -12,9 +12,9 @@ constexpr int standaloneMidi20ButtonWidth = 132;
 constexpr int pluginVst3DirectButtonWidth = 164;
 constexpr int calibrationButtonWidth = 38;
 
-void updateMpeControlsEnabled(juce::Component& component, bool enabled)
+void updateMpeControlsEnabled(juce::Component& component)
 {
-    component.setEnabled(enabled);
+    component.setEnabled(true);
 }
 
 juce::String getMidi20ButtonText(bool midi2Enabled)
@@ -348,10 +348,10 @@ void MainComponent::refreshTransportModeControls()
     updatePluginVst3DirectButton();
     vst3DirectModeButton.setVisible(!isStandaloneApp_);
     midi20ModeButton.setVisible(isStandaloneApp_);
-    updateMpeControlsEnabled(lowerMPEVoiceCount, !pendingMidi2Mode);
-    updateMpeControlsEnabled(upperMPEVoiceCount, !pendingMidi2Mode);
-    updateMpeControlsEnabled(lowerMPEPitchbendRange, !pendingMidi2Mode);
-    updateMpeControlsEnabled(upperMPEPitchbendRange, !pendingMidi2Mode);
+    updateMpeControlsEnabled(lowerMPEVoiceCount);
+    updateMpeControlsEnabled(upperMPEVoiceCount);
+    updateMpeControlsEnabled(lowerMPEPitchbendRange);
+    updateMpeControlsEnabled(upperMPEPitchbendRange);
 }
 
 void MainComponent::updateStandaloneMidi2Button()

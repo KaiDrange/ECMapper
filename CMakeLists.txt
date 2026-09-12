@@ -364,6 +364,23 @@ target_include_directories(MainComponentMidi2ToggleTest PRIVATE Source)
 target_compile_definitions(MainComponentMidi2ToggleTest PRIVATE ECMAPPER_ENABLE_HARDWARE=0 JUCE_MODAL_LOOPS_PERMITTED=1)
 juce_generate_juce_header(MainComponentMidi2ToggleTest)
 
+juce_add_console_app(HardwareServiceModeSanitizationTest
+        PRODUCT_NAME "HardwareServiceModeSanitizationTest"
+        VERSION "1.0.0"
+        COMPANY_NAME "Tic Tech"
+        BUNDLE_ID "com.tictech.ecmapper.hardwareservicemodesanitizationtest"
+)
+
+target_sources(HardwareServiceModeSanitizationTest PRIVATE
+        Source/Tests/HardwareServiceModeSanitizationTest.cpp
+        ${CORE_SOURCES}
+)
+
+target_link_libraries(HardwareServiceModeSanitizationTest PRIVATE ${COMMON_LIBS})
+target_include_directories(HardwareServiceModeSanitizationTest PRIVATE Source)
+target_compile_definitions(HardwareServiceModeSanitizationTest PRIVATE ECMAPPER_ENABLE_HARDWARE=0 JUCE_MODAL_LOOPS_PERMITTED=1)
+juce_generate_juce_header(HardwareServiceModeSanitizationTest)
+
 juce_add_console_app(MainMenuBarModelTest
         PRODUCT_NAME "MainMenuBarModelTest"
         VERSION "1.0.0"

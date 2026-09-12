@@ -5,6 +5,15 @@
 
 namespace ecm {
 
+DeviceMode HardwareService::sanitizeLocalDeviceModeForAppRole(const AppRole role, const DeviceMode mode) noexcept {
+    juce::ignoreUnused(mode);
+
+    if (role == AppRole::Client)
+        return DeviceMode::ReceiveOSC;
+
+    return DeviceMode::Local;
+}
+
 AppRole HardwareService::resolveStartupAppRole(AppRole requestedRole,
                                                const bool discoveryPortOccupied,
                                                const bool localHardwareSupported) noexcept {
@@ -357,12 +366,7 @@ void HardwareService::connected(const char* dev, EigenApi::DeviceType dt) {
         newDev.type = devType;
         if (state_) SettingsWrapper::loadDeviceSettings(newDev, *state_);
         
-        // Sanitize mode based on role
-        if (appRole_ == AppRole::Host && newDev.mode == ecm::DeviceMode::ReceiveOSC) {
-            newDev.mode = ecm::DeviceMode::Local;
-        } else if (appRole_ == AppRole::Client) {
-            newDev.mode = ecm::DeviceMode::ReceiveOSC;
-        }
+        newDev.mode = sanitizeLocalDeviceModeForAppRole(appRole_, newDev.mode);
 
         connectedDevices_.push_back(newDev);
     }
@@ -709,9 +713,9 @@ void HardwareService::setAppRole(AppRole role) {
             connectedDevices_.erase(std::remove_if(connectedDevices_.begin(), connectedDevices_.end(), 
                 [](const ConnectedDevice& d) { return d.isRemote; }), connectedDevices_.end());
             
-            // Sanitize local devices: Host cannot be in Receive mode
+            // Sanitize local devices for Host mode.
             for (auto& d : connectedDevices_) {
-                if (d.mode == ecm::DeviceMode::ReceiveOSC) d.mode = ecm::DeviceMode::Local;
+                d.mode = sanitizeLocalDeviceModeForAppRole(appRole_, d.mode);
             }
         }
     }

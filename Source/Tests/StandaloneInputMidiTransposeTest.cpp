@@ -31,10 +31,30 @@ int getTransposeValue(ECMapperAudioProcessor& processor, ecm::InstrumentType dev
     return 0;
 }
 
-bool applyTransposeMessage(ECMapperAudioProcessor& processor, int channel, int ccValue)
+bool getZoneEnabledValue(ECMapperAudioProcessor& processor, ecm::InstrumentType deviceType, ecm::Zone zone)
+{
+    const auto parameterId = ecm::ZoneWrapper::getEnabledParameterID(deviceType, zone);
+    if (const auto* raw = processor.state.getRawParameterValue(parameterId))
+        return raw->load() > 0.5f;
+
+    return false;
+}
+
+bool setZoneEnabledValue(ECMapperAudioProcessor& processor, ecm::InstrumentType deviceType, ecm::Zone zone, bool enabled)
+{
+    const auto parameterId = ecm::ZoneWrapper::getEnabledParameterID(deviceType, zone);
+    if (auto* param = dynamic_cast<juce::AudioParameterBool*>(processor.state.getParameter(parameterId))) {
+        param->setValueNotifyingHost(enabled ? 1.0f : 0.0f);
+        return true;
+    }
+
+    return false;
+}
+
+bool applyControlMessage(ECMapperAudioProcessor& processor, int channel, int controllerNumber, int controllerValue)
 {
     juce::MidiBuffer midiMessages;
-    midiMessages.addEvent(juce::MidiMessage::controllerEvent(channel, 22, ccValue), 0);
+    midiMessages.addEvent(juce::MidiMessage::controllerEvent(channel, controllerNumber, controllerValue), 0);
     return processor.applyZoneControlMessages(midiMessages);
 }
 
@@ -182,6 +202,42 @@ bool verifyPresetLoadingPreservesTransportModes()
     return ok;
 }
 
+bool verifyMappingNotesAcceptChannelsOneToFour()
+{
+    ECMapperAudioProcessor processor;
+    processor.prepareToPlay(48000.0, 64);
+
+    juce::MidiBuffer midiMessages;
+    midiMessages.addEvent(juce::MidiMessage::noteOn(1, 60, juce::uint8(100)), 0);
+    midiMessages.addEvent(juce::MidiMessage::noteOn(2, 61, juce::uint8(100)), 1);
+    midiMessages.addEvent(juce::MidiMessage::noteOn(3, 62, juce::uint8(100)), 2);
+    midiMessages.addEvent(juce::MidiMessage::noteOn(4, 63, juce::uint8(100)), 3);
+
+    juce::AudioBuffer<float> audioBuffer(2, 64);
+    processor.processBlock(audioBuffer, midiMessages);
+
+    std::vector<juce::MidiMessage> selectionMessages;
+    processor.drainKeyboardSelectionMessages(selectionMessages);
+    processor.releaseResources();
+
+    bool ok = true;
+    ok &= expect(selectionMessages.size() == 4,
+                 "mapping note input should accept note messages from MIDI channels 1-4");
+
+    for (size_t index = 0; index < selectionMessages.size(); ++index)
+    {
+        const auto& message = selectionMessages[index];
+        ok &= expect(message.isNoteOn(),
+                     "mapping note input should queue note-on messages for selection");
+        ok &= expect(message.getChannel() == static_cast<int>(index) + 1,
+                     "mapping note input should preserve the original MIDI channel");
+        ok &= expect(message.getNoteNumber() == 60 + static_cast<int>(index),
+                     "mapping note input should preserve the original note number");
+    }
+
+    return ok;
+}
+
 } // namespace
 
 int main()
@@ -191,40 +247,70 @@ int main()
 
     bool ok = true;
 
-    ok &= expect(applyTransposeMessage(processor, 1, 0),
-                 "transpose CC should report a change when it updates zone 1");
-    ok &= expect(getTransposeValue(processor, ecm::InstrumentType::Alpha, ecm::Zone::Zone1) == -64,
-                 "CC 22 value 0 should map to -64 semitones");
-    ok &= expect(getTransposeValue(processor, ecm::InstrumentType::Alpha, ecm::Zone::Zone2) == 0,
-                 "channel 1 transpose CC should not affect zone 2");
+    ok &= expect(applyControlMessage(processor, 1, 22, 0),
+                 "global transpose CC should report a change when it updates zone 1 on all devices");
+    ok &= expect(getTransposeValue(processor, ecm::InstrumentType::Alpha, ecm::Zone::Zone1) == -64
+                 && getTransposeValue(processor, ecm::InstrumentType::Tau, ecm::Zone::Zone1) == -64
+                 && getTransposeValue(processor, ecm::InstrumentType::Pico, ecm::Zone::Zone1) == -64,
+                 "CC 22 on channel 1 should set zone 1 transpose for Alpha, Tau, and Pico");
+    ok &= expect(getTransposeValue(processor, ecm::InstrumentType::Alpha, ecm::Zone::Zone2) == 0
+                 && getTransposeValue(processor, ecm::InstrumentType::Tau, ecm::Zone::Zone3) == 0,
+                 "global zone 1 transpose should not affect other zones");
 
-    ok &= expect(applyTransposeMessage(processor, 2, 63),
-                 "transpose CC should report a change when it updates zone 2");
-    ok &= expect(getTransposeValue(processor, ecm::InstrumentType::Alpha, ecm::Zone::Zone2) == -1,
-                 "CC 22 value 63 should map to -1 semitone");
+    ok &= expect(applyControlMessage(processor, 3, 23, 63),
+                 "device-specific transpose CC should report a change when it updates Tau zone 2");
+    ok &= expect(getTransposeValue(processor, ecm::InstrumentType::Tau, ecm::Zone::Zone2) == -1,
+                 "CC 23 on channel 3 should map to Tau zone 2 transpose");
+    ok &= expect(getTransposeValue(processor, ecm::InstrumentType::Alpha, ecm::Zone::Zone2) == 0
+                 && getTransposeValue(processor, ecm::InstrumentType::Pico, ecm::Zone::Zone2) == 0,
+                 "device-specific transpose should not affect other devices");
 
-    ok &= expect(!applyTransposeMessage(processor, 3, 64),
-                 "transpose CC should not report a change when value 64 keeps zone 3 at 0 semitones");
-    ok &= expect(getTransposeValue(processor, ecm::InstrumentType::Alpha, ecm::Zone::Zone3) == 0,
-                 "CC 22 value 64 should map to 0 semitones");
+    ok &= expect(applyControlMessage(processor, 4, 24, 65),
+                 "device-specific transpose CC should report a change when it updates Pico zone 3");
+    ok &= expect(getTransposeValue(processor, ecm::InstrumentType::Pico, ecm::Zone::Zone3) == 1,
+                 "CC 24 on channel 4 should map to Pico zone 3 transpose");
+    ok &= expect(getTransposeValue(processor, ecm::InstrumentType::Alpha, ecm::Zone::Zone3) == 0
+                 && getTransposeValue(processor, ecm::InstrumentType::Tau, ecm::Zone::Zone3) == 0,
+                 "device-specific zone 3 transpose should leave other devices unchanged");
 
-    ok &= expect(applyTransposeMessage(processor, 4, 65),
-                 "channel 4 transpose CC should report a change when it updates all zones");
-    ok &= expect(getTransposeValue(processor, ecm::InstrumentType::Alpha, ecm::Zone::Zone1) == 1
-                 && getTransposeValue(processor, ecm::InstrumentType::Alpha, ecm::Zone::Zone2) == 1
-                 && getTransposeValue(processor, ecm::InstrumentType::Alpha, ecm::Zone::Zone3) == 1,
-                 "CC 22 value 65 on channel 4 should map to +1 semitone for all zones");
+    ok &= expect(setZoneEnabledValue(processor, ecm::InstrumentType::Alpha, ecm::Zone::Zone1, true),
+                 "test setup should be able to enable Alpha zone 1");
+    ok &= expect(setZoneEnabledValue(processor, ecm::InstrumentType::Tau, ecm::Zone::Zone1, true),
+                 "test setup should be able to enable Tau zone 1");
+    ok &= expect(setZoneEnabledValue(processor, ecm::InstrumentType::Pico, ecm::Zone::Zone1, true),
+                 "test setup should be able to enable Pico zone 1");
+    ok &= expect(applyControlMessage(processor, 1, 25, 0),
+                 "global zone enable CC should report a change when it disables zone 1 on all devices");
+    ok &= expect(!getZoneEnabledValue(processor, ecm::InstrumentType::Alpha, ecm::Zone::Zone1)
+                 && !getZoneEnabledValue(processor, ecm::InstrumentType::Tau, ecm::Zone::Zone1)
+                 && !getZoneEnabledValue(processor, ecm::InstrumentType::Pico, ecm::Zone::Zone1),
+                 "CC 25 on channel 1 should disable zone 1 for Alpha, Tau, and Pico");
 
-    ok &= expect(applyTransposeMessage(processor, 4, 127),
-                 "channel 4 transpose CC should report a change at the top of the range");
-    ok &= expect(getTransposeValue(processor, ecm::InstrumentType::Alpha, ecm::Zone::Zone1) == 63
-                 && getTransposeValue(processor, ecm::InstrumentType::Tau, ecm::Zone::Zone2) == 63
-                 && getTransposeValue(processor, ecm::InstrumentType::Pico, ecm::Zone::Zone3) == 63,
-                 "CC 22 value 127 should map to +63 semitones across all devices and zones");
+    ok &= expect(setZoneEnabledValue(processor, ecm::InstrumentType::Alpha, ecm::Zone::Zone2, false),
+                 "test setup should be able to disable Alpha zone 2");
+    ok &= expect(setZoneEnabledValue(processor, ecm::InstrumentType::Tau, ecm::Zone::Zone2, false),
+                 "test setup should be able to disable Tau zone 2");
+    ok &= expect(setZoneEnabledValue(processor, ecm::InstrumentType::Pico, ecm::Zone::Zone2, false),
+                 "test setup should be able to disable Pico zone 2");
+    ok &= expect(applyControlMessage(processor, 2, 26, 127),
+                 "device-specific zone enable CC should report a change when it enables Alpha zone 2");
+    ok &= expect(getZoneEnabledValue(processor, ecm::InstrumentType::Alpha, ecm::Zone::Zone2),
+                 "CC 26 on channel 2 should enable Alpha zone 2");
+    ok &= expect(!getZoneEnabledValue(processor, ecm::InstrumentType::Tau, ecm::Zone::Zone2)
+                 && !getZoneEnabledValue(processor, ecm::InstrumentType::Pico, ecm::Zone::Zone2),
+                 "device-specific zone enable should not affect other devices");
+
+    ok &= expect(setZoneEnabledValue(processor, ecm::InstrumentType::Pico, ecm::Zone::Zone3, false),
+                 "test setup should be able to disable Pico zone 3");
+    ok &= expect(applyControlMessage(processor, 4, 27, 64),
+                 "device-specific zone enable CC should report a change when it enables Pico zone 3");
+    ok &= expect(getZoneEnabledValue(processor, ecm::InstrumentType::Pico, ecm::Zone::Zone3),
+                 "CC 27 on channel 4 should enable Pico zone 3");
 
     ok &= verifyPluginDirectMidiMessageKeyRouting();
     ok &= verifyPluginDirectMidiMessageKeyRoutingWithoutZone();
     ok &= verifyPresetLoadingPreservesTransportModes();
+    ok &= verifyMappingNotesAcceptChannelsOneToFour();
 
     if (!ok)
         return 1;

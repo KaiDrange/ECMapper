@@ -68,9 +68,9 @@ int main()
                  "clicking the standalone MIDI 2.0 button should enable MIDI 2.0 mode");
     ok &= expect(component.midi20ModeButton.getButtonText() == "MIDI 2.0 ON",
                  "standalone MIDI 2.0 button should show ON when MIDI 2.0 mode is active");
-    ok &= expect(!component.lowerMPEVoiceCount.isEnabled() && !component.upperMPEVoiceCount.isEnabled()
-                 && !component.lowerMPEPitchbendRange.isEnabled() && !component.upperMPEPitchbendRange.isEnabled(),
-                 "MIDI 2.0 mode should disable legacy MPE controls");
+    ok &= expect(component.lowerMPEVoiceCount.isEnabled() && component.upperMPEVoiceCount.isEnabled()
+                 && component.lowerMPEPitchbendRange.isEnabled() && component.upperMPEPitchbendRange.isEnabled(),
+                 "MIDI 2.0 mode should keep MPE controls enabled when channel layout is still used");
 
     processor.getMidiService().stop();
     processor.getMidiService().start(processor.state, &processor.getHardwareService());

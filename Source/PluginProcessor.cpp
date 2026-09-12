@@ -11,8 +11,10 @@
 
 namespace {
 
-constexpr int kTransposeCcNumber = 22;
-constexpr int kZoneEnableCcNumber = 23;
+constexpr int kTransposeZone1CcNumber = 22;
+constexpr int kTransposeZone3CcNumber = 24;
+constexpr int kZone1EnableCcNumber = 25;
+constexpr int kZone3EnableCcNumber = 27;
 constexpr int kPresetParameterDefaultIndex = 0;
 
 bool ecmapperAppendDirectVst3Events(juce::AudioProcessor& processor, Steinberg::Vst::IEventList& outputEvents);
@@ -500,50 +502,50 @@ bool ECMapperAudioProcessor::applyZoneControlMessages(const juce::MidiBuffer& mi
         if (channel < 1 || channel > 4)
             continue;
 
-        if (msg.getControllerNumber() == kTransposeCcNumber) {
-            for (int device = static_cast<int>(ecm::InstrumentType::Alpha); device <= static_cast<int>(ecm::InstrumentType::Pico); ++device) {
-                for (int zone = static_cast<int>(ecm::Zone::Zone1); zone <= static_cast<int>(ecm::Zone::Zone3); ++zone) {
-                    if (channel != 4 && zone != channel)
-                        continue;
+        const auto controllerNumber = msg.getControllerNumber();
+        const int targetZone = (controllerNumber >= kTransposeZone1CcNumber && controllerNumber <= kTransposeZone3CcNumber)
+                                 ? controllerNumber - kTransposeZone1CcNumber + static_cast<int>(ecm::Zone::Zone1)
+                                 : (controllerNumber >= kZone1EnableCcNumber && controllerNumber <= kZone3EnableCcNumber)
+                                       ? controllerNumber - kZone1EnableCcNumber + static_cast<int>(ecm::Zone::Zone1)
+                                       : 0;
+        if (targetZone == 0)
+            continue;
 
-                    const auto transposeValue = transposeFromCc(msg.getControllerValue());
-                    const auto deviceType = static_cast<ecm::InstrumentType>(device);
-                    const auto zoneType = static_cast<ecm::Zone>(zone);
-                    const auto paramId = ecm::ZoneWrapper::getTransposeParameterID(deviceType, zoneType);
-                    if (auto* raw = state.getRawParameterValue(paramId)) {
-                        if (static_cast<int>(std::lround(raw->load())) != transposeValue) {
-                            if (auto* param = dynamic_cast<juce::AudioParameterInt*>(state.getParameter(paramId))) {
-                                const auto normalised = param->getNormalisableRange().convertTo0to1(static_cast<float>(transposeValue));
-                                param->setValueNotifyingHost(normalised);
-                            }
-                            changed = true;
+        const int firstDevice = channel == 1 ? static_cast<int>(ecm::InstrumentType::Alpha)
+                                              : channel - 1;
+        const int lastDevice = channel == 1 ? static_cast<int>(ecm::InstrumentType::Pico)
+                                             : channel - 1;
+
+        if (controllerNumber >= kTransposeZone1CcNumber && controllerNumber <= kTransposeZone3CcNumber) {
+            const auto transposeValue = transposeFromCc(msg.getControllerValue());
+            for (int device = firstDevice; device <= lastDevice; ++device) {
+                const auto deviceType = static_cast<ecm::InstrumentType>(device);
+                const auto zoneType = static_cast<ecm::Zone>(targetZone);
+                const auto paramId = ecm::ZoneWrapper::getTransposeParameterID(deviceType, zoneType);
+                if (auto* raw = state.getRawParameterValue(paramId)) {
+                    if (static_cast<int>(std::lround(raw->load())) != transposeValue) {
+                        if (auto* param = dynamic_cast<juce::AudioParameterInt*>(state.getParameter(paramId))) {
+                            const auto normalised = param->getNormalisableRange().convertTo0to1(static_cast<float>(transposeValue));
+                            param->setValueNotifyingHost(normalised);
                         }
+                        changed = true;
                     }
                 }
             }
             continue;
         }
 
-        if (msg.getControllerNumber() != kZoneEnableCcNumber)
-            continue;
-
         const bool enabled = enableFromCc(msg.getControllerValue());
-
-        for (int device = static_cast<int>(ecm::InstrumentType::Alpha); device <= static_cast<int>(ecm::InstrumentType::Pico); ++device) {
-            for (int zone = static_cast<int>(ecm::Zone::Zone1); zone <= static_cast<int>(ecm::Zone::Zone3); ++zone) {
-                if (channel != 4 && zone != channel)
-                    continue;
-
-                const auto deviceType = static_cast<ecm::InstrumentType>(device);
-                const auto zoneType = static_cast<ecm::Zone>(zone);
-                const auto paramId = ecm::ZoneWrapper::getEnabledParameterID(deviceType, zoneType);
-                if (auto* raw = state.getRawParameterValue(paramId)) {
-                    const auto value = enabled ? 1.0f : 0.0f;
-                    if ((raw->load() > 0.5f) != enabled) {
-                        if (auto* param = dynamic_cast<juce::AudioParameterBool*>(state.getParameter(paramId)))
-                            param->setValueNotifyingHost(value);
-                        changed = true;
-                    }
+        for (int device = firstDevice; device <= lastDevice; ++device) {
+            const auto deviceType = static_cast<ecm::InstrumentType>(device);
+            const auto zoneType = static_cast<ecm::Zone>(targetZone);
+            const auto paramId = ecm::ZoneWrapper::getEnabledParameterID(deviceType, zoneType);
+            if (auto* raw = state.getRawParameterValue(paramId)) {
+                const auto value = enabled ? 1.0f : 0.0f;
+                if ((raw->load() > 0.5f) != enabled) {
+                    if (auto* param = dynamic_cast<juce::AudioParameterBool*>(state.getParameter(paramId)))
+                        param->setValueNotifyingHost(value);
+                    changed = true;
                 }
             }
         }

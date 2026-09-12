@@ -26,6 +26,8 @@ public:
     HardwareService(osc::MessageFifo& hardwareToMapperQueue, 
                     osc::MessageFifo& mapperToHardwareQueue);
     ~HardwareService() override;
+
+    static DeviceMode sanitizeLocalDeviceModeForAppRole(AppRole role, DeviceMode mode) noexcept;
     
     static AppRole resolveStartupAppRole(AppRole requestedRole,
                                          bool discoveryPortOccupied,

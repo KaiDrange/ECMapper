@@ -52,10 +52,14 @@ int main()
                  "help menu should include the Input Midi reference entry");
     ok &= expect(referenceText.contains("Program Change 0-15") && referenceText.contains("preset slot 1-16"),
                  "input MIDI reference should explain preset slot program changes");
-    ok &= expect(referenceText.contains("CC 22") && referenceText.contains("channel 4") && referenceText.contains("Value 64 = 0 semitones")
+    ok &= expect(referenceText.contains("CC 22") && referenceText.contains("CC 23") && referenceText.contains("CC 24")
+                 && referenceText.contains("channel 1") && referenceText.contains("channel 2 targets Alpha")
+                 && referenceText.contains("Value 64 = 0 semitones")
                  && referenceText.contains("1 semitone") && referenceText.contains("-64") && referenceText.contains("+63"),
                  "input MIDI reference should explain transpose controller handling");
-    ok &= expect(referenceText.contains("CC 23") && referenceText.contains("0-63 = off") && referenceText.contains("64-127 = on"),
+    ok &= expect(referenceText.contains("CC 25") && referenceText.contains("CC 26") && referenceText.contains("CC 27")
+                 && referenceText.contains("0-63 = off") && referenceText.contains("64-127 = on")
+                 && referenceText.contains("channels 1-4 are all accepted"),
                  "input MIDI reference should explain zone enable controller handling");
 
     model.menuItemSelected(33, 2);
