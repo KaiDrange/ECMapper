@@ -325,6 +325,49 @@ target_compile_definitions(CalibrationListenerTest PRIVATE ECMAPPER_ENABLE_HARDW
 juce_generate_juce_header(CalibrationListenerTest)
 
 
+juce_add_console_app(Vst3OutputBusCountTest
+        PRODUCT_NAME "Vst3OutputBusCountTest"
+        VERSION "1.0.0"
+        COMPANY_NAME "Tic Tech"
+        BUNDLE_ID "com.tictech.ecmapper.vst3outputbuscounttest"
+)
+
+target_sources(Vst3OutputBusCountTest PRIVATE
+        Source/Tests/Vst3OutputBusCountTest.cpp
+)
+
+target_link_libraries(Vst3OutputBusCountTest PRIVATE
+        juce::juce_core
+        juce::juce_recommended_config_flags
+        juce::juce_recommended_lto_flags
+        juce::juce_recommended_warning_flags
+)
+target_include_directories(Vst3OutputBusCountTest PRIVATE Source)
+target_compile_definitions(Vst3OutputBusCountTest PRIVATE
+        JUCE_MODAL_LOOPS_PERMITTED=1
+        ECMAPPER_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+)
+juce_generate_juce_header(Vst3OutputBusCountTest)
+
+
+juce_add_console_app(Vst3DirectEventRoutingTest
+        PRODUCT_NAME "Vst3DirectEventRoutingTest"
+        VERSION "1.0.0"
+        COMPANY_NAME "Tic Tech"
+        BUNDLE_ID "com.tictech.ecmapper.vst3directeventroutingtest"
+)
+
+target_sources(Vst3DirectEventRoutingTest PRIVATE
+        Source/Tests/Vst3DirectEventRoutingTest.cpp
+        ${CORE_SOURCES}
+)
+
+target_link_libraries(Vst3DirectEventRoutingTest PRIVATE ${COMMON_LIBS})
+target_include_directories(Vst3DirectEventRoutingTest PRIVATE Source)
+target_compile_definitions(Vst3DirectEventRoutingTest PRIVATE ECMAPPER_ENABLE_HARDWARE=0 JUCE_MODAL_LOOPS_PERMITTED=1)
+juce_generate_juce_header(Vst3DirectEventRoutingTest)
+
+
 juce_add_console_app(LayoutLoadListenerTest
         PRODUCT_NAME "LayoutLoadListenerTest"
         VERSION "1.0.0"

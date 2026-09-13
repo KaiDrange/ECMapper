@@ -199,7 +199,7 @@ private:
     void createMidiMsgOff(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, osc::Message& outgoingOscMsg, const char* devId, int eventTime, MidiVoiceRouter* voiceRouter);
     void createAllNotesOff(PerformanceEventSink& sink, int eventTime);
     
-    void addMidiValueMessage(InstrumentType deviceType, int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, int noteNo, PerformanceEventSink& sink, bool isBipolar, ExpressionCurveTarget curveTarget, int eventTime, MidiVoiceRouter* voiceRouter, int zoneIndex = -1);
+    void addMidiValueMessage(InstrumentType deviceType, int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, float pbTransportRange, int noteNo, PerformanceEventSink& sink, bool isBipolar, ExpressionCurveTarget curveTarget, int eventTime, MidiVoiceRouter* voiceRouter, int zoneIndex = -1);
     void addStripValueMessage(InstrumentType deviceType, int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, PerformanceEventSink& sink, bool isBipolar, int eventTime, MidiVoiceRouter* voiceRouter, int zoneIndex = -1);
     
     void createBreath(int deviceIndex, const ConfigLookup& keyLookup, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter);

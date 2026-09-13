@@ -34,6 +34,15 @@ bool expect(bool condition, const char* message)
     return true;
 }
 
+float getAlphaZone1PitchBendScaling(ECMapperAudioProcessor& processor)
+{
+    auto* snapshot = processor.getMidiService().activeSnapshot_.load();
+    if (snapshot == nullptr)
+        return -1.0f;
+
+    return snapshot->configLookups[0].keys[0][0].pbRange;
+}
+
 } // namespace
 
 int main()
@@ -158,6 +167,28 @@ int main()
         ok &= expect(component.alphaPage->zonePanels[0]->transposeInput.input.getText() == "7",
                      "an external transpose parameter change should refresh the alpha zone transpose field");
     }
+
+    auto alphaLayoutKey = ecm::LayoutWrapper::LayoutKey {};
+    alphaLayoutKey.keyId = { 0, 0, ecm::InstrumentType::Alpha };
+    alphaLayoutKey.keyType = ecm::EigenharpKeyType::Normal;
+    alphaLayoutKey.keyColour = ecm::KeyColour::Off;
+    alphaLayoutKey.zone = ecm::Zone::Zone1;
+    alphaLayoutKey.keyMappingType = ecm::KeyMappingType::Note;
+    alphaLayoutKey.mappingValue = "60";
+    ecm::LayoutWrapper::setLayoutKey(alphaLayoutKey, processor.state.state);
+    ecm::SettingsWrapper::setLowerMPEPB(48, processor.state.state);
+    ecm::ZoneWrapper::setMidiChannelType(ecm::InstrumentType::Alpha, ecm::Zone::Zone1, ecm::MidiChannelType::MPE_Low, processor.state.state);
+    ecm::ZoneWrapper::setKeyPitchbend(ecm::InstrumentType::Alpha, ecm::Zone::Zone1, 6, processor.state.state);
+    processor.handleAsyncUpdate();
+
+    ok &= expect(std::abs(getAlphaZone1PitchBendScaling(processor) - (6.0f / 48.0f)) < 1.0e-6f,
+                 "the processor runtime snapshot should reflect the initial alpha zone key pitch-bend scaling");
+
+    ecm::ZoneWrapper::setKeyPitchbend(ecm::InstrumentType::Alpha, ecm::Zone::Zone1, 1, processor.state.state);
+    processor.handleAsyncUpdate();
+
+    ok &= expect(std::abs(getAlphaZone1PitchBendScaling(processor) - (1.0f / 48.0f)) < 1.0e-6f,
+                 "changing the alpha zone key pitch-bend setting in the state tree should refresh the live processor pitch-bend scaling");
 
     component.lowerMPEPitchbendRange.setValue(11);
     component.lowerMPEPitchbendRange.input.onFocusLost();

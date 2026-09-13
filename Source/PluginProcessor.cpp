@@ -316,11 +316,13 @@ ECMapperAudioProcessor::ECMapperAudioProcessor() :
             requestRuntimeConfigRefresh();
         });
     state.state.addListener(layoutChangeHandler.get());
+    state.state.addListener(this);
 }
 
 ECMapperAudioProcessor::~ECMapperAudioProcessor() {
     unregisterZoneParameterListeners();
     hardwareService.removeListener(this);
+    state.state.removeListener(this);
     state.state.removeListener(layoutChangeHandler.get());
 }
 
@@ -1221,6 +1223,32 @@ bool ECMapperAudioProcessor::isZoneRuntimeParameter(const juce::String& paramete
     return parameterID.startsWith("transpose_") || parameterID.startsWith("enabled_");
 }
 
+bool ECMapperAudioProcessor::isRuntimeConfigStateProperty(const juce::Identifier& property)
+{
+    using ZoneWrapper = ecm::ZoneWrapper;
+    using SettingsWrapper = ecm::SettingsWrapper;
+
+    return property == ZoneWrapper::id_enabled
+        || property == ZoneWrapper::id_transpose
+        || property == ZoneWrapper::id_keyPitchbend
+        || property == ZoneWrapper::id_channelMaxPitchbend
+        || property == ZoneWrapper::id_midiChannelType
+        || property == ZoneWrapper::id_pressure
+        || property == ZoneWrapper::id_roll
+        || property == ZoneWrapper::id_yaw
+        || property == ZoneWrapper::id_strip1Rel
+        || property == ZoneWrapper::id_strip1Abs
+        || property == ZoneWrapper::id_strip2Rel
+        || property == ZoneWrapper::id_strip2Abs
+        || property == ZoneWrapper::id_breath
+        || property == SettingsWrapper::id_lowerMPEPB
+        || property == SettingsWrapper::id_upperMPEPB
+        || property == SettingsWrapper::id_lowerMPEVoiceCount
+        || property == SettingsWrapper::id_upperMPEVoiceCount
+        || property == SettingsWrapper::id_midi2Mode
+        || property == SettingsWrapper::id_pluginOutputMode;
+}
+
 void ECMapperAudioProcessor::registerZoneParameterListeners()
 {
     for (int device = static_cast<int>(ecm::InstrumentType::Alpha); device <= static_cast<int>(ecm::InstrumentType::Pico); ++device) {
@@ -1244,6 +1272,12 @@ void ECMapperAudioProcessor::unregisterZoneParameterListeners()
 void ECMapperAudioProcessor::parameterChanged(const juce::String& parameterID, float)
 {
     if (isZoneRuntimeParameter(parameterID))
+        requestRuntimeConfigRefresh();
+}
+
+void ECMapperAudioProcessor::valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier& property)
+{
+    if (isRuntimeConfigStateProperty(property))
         requestRuntimeConfigRefresh();
 }
 
@@ -1326,7 +1360,7 @@ bool ecmapperAppendDirectVst3Events(juce::AudioProcessor& processor, Steinberg::
     for (const auto& sourceEvent : pendingEvents)
     {
         Event event {};
-        event.busIndex = 0;
+        event.busIndex = sourceEvent.busIndex;
         event.sampleOffset = sourceEvent.sampleOffset;
         event.ppqPosition = 0.0;
         event.flags = 0;

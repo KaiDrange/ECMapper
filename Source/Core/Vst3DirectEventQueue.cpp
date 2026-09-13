@@ -14,6 +14,15 @@ Vst3NoteExpressionType mapControllerExpressionType(const int controller)
     }
 }
 
+double convertPerNotePitchBendToVst3Tuning(const PerformanceEvent& event)
+{
+    constexpr double vst3TuningRangeSemitones = 240.0;
+    const auto centeredValue = static_cast<double>(event.value) * 2.0 - 1.0;
+    const auto sourceRange = std::max(0.0, static_cast<double>(event.pitchbendRange));
+    const auto scaled = centeredValue * sourceRange / vst3TuningRangeSemitones;
+    return juce::jlimit(0.0, 1.0, 0.5 + scaled);
+}
+
 }
 
 void Vst3DirectEventQueue::clear()
@@ -51,6 +60,7 @@ Vst3DirectPerformanceEventSink::Vst3DirectPerformanceEventSink(Vst3DirectEventQu
 void Vst3DirectPerformanceEventSink::pushEvent(const PerformanceEvent& event)
 {
     Vst3DirectEvent directEvent;
+    directEvent.busIndex = juce::jlimit(0, 2, event.zoneIndex < 0 ? 0 : event.zoneIndex);
     directEvent.sampleOffset = event.sampleOffset;
     directEvent.channel = juce::jlimit(0, 15, event.channel - 1);
     directEvent.noteNumber = event.noteNumber;
@@ -79,6 +89,7 @@ void Vst3DirectPerformanceEventSink::pushEvent(const PerformanceEvent& event)
                 queue_.push(directEvent);
                 return;
             }
+            directEvent.controller = Steinberg::Vst::ControllerNumbers::kAfterTouch;
             break;
 
         case PerformanceEventKind::PitchBend:
@@ -86,9 +97,13 @@ void Vst3DirectPerformanceEventSink::pushEvent(const PerformanceEvent& event)
                 directEvent.kind = Vst3DirectEventKind::NoteExpression;
                 directEvent.expressionType = Vst3NoteExpressionType::Tuning;
                 directEvent.noteId = findNoteId(event.channel, event.noteNumber);
+                directEvent.pitchbendRange = event.pitchbendRange;
+                directEvent.value = convertPerNotePitchBendToVst3Tuning(event);
                 queue_.push(directEvent);
                 return;
             }
+            directEvent.controller = Steinberg::Vst::ControllerNumbers::kPitchBend;
+            directEvent.value2 = directEvent.value;
             break;
 
         case PerformanceEventKind::Controller:

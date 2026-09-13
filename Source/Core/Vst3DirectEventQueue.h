@@ -2,6 +2,7 @@
 
 #include <JuceHeader.h>
 #include <array>
+#include "../../JUCE/modules/juce_audio_processors_headless/format_types/VST3_SDK/pluginterfaces/vst/ivstmidicontrollers.h"
 #include "PerformanceEventSink.h"
 
 namespace ecm {
@@ -23,11 +24,13 @@ enum class Vst3NoteExpressionType {
 struct Vst3DirectEvent {
     Vst3DirectEventKind kind = Vst3DirectEventKind::LegacyCC;
     Vst3NoteExpressionType expressionType = Vst3NoteExpressionType::Expression;
+    int busIndex = 0;
     int sampleOffset = 0;
     int channel = 0;
     int noteNumber = -1;
     int noteId = -1;
     int controller = 0;
+    double pitchbendRange = 0.0;
     double value = 0.0;
     double value2 = 0.0;
 };

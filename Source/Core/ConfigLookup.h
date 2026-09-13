@@ -36,6 +36,7 @@ public:
         ZoneWrapper::MidiValue roll;
         ZoneWrapper::MidiValue yaw;
         float pbRange = 0.0f;
+        float pbTransportRange = 0.0f;
         int cmdCC = 0;
         int cmdOn = 0;
         int cmdOff = 0;

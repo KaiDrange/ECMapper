@@ -1336,7 +1336,7 @@ void MidiService::createBreath(int deviceIndex, const ConfigLookup& keyLookup, P
     }
 
     for (int z = 0; z < 3; ++z) {
-        addMidiValueMessage(static_cast<InstrumentType>(deviceIndex + 1), keyLookup.breath[z].channel, val * 3.0f, keyLookup.breath[z].midiValue, keyLookup.breath[z].pbRange, 0, sink, false, ExpressionCurveTarget::Breath, eventTime, voiceRouter, z);
+        addMidiValueMessage(static_cast<InstrumentType>(deviceIndex + 1), keyLookup.breath[z].channel, val * 3.0f, keyLookup.breath[z].midiValue, keyLookup.breath[z].pbRange, 0.0f, 0, sink, false, ExpressionCurveTarget::Breath, eventTime, voiceRouter, z);
     }
 }
 
@@ -1421,9 +1421,9 @@ void MidiService::createNoteOff(const ConfigLookup::Key& keyLookup, KeyState* st
     }
     
     if (channel > 0 && channel <= 16 && chanNotePri_[channel - 1].empty()) {
-        addMidiValueMessage(keyLookup.keyId.deviceType, channel, 0, keyLookup.pressure, keyLookup.pbRange, keyLookup.notes[0], sink, false, ExpressionCurveTarget::Pressure, eventTime, voiceRouter);
-        addMidiValueMessage(keyLookup.keyId.deviceType, channel, 0, keyLookup.roll, keyLookup.pbRange, keyLookup.notes[0], sink, true, ExpressionCurveTarget::Roll, eventTime, voiceRouter);
-        addMidiValueMessage(keyLookup.keyId.deviceType, channel, 0, keyLookup.yaw, keyLookup.pbRange, keyLookup.notes[0], sink, true, ExpressionCurveTarget::Yaw, eventTime, voiceRouter);
+        addMidiValueMessage(keyLookup.keyId.deviceType, channel, 0, keyLookup.pressure, keyLookup.pbRange, keyLookup.pbTransportRange, keyLookup.notes[0], sink, false, ExpressionCurveTarget::Pressure, eventTime, voiceRouter, zoneIndex);
+        addMidiValueMessage(keyLookup.keyId.deviceType, channel, 0, keyLookup.roll, keyLookup.pbRange, keyLookup.pbTransportRange, keyLookup.notes[0], sink, true, ExpressionCurveTarget::Roll, eventTime, voiceRouter, zoneIndex);
+        addMidiValueMessage(keyLookup.keyId.deviceType, channel, 0, keyLookup.yaw, keyLookup.pbRange, keyLookup.pbTransportRange, keyLookup.notes[0], sink, true, ExpressionCurveTarget::Yaw, eventTime, voiceRouter, zoneIndex);
     }
     state->status = KeyStatus::Off;
     state->messageCount = 0;
@@ -1586,9 +1586,9 @@ void MidiService::createNoteHold(const ConfigLookup::Key& keyLookup, KeyState* s
     if (channel > 0 && channel <= 16 && (isMidi2Mode_ || chanNotePri_[channel - 1].empty() || chanNotePri_[channel - 1].front() == keyLookup.keyId)) {
         const float transitionedRoll = applyNoteOnTransition(*state, state->ehRoll, expressionPolicy);
         const float transitionedYaw = applyNoteOnTransition(*state, state->ehYaw, expressionPolicy);
-        addMidiValueMessage(keyLookup.keyId.deviceType, channel, transitionedRoll, keyLookup.roll, keyLookup.pbRange, state->activeNotes[0], sink, true, ExpressionCurveTarget::Roll, eventTime, voiceRouter, zoneIndex);
-        addMidiValueMessage(keyLookup.keyId.deviceType, channel, transitionedYaw, keyLookup.yaw, keyLookup.pbRange, state->activeNotes[0], sink, true, ExpressionCurveTarget::Yaw, eventTime, voiceRouter, zoneIndex);
-        addMidiValueMessage(keyLookup.keyId.deviceType, channel, state->ehPressureHistory.back(), keyLookup.pressure, keyLookup.pbRange, state->activeNotes[0], sink, false, ExpressionCurveTarget::Pressure, eventTime, voiceRouter, zoneIndex);
+        addMidiValueMessage(keyLookup.keyId.deviceType, channel, transitionedRoll, keyLookup.roll, keyLookup.pbRange, keyLookup.pbTransportRange, state->activeNotes[0], sink, true, ExpressionCurveTarget::Roll, eventTime, voiceRouter, zoneIndex);
+        addMidiValueMessage(keyLookup.keyId.deviceType, channel, transitionedYaw, keyLookup.yaw, keyLookup.pbRange, keyLookup.pbTransportRange, state->activeNotes[0], sink, true, ExpressionCurveTarget::Yaw, eventTime, voiceRouter, zoneIndex);
+        addMidiValueMessage(keyLookup.keyId.deviceType, channel, state->ehPressureHistory.back(), keyLookup.pressure, keyLookup.pbRange, keyLookup.pbTransportRange, state->activeNotes[0], sink, false, ExpressionCurveTarget::Pressure, eventTime, voiceRouter, zoneIndex);
     }
     state->messageCount = 0;
 }
@@ -1608,7 +1608,7 @@ float MidiService::applyNoteOnTransition(const KeyState& state, float measuredVa
     return measuredValue * progress;
 }
 
-void MidiService::addMidiValueMessage(InstrumentType deviceType, int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, int noteNo, PerformanceEventSink& sink, bool isBipolar, ExpressionCurveTarget curveTarget, int eventTime, MidiVoiceRouter* voiceRouter, int zoneIndex) {
+void MidiService::addMidiValueMessage(InstrumentType deviceType, int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, float pbTransportRange, int noteNo, PerformanceEventSink& sink, bool isBipolar, ExpressionCurveTarget curveTarget, int eventTime, MidiVoiceRouter* voiceRouter, int zoneIndex) {
     if (midiValue.valueType == MidiValueType::Off) return;
     
     int resolvedChannel = channel;
@@ -1639,7 +1639,7 @@ void MidiService::addMidiValueMessage(InstrumentType deviceType, int channel, fl
         
         if (useNativePerNote) {
             float protocolValue = notePB * 0.5f + 0.5f;
-            sink.pushEvent(PerformanceEvent::pitchBend(resolvedChannel, noteNo, protocolValue, true, eventTime, zoneIndex));
+            sink.pushEvent(PerformanceEvent::pitchBend(resolvedChannel, noteNo, protocolValue, true, eventTime, zoneIndex, pbTransportRange));
         } else {
             currentKeyPBperChannel_[resolvedChannel - 1] = notePB;
             float totalPB = std::clamp(currentKeyPBperChannel_[resolvedChannel - 1] + currentStripPBperChannel_[resolvedChannel - 1], -1.0f, 1.0f);

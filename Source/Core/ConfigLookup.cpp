@@ -151,11 +151,12 @@ void ConfigLookup::updateKeyUnlocked(LayoutWrapper::KeyId keyId) {
         else
             maxPb = (float)ZoneWrapper::getChannelMaxPitchbend(layoutKey.keyId.deviceType, effectiveZone, pluginState.state);
 
-        key.pbRange = getSafePbRange((float)keyPB, maxPb);
+        key.pbTransportRange = maxPb;
+        key.pbRange = getSafePbRange((float)keyPB, key.pbTransportRange);
         
         if (key.yaw.valueType == MidiValueType::Pitchbend || key.roll.valueType == MidiValueType::Pitchbend) {
              juce::Logger::writeToLog("ConfigLookup: PB Settings for Key [" + juce::String(layoutKey.keyId.course) + "," + juce::String(layoutKey.keyId.keyNo) + "] - midi2=" + juce::String((int)midi2) + 
-                ", keyPB=" + juce::String(keyPB) + " semitones, maxPb=" + juce::String(maxPb) + 
+                ", keyPB=" + juce::String(keyPB) + " semitones, maxPb=" + juce::String(key.pbTransportRange) + 
                 " semitones, pbScaling=" + juce::String(key.pbRange) + " (ratio)" +
                 ", outputType=" + juce::String((int)key.output));
         }

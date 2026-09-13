@@ -19,7 +19,8 @@
 class ECMapperAudioProcessor : public juce::AudioProcessor,
                                public ecm::HardwareService::Listener,
                                private juce::AsyncUpdater,
-                               private juce::AudioProcessorValueTreeState::Listener
+                               private juce::AudioProcessorValueTreeState::Listener,
+                               private juce::ValueTree::Listener
 {
 public:
     static constexpr int numPresetSlots = 32;
@@ -69,6 +70,7 @@ public:
     void deviceNeedsLEDSync(const std::string& devId, ecm::InstrumentType type, bool isRequest) override;
     void handleAsyncUpdate() override;
     void parameterChanged(const juce::String& parameterID, float newValue) override;
+    void valueTreePropertyChanged(juce::ValueTree& treeWhosePropertyHasChanged, const juce::Identifier& property) override;
 
     juce::AudioProcessorValueTreeState state;
     ecm::HardwareService& getHardwareService() { return hardwareService; }
@@ -139,6 +141,7 @@ private:
     void registerZoneParameterListeners();
     void unregisterZoneParameterListeners();
     static bool isZoneRuntimeParameter(const juce::String& parameterID);
+    static bool isRuntimeConfigStateProperty(const juce::Identifier& property);
     static std::size_t transposeIndex(ecm::InstrumentType deviceType, ecm::Zone zone);
     juce::ValueTree getPresetSnapshot(int slot) const;
     void applyPresetState(const juce::ValueTree& snapshot);
