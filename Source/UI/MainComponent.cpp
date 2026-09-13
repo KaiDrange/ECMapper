@@ -101,6 +101,11 @@ MainComponent::MainComponent(juce::AudioProcessorValueTreeState& pluginStateToUs
         SettingsWrapper::setUpperMPEPB(upperMPEPitchbendRange.getValue(), this->pluginState.state);
     };
 
+    appliedLowerMPEVoiceCount_ = SettingsWrapper::getLowerMPEVoiceCount(pluginState.state);
+    appliedUpperMPEVoiceCount_ = SettingsWrapper::getUpperMPEVoiceCount(pluginState.state);
+    appliedLowerMPEPitchbendRange_ = SettingsWrapper::getLowerMPEPB(pluginState.state);
+    appliedUpperMPEPitchbendRange_ = SettingsWrapper::getUpperMPEPB(pluginState.state);
+
     midi2ModeEnabled = SettingsWrapper::getMidi2Mode(pluginState.state);
     pendingMidi2Mode = midi2ModeEnabled;
     configureModeButton(midi20ModeButton);
@@ -337,9 +342,18 @@ void MainComponent::refreshFromState()
     pendingMidi2Mode = SettingsWrapper::getMidi2Mode(pluginState.state);
     pluginOutputModeIsVst3Direct_ = SettingsWrapper::getPluginOutputMode(pluginState.state) == OutputTransportMode::Vst3Direct;
     midi2ModeChanged = (pendingMidi2Mode != midi2ModeEnabled);
-    pendingModeMessage.setVisible(midi2ModeChanged);
+    pendingModeMessage.setVisible(hasPendingRestartOnlyChanges());
 
     refreshTransportModeControls();
+}
+
+bool MainComponent::hasPendingRestartOnlyChanges() const
+{
+    return midi2ModeChanged
+        || SettingsWrapper::getLowerMPEVoiceCount(pluginState.state) != appliedLowerMPEVoiceCount_
+        || SettingsWrapper::getUpperMPEVoiceCount(pluginState.state) != appliedUpperMPEVoiceCount_
+        || SettingsWrapper::getLowerMPEPB(pluginState.state) != appliedLowerMPEPitchbendRange_
+        || SettingsWrapper::getUpperMPEPB(pluginState.state) != appliedUpperMPEPitchbendRange_;
 }
 
 void MainComponent::refreshTransportModeControls()
@@ -395,12 +409,17 @@ void MainComponent::valueTreePropertyChanged(juce::ValueTree& vTree, const juce:
     juce::ignoreUnused(vTree);
     juce::Logger::writeToLog("MainComponent: Property changed: " + property.toString());
 
-    if (property == SettingsWrapper::id_midi2Mode || property == SettingsWrapper::id_pluginOutputMode)
+    if (property == SettingsWrapper::id_midi2Mode
+        || property == SettingsWrapper::id_pluginOutputMode
+        || property == SettingsWrapper::id_lowerMPEVoiceCount
+        || property == SettingsWrapper::id_upperMPEVoiceCount
+        || property == SettingsWrapper::id_lowerMPEPB
+        || property == SettingsWrapper::id_upperMPEPB)
     {
         pendingMidi2Mode = SettingsWrapper::getMidi2Mode(pluginState.state);
         pluginOutputModeIsVst3Direct_ = SettingsWrapper::getPluginOutputMode(pluginState.state) == OutputTransportMode::Vst3Direct;
         midi2ModeChanged = (pendingMidi2Mode != midi2ModeEnabled);
-        pendingModeMessage.setVisible(midi2ModeChanged);
+        pendingModeMessage.setVisible(hasPendingRestartOnlyChanges());
 
         refreshTransportModeControls();
         repaint();

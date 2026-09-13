@@ -102,6 +102,12 @@ int main()
                  && component.lowerMPEPitchbendRange.isEnabled() && component.upperMPEPitchbendRange.isEnabled(),
                  "MIDI 2.0 mode should keep MPE controls enabled when channel layout is still used");
 
+    component.midi2ModeEnabled = SettingsWrapper::getMidi2Mode(processor.state.state);
+    component.pendingMidi2Mode = component.midi2ModeEnabled;
+    component.refreshFromState();
+    ok &= expect(!component.pendingModeMessage.isVisible(),
+                 "the restart warning should clear once the current mode matches the applied startup state");
+
     juce::ValueTree legacyDevice(ecm::LayoutWrapper::id_device + juce::String((int)ecm::InstrumentType::Alpha));
     auto legacyLayout = legacyDevice.getOrCreateChildWithName(ecm::LayoutWrapper::id_layout, nullptr);
     auto legacyKey = legacyLayout.getOrCreateChildWithName(ecm::LayoutWrapper::id_key + juce::String("_0_4"), nullptr);
@@ -126,6 +132,10 @@ int main()
 
     ok &= expect(ecm::SettingsWrapper::getLowerMPEPB(processor.state.state) == 11,
                  "editing the lower MPE pitch-bend range through the main component should update the stored setting");
+    ok &= expect(component.pendingModeMessage.isVisible(),
+                 "editing the lower MPE pitch-bend range should show the startup-only warning message");
+    ok &= expect(component.pendingModeMessage.getText().containsIgnoreCase("next time ECMapper is started"),
+                 "editing the lower MPE pitch-bend range should reuse the existing startup-only warning text");
     ok &= expect(ecm::LayoutWrapper::getLayoutKey({ 0, 4, ecm::InstrumentType::Alpha }, processor.state.state).mappingValue == "72",
                  "editing the lower MPE pitch-bend range should not clear a migrated alpha layout");
     ok &= expect(!processor.state.state.getChildWithName(ecm::LayoutWrapper::id_device + juce::String((int)ecm::InstrumentType::Alpha)).isValid(),
