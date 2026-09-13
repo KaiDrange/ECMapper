@@ -1,4 +1,5 @@
 #include "Midi2Protocol.h"
+#include "Logger.h"
 #include <cstring>
 
 namespace ecm {
@@ -6,7 +7,7 @@ namespace ecm {
 using namespace juce::universal_midi_packets;
 
 Midi2Protocol::Midi2Protocol(uint8_t group) : group_(group) {
-    juce::Logger::writeToLog("Midi2Protocol: Created for group " + juce::String((int)group));
+    ECM_LOG("Midi2Protocol: Created for group " + juce::String((int)group));
 }
 
 void Midi2Protocol::renderEvent(juce::MidiBuffer& buffer, const PerformanceEvent& event) {
@@ -108,14 +109,14 @@ void Midi2Protocol::addNoteOff(juce::MidiBuffer& buffer, uint8_t group, int chan
 void Midi2Protocol::addPitchBend(juce::MidiBuffer& buffer, uint8_t group, int channel, int noteNumber, float value, int eventTime) {
     uint32_t scaled = scaleTo32Bit(value);
     if (noteNumber == -1) {
-        juce::Logger::writeToLog("Midi2Protocol: Channel Pitch Bend - channel=" + juce::String(channel) + 
-                                 ", value=" + juce::String(value) + ", scaled=" + juce::String((juce::int64)scaled));
+        ECM_LOG("Midi2Protocol: Channel Pitch Bend - channel=" + juce::String(channel)
+                + ", value=" + juce::String(value) + ", scaled=" + juce::String((juce::int64)scaled));
         auto ump = Factory::makePitchBendV2(group, (uint8_t)(channel - 1), scaled);
         addToBuffer(buffer, ump.data(), (int)ump.size(), eventTime);
     } else {
-        juce::Logger::writeToLog("Midi2Protocol: Per-Note Pitch Bend - channel=" + juce::String(channel) + 
-                                 ", note=" + juce::String(noteNumber) + ", value=" + juce::String(value) + 
-                                 ", scaled=" + juce::String((juce::int64)scaled));
+        ECM_LOG("Midi2Protocol: Per-Note Pitch Bend - channel=" + juce::String(channel)
+                + ", note=" + juce::String(noteNumber) + ", value=" + juce::String(value)
+                + ", scaled=" + juce::String((juce::int64)scaled));
         auto ump = Factory::makePerNotePitchBendV2(group, (uint8_t)(channel - 1), (uint8_t)noteNumber, scaled);
         addToBuffer(buffer, ump.data(), (int)ump.size(), eventTime);
     }
@@ -176,10 +177,10 @@ void Midi2Protocol::addMidiContinue(juce::MidiBuffer& buffer, uint8_t group, int
 }
 
 void Midi2Protocol::setupTransport(juce::MidiBuffer& buffer, const juce::MPEZoneLayout& layout) {
-    juce::Logger::writeToLog("Midi2Protocol: Setting up MPE Zone Layout. Lower channels: " + juce::String(layout.getLowerZone().numMemberChannels) + 
-                             ", Lower PB: " + juce::String(layout.getLowerZone().perNotePitchbendRange) +
-                             ", Upper channels: " + juce::String(layout.getUpperZone().numMemberChannels) +
-                             ", Upper PB: " + juce::String(layout.getUpperZone().perNotePitchbendRange));
+    ECM_LOG("Midi2Protocol: Setting up MPE Zone Layout. Lower channels: " + juce::String(layout.getLowerZone().numMemberChannels)
+            + ", Lower PB: " + juce::String(layout.getLowerZone().perNotePitchbendRange)
+            + ", Upper channels: " + juce::String(layout.getUpperZone().numMemberChannels)
+            + ", Upper PB: " + juce::String(layout.getUpperZone().perNotePitchbendRange));
 }
 
 void Midi2Protocol::addIdentification(juce::MidiBuffer& buffer, int eventTime) {

@@ -5,6 +5,7 @@
 #include "UI/PresetBrowserComponent.h"
 #include "UI/CalibrationDialogComponent.h"
 #include "UI/InputMidiReferenceText.h"
+#include "Core/Logger.h"
 
 #include <functional>
 
@@ -285,7 +286,7 @@ void StandaloneAppMainWindow::changeListenerCallback(juce::ChangeBroadcaster* so
 {
     if (source == &deviceManager && !isUpdatingSettings)
     {
-        juce::Logger::writeToLog("StandaloneAppMainWindow: changeListenerCallback triggered by deviceManager.");
+        ECM_LOG("StandaloneAppMainWindow: changeListenerCallback triggered by deviceManager.");
         isUpdatingSettings = true;
         updateMidiInputs();
         updateMidiOutput();
@@ -304,33 +305,33 @@ void StandaloneAppMainWindow::valueTreePropertyChanged(juce::ValueTree& treeWhos
 
 void StandaloneAppMainWindow::endpointsChanged()
 {
-    juce::Logger::writeToLog("StandaloneAppMainWindow: endpointsChanged() triggered by UMP Endpoints broadcast.");
+    ECM_LOG("StandaloneAppMainWindow: endpointsChanged() triggered by UMP Endpoints broadcast.");
     updateMidiOutput();
 }
 
 void StandaloneAppMainWindow::updateMidiOutput()
 {
-    juce::Logger::writeToLog("StandaloneAppMainWindow::updateMidiOutput() called.");
+    ECM_LOG("StandaloneAppMainWindow::updateMidiOutput() called.");
     auto availableOutputs = juce::MidiOutput::getAvailableDevices();
-    juce::Logger::writeToLog("ECMapper: Available MIDI Outputs: " + juce::String(availableOutputs.size()));
+    ECM_LOG("ECMapper: Available MIDI Outputs: " + juce::String(availableOutputs.size()));
     for (auto& device : availableOutputs)
-        juce::Logger::writeToLog("  - " + device.name + " [" + device.identifier + "]");
+        ECM_LOG("  - " + device.name + " [" + device.identifier + "]");
 
     juce::MidiOutput* currentOutput = deviceManager.getDefaultMidiOutput();
 
     if (currentOutput != nullptr && isInternalVirtualMidiOutput(currentOutput->getName()))
     {
-        juce::Logger::writeToLog("ECMapper: Ignoring disabled internal virtual MIDI output '" + currentOutput->getName() + "'.");
+        ECM_LOG("ECMapper: Ignoring disabled internal virtual MIDI output '" + currentOutput->getName() + "'.");
         currentOutput = nullptr;
     }
 
     if (currentOutput != nullptr)
     {
-        juce::Logger::writeToLog("ECMapper: MIDI Output set to: " + currentOutput->getName());
+        ECM_LOG("ECMapper: MIDI Output set to: " + currentOutput->getName());
     }
     else
     {
-        juce::Logger::writeToLog("ECMapper: No MIDI Output selected.");
+        ECM_LOG("ECMapper: No MIDI Output selected.");
     }
 
     if (processor != nullptr)
@@ -376,7 +377,7 @@ void StandaloneAppMainWindow::applyBufferSize(int bufferSize)
     setup.bufferSize = requestedBufferSize_;
     auto error = deviceManager.setAudioDeviceSetup(setup, true);
     if (error.isNotEmpty())
-        juce::Logger::writeToLog("ECMapper: Failed to apply requested buffer size: " + error);
+        ECM_LOG("ECMapper: Failed to apply requested buffer size: " + error);
 }
 
 int StandaloneAppMainWindow::getRequestedBufferSize() const
@@ -456,7 +457,7 @@ void StandaloneAppMainWindow::loadAudioSettings()
         auto xml = juce::XmlDocument::parse(file);
         if (xml != nullptr)
         {
-            juce::Logger::writeToLog("ECMapper: Loading audio settings from " + file.getFullPathName());
+            ECM_LOG("ECMapper: Loading audio settings from " + file.getFullPathName());
             if (auto* settingsNode = xml->getChildByName(standaloneSettingsTag)) {
                 requestedBufferSize_ = settingsNode->getIntAttribute(bufferSizeAttribute, defaultBufferSize);
                 standaloneMidiInputId_ = settingsNode->getStringAttribute(midiInputAttribute);
@@ -471,7 +472,7 @@ void StandaloneAppMainWindow::loadAudioSettings()
         }
     }
 
-    juce::Logger::writeToLog("ECMapper: Initializing with default audio devices.");
+    ECM_LOG("ECMapper: Initializing with default audio devices.");
     deviceManager.initialiseWithDefaultDevices(0, 2);
     applyBufferSize(requestedBufferSize_);
 }

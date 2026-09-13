@@ -1,4 +1,5 @@
 #include "ConfigLookup.h"
+#include "Logger.h"
 #include <cmath>
 
 namespace ecm {
@@ -155,10 +156,10 @@ void ConfigLookup::updateKeyUnlocked(LayoutWrapper::KeyId keyId) {
         key.pbRange = getSafePbRange((float)keyPB, key.pbTransportRange);
         
         if (key.yaw.valueType == MidiValueType::Pitchbend || key.roll.valueType == MidiValueType::Pitchbend) {
-             juce::Logger::writeToLog("ConfigLookup: PB Settings for Key [" + juce::String(layoutKey.keyId.course) + "," + juce::String(layoutKey.keyId.keyNo) + "] - midi2=" + juce::String((int)midi2) + 
-                ", keyPB=" + juce::String(keyPB) + " semitones, maxPb=" + juce::String(key.pbTransportRange) + 
-                " semitones, pbScaling=" + juce::String(key.pbRange) + " (ratio)" +
-                ", outputType=" + juce::String((int)key.output));
+            ECM_LOG("ConfigLookup: PB Settings for Key [" + juce::String(layoutKey.keyId.course) + "," + juce::String(layoutKey.keyId.keyNo) + "] - midi2=" + juce::String((int)midi2)
+                    + ", keyPB=" + juce::String(keyPB) + " semitones, maxPb=" + juce::String(key.pbTransportRange)
+                    + " semitones, pbScaling=" + juce::String(key.pbRange) + " (ratio)"
+                    + ", outputType=" + juce::String((int)key.output));
         }
         
         if (key.mapType != KeyMappingType::MidiMsg) {
@@ -255,8 +256,8 @@ void ConfigLookup::updateBreathUnlocked(Zone zone) {
     breath[zoneIdx].pbRange = 1.0f;
 
     if (breath[zoneIdx].midiValue.valueType == MidiValueType::Pitchbend) {
-        juce::Logger::writeToLog("ConfigLookup: PB Settings for Breath (Zone " + juce::String(zoneIdx) + ") - targetPB=" + juce::String(globalPB) + 
-            " semitones, pbScaling=" + juce::String(breath[zoneIdx].pbRange));
+        ECM_LOG("ConfigLookup: PB Settings for Breath (Zone " + juce::String(zoneIdx) + ") - targetPB=" + juce::String(globalPB)
+                + " semitones, pbScaling=" + juce::String(breath[zoneIdx].pbRange));
     }
 }
 
@@ -301,12 +302,12 @@ void ConfigLookup::updateStripsUnlocked(Zone zone) {
     strip1[zoneIdx].pbRange = strip2[zoneIdx].pbRange = 1.0f;
 
     if (strip1[zoneIdx].absMidiValue.valueType == MidiValueType::Pitchbend || strip1[zoneIdx].relMidiValue.valueType == MidiValueType::Pitchbend) {
-        juce::Logger::writeToLog("ConfigLookup: PB Settings for Strip 1 (Zone " + juce::String(zoneIdx) + ") - targetPB=" + juce::String(globalPB) + 
-            " semitones, pbScaling=" + juce::String(strip1[zoneIdx].pbRange));
+        ECM_LOG("ConfigLookup: PB Settings for Strip 1 (Zone " + juce::String(zoneIdx) + ") - targetPB=" + juce::String(globalPB)
+                + " semitones, pbScaling=" + juce::String(strip1[zoneIdx].pbRange));
     }
     if (strip2[zoneIdx].absMidiValue.valueType == MidiValueType::Pitchbend || strip2[zoneIdx].relMidiValue.valueType == MidiValueType::Pitchbend) {
-        juce::Logger::writeToLog("ConfigLookup: PB Settings for Strip 2 (Zone " + juce::String(zoneIdx) + ") - targetPB=" + juce::String(globalPB) + 
-            " semitones, pbScaling=" + juce::String(strip2[zoneIdx].pbRange));
+        ECM_LOG("ConfigLookup: PB Settings for Strip 2 (Zone " + juce::String(zoneIdx) + ") - targetPB=" + juce::String(globalPB)
+                + " semitones, pbScaling=" + juce::String(strip2[zoneIdx].pbRange));
     }
 }
 

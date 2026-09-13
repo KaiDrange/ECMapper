@@ -328,7 +328,7 @@ ECMapperAudioProcessor::~ECMapperAudioProcessor() {
 
 void ECMapperAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
     juce::ignoreUnused(sampleRate, samplesPerBlock);
-    logger.log("prepareToPlay() called.");
+    ECM_LOGGER(logger, "prepareToPlay() called.");
     
     updateGlobalSettings();
     midiService.start(state, &hardwareService);
@@ -341,16 +341,16 @@ void ECMapperAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBloc
     localClockOffset = 0.0;
     remoteClockOffsets.clear();
     
-    logger.log("prepareToPlay() finished.");
+    ECM_LOGGER(logger, "prepareToPlay() finished.");
 }
 
 void ECMapperAudioProcessor::releaseResources() {
-    logger.log("releaseResources() called.");
+    ECM_LOGGER(logger, "releaseResources() called.");
     midiService.stop();
     hardwareService.stopService();
     oscBridge.setSenderEnabled(false);
     oscBridge.setReceiverEnabled(false);
-    logger.log("releaseResources() finished.");
+    ECM_LOGGER(logger, "releaseResources() finished.");
 }
 
 bool ECMapperAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
@@ -399,12 +399,6 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& audioBuffer,
         midiService.reduceBreath(*targetBuffer, timing.numSamples - 1, timing.numSamples);
     dispatchPresetSlotLoad(slotToLoad);
     
-    if (!targetBuffer->isEmpty()) {
-        static int debugCounter = 0;
-        if (++debugCounter % 100 == 0)
-            juce::Logger::writeToLog("PluginProcessor: targetBuffer has " + juce::String(targetBuffer->getNumEvents()) + " events. useDirect=" + juce::String((int)useDirect));
-    }
-
     if (useDirect) {
         if (useStandaloneZoneRouting)
             midiService.sendStandaloneLegacyMidiBuffers(tempBuffer, zoneBuffers);
@@ -529,7 +523,7 @@ void ECMapperAudioProcessor::dispatchPresetSlotLoad(const int slotToLoad)
 
 void ECMapperAudioProcessor::publishRuntimeConfigSnapshot()
 {
-    logger.log("publishRuntimeConfigSnapshot: Updating snapshot with protocol " + juce::String(midiService.getProtocol() ? (std::dynamic_pointer_cast<ecm::Midi2Protocol>(midiService.getProtocol()) ? "MIDI 2.0" : "MIDI 1.0") : "None"));
+    ECM_LOGGER(logger, "publishRuntimeConfigSnapshot: Updating snapshot with protocol " + juce::String(midiService.getProtocol() ? (std::dynamic_pointer_cast<ecm::Midi2Protocol>(midiService.getProtocol()) ? "MIDI 2.0" : "MIDI 1.0") : "None"));
     midiService.setRuntimeConfigSnapshot(std::make_unique<ecm::MidiService::RuntimeConfigSnapshot>(configLookups, midiService.getProtocol(), midiService.getVoiceRouter(), midiService.getExpressionPolicy()));
 }
 
@@ -783,9 +777,9 @@ void ECMapperAudioProcessor::updateGlobalSettings() {
                                                                                   ecm::OSCBridge::isPortOccupied(12121));
 
             if (resolvedRole != role)
-                logger.log(resolvedRole == ecm::AppRole::Client
-                               ? "Host detected on network (port 12121 busy). Auto-switching to Client mode."
-                               : "Discovery port 12121 is free. Auto-switching to Host mode for the first instance.");
+                ECM_LOGGER(logger, resolvedRole == ecm::AppRole::Client
+                                       ? "Host detected on network (port 12121 busy). Auto-switching to Client mode."
+                                       : "Discovery port 12121 is free. Auto-switching to Host mode for the first instance.");
 
             role = resolvedRole;
         }
@@ -797,7 +791,7 @@ void ECMapperAudioProcessor::updateGlobalSettings() {
         clientPort = ecm::SettingsWrapper::getClientListenPort(state.state);
         
         const bool midi2 = ecm::SettingsWrapper::getMidi2Mode(state.state);
-        logger.log("updateGlobalSettings: MIDI 2.0 Mode is " + juce::String(midi2 ? "Enabled" : "Disabled"));
+        ECM_LOGGER(logger, "updateGlobalSettings: MIDI 2.0 Mode is " + juce::String(midi2 ? "Enabled" : "Disabled"));
     }
 
     hardwareService.setAppRole(role);

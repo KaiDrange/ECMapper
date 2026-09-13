@@ -101,7 +101,7 @@ OSCBridge::OSCBridge(HardwareService& hardwareService,
     instanceId_ = juce::Uuid().toString();
     hardwareService_.addListener(this);
     discoverySender_.connect("127.0.0.1", 12121);
-    logger_.log("OSCBridge created: instanceId=" + instanceId_
+    ECM_LOGGER(logger_, "OSCBridge created: instanceId=" + instanceId_
                 + ", role=" + toString(hardwareService_.getAppRole())
                 + ", clientListenPort=" + juce::String(hardwareService_.getClientListenPort()));
 }
@@ -133,7 +133,7 @@ void OSCBridge::disconnectDiscoveryReceiver() {
     }
 
     if (globalDiscoveryReceiver_ != nullptr && globalDiscoveryReceiverListenerCount_ == 0) {
-        logger_.log("Discovery OSC Receiver disconnecting shared listener on port 12121");
+        ECM_LOGGER(logger_, "Discovery OSC Receiver disconnecting shared listener on port 12121");
         globalDiscoveryReceiver_->disconnect();
         globalDiscoveryReceiver_ = nullptr;
     }
@@ -179,13 +179,13 @@ void OSCBridge::updateDiscoveryReceiver() {
     }
 
     if (createdReceiver) {
-        logger_.log("Discovery OSC Receiver listening on port " + juce::String(discoveryPort));
+        ECM_LOGGER(logger_, "Discovery OSC Receiver listening on port " + juce::String(discoveryPort));
         discoveryPortBusy_ = false;
     } else if (attachedToExistingReceiver) {
-        logger_.log("Discovery OSC Receiver reusing shared listener on port " + juce::String(discoveryPort));
+        ECM_LOGGER(logger_, "Discovery OSC Receiver reusing shared listener on port " + juce::String(discoveryPort));
         discoveryPortBusy_ = false;
     } else if (bindFailed) {
-        logger_.log("Discovery OSC Receiver FAILED to listen on port " + juce::String(discoveryPort));
+        ECM_LOGGER(logger_, "Discovery OSC Receiver FAILED to listen on port " + juce::String(discoveryPort));
         discoveryPortBusy_ = true;
     }
 }
@@ -210,7 +210,7 @@ void OSCBridge::disconnectClientReceiver() {
         }
 
         if (globalClientReceiver_ != nullptr && globalClientReceiverListenerCount_ == 0) {
-            logger_.log("Global Client Receiver disconnecting shared listener on port " + juce::String(globalClientReceiverPort_));
+            ECM_LOGGER(logger_, "Global Client Receiver disconnecting shared listener on port " + juce::String(globalClientReceiverPort_));
             globalClientReceiver_->disconnect();
             globalClientReceiver_ = nullptr;
             globalClientReceiverPort_ = 0;
@@ -311,15 +311,15 @@ void OSCBridge::updateClientReceiver() {
         }
 
         if (createdReceiver) {
-            logger_.log("Global Client Receiver listening on port " + juce::String(port)
+            ECM_LOGGER(logger_, "Global Client Receiver listening on port " + juce::String(port)
                         + (retryingFailedBind ? " after retry" : ""));
         } else if (attachedToExistingReceiver) {
-            logger_.log("Global Client Receiver reusing shared listener on port " + juce::String(port));
+            ECM_LOGGER(logger_, "Global Client Receiver reusing shared listener on port " + juce::String(port));
         } else if (shouldLogBindFailure) {
-            logger_.log("Global Client Receiver FAILED to listen on port " + juce::String(port) + ", will retry");
+            ECM_LOGGER(logger_, "Global Client Receiver FAILED to listen on port " + juce::String(port) + ", will retry");
         } else {
             if (shouldLogPortConflict)
-                logger_.log("Global Client Receiver waiting for shared listener on port " + juce::String(port));
+                ECM_LOGGER(logger_, "Global Client Receiver waiting for shared listener on port " + juce::String(port));
         }
     } else {
         disconnectClientReceiver();
@@ -337,7 +337,7 @@ void OSCBridge::refreshKnownRemoteLEDs() {
         if (!device.isRemote)
             continue;
 
-        logger_.log("OSCBridge requesting LED resync after client handover: instanceId=" + instanceId_
+        ECM_LOGGER(logger_, "OSCBridge requesting LED resync after client handover: instanceId=" + instanceId_
                     + ", dev=" + juce::String(device.dev)
                     + ", remoteOriginalDevId=" + juce::String(device.remoteOriginalDevId));
         hardwareService_.syncLEDs(device.dev);
@@ -354,7 +354,7 @@ void OSCBridge::updateConnections() {
             connections_.clear();
         }
 
-        logger_.log("OSCBridge host connections disabled: instanceId=" + instanceId_
+        ECM_LOGGER(logger_, "OSCBridge host connections disabled: instanceId=" + instanceId_
                     + ", role=" + toString(hardwareService_.getAppRole())
                     + ", clearedConnections=" + juce::String(static_cast<int>(clearedConnectionCount)));
 
@@ -363,11 +363,11 @@ void OSCBridge::updateConnections() {
     }
     
     auto devices = hardwareService_.getConnectedDevices();
-    logger_.log("OSCBridge rebuilding host connections: instanceId=" + instanceId_
+    ECM_LOGGER(logger_, "OSCBridge rebuilding host connections: instanceId=" + instanceId_
                 + ", role=" + toString(hardwareService_.getAppRole())
                 + ", deviceCount=" + juce::String(static_cast<int>(devices.size())));
     for (const auto& device : devices) {
-        logger_.log("  device: " + describeDevice(device));
+        ECM_LOGGER(logger_, "  device: " + describeDevice(device));
     }
     
     std::vector<std::unique_ptr<Connection>> newConnections;
@@ -393,9 +393,9 @@ void OSCBridge::updateConnections() {
             
             conn->sender = std::make_unique<juce::OSCSender>();
             if (conn->sender->connect(conn->ip, conn->sendPort)) {
-                logger_.log("OSC Sender connected to " + conn->ip + ":" + juce::String(conn->sendPort) + " for " + d.dev);
+                ECM_LOGGER(logger_, "OSC Sender connected to " + conn->ip + ":" + juce::String(conn->sendPort) + " for " + d.dev);
             } else {
-                logger_.log("OSC Sender FAILED to connect to " + conn->ip + ":" + juce::String(conn->sendPort) + " for " + d.dev);
+                ECM_LOGGER(logger_, "OSC Sender FAILED to connect to " + conn->ip + ":" + juce::String(conn->sendPort) + " for " + d.dev);
             }
             
             bool needsReceiver = true;
@@ -407,15 +407,15 @@ void OSCBridge::updateConnections() {
                 conn->receiver = std::make_unique<juce::OSCReceiver>();
                 if (conn->receiver->connect(conn->receivePort)) {
                     conn->receiver->addListener(this);
-                    logger_.log("OSC Receiver listening on port " + juce::String(conn->receivePort) + " for " + d.dev);
+                    ECM_LOGGER(logger_, "OSC Receiver listening on port " + juce::String(conn->receivePort) + " for " + d.dev);
                 } else {
-                    logger_.log("OSC Receiver FAILED to listen on port " + juce::String(conn->receivePort) + " for " + d.dev);
+                    ECM_LOGGER(logger_, "OSC Receiver FAILED to listen on port " + juce::String(conn->receivePort) + " for " + d.dev);
                 }
             } else {
-                logger_.log("OSC Receiver using global client receiver for " + d.dev);
+                ECM_LOGGER(logger_, "OSC Receiver using global client receiver for " + d.dev);
             }
 
-            logger_.log("  host connection prepared: "
+            ECM_LOGGER(logger_, "  host connection prepared: "
                         + describeConnection(conn->dev,
                                              conn->originalDevId,
                                              conn->type,
@@ -432,7 +432,7 @@ void OSCBridge::updateConnections() {
     {
         const juce::ScopedLock sl(connectionsLock_);
         connections_ = std::move(newConnections);
-        logger_.log("OSCBridge host connections active: instanceId=" + instanceId_
+        ECM_LOGGER(logger_, "OSCBridge host connections active: instanceId=" + instanceId_
                     + ", connectionCount=" + juce::String(static_cast<int>(connections_.size())));
     }
 
@@ -449,7 +449,7 @@ bool OSCBridge::isPortOccupied(int port) {
 
 void OSCBridge::setSenderEnabled(bool enabled) {
     if (hostEnabled_ == enabled) return;
-    logger_.log("OSCBridge setSenderEnabled(" + juce::String(enabled ? "true" : "false")
+    ECM_LOGGER(logger_, "OSCBridge setSenderEnabled(" + juce::String(enabled ? "true" : "false")
                 + "): instanceId=" + instanceId_
                 + ", role=" + toString(hardwareService_.getAppRole()));
     hostEnabled_ = enabled;
@@ -462,7 +462,7 @@ void OSCBridge::setSenderEnabled(bool enabled) {
 }
 
 void OSCBridge::setReceiverEnabled(bool enabled) {
-    logger_.log("OSCBridge setReceiverEnabled(" + juce::String(enabled ? "true" : "false")
+    ECM_LOGGER(logger_, "OSCBridge setReceiverEnabled(" + juce::String(enabled ? "true" : "false")
                 + "): instanceId=" + instanceId_
                 + ", role=" + toString(hardwareService_.getAppRole())
                 + ", clientListenPort=" + juce::String(hardwareService_.getClientListenPort()));
@@ -508,7 +508,7 @@ void OSCBridge::run() {
                 if (!d.isRemote && d.mode == ecm::DeviceMode::TransmitOSC) {
                     juce::String localIP = juce::IPAddress::getLocalAddress().toString();
                     int port = d.oscTargets.empty() ? 12130 : d.oscTargets[0].port;
-                    logger_.log("Host discovery broadcast: instanceId=" + instanceId_
+                    ECM_LOGGER(logger_, "Host discovery broadcast: instanceId=" + instanceId_
                                 + ", device=" + juce::String(d.dev)
                                 + ", type=" + toString(d.type)
                                 + ", ip=" + localIP
@@ -519,7 +519,7 @@ void OSCBridge::run() {
 
                     for (auto& conn : connections_) {
                         if (conn->mode == ecm::DeviceMode::TransmitOSC) {
-                            logger_.log("  forwarded discovery to connection: "
+                            ECM_LOGGER(logger_, "  forwarded discovery to connection: "
                                         + describeConnection(conn->dev,
                                                              conn->originalDevId,
                                                              conn->type,
@@ -646,7 +646,7 @@ void OSCBridge::oscMessageReceived(const juce::OSCMessage& message) {
             auto remotePort = getInt(message[2]);
             auto senderId = message[3].getString();
             auto remoteOriginalDevId = message[4].getString();
-            logger_.log("OSC received discovery: instanceId=" + instanceId_
+            ECM_LOGGER(logger_, "OSC received discovery: instanceId=" + instanceId_
                         + ", role=" + toString(hardwareService_.getAppRole())
                         + ", type=" + toString(devType)
                         + ", remoteIP=" + remoteIP
@@ -663,7 +663,7 @@ void OSCBridge::oscMessageReceived(const juce::OSCMessage& message) {
             auto remoteIP = message[1].getString();
             auto senderId = message[2].getString();
             auto remoteOriginalDevId = message[3].getString();
-            logger_.log("OSC received legacy discovery: instanceId=" + instanceId_
+            ECM_LOGGER(logger_, "OSC received legacy discovery: instanceId=" + instanceId_
                         + ", role=" + toString(hardwareService_.getAppRole())
                         + ", type=" + toString(devType)
                         + ", remoteIP=" + remoteIP
@@ -840,7 +840,7 @@ void OSCBridge::oscMessageReceived(const juce::OSCMessage& message) {
         juce::String devId = message[0].getString();
         juce::String senderId;
         if (message.size() >= 2) senderId = message[1].getString();
-        logger_.log("OSC received LED request: instanceId=" + instanceId_
+        ECM_LOGGER(logger_, "OSC received LED request: instanceId=" + instanceId_
                     + ", role=" + toString(hardwareService_.getAppRole())
                     + ", devId=" + devId
                     + ", senderId=" + senderId
@@ -852,7 +852,7 @@ void OSCBridge::oscMessageReceived(const juce::OSCMessage& message) {
     } else if (pattern == "/ECMapper/ping" && message.size() >= 2) {
         auto devId = message[0].getString();
         auto senderId = message[1].getString();
-        logger_.log("OSC received client ping: instanceId=" + instanceId_
+        ECM_LOGGER(logger_, "OSC received client ping: instanceId=" + instanceId_
                     + ", role=" + toString(hardwareService_.getAppRole())
                     + ", devId=" + devId
                     + ", senderId=" + senderId

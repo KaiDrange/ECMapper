@@ -5,14 +5,23 @@ namespace ecm {
 
 Logger::Logger(bool logToFile, bool logToConsole)
     : logToFile_(logToFile), logToConsole_(logToConsole) {
+#if JUCE_DEBUG
     if (logToFile_) {
         juce::File logDir("~/Documents/ECMapperLogs/");
         logDir.createDirectory();
         logFile_ = logDir.getChildFile(timeToLogTimeStamp(juce::Time::getCurrentTime()) + ".log");
     }
+#endif
+}
+
+Logger& Logger::getDefault()
+{
+    static Logger logger(false, true);
+    return logger;
 }
 
 void Logger::log(const juce::String& text) {
+#if JUCE_DEBUG
     const juce::ScopedLock sl(lock_);
     if (logToConsole_) {
         std::cout << text << std::endl;
@@ -21,6 +30,9 @@ void Logger::log(const juce::String& text) {
     if (logToFile_) {
         logFile_.appendText(timeToLogTimeStamp(juce::Time::getCurrentTime()) + ": " + text + juce::NewLine());
     }
+#else
+    juce::ignoreUnused(text);
+#endif
 }
 
 juce::String Logger::timeToLogTimeStamp(juce::Time time) {

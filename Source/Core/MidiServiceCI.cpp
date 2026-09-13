@@ -1,4 +1,5 @@
 #include "MidiService.h"
+#include "Logger.h"
 
 namespace ecm {
 
@@ -162,7 +163,7 @@ void MidiService::deviceAdded (juce::midi_ci::MUID x)
     if (x == ciDevice_->getMuid())
         return;
 
-    juce::Logger::writeToLog("MidiService: Remote MIDI-CI device discovered: 0x" + juce::String::toHexString(x.get()));
+    ECM_LOG("MidiService: Remote MIDI-CI device discovered: 0x" + juce::String::toHexString(x.get()));
 
     auto disc = juce::universal_midi_packets::Factory::makeEndpointDiscovery(1, 1, std::byte { 0x0f });
     const auto* data = reinterpret_cast<const uint32_t*>(disc.data());
@@ -194,18 +195,18 @@ void MidiService::deviceAdded (juce::midi_ci::MUID x)
 
     if (!isMidi2Mode_)
     {
-        juce::Logger::writeToLog("MidiService: Proactively initiating Protocol Negotiation for MUID 0x" + juce::String::toHexString(x.get()));
+        ECM_LOG("MidiService: Proactively initiating Protocol Negotiation for MUID 0x" + juce::String::toHexString(x.get()));
         sendInitiateProtocolNegotiation(0, x);
     }
     else
     {
-        juce::Logger::writeToLog("MidiService: Skipping proactively Protocol Negotiation for MUID 0x" + juce::String::toHexString(x.get()) + " (Already in MIDI 2.0 mode)");
+        ECM_LOG("MidiService: Skipping proactively Protocol Negotiation for MUID 0x" + juce::String::toHexString(x.get()) + " (Already in MIDI 2.0 mode)");
     }
 }
 
 void MidiService::deviceRemoved (juce::midi_ci::MUID x)
 {
-    juce::Logger::writeToLog("MidiService: Remote MIDI-CI device removed: 0x" + juce::String::toHexString(x.get()));
+    ECM_LOG("MidiService: Remote MIDI-CI device removed: 0x" + juce::String::toHexString(x.get()));
 }
 
 juce::midi_ci::PropertyReplyData MidiService::propertyGetDataRequested (juce::midi_ci::MUID, const juce::midi_ci::PropertyRequestHeader& header)
@@ -296,7 +297,7 @@ void MidiService::logMidiExpressionMode()
     else
         mode = "MIDI 1.0 (MPE/Channel-per-note)";
 
-    juce::Logger::writeToLog("MidiService: MIDI Expression Mode is now " + mode);
+    ECM_LOG("MidiService: MIDI Expression Mode is now " + mode);
 }
 
 void MidiService::sendCISysex (int group, juce::midi_ci::MUID destinationMUID, std::byte subID2, juce::Span<const std::byte> body, std::byte deviceID)
@@ -305,7 +306,7 @@ void MidiService::sendCISysex (int group, juce::midi_ci::MUID destinationMUID, s
     if (!ciDevice_)
         return;
 
-    juce::Logger::writeToLog("MidiService: Sending MIDI-CI SysEx. SubID2=0x" + juce::String::toHexString((int) subID2)
+    ECM_LOG("MidiService: Sending MIDI-CI SysEx. SubID2=0x" + juce::String::toHexString((int) subID2)
                              + " to MUID=0x" + juce::String::toHexString(destinationMUID.get()));
 
     std::vector<std::byte> msg;
@@ -393,7 +394,7 @@ void MidiService::sendInitiateProtocolNegotiation (int group, juce::midi_ci::MUI
 void MidiService::sendIdentityResponse (int group, std::byte deviceID)
 {
     const juce::ScopedLock sl(umpOutputLock_);
-    juce::Logger::writeToLog("MidiService: Sending Identity Response.");
+    ECM_LOG("MidiService: Sending Identity Response.");
 
     std::vector<std::byte> msg;
     // Standard SysEx Identity Reply payload:

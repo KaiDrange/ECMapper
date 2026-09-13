@@ -499,6 +499,24 @@ target_include_directories(StandaloneInputMidiTransposeTest PRIVATE Source)
 target_compile_definitions(StandaloneInputMidiTransposeTest PRIVATE ECMAPPER_ENABLE_HARDWARE=0 JUCE_MODAL_LOOPS_PERMITTED=1)
 juce_generate_juce_header(StandaloneInputMidiTransposeTest)
 
+juce_add_console_app(LoggerMacroBehaviorTest
+        PRODUCT_NAME "LoggerMacroBehaviorTest"
+        VERSION "1.0.0"
+        COMPANY_NAME "Tic Tech"
+        BUNDLE_ID "com.tictech.ecmapper.loggermacrobehaviortest"
+)
+
+target_sources(LoggerMacroBehaviorTest PRIVATE
+        Source/Tests/LoggerMacroBehaviorTest.cpp
+        Source/Core/Logger.cpp
+        Source/Core/Logger.h
+)
+
+target_link_libraries(LoggerMacroBehaviorTest PRIVATE ${COMMON_LIBS})
+target_include_directories(LoggerMacroBehaviorTest PRIVATE Source)
+target_compile_definitions(LoggerMacroBehaviorTest PRIVATE ECMAPPER_ENABLE_HARDWARE=0 JUCE_MODAL_LOOPS_PERMITTED=1)
+juce_generate_juce_header(LoggerMacroBehaviorTest)
+
 
 juce_add_console_app(StripDirectionCalibrationTest
         PRODUCT_NAME "StripDirectionCalibrationTest"

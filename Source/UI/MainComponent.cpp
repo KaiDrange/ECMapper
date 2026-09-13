@@ -2,6 +2,7 @@
 #include "AppStyle.h"
 #include "CalibrationDialogComponent.h"
 #include "../PluginProcessor.h"
+#include "../Core/Logger.h"
 #include "../Core/SettingsWrapper.h"
 
 namespace ecm {
@@ -110,11 +111,11 @@ MainComponent::MainComponent(juce::AudioProcessorValueTreeState& pluginStateToUs
     vst3DirectModeButton.setTooltip("Turn VST3 Direct output on or off. When off, ECMapper uses the legacy MIDI output path instead. Choose VST3 Direct when your host supports direct note-expression style output. Changes take effect the next time ECMapper is started.");
 
     midi20ModeButton.onClick = [this] {
-        juce::Logger::writeToLog("MainComponent: MIDI 2.0 button clicked");
+        ECM_LOG("MainComponent: MIDI 2.0 button clicked");
         SettingsWrapper::setMidi2Mode(midi20ModeButton.getToggleState(), this->pluginState.state);
     };
     vst3DirectModeButton.onClick = [this] {
-        juce::Logger::writeToLog("MainComponent: VST3 Direct button clicked");
+        ECM_LOG("MainComponent: VST3 Direct button clicked");
         SettingsWrapper::setPluginOutputMode(vst3DirectModeButton.getToggleState()
                                                  ? OutputTransportMode::Vst3Direct
                                                  : OutputTransportMode::LegacyMidi,
@@ -398,7 +399,7 @@ void MainComponent::handlePresetSelectionChanged()
 
 void MainComponent::valueTreePropertyChanged(juce::ValueTree& vTree, const juce::Identifier& property) {
     juce::ignoreUnused(vTree);
-    juce::Logger::writeToLog("MainComponent: Property changed: " + property.toString());
+    ECM_LOG("MainComponent: Property changed: " + property.toString());
 
     if (property == SettingsWrapper::id_midi2Mode
         || property == SettingsWrapper::id_pluginOutputMode
