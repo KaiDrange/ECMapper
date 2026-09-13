@@ -16,6 +16,8 @@ constexpr int kTransposeZone3CcNumber = 24;
 constexpr int kZone1EnableCcNumber = 25;
 constexpr int kZone3EnableCcNumber = 27;
 constexpr int kPresetParameterDefaultIndex = 0;
+constexpr int kTransposeParameterMinimum = -64;
+constexpr int kTransposeParameterMaximum = 63;
 
 bool ecmapperAppendDirectVst3Events(juce::AudioProcessor& processor, Steinberg::Vst::IEventList& outputEvents);
 
@@ -27,6 +29,31 @@ int transposeFromCc(int ccValue)
 bool enableFromCc(const int ccValue)
 {
     return juce::jlimit(0, 127, ccValue) >= 64;
+}
+
+juce::String getDeviceGroupId(const ecm::InstrumentType deviceType)
+{
+    switch (deviceType) {
+        case ecm::InstrumentType::Alpha: return "alpha";
+        case ecm::InstrumentType::Tau:   return "tau";
+        case ecm::InstrumentType::Pico:  return "pico";
+        default:                         return "device";
+    }
+}
+
+juce::String getDeviceDisplayName(const ecm::InstrumentType deviceType)
+{
+    switch (deviceType) {
+        case ecm::InstrumentType::Alpha: return "Alpha";
+        case ecm::InstrumentType::Tau:   return "Tau";
+        case ecm::InstrumentType::Pico:  return "Pico";
+        default:                         return "Device";
+    }
+}
+
+juce::String getZoneDisplayName(const ecm::Zone zone)
+{
+    return "Zone " + juce::String(static_cast<int>(zone));
 }
 
 class ZoneMidiBufferPerformanceEventSink final : public ecm::PerformanceEventSink
@@ -215,15 +242,35 @@ juce::AudioProcessorValueTreeState::ParameterLayout createTransposeParameters()
         kPresetParameterDefaultIndex));
 
     for (int device = static_cast<int>(ecm::InstrumentType::Alpha); device <= static_cast<int>(ecm::InstrumentType::Pico); ++device) {
-        for (int zone = static_cast<int>(ecm::Zone::Zone1); zone <= static_cast<int>(ecm::Zone::Zone3); ++zone) {
-            auto paramId = ecm::ZoneWrapper::getTransposeParameterID(static_cast<ecm::InstrumentType>(device), static_cast<ecm::Zone>(zone));
-            auto paramName = juce::String::formatted("Transpose %d-%d", device, zone);
-            layout.add(std::make_unique<juce::AudioParameterInt>(juce::ParameterID { paramId, 1 }, paramName, -96, 96, 0));
+        const auto deviceType = static_cast<ecm::InstrumentType>(device);
+        auto deviceGroup = std::make_unique<juce::AudioProcessorParameterGroup>(
+            getDeviceGroupId(deviceType),
+            getDeviceDisplayName(deviceType),
+            " - ");
 
-            auto enabledParamId = ecm::ZoneWrapper::getEnabledParameterID(static_cast<ecm::InstrumentType>(device), static_cast<ecm::Zone>(zone));
-            auto enabledParamName = juce::String::formatted("Enable %d-%d", device, zone);
-            layout.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID { enabledParamId, 1 }, enabledParamName, true));
+        for (int zone = static_cast<int>(ecm::Zone::Zone1); zone <= static_cast<int>(ecm::Zone::Zone3); ++zone) {
+            const auto zoneType = static_cast<ecm::Zone>(zone);
+            auto enabledParamId = ecm::ZoneWrapper::getEnabledParameterID(deviceType, zoneType);
+            auto enabledParamName = getZoneDisplayName(zoneType) + " Enable";
+            deviceGroup->addChild(std::make_unique<juce::AudioParameterBool>(
+                juce::ParameterID { enabledParamId, 1 },
+                enabledParamName,
+                true));
         }
+
+        for (int zone = static_cast<int>(ecm::Zone::Zone1); zone <= static_cast<int>(ecm::Zone::Zone3); ++zone) {
+            const auto zoneType = static_cast<ecm::Zone>(zone);
+            auto paramId = ecm::ZoneWrapper::getTransposeParameterID(deviceType, zoneType);
+            auto paramName = getZoneDisplayName(zoneType) + " Transpose";
+            deviceGroup->addChild(std::make_unique<juce::AudioParameterInt>(
+                juce::ParameterID { paramId, 1 },
+                paramName,
+                kTransposeParameterMinimum,
+                kTransposeParameterMaximum,
+                0));
+        }
+
+        layout.add(std::move(deviceGroup));
     }
 
     return layout;

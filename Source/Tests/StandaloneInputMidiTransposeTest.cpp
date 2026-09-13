@@ -8,6 +8,7 @@
 
 #include <cmath>
 #include <iostream>
+#include <utility>
 
 namespace {
 
@@ -56,6 +57,95 @@ bool applyControlMessage(ECMapperAudioProcessor& processor, int channel, int con
     juce::MidiBuffer midiMessages;
     midiMessages.addEvent(juce::MidiMessage::controllerEvent(channel, controllerNumber, controllerValue), 0);
     return processor.applyZoneControlMessages(midiMessages);
+}
+
+const juce::AudioProcessorParameterGroup* findGroupByName(const juce::AudioProcessorParameterGroup& root, const juce::String& groupName)
+{
+    for (const auto* group : root.getSubgroups(false)) {
+        if (group != nullptr && group->getName() == groupName)
+            return group;
+    }
+
+    return nullptr;
+}
+
+bool verifyParameterLayoutGroupingAndRanges()
+{
+    using namespace ecm;
+
+    ECMapperAudioProcessor processor;
+    const auto& parameterTree = processor.getParameterTree();
+    bool ok = true;
+
+    const auto topLevelParameters = parameterTree.getParameters(false);
+    ok &= expect(topLevelParameters.size() == 1,
+                 "parameter tree should keep only Preset Slot at the top level");
+    ok &= expect(topLevelParameters[0] == processor.state.getParameter(ECMapperAudioProcessor::presetSlotParameterId),
+                 "Preset Slot should remain outside the Alpha/Tau/Pico groups");
+
+    const auto topLevelGroups = parameterTree.getSubgroups(false);
+    ok &= expect(topLevelGroups.size() == 3,
+                 "parameter tree should expose exactly three top-level device groups");
+
+    const std::pair<InstrumentType, const char*> devices[] = {
+        { InstrumentType::Alpha, "Alpha" },
+        { InstrumentType::Tau, "Tau" },
+        { InstrumentType::Pico, "Pico" }
+    };
+
+    for (const auto& [deviceType, deviceName] : devices)
+    {
+        const auto* group = findGroupByName(parameterTree, deviceName);
+        ok &= expect(group != nullptr,
+                     (juce::String("parameter tree should contain the ") + deviceName + " group").toRawUTF8());
+        if (group == nullptr)
+            continue;
+
+        ok &= expect(group->getParent() == &parameterTree,
+                     (juce::String(deviceName) + " should be a top-level parameter group").toRawUTF8());
+
+        const auto groupedParameters = group->getParameters(false);
+        ok &= expect(groupedParameters.size() == 6,
+                     (juce::String(deviceName) + " should contain 6 zone parameters").toRawUTF8());
+
+        for (int zone = static_cast<int>(Zone::Zone1); zone <= static_cast<int>(Zone::Zone3); ++zone)
+        {
+            const auto zoneType = static_cast<Zone>(zone);
+            const auto zoneLabel = juce::String("Zone ") + juce::String(zone);
+
+            const auto enabledId = ZoneWrapper::getEnabledParameterID(deviceType, zoneType);
+            auto* enabledParameter = processor.state.getParameter(enabledId);
+            ok &= expect(enabledParameter != nullptr,
+                         (juce::String(deviceName) + " " + zoneLabel + " should keep its enable parameter ID").toRawUTF8());
+            ok &= expect(parameterTree.getGroupsForParameter(enabledParameter).contains(group),
+                         (juce::String(deviceName) + " " + zoneLabel + " enable should belong to the device group").toRawUTF8());
+            if (enabledParameter != nullptr)
+                ok &= expect(enabledParameter->getName(128) == zoneLabel + " Enable",
+                             (juce::String(deviceName) + " " + zoneLabel + " enable should use a host-friendly name").toRawUTF8());
+
+            const auto transposeId = ZoneWrapper::getTransposeParameterID(deviceType, zoneType);
+            auto* transposeBaseParameter = processor.state.getParameter(transposeId);
+            ok &= expect(transposeBaseParameter != nullptr,
+                         (juce::String(deviceName) + " " + zoneLabel + " should keep its transpose parameter ID").toRawUTF8());
+            ok &= expect(parameterTree.getGroupsForParameter(transposeBaseParameter).contains(group),
+                         (juce::String(deviceName) + " " + zoneLabel + " transpose should belong to the device group").toRawUTF8());
+            if (transposeBaseParameter != nullptr)
+                ok &= expect(transposeBaseParameter->getName(128) == zoneLabel + " Transpose",
+                             (juce::String(deviceName) + " " + zoneLabel + " transpose should use a host-friendly name").toRawUTF8());
+
+            auto* transposeParameter = dynamic_cast<juce::AudioParameterInt*>(transposeBaseParameter);
+            ok &= expect(transposeParameter != nullptr,
+                         (juce::String(deviceName) + " " + zoneLabel + " transpose should remain an integer parameter").toRawUTF8());
+            if (transposeParameter != nullptr)
+            {
+                const auto range = transposeParameter->getNormalisableRange();
+                ok &= expect(range.start == -64.0f && range.end == 63.0f,
+                             (juce::String(deviceName) + " " + zoneLabel + " transpose should match the MIDI CC range").toRawUTF8());
+            }
+        }
+    }
+
+    return ok;
 }
 
 bool verifyPluginDirectMidiMessageKeyRouting()
@@ -246,6 +336,8 @@ int main()
     ECMapperAudioProcessor processor;
 
     bool ok = true;
+
+    ok &= verifyParameterLayoutGroupingAndRanges();
 
     ok &= expect(applyControlMessage(processor, 1, 22, 0),
                  "global transpose CC should report a change when it updates zone 1 on all devices");
