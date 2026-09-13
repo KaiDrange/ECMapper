@@ -192,17 +192,18 @@ int main()
 
     component.lowerMPEPitchbendRange.setValue(11);
     component.lowerMPEPitchbendRange.input.onFocusLost();
+    processor.handleAsyncUpdate();
     component.refreshFromState();
 
     juce::MidiBuffer pendingMessagesAfterPbEdit;
     processor.getMidiService().drainPendingMidiMessages(pendingMessagesAfterPbEdit, 0);
+    juce::MPEZoneLayout layoutAfterPbEdit;
+    layoutAfterPbEdit.processNextMidiBuffer(pendingMessagesAfterPbEdit);
 
     ok &= expect(ecm::SettingsWrapper::getLowerMPEPB(processor.state.state) == 11,
                  "editing the lower MPE pitch-bend range through the main component should update the stored setting");
-    ok &= expect(component.pendingModeMessage.isVisible(),
-                 "editing the lower MPE pitch-bend range should show the startup-only warning message");
-    ok &= expect(component.pendingModeMessage.getText().containsIgnoreCase("next time ECMapper is started"),
-                 "editing the lower MPE pitch-bend range should reuse the existing startup-only warning text");
+    ok &= expect(!component.pendingModeMessage.isVisible(),
+                 "editing the lower MPE pitch-bend range should no longer show the startup-only warning message");
     ok &= expect(ecm::LayoutWrapper::getLayoutKey({ 0, 4, ecm::InstrumentType::Alpha }, processor.state.state).mappingValue == "72",
                  "editing the lower MPE pitch-bend range should not clear a migrated alpha layout");
     ok &= expect(!processor.state.state.getChildWithName(ecm::LayoutWrapper::id_device + juce::String((int)ecm::InstrumentType::Alpha)).isValid(),
@@ -211,8 +212,12 @@ int main()
                      .getChildWithName(ecm::LayoutWrapper::id_device + juce::String((int)ecm::InstrumentType::Alpha))
                      .isValid(),
                  "editing the lower MPE pitch-bend range should keep the alpha device tree inside the preset subtree");
-    ok &= expect(midiBufferIsEmpty(pendingMessagesAfterPbEdit),
-                 "editing the lower MPE pitch-bend range through the UI should not queue a live legacy transport layout reset");
+    ok &= expect(!midiBufferIsEmpty(pendingMessagesAfterPbEdit),
+                 "editing the lower MPE pitch-bend range through the UI should queue a live legacy transport layout update");
+    ok &= expect(layoutAfterPbEdit.getLowerZone().perNotePitchbendRange == 11,
+                 "editing the lower MPE pitch-bend range through the UI should apply the new lower-zone pitch-bend range immediately");
+    ok &= expect(std::abs(getAlphaZone1PitchBendScaling(processor) - (1.0f / 11.0f)) < 1.0e-6f,
+                 "editing the lower MPE pitch-bend range through the UI should refresh the live processor pitch-bend scaling immediately");
 
     auto loadedPicoKey = ecm::LayoutWrapper::KeyId { 0, 3, ecm::InstrumentType::Pico };
     auto loadedPicoLayout = ecm::SettingsWrapper::getPresetTree(processor.state.state)

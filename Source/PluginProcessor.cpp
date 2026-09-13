@@ -667,11 +667,13 @@ void ECMapperAudioProcessor::refreshZoneRuntimeStateFromParameters()
         }
     }
 
+    for (auto& configLookup : configLookups)
+        configLookup.updateAll();
+
     for (int device = 0; device < 3; ++device) {
         if (!deviceNeedsUpdate[device])
             continue;
 
-        configLookups[device].updateAll();
         layoutChangeHandler->sendLEDMsgForAllKeys(static_cast<ecm::InstrumentType>(device + 1));
     }
 

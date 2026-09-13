@@ -168,6 +168,55 @@ bool verifyFullLowerZoneDisablesUpperZoneButKeepsConfiguredPerNoteRange() {
     return ok;
 }
 
+bool verifyPitchbendChangesUpdateLiveTransportWithoutRestart()
+{
+    using namespace ecm;
+
+    DummyProcessor processor;
+    juce::AudioProcessorValueTreeState pluginState(processor, nullptr, "TestState", {});
+    juce::CriticalSection stateLock;
+    ConfigLookup configLookups[] = {
+        ConfigLookup(InstrumentType::Alpha, pluginState, stateLock),
+        ConfigLookup(InstrumentType::Tau, pluginState, stateLock),
+        ConfigLookup(InstrumentType::Pico, pluginState, stateLock)
+    };
+
+    SettingsWrapper::setMidi2Mode(false, pluginState.state);
+    SettingsWrapper::setLowerMPEVoiceCount(9, pluginState.state);
+    SettingsWrapper::setUpperMPEVoiceCount(4, pluginState.state);
+    SettingsWrapper::setLowerMPEPB(17, pluginState.state);
+    SettingsWrapper::setUpperMPEPB(29, pluginState.state);
+
+    MidiService midiService(configLookups, stateLock);
+    midiService.start(pluginState, nullptr);
+
+    juce::MidiBuffer startupBuffer;
+    midiService.drainPendingMidiMessages(startupBuffer);
+
+    SettingsWrapper::setLowerMPEPB(22, pluginState.state);
+    SettingsWrapper::setUpperMPEPB(35, pluginState.state);
+
+    juce::MidiBuffer updateBuffer;
+    midiService.drainPendingMidiMessages(updateBuffer);
+
+    juce::MPEZoneLayout layout;
+    layout.processNextMidiBuffer(updateBuffer);
+    midiService.stop();
+
+    bool ok = true;
+    ok &= expect(! updateBuffer.isEmpty(),
+                 "changing MPE pitch-bend ranges should emit an updated transport layout immediately");
+    ok &= expect(layout.getLowerZone().numMemberChannels == 9,
+                 "live lower-zone update should preserve the configured member channel count");
+    ok &= expect(layout.getLowerZone().perNotePitchbendRange == 22,
+                 "live lower-zone update should use the new per-note pitch-bend range without restart");
+    ok &= expect(layout.getUpperZone().numMemberChannels == 4,
+                 "live upper-zone update should preserve the configured member channel count");
+    ok &= expect(layout.getUpperZone().perNotePitchbendRange == 35,
+                 "live upper-zone update should use the new per-note pitch-bend range without restart");
+    return ok;
+}
+
 bool verifyCIPropertyReportsCurrentMPELayout() {
     using namespace ecm;
     const auto requestMuid = juce::midi_ci::MUID::makeUnchecked(0);
@@ -347,6 +396,7 @@ int main() {
 
     const bool ok = verifyStartupLayoutUsesConfiguredPerNoteRangesAndDefaultMasterRange()
                  && verifyFullLowerZoneDisablesUpperZoneButKeepsConfiguredPerNoteRange()
+                 && verifyPitchbendChangesUpdateLiveTransportWithoutRestart()
                  && verifyCIPropertyReportsCurrentMPELayout()
                  && verifyMidi2DoesNotAdvertiseLocalMPEProfile();
     juce::Logger::setCurrentLogger(nullptr);

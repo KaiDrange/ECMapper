@@ -101,11 +101,6 @@ MainComponent::MainComponent(juce::AudioProcessorValueTreeState& pluginStateToUs
         SettingsWrapper::setUpperMPEPB(upperMPEPitchbendRange.getValue(), this->pluginState.state);
     };
 
-    appliedLowerMPEVoiceCount_ = SettingsWrapper::getLowerMPEVoiceCount(pluginState.state);
-    appliedUpperMPEVoiceCount_ = SettingsWrapper::getUpperMPEVoiceCount(pluginState.state);
-    appliedLowerMPEPitchbendRange_ = SettingsWrapper::getLowerMPEPB(pluginState.state);
-    appliedUpperMPEPitchbendRange_ = SettingsWrapper::getUpperMPEPB(pluginState.state);
-
     midi2ModeEnabled = SettingsWrapper::getMidi2Mode(pluginState.state);
     pendingMidi2Mode = midi2ModeEnabled;
     configureModeButton(midi20ModeButton);
@@ -349,11 +344,7 @@ void MainComponent::refreshFromState()
 
 bool MainComponent::hasPendingRestartOnlyChanges() const
 {
-    return midi2ModeChanged
-        || SettingsWrapper::getLowerMPEVoiceCount(pluginState.state) != appliedLowerMPEVoiceCount_
-        || SettingsWrapper::getUpperMPEVoiceCount(pluginState.state) != appliedUpperMPEVoiceCount_
-        || SettingsWrapper::getLowerMPEPB(pluginState.state) != appliedLowerMPEPitchbendRange_
-        || SettingsWrapper::getUpperMPEPB(pluginState.state) != appliedUpperMPEPitchbendRange_;
+    return midi2ModeChanged;
 }
 
 void MainComponent::refreshTransportModeControls()

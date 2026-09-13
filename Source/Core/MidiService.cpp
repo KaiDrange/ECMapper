@@ -335,7 +335,7 @@ void MidiService::valueTreePropertyChanged(juce::ValueTree& tree, const juce::Id
             mpeZone_.setUpperZone(upperChannelCount, SettingsWrapper::getUpperMPEPB(rootState), defaultMPEMasterPitchbendRange);
         }
 
-        if (mpeVoiceCountChanged && transportSession_) {
+        if ((mpeVoiceCountChanged || mpePitchbendChanged) && transportSession_) {
             const juce::ScopedLock sl(pendingMessageLock_);
             transportSession_->setupTransport(pendingMidiBuffer_, mpeZone_);
         }

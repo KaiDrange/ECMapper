@@ -67,10 +67,6 @@ private:
     bool midi2ModeEnabled = false;
     bool pendingMidi2Mode = false;
     bool midi2ModeChanged = false;
-    int appliedLowerMPEVoiceCount_ = 0;
-    int appliedUpperMPEVoiceCount_ = 0;
-    int appliedLowerMPEPitchbendRange_ = 0;
-    int appliedUpperMPEPitchbendRange_ = 0;
     bool pluginOutputModeIsVst3Direct_ = false;
     bool isStandaloneApp_ = false;
     bool ignorePresetComboChange_ = false;
