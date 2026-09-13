@@ -144,6 +144,21 @@ int main()
     ok &= expect(ecm::ZoneWrapper::getTranspose(ecm::InstrumentType::Alpha, ecm::Zone::Zone1, processor.state.state) == 12,
                  "committing the alpha zone transpose edit should update the stored transpose value");
 
+    auto* alphaZone1TransposeParameter = dynamic_cast<juce::AudioParameterInt*>(
+        processor.state.getParameter(ecm::ZoneWrapper::getTransposeParameterID(ecm::InstrumentType::Alpha, ecm::Zone::Zone1)));
+    ok &= expect(alphaZone1TransposeParameter != nullptr,
+                 "the alpha zone 1 transpose parameter should be available for external updates");
+    if (alphaZone1TransposeParameter != nullptr)
+    {
+        alphaZone1TransposeParameter->setValueNotifyingHost(
+            alphaZone1TransposeParameter->getNormalisableRange().convertTo0to1(7.0f));
+        processor.handleAsyncUpdate();
+        component.alphaPage->refreshFromState();
+
+        ok &= expect(component.alphaPage->zonePanels[0]->transposeInput.input.getText() == "7",
+                     "an external transpose parameter change should refresh the alpha zone transpose field");
+    }
+
     component.lowerMPEPitchbendRange.setValue(11);
     component.lowerMPEPitchbendRange.input.onFocusLost();
     component.refreshFromState();

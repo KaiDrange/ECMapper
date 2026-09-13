@@ -176,7 +176,14 @@ void ZonePanelComponent::refreshFromState()
 {
     enableZoneButton.setToggleState(ZoneWrapper::getEnabled(deviceType, zone, pluginState.state), juce::dontSendNotification);
     if (!transposeInputDirty_ && !transposeInput.input.hasKeyboardFocus(true))
-        transposeInput.setValue(ZoneWrapper::getTranspose(deviceType, zone, pluginState.state));
+    {
+        if (auto* param = dynamic_cast<juce::AudioParameterInt*>(
+                pluginState.getParameter(ZoneWrapper::getTransposeParameterID(deviceType, zone)))) {
+            transposeInput.setValue(param->get());
+        } else {
+            transposeInput.setValue(ZoneWrapper::getTranspose(deviceType, zone, pluginState.state));
+        }
+    }
     keyPitchbendRangeInput.setValue(ZoneWrapper::getKeyPitchbend(deviceType, zone, pluginState.state));
     channelMaxPBInput.setValue(ZoneWrapper::getChannelMaxPitchbend(deviceType, zone, pluginState.state));
     midiChannelDropdown.setSelectedItemId(static_cast<int>(ZoneWrapper::getMidiChannelType(deviceType, zone, pluginState.state)));
