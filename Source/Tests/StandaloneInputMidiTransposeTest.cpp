@@ -389,6 +389,39 @@ bool verifyPresetLoadingPreservesTransportModes()
     return ok;
 }
 
+bool verifyStateRestoreKeepsZoneEnabledParameters()
+{
+    using namespace ecm;
+
+    ECMapperAudioProcessor sourceProcessor;
+    ZoneWrapper::setEnabled(InstrumentType::Alpha, Zone::Zone2, false, sourceProcessor.state.state);
+    ZoneWrapper::setEnabled(InstrumentType::Tau, Zone::Zone3, false, sourceProcessor.state.state);
+    ZoneWrapper::setEnabled(InstrumentType::Pico, Zone::Zone1, false, sourceProcessor.state.state);
+
+    juce::MemoryBlock stateData;
+    sourceProcessor.getStateInformation(stateData);
+
+    ECMapperAudioProcessor restoredProcessor;
+    restoredProcessor.setStateInformation(stateData.getData(), static_cast<int>(stateData.getSize()));
+
+    bool ok = true;
+    ok &= expect(!ZoneWrapper::getEnabled(InstrumentType::Alpha, Zone::Zone2, restoredProcessor.state.state),
+                 "restored state tree should keep Alpha zone 2 disabled");
+    ok &= expect(!ZoneWrapper::getEnabled(InstrumentType::Tau, Zone::Zone3, restoredProcessor.state.state),
+                 "restored state tree should keep Tau zone 3 disabled");
+    ok &= expect(!ZoneWrapper::getEnabled(InstrumentType::Pico, Zone::Zone1, restoredProcessor.state.state),
+                 "restored state tree should keep Pico zone 1 disabled");
+
+    ok &= expect(!getZoneEnabledValue(restoredProcessor, InstrumentType::Alpha, Zone::Zone2),
+                 "restored parameters should keep Alpha zone 2 disabled");
+    ok &= expect(!getZoneEnabledValue(restoredProcessor, InstrumentType::Tau, Zone::Zone3),
+                 "restored parameters should keep Tau zone 3 disabled");
+    ok &= expect(!getZoneEnabledValue(restoredProcessor, InstrumentType::Pico, Zone::Zone1),
+                 "restored parameters should keep Pico zone 1 disabled");
+
+    return ok;
+}
+
 bool verifyMappingNotesAcceptChannelsOneToFour()
 {
     ECMapperAudioProcessor processor;
@@ -500,6 +533,7 @@ int main()
     ok &= verifyPluginDirectMidiMessageKeyRouting();
     ok &= verifyPluginDirectMidiMessageKeyRoutingWithoutZone();
     ok &= verifyPresetLoadingPreservesTransportModes();
+    ok &= verifyStateRestoreKeepsZoneEnabledParameters();
     ok &= verifyMappingNotesAcceptChannelsOneToFour();
 
     if (!ok)

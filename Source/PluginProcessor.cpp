@@ -1494,6 +1494,7 @@ void ECMapperAudioProcessor::setStateInformation(const void* data, const int siz
         ignorePresetParameterUpdate_.store(true);
         {
             const juce::ScopedValueSetter batchGuard(presetBatchInProgress_, true);
+            syncZoneRuntimeParametersFromStateTree();
             refreshDerivedStateAfterPresetChange();
         }
     }
@@ -1643,6 +1644,38 @@ void ECMapperAudioProcessor::setCurrentPresetSelection(const int slot, const juc
     }
 }
 
+void ECMapperAudioProcessor::syncZoneRuntimeParametersFromStateTree()
+{
+    auto& liveState = state.state;
+
+    for (int device = static_cast<int>(ecm::InstrumentType::Alpha); device <= static_cast<int>(ecm::InstrumentType::Pico); ++device) {
+        for (int zone = static_cast<int>(ecm::Zone::Zone1); zone <= static_cast<int>(ecm::Zone::Zone3); ++zone) {
+            const auto deviceType = static_cast<ecm::InstrumentType>(device);
+            const auto zoneType = static_cast<ecm::Zone>(zone);
+
+            const auto transposeId = ecm::ZoneWrapper::getTransposeParameterID(deviceType, zoneType);
+            if (auto* param = dynamic_cast<juce::AudioParameterInt*>(state.getParameter(transposeId))) {
+                const auto transposeValue = ecm::ZoneWrapper::getTranspose(deviceType, zoneType, liveState);
+                if (const auto* raw = state.getRawParameterValue(transposeId)) {
+                    const auto currentValue = static_cast<int>(std::lround(raw->load()));
+                    if (currentValue != transposeValue)
+                        param->setValueNotifyingHost(param->getNormalisableRange().convertTo0to1(static_cast<float>(transposeValue)));
+                }
+            }
+
+            const auto enabledId = ecm::ZoneWrapper::getEnabledParameterID(deviceType, zoneType);
+            if (auto* param = dynamic_cast<juce::AudioParameterBool*>(state.getParameter(enabledId))) {
+                const auto enabledValue = ecm::ZoneWrapper::getEnabled(deviceType, zoneType, liveState);
+                if (const auto* raw = state.getRawParameterValue(enabledId)) {
+                    const auto currentValue = raw->load() > 0.5f;
+                    if (currentValue != enabledValue)
+                        param->setValueNotifyingHost(enabledValue ? 1.0f : 0.0f);
+                }
+            }
+        }
+    }
+}
+
 void ECMapperAudioProcessor::applyPresetState(const juce::ValueTree& snapshot)
 {
     if (!snapshot.isValid())
@@ -1662,32 +1695,7 @@ void ECMapperAudioProcessor::applyPresetState(const juce::ValueTree& snapshot)
         mergeTreeIntoLive(liveState, snapshotCopy);
         ecm::SettingsWrapper::normalizeStateTree(liveState);
 
-        for (int device = static_cast<int>(ecm::InstrumentType::Alpha); device <= static_cast<int>(ecm::InstrumentType::Pico); ++device) {
-            for (int zone = static_cast<int>(ecm::Zone::Zone1); zone <= static_cast<int>(ecm::Zone::Zone3); ++zone) {
-                const auto deviceType = static_cast<ecm::InstrumentType>(device);
-                const auto zoneType = static_cast<ecm::Zone>(zone);
-
-                auto transposeId = ecm::ZoneWrapper::getTransposeParameterID(deviceType, zoneType);
-                if (auto* param = dynamic_cast<juce::AudioParameterInt*>(state.getParameter(transposeId))) {
-                    const auto transposeValue = ecm::ZoneWrapper::getTranspose(deviceType, zoneType, liveState);
-                    if (const auto* raw = state.getRawParameterValue(transposeId)) {
-                        auto currentValue = static_cast<int>(std::lround(raw->load()));
-                        if (currentValue != transposeValue)
-                            param->setValueNotifyingHost(param->getNormalisableRange().convertTo0to1(static_cast<float>(transposeValue)));
-                    }
-                }
-
-                auto enabledId = ecm::ZoneWrapper::getEnabledParameterID(deviceType, zoneType);
-                if (auto* param = dynamic_cast<juce::AudioParameterBool*>(state.getParameter(enabledId))) {
-                    const auto enabledValue = ecm::ZoneWrapper::getEnabled(deviceType, zoneType, liveState);
-                    if (const auto* raw = state.getRawParameterValue(enabledId)) {
-                        const auto currentValue = raw->load() > 0.5f;
-                        if (currentValue != enabledValue)
-                            param->setValueNotifyingHost(enabledValue ? 1.0f : 0.0f);
-                    }
-                }
-            }
-        }
+        syncZoneRuntimeParametersFromStateTree();
 
         refreshDerivedStateAfterPresetChange();
     }

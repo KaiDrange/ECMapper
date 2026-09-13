@@ -145,6 +145,7 @@ private:
     static std::size_t transposeIndex(ecm::InstrumentType deviceType, ecm::Zone zone);
     juce::ValueTree getPresetSnapshot(int slot) const;
     void applyPresetState(const juce::ValueTree& snapshot);
+    void syncZoneRuntimeParametersFromStateTree();
     void refreshDerivedStateAfterPresetChange();
     void setCurrentPresetSelection(int slot, const juce::String& name);
     void ensureInitPresetExists();
