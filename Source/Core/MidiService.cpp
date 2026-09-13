@@ -10,6 +10,12 @@
 
 namespace ecm {
 
+namespace {
+
+constexpr int defaultMPEMasterPitchbendRange = 12;
+
+}
+
 MidiService::MidiService(ConfigLookup (&configLookups)[3], juce::CriticalSection& stateLock)
     : configLookups_(configLookups), stateLock_(stateLock) {
 }
@@ -33,11 +39,11 @@ void MidiService::start(juce::AudioProcessorValueTreeState& pluginState, Hardwar
     hardwareService_ = hs;
     pluginState_ = &pluginState;
     int lowerChannelCount = SettingsWrapper::getLowerMPEVoiceCount(pluginState.state);
-    mpeZone_.setLowerZone(lowerChannelCount, SettingsWrapper::getLowerMPEPB(pluginState.state), 2);
+    mpeZone_.setLowerZone(lowerChannelCount, SettingsWrapper::getLowerMPEPB(pluginState.state), defaultMPEMasterPitchbendRange);
     
     if (lowerChannelCount < 14) {
         int upperChannelCount = SettingsWrapper::getUpperMPEVoiceCount(pluginState.state);
-        mpeZone_.setUpperZone(upperChannelCount, SettingsWrapper::getUpperMPEPB(pluginState.state), 2);
+        mpeZone_.setUpperZone(upperChannelCount, SettingsWrapper::getUpperMPEPB(pluginState.state), defaultMPEMasterPitchbendRange);
     }
     
     for (int i = 0; i < 3; ++i) {
@@ -325,11 +331,11 @@ void MidiService::valueTreePropertyChanged(juce::ValueTree& tree, const juce::Id
         const juce::ScopedLock stateGuard(stateLock_);
         auto& rootState = pluginState_->state;
         int lowerChannelCount = SettingsWrapper::getLowerMPEVoiceCount(rootState);
-        mpeZone_.setLowerZone(lowerChannelCount, SettingsWrapper::getLowerMPEPB(rootState), 2);
+        mpeZone_.setLowerZone(lowerChannelCount, SettingsWrapper::getLowerMPEPB(rootState), defaultMPEMasterPitchbendRange);
         
         if (lowerChannelCount < 14) {
             int upperChannelCount = SettingsWrapper::getUpperMPEVoiceCount(rootState);
-            mpeZone_.setUpperZone(upperChannelCount, SettingsWrapper::getUpperMPEPB(rootState), 2);
+            mpeZone_.setUpperZone(upperChannelCount, SettingsWrapper::getUpperMPEPB(rootState), defaultMPEMasterPitchbendRange);
         }
 
         if (mpeVoiceCountChanged && transportSession_) {
@@ -363,11 +369,11 @@ void MidiService::valueTreeRedirected(juce::ValueTree& tree)
     // Refresh MPE settings
     const juce::ScopedLock stateGuard(stateLock_);
     int lowerChannelCount = SettingsWrapper::getLowerMPEVoiceCount(tree);
-    mpeZone_.setLowerZone(lowerChannelCount, SettingsWrapper::getLowerMPEPB(tree), 2);
+    mpeZone_.setLowerZone(lowerChannelCount, SettingsWrapper::getLowerMPEPB(tree), defaultMPEMasterPitchbendRange);
     
     if (lowerChannelCount < 14) {
         int upperChannelCount = SettingsWrapper::getUpperMPEVoiceCount(tree);
-        mpeZone_.setUpperZone(upperChannelCount, SettingsWrapper::getUpperMPEPB(tree), 2);
+        mpeZone_.setUpperZone(upperChannelCount, SettingsWrapper::getUpperMPEPB(tree), defaultMPEMasterPitchbendRange);
     }
 
     if (transportSession_) {
@@ -1907,256 +1913,6 @@ void MidiService::processMessage (juce::universal_midi_packets::BytesOnGroup msg
     if (isVirtualTarget_ && isMidi2Mode_) {
         if (msg.group < directUmpOutputs_.size())
             sendToOutput(directUmpOutputs_[msg.group]);
-    } else {
-        sendToOutput(umpOutput_);
-
-        if (isFirstInstance_ && isMidi2Mode_)
-            for (auto& directUmpOutput : directUmpOutputs_)
-                sendToOutput(directUmpOutput);
-    }
-}
-
-void MidiService::profileEnablementRequested (juce::midi_ci::MUID, juce::midi_ci::ProfileAtAddress profileAtAddress, int numChannels, bool enabled) {
-    if (!initialized_ || !ciDevice_) return;
-    if (auto* host = ciDevice_->getProfileHost())
-        host->setProfileEnablement (profileAtAddress, enabled ? numChannels : 0);
-}
-
-void MidiService::deviceAdded (juce::midi_ci::MUID x) {
-    if (!initialized_ || !ciDevice_) return;
-    if (x == ciDevice_->getMuid()) return;
-
-    juce::Logger::writeToLog("MidiService: Remote MIDI-CI device discovered: 0x" + juce::String::toHexString(x.get()));
-
-    // 1. Initiate UMP Endpoint Discovery
-    juce::MidiBuffer identBuffer;
-    auto disc = juce::universal_midi_packets::Factory::makeEndpointDiscovery(1, 1, (std::byte)0x0f);
-    const auto* data = reinterpret_cast<const uint32_t*>(disc.data());
-    const size_t numWords = (size_t)disc.size();
-    
-    const juce::ScopedLock sl(umpOutputLock_);
-    if (isVirtualTarget_ && isMidi2Mode_)
-    {
-        for (auto& directUmpOutput : directUmpOutputs_)
-        {
-            if (!directUmpOutput.isAlive())
-                continue;
-
-            juce::universal_midi_packets::Iterator begin(data, numWords);
-            juce::universal_midi_packets::Iterator end(data + numWords, 0);
-            directUmpOutput.send(begin, end);
-        }
-    }
-    else if (umpOutput_.isAlive())
-    {
-        juce::universal_midi_packets::Iterator begin(data, numWords);
-        juce::universal_midi_packets::Iterator end(data + numWords, 0);
-        umpOutput_.send(begin, end);
-    }
-
-    // 2. Inquiry profiles for the new device
-    ciDevice_->sendProfileInquiry(x, juce::midi_ci::ChannelInGroup::wholeGroup);
-    ciDevice_->sendProfileInquiry(x, juce::midi_ci::ChannelInGroup::channel0);
-
-    // 3. Inquiry property capabilities
-    ciDevice_->sendPropertyCapabilitiesInquiry(x);
-
-    // 4. Proactively initiate Protocol Negotiation ONLY if we are in MIDI 1.0 mode
-    // or if we suspect the other side needs a nudge to MIDI 2.0.
-    // In MIDI 2.0 native connections, this is often redundant and can cause errors in strict hosts.
-    if (!isMidi2Mode_)
-    {
-        juce::Logger::writeToLog("MidiService: Proactively initiating Protocol Negotiation for MUID 0x" + juce::String::toHexString(x.get()));
-        sendInitiateProtocolNegotiation(0, x);
-    }
-    else
-    {
-        juce::Logger::writeToLog("MidiService: Skipping proactively Protocol Negotiation for MUID 0x" + juce::String::toHexString(x.get()) + " (Already in MIDI 2.0 mode)");
-    }
-}
-
-void MidiService::deviceRemoved (juce::midi_ci::MUID x) {
-    juce::Logger::writeToLog("MidiService: Remote MIDI-CI device removed: 0x" + juce::String::toHexString(x.get()));
-}
-
-juce::midi_ci::PropertyReplyData MidiService::propertyGetDataRequested (juce::midi_ci::MUID, const juce::midi_ci::PropertyRequestHeader&) {
-    return {};
-}
-
-juce::midi_ci::PropertyReplyHeader MidiService::propertySetDataRequested (juce::midi_ci::MUID, const juce::midi_ci::PropertyRequestData&) {
-    juce::midi_ci::PropertyReplyHeader h;
-    h.status = 404;
-    return h;
-}
-
-bool MidiService::subscriptionStartRequested (juce::midi_ci::MUID, const juce::midi_ci::PropertySubscriptionHeader&) {
-    return false;
-}
-
-void MidiService::subscriptionDidStart (juce::midi_ci::MUID, const juce::String&, const juce::midi_ci::PropertySubscriptionHeader&) {
-}
-
-void MidiService::subscriptionWillEnd (juce::midi_ci::MUID, const juce::midi_ci::Subscription&) {
-}
-
-void MidiService::profileStateReceived (juce::midi_ci::MUID x, juce::midi_ci::ChannelInGroup destination) {
-    if (!initialized_ || !ciDevice_) return;
-    auto isMPE = [](const juce::midi_ci::Profile& p) {
-        return (p[0] == std::byte{0x7E} || p[0] == std::byte{0x7F}) && p[1] == std::byte{0x01} && p[3] == std::byte{0x01};
-    };
-
-    bool mpeFound = false;
-    if (auto* state = ciDevice_->getProfileStateForMuid (x, juce::midi_ci::ChannelAddress().withGroup(0).withChannel(destination))) {
-        for (auto& p : state->getActive()) {
-            if (isMPE(p)) mpeFound = true;
-        }
-        for (auto& p : state->getInactive()) {
-            if (isMPE(p)) mpeFound = true;
-        }
-    }
-
-    if (mpeFound && !remoteSupportsPerNote_) {
-        remoteSupportsPerNote_ = true;
-        if (voiceRouter_) voiceRouter_->setRemoteSupportsPerNote(true);
-        logMidiExpressionMode();
-    }
-}
-
-void MidiService::profileEnablementChanged (juce::midi_ci::MUID, juce::midi_ci::ChannelInGroup, juce::midi_ci::Profile profile, int numChannels) {
-    auto isMPE = [](const juce::midi_ci::Profile& p) {
-        return (p[0] == std::byte{0x7E} || p[0] == std::byte{0x7F}) && p[1] == std::byte{0x01} && p[3] == std::byte{0x01};
-    };
-
-    if (isMPE(profile) && numChannels > 0 && !remoteSupportsPerNote_) {
-        remoteSupportsPerNote_ = true;
-        if (voiceRouter_) voiceRouter_->setRemoteSupportsPerNote(true);
-        logMidiExpressionMode();
-    }
-}
-
-void MidiService::logMidiExpressionMode() {
-    juce::String mode;
-    if (isMidi2Mode_) {
-        if (remoteSupportsPerNote_)
-            mode = "Native MIDI 2.0 Per-Note Expression";
-        else
-            mode = "MIDI 2.0 with MPE Fallback";
-    } else {
-        mode = "MIDI 1.0 (MPE/Channel-per-note)";
-    }
-    juce::Logger::writeToLog("MidiService: MIDI Expression Mode is now " + mode);
-}
-
-void MidiService::sendCISysex (int group, juce::midi_ci::MUID destinationMUID, std::byte subID2, juce::Span<const std::byte> body, std::byte deviceID) {
-    const juce::ScopedLock sl(umpOutputLock_);
-    if (!ciDevice_) return;
-
-    juce::Logger::writeToLog("MidiService: Sending MIDI-CI SysEx. SubID2=0x" + juce::String::toHexString((int)subID2) + 
-                             " to MUID=0x" + juce::String::toHexString(destinationMUID.get()));
-
-    std::vector<std::byte> msg;
-    msg.push_back (std::byte { 0x7e }); // Universal Non-Real Time
-    msg.push_back (deviceID);
-    msg.push_back (std::byte { 0x0d }); // MIDI-CI
-    msg.push_back (subID2);
-    msg.push_back (std::byte { 0x02 }); // Version (v1.2)
-
-    auto ourMuid = ciDevice_->getMuid().get();
-    msg.push_back (std::byte { (uint8_t) (ourMuid & 0x7f) });
-    msg.push_back (std::byte { (uint8_t) ((ourMuid >> 7) & 0x7f) });
-    msg.push_back (std::byte { (uint8_t) ((ourMuid >> 14) & 0x7f) });
-    msg.push_back (std::byte { (uint8_t) ((ourMuid >> 21) & 0x7f) });
-
-    auto destMuid = destinationMUID.get();
-    msg.push_back (std::byte { (uint8_t) (destMuid & 0x7f) });
-    msg.push_back (std::byte { (uint8_t) ((destMuid >> 7) & 0x7f) });
-    msg.push_back (std::byte { (uint8_t) ((destMuid >> 14) & 0x7f) });
-    msg.push_back (std::byte { (uint8_t) ((destMuid >> 21) & 0x7f) });
-
-    for (auto b : body)
-        msg.push_back (b);
-
-    juce::universal_midi_packets::BytesOnGroup bog { (uint8_t) group, juce::Span<const std::byte> (msg.data(), msg.size()) };
-    
-    auto sendToOutput = [&](juce::universal_midi_packets::Output& out) {
-        if (out.isAlive()) {
-            juce::universal_midi_packets::Conversion::umpFrom7BitData (bog, [&out] (const juce::universal_midi_packets::View& v) {
-                using namespace juce::universal_midi_packets;
-                out.send (Iterator (v.data(), v.size()), Iterator (v.data() + v.size(), 0));
-            });
-        }
-    };
-
-    if (isVirtualTarget_ && isMidi2Mode_) {
-        if (group >= 0 && static_cast<size_t>(group) < directUmpOutputs_.size())
-            sendToOutput(directUmpOutputs_[static_cast<size_t>(group)]);
-    } else {
-        sendToOutput(umpOutput_);
-
-        if (isFirstInstance_ && isMidi2Mode_)
-            for (auto& directUmpOutput : directUmpOutputs_)
-                sendToOutput(directUmpOutput);
-    }
-}
-
-void MidiService::sendInitiateProtocolNegotiation (int group, juce::midi_ci::MUID destinationMUID, std::byte deviceID) {
-    std::vector<std::byte> body;
-    body.push_back (std::byte { 0x30 }); // Authority Level
-    body.push_back (std::byte { 0x01 }); // Number of protocols
-    // MIDI 2.0
-    body.push_back (std::byte { 0x02 });
-    body.push_back (std::byte { 0x00 });
-    body.push_back (std::byte { 0x00 });
-    body.push_back (std::byte { 0x00 });
-    body.push_back (std::byte { 0x00 });
-    
-    sendCISysex (group, destinationMUID, std::byte{0x10}, juce::Span<const std::byte> (body.data(), body.size()), deviceID);
-}
-
-void MidiService::sendIdentityResponse (int group, std::byte deviceID) {
-    const juce::ScopedLock sl(umpOutputLock_);
-
-    juce::Logger::writeToLog("MidiService: Sending Identity Response.");
-
-    std::vector<std::byte> msg;
-    msg.push_back (std::byte { 0x7e }); // Universal Non-Real Time
-    msg.push_back (deviceID);           // Device ID
-    msg.push_back (std::byte { 0x06 }); // General Information
-    msg.push_back (std::byte { 0x02 }); // Identity Reply
-    
-    // Manufacturer (Research/Development 0x7D)
-    msg.push_back (std::byte{0x7D});
-    msg.push_back (std::byte{0x00});
-    msg.push_back (std::byte{0x00});
-
-    // Family (2 bytes, LSB first)
-    msg.push_back (std::byte{0x01});
-    msg.push_back (std::byte{0x00});
-    
-    // Model (2 bytes, LSB first)
-    msg.push_back (std::byte{0x01});
-    msg.push_back (std::byte{0x00});
-    
-    // Revision (4 bytes, LSB first)
-    msg.push_back (std::byte{0x01});
-    msg.push_back (std::byte{0x00});
-    msg.push_back (std::byte{0x00});
-    msg.push_back (std::byte{0x00});
-
-    juce::universal_midi_packets::BytesOnGroup bog { (uint8_t) group, juce::Span<const std::byte> (msg.data(), msg.size()) };
-    
-    auto sendToOutput = [&](juce::universal_midi_packets::Output& out) {
-        if (out.isAlive()) {
-            juce::universal_midi_packets::Conversion::umpFrom7BitData (bog, [&out] (const juce::universal_midi_packets::View& v) {
-                using namespace juce::universal_midi_packets;
-                out.send (Iterator (v.data(), v.size()), Iterator (v.data() + v.size(), 0));
-            });
-        }
-    };
-
-    if (isVirtualTarget_ && isMidi2Mode_) {
-        if (group >= 0 && static_cast<size_t>(group) < directUmpOutputs_.size())
-            sendToOutput(directUmpOutputs_[static_cast<size_t>(group)]);
     } else {
         sendToOutput(umpOutput_);
 

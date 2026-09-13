@@ -412,11 +412,6 @@ void ECMapperAudioProcessor::prepareMidiMessagesForBlock(juce::MidiBuffer& midiM
 
     midiMessages.clear();
 
-    if (!layoutChangeHandler->layoutMidiRPNSent) {
-        midiService.createLayoutRPNs(midiMessages);
-        layoutChangeHandler->layoutMidiRPNSent = true;
-    }
-
     midiService.drainPendingMidiMessages(midiMessages, 0);
 }
 

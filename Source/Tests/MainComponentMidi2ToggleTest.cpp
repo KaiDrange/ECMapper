@@ -15,6 +15,14 @@ bool midiBufferIsEmpty(const juce::MidiBuffer& buffer)
     return buffer.isEmpty();
 }
 
+juce::MPEZoneLayout collectLayout(const juce::MidiBuffer& buffer)
+{
+    juce::MPEZoneLayout layout;
+    juce::MidiBuffer bufferCopy(buffer);
+    layout.processNextMidiBuffer(bufferCopy);
+    return layout;
+}
+
 bool expect(bool condition, const char* message)
 {
     if (!condition)
@@ -36,6 +44,16 @@ int main()
     ECMapperAudioProcessor processor;
     SettingsWrapper::setMidi2Mode(false, processor.state.state);
     SettingsWrapper::setPluginOutputMode(ecm::OutputTransportMode::LegacyMidi, processor.state.state);
+    processor.getMidiService().stop();
+    processor.getMidiService().start(processor.state, &processor.getHardwareService());
+
+    juce::MidiBuffer expectedStartupLayout;
+    processor.getMidiService().createLayoutRPNs(expectedStartupLayout);
+
+    juce::MidiBuffer firstBlockMessages;
+    processor.prepareMidiMessagesForBlock(firstBlockMessages);
+
+    const auto startupLayout = collectLayout(firstBlockMessages);
 
     ecm::MainComponent component(processor.state, processor.getHardwareService(), processor, nullptr);
     component.isStandaloneApp_ = true;
@@ -43,6 +61,10 @@ int main()
     component.resized();
 
     bool ok = true;
+    ok &= expect(firstBlockMessages.getNumEvents() == expectedStartupLayout.getNumEvents(),
+                 "the first prepared MIDI block should only include one copy of the startup MPE layout");
+    ok &= expect(startupLayout.getLowerZone().numMemberChannels == collectLayout(expectedStartupLayout).getLowerZone().numMemberChannels,
+                 "the first prepared MIDI block should still contain the expected lower-zone startup layout");
     ok &= expect(component.calibrationButton.getButtonText() == juce::String(juce::CharPointer_UTF8("\xE2\x9A\x99")),
                  "main component should show a cogwheel calibration button");
     ok &= expect(component.calibrationButton.getTooltip().containsIgnoreCase("calibration"),
@@ -94,9 +116,6 @@ int main()
     component.refreshFromState();
     ok &= expect(ecm::LayoutWrapper::getLayoutKey({ 0, 4, ecm::InstrumentType::Alpha }, processor.state.state).mappingValue == "72",
                  "a legacy alpha layout should remain readable before editing the lower MPE pitch-bend range");
-
-    juce::MidiBuffer startupMessages;
-    processor.getMidiService().drainPendingMidiMessages(startupMessages, 0);
 
     component.lowerMPEPitchbendRange.setValue(11);
     component.lowerMPEPitchbendRange.input.onFocusLost();
