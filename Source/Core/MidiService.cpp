@@ -14,6 +14,20 @@ namespace ecm {
 namespace {
 
 constexpr int defaultMPEMasterPitchbendRange = 12;
+constexpr float alphaTauInputCompensation = 1.2f;
+
+bool usesAlphaTauCompensation(const InstrumentType deviceType)
+{
+    return deviceType == InstrumentType::Alpha || deviceType == InstrumentType::Tau;
+}
+
+float applyAlphaTauCompensation(const InstrumentType deviceType, const float value)
+{
+    if (!usesAlphaTauCompensation(deviceType))
+        return value;
+
+    return std::clamp(value * alphaTauInputCompensation, 0.0f, 1.0f);
+}
 
 }
 
@@ -442,7 +456,7 @@ void MidiService::processMessage(const osc::Message& oscMsg, osc::Message& outgo
         }
         case osc::MessageType::Breath: {
             float prevBreathValue = ehBreath_[deviceIndex];
-            ehBreath_[deviceIndex] = std::abs(oscMsg.value);
+            ehBreath_[deviceIndex] = applyAlphaTauCompensation(oscMsg.device, std::abs(oscMsg.value));
             breathSamplesSinceUpdate_[deviceIndex] = 0;
             if ((ehBreath_[deviceIndex] > breathZeroThreshold_[deviceIndex]) || 
                 (ehBreath_[deviceIndex] < breathZeroThreshold_[deviceIndex] && prevBreathValue > 0.0f)) {
@@ -1861,10 +1875,14 @@ float MidiService::calculateNoteOffVelocity(InstrumentType deviceType, KeyState*
 
     const auto& history = state->ehPressureHistory;
     const auto historySize = history.size();
-    const float releasePressure = history.back();
-    const float recent1 = historySize >= 2U ? history[historySize - 2U] : releasePressure;
-    const float recent2 = historySize >= 3U ? history[historySize - 3U] : recent1;
-    const float recent3 = historySize >= 4U ? history[historySize - 4U] : recent2;
+    const bool hasSyntheticZeroRelease = historySize >= 2U
+                                      && history.back() <= 0.0001f
+                                      && history[historySize - 2U] > 0.0001f;
+    const auto releaseIndex = hasSyntheticZeroRelease ? historySize - 2U : historySize - 1U;
+    const float releasePressure = history[releaseIndex];
+    const float recent1 = releaseIndex >= 1U ? history[releaseIndex - 1U] : releasePressure;
+    const float recent2 = releaseIndex >= 2U ? history[releaseIndex - 2U] : recent1;
+    const float recent3 = releaseIndex >= 3U ? history[releaseIndex - 3U] : recent2;
 
     const float heldPressure = recent1 * 0.5f + recent2 * 0.3f + recent3 * 0.2f;
     const float releaseDrop = std::max(heldPressure - releasePressure, 0.0f);
@@ -1872,6 +1890,7 @@ float MidiService::calculateNoteOffVelocity(InstrumentType deviceType, KeyState*
     const float heldPressureFloor = std::clamp(heldPressure * gain * 6.0f, 0.0f, 1.0f);
     float norm = std::clamp(relativeReleaseSpeed * 0.85f + heldPressureFloor * 0.15f, 0.0f, 1.0f);
     norm = std::pow(norm, 0.65f);
+    norm = applyAlphaTauCompensation(deviceType, norm);
 
     recordVisualEvent(deviceType, ExpressionCurveTarget::ReleaseVelocity, norm);
     norm = applyExpressionCurve(deviceType, ExpressionCurveTarget::ReleaseVelocity, norm, false);

@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <iostream>
@@ -17,6 +18,15 @@ namespace {
 bool expect(bool condition, const char* message) {
     if (!condition) {
         std::cerr << message << std::endl;
+        return false;
+    }
+
+    return true;
+}
+
+bool expectNear(float actual, float expected, float tolerance, const char* message) {
+    if (std::abs(actual - expected) > tolerance) {
+        std::cerr << message << " expected=" << expected << " actual=" << actual << std::endl;
         return false;
     }
 
@@ -78,9 +88,9 @@ ecm::osc::Message makeKeyMessage(float pressure, bool active, uint64_t timestamp
     return message;
 }
 
-void configureMappedKey(ecm::ConfigLookup& configLookup) {
+void configureMappedKey(ecm::ConfigLookup& configLookup, ecm::InstrumentType deviceType) {
     auto& key = configLookup.keys[0][0];
-    key.keyId = { 0, 0, ecm::InstrumentType::Alpha };
+    key.keyId = { 0, 0, deviceType };
     key.mapType = ecm::KeyMappingType::Note;
     key.notes = { 60, -1, -1, -1 };
     key.output = ecm::MidiChannelType::Chan1;
@@ -98,7 +108,9 @@ const ecm::PerformanceEvent* findNoteOff(const std::vector<ecm::PerformanceEvent
     return nullptr;
 }
 
-std::optional<float> captureReleaseVelocity(const std::vector<float>& activePressures, float releasePressure) {
+std::optional<float> captureReleaseVelocity(ecm::InstrumentType deviceType,
+                                           const std::vector<float>& activePressures,
+                                           float releasePressure) {
     using namespace ecm;
 
     DummyProcessor processor;
@@ -114,7 +126,8 @@ std::optional<float> captureReleaseVelocity(const std::vector<float>& activePres
 
     MidiService midiService(configLookups, stateLock);
     midiService.start(pluginState, nullptr);
-    configureMappedKey(configLookups[0]);
+    const auto lookupIndex = static_cast<int>(deviceType) - 1;
+    configureMappedKey(configLookups[lookupIndex], deviceType);
 
     midiService.setRuntimeConfigSnapshot(std::make_unique<MidiService::RuntimeConfigSnapshot>(
         configLookups,
@@ -129,10 +142,12 @@ std::optional<float> captureReleaseVelocity(const std::vector<float>& activePres
 
     for (size_t i = 0; i < activePressures.size(); ++i) {
         auto message = makeKeyMessage(activePressures[i], true, startTimestamp + static_cast<uint64_t>(i) * 20'000ULL);
+        message.device = deviceType;
         midiService.processMessage(message, outgoingMessage, midiBuffer, sink, 0, nullptr);
     }
 
     auto releaseMessage = makeKeyMessage(releasePressure, false, startTimestamp + static_cast<uint64_t>(activePressures.size()) * 20'000ULL);
+    releaseMessage.device = deviceType;
     midiService.processMessage(releaseMessage, outgoingMessage, midiBuffer, sink, 0, nullptr);
 
     const auto* noteOff = findNoteOff(sink.events);
@@ -145,8 +160,8 @@ std::optional<float> captureReleaseVelocity(const std::vector<float>& activePres
 }
 
 bool verifyStaleSampleDoesNotDominateReleaseVelocity() {
-    const auto lowOldest = captureReleaseVelocity({ 0.02f, 0.04f, 0.06f, 0.02f, 0.09f, 0.08f, 0.07f, 0.06f }, 0.01f);
-    const auto highOldest = captureReleaseVelocity({ 0.02f, 0.04f, 0.06f, 0.08f, 0.09f, 0.08f, 0.07f, 0.06f }, 0.01f);
+    const auto lowOldest = captureReleaseVelocity(ecm::InstrumentType::Alpha, { 0.02f, 0.04f, 0.06f, 0.02f, 0.09f, 0.08f, 0.07f, 0.06f }, 0.01f);
+    const auto highOldest = captureReleaseVelocity(ecm::InstrumentType::Alpha, { 0.02f, 0.04f, 0.06f, 0.08f, 0.09f, 0.08f, 0.07f, 0.06f }, 0.01f);
 
     bool ok = true;
     ok &= expect(lowOldest.has_value(), "expected note-off velocity for the low-oldest sequence");
@@ -161,8 +176,8 @@ bool verifyStaleSampleDoesNotDominateReleaseVelocity() {
 }
 
 bool verifyRecentReleaseShapeDrivesReleaseVelocity() {
-    const auto slowRelease = captureReleaseVelocity({ 0.02f, 0.03f, 0.04f, 0.05f, 0.07f, 0.07f, 0.06f, 0.05f }, 0.04f);
-    const auto quickRelease = captureReleaseVelocity({ 0.02f, 0.03f, 0.04f, 0.05f, 0.07f, 0.07f, 0.06f, 0.05f }, 0.01f);
+    const auto slowRelease = captureReleaseVelocity(ecm::InstrumentType::Alpha, { 0.02f, 0.03f, 0.04f, 0.05f, 0.07f, 0.07f, 0.06f, 0.05f }, 0.04f);
+    const auto quickRelease = captureReleaseVelocity(ecm::InstrumentType::Alpha, { 0.02f, 0.03f, 0.04f, 0.05f, 0.07f, 0.07f, 0.06f, 0.05f }, 0.01f);
 
     bool ok = true;
     ok &= expect(slowRelease.has_value(), "expected note-off velocity for the slow release");
@@ -177,7 +192,7 @@ bool verifyRecentReleaseShapeDrivesReleaseVelocity() {
 }
 
 bool verifyFastReleaseDoesNotStickToBottomOfRange() {
-    const auto fastRelease = captureReleaseVelocity({ 0.01f, 0.02f, 0.03f, 0.04f, 0.05f, 0.06f, 0.04f }, 0.005f);
+    const auto fastRelease = captureReleaseVelocity(ecm::InstrumentType::Alpha, { 0.01f, 0.02f, 0.03f, 0.04f, 0.05f, 0.06f, 0.04f }, 0.005f);
 
     bool ok = true;
     ok &= expect(fastRelease.has_value(), "expected note-off velocity for the fast release");
@@ -191,8 +206,8 @@ bool verifyFastReleaseDoesNotStickToBottomOfRange() {
 }
 
 bool verifyQuickReleaseIsNotDrivenByAbsolutePressure() {
-    const auto softQuickRelease = captureReleaseVelocity({ 0.02f, 0.03f, 0.04f, 0.05f, 0.06f, 0.05f, 0.04f, 0.03f }, 0.01f);
-    const auto hardQuickRelease = captureReleaseVelocity({ 0.20f, 0.30f, 0.40f, 0.50f, 0.60f, 0.50f, 0.40f, 0.30f }, 0.10f);
+    const auto softQuickRelease = captureReleaseVelocity(ecm::InstrumentType::Alpha, { 0.02f, 0.03f, 0.04f, 0.05f, 0.06f, 0.05f, 0.04f, 0.03f }, 0.01f);
+    const auto hardQuickRelease = captureReleaseVelocity(ecm::InstrumentType::Alpha, { 0.20f, 0.30f, 0.40f, 0.50f, 0.60f, 0.50f, 0.40f, 0.30f }, 0.10f);
 
     bool ok = true;
     ok &= expect(softQuickRelease.has_value(), "expected note-off velocity for the soft quick release");
@@ -201,6 +216,63 @@ bool verifyQuickReleaseIsNotDrivenByAbsolutePressure() {
     if (softQuickRelease.has_value() && hardQuickRelease.has_value()) {
         ok &= expect(std::abs(*softQuickRelease - *hardQuickRelease) < 0.12f,
                      "equally quick releases should stay similar even when the absolute held pressure changes");
+    }
+
+    return ok;
+}
+
+bool verifyTauForcedZeroReleaseDoesNotPegNearMax() {
+    const auto tauForcedZeroRelease = captureReleaseVelocity(ecm::InstrumentType::Tau,
+                                                             { 0.02f, 0.03f, 0.04f, 0.05f, 0.06f, 0.05f, 0.04f, 0.03f },
+                                                             0.0f);
+
+    bool ok = true;
+    ok &= expect(tauForcedZeroRelease.has_value(), "expected note-off velocity for Tau's forced zero release sample");
+
+    if (tauForcedZeroRelease.has_value()) {
+        ok &= expect(*tauForcedZeroRelease < 0.70f,
+                     "Tau key-up should not force release velocity near the top of the range when the recent pressure decline is gentle");
+    }
+
+    return ok;
+}
+
+bool verifyAlphaForcedZeroReleaseDoesNotPegNearMax() {
+    const auto alphaForcedZeroRelease = captureReleaseVelocity(ecm::InstrumentType::Alpha,
+                                                               { 0.02f, 0.03f, 0.04f, 0.05f, 0.06f, 0.05f, 0.04f, 0.03f },
+                                                               0.0f);
+
+    bool ok = true;
+    ok &= expect(alphaForcedZeroRelease.has_value(), "expected note-off velocity for Alpha's forced zero release sample");
+
+    if (alphaForcedZeroRelease.has_value()) {
+        ok &= expect(*alphaForcedZeroRelease < 0.70f,
+                     "Alpha key-up should not force release velocity near the top of the range when the recent pressure decline is gentle");
+    }
+
+    return ok;
+}
+
+bool verifyAlphaAndTauReleaseVelocityReceiveTheRequestedBoost() {
+    const std::vector<float> activePressures { 0.02f, 0.03f, 0.04f, 0.05f, 0.07f, 0.07f, 0.06f, 0.05f };
+    constexpr float releasePressure = 0.04f;
+    constexpr float expectedBoost = 1.2f;
+
+    const auto alphaRelease = captureReleaseVelocity(ecm::InstrumentType::Alpha, activePressures, releasePressure);
+    const auto tauRelease = captureReleaseVelocity(ecm::InstrumentType::Tau, activePressures, releasePressure);
+    const auto picoRelease = captureReleaseVelocity(ecm::InstrumentType::Pico, activePressures, releasePressure);
+
+    bool ok = true;
+    ok &= expect(alphaRelease.has_value(), "expected note-off velocity for Alpha boost verification");
+    ok &= expect(tauRelease.has_value(), "expected note-off velocity for Tau boost verification");
+    ok &= expect(picoRelease.has_value(), "expected note-off velocity for Pico boost verification");
+
+    if (alphaRelease.has_value() && tauRelease.has_value() && picoRelease.has_value()) {
+        const float expectedBoostedValue = std::min(*picoRelease * expectedBoost, 1.0f);
+        ok &= expectNear(*alphaRelease, expectedBoostedValue, 0.02f,
+                         "Alpha release velocity should receive the requested correction relative to Pico");
+        ok &= expectNear(*tauRelease, expectedBoostedValue, 0.02f,
+                         "Tau release velocity should receive the requested correction relative to Pico");
     }
 
     return ok;
@@ -218,6 +290,9 @@ int main() {
     ok &= verifyRecentReleaseShapeDrivesReleaseVelocity();
     ok &= verifyFastReleaseDoesNotStickToBottomOfRange();
     ok &= verifyQuickReleaseIsNotDrivenByAbsolutePressure();
+    ok &= verifyAlphaForcedZeroReleaseDoesNotPegNearMax();
+    ok &= verifyTauForcedZeroReleaseDoesNotPegNearMax();
+    ok &= verifyAlphaAndTauReleaseVelocityReceiveTheRequestedBoost();
 
     juce::Logger::setCurrentLogger(nullptr);
 
