@@ -3,6 +3,7 @@
 #undef private
 
 #include "Core/LayoutWrapper.h"
+#include "Core/ExpressionCurveWrapper.h"
 #include "Core/SettingsWrapper.h"
 #include "Core/ZoneWrapper.h"
 
@@ -23,6 +24,11 @@ bool expect(bool condition, const char* message)
     return true;
 }
 
+bool expectNear(double actual, double expected, double tolerance, const char* message)
+{
+    return expect(std::abs(actual - expected) <= tolerance, message);
+}
+
 int getTransposeValue(ECMapperAudioProcessor& processor, ecm::InstrumentType deviceType, ecm::Zone zone)
 {
     const auto parameterId = ecm::ZoneWrapper::getTransposeParameterID(deviceType, zone);
@@ -39,6 +45,97 @@ bool getZoneEnabledValue(ECMapperAudioProcessor& processor, ecm::InstrumentType 
         return raw->load() > 0.5f;
 
     return false;
+}
+
+bool verifyInitPresetDefaultState()
+{
+    using namespace ecm;
+
+    ECMapperAudioProcessor processor;
+    bool ok = true;
+
+    ok &= expect(processor.currentPresetSlot_.load() == 1,
+                 "processor should default to preset slot 1 when no state is restored");
+    ok &= expect(processor.getCurrentPresetName() == "Init",
+                 "processor should default to the Init preset name when no state is restored");
+    ok &= expect(processor.hasPresetSlot(1),
+                 "processor should auto-create preset slot 1 when no preset bank exists yet");
+
+    auto initSnapshot = processor.getPresetSnapshot(1);
+    ok &= expect(initSnapshot.isValid(),
+                 "auto-created preset slot 1 should contain a valid preset snapshot");
+    if (!initSnapshot.isValid())
+        return false;
+
+    auto& liveState = processor.state.state;
+
+    ok &= expect(SettingsWrapper::getLowerMPEVoiceCount(liveState) == 15,
+                 "default Init preset should use 15 lower-zone MPE voices");
+    ok &= expect(SettingsWrapper::getUpperMPEVoiceCount(liveState) == 0,
+                 "default Init preset should use 0 upper-zone MPE voices");
+    ok &= expect(SettingsWrapper::getLowerMPEPB(liveState) == 48,
+                 "default Init preset should use 48 semitones lower-zone pitch-bend range");
+    ok &= expect(SettingsWrapper::getUpperMPEPB(liveState) == 48,
+                 "default Init preset should use 48 semitones upper-zone pitch-bend range");
+
+    ok &= expect(ZoneWrapper::getTranspose(InstrumentType::Alpha, Zone::Zone1, liveState) == 0,
+                 "Init preset should keep Alpha zone 1 transpose at 0");
+    ok &= expect(ZoneWrapper::getTranspose(InstrumentType::Tau, Zone::Zone1, liveState) == 1,
+                 "Init preset should set Tau zone 1 transpose to +1");
+    ok &= expect(ZoneWrapper::getTranspose(InstrumentType::Pico, Zone::Zone1, liveState) == -12,
+                 "Init preset should set Pico zone 1 transpose to -12");
+    ok &= expect(ZoneWrapper::getEnabled(InstrumentType::Alpha, Zone::Zone2, liveState) == false,
+                 "Init preset should disable Alpha zone 2");
+    ok &= expect(ZoneWrapper::getEnabled(InstrumentType::Tau, Zone::Zone3, liveState) == false,
+                 "Init preset should disable Tau zone 3");
+    ok &= expect(ZoneWrapper::getEnabled(InstrumentType::Pico, Zone::Zone2, liveState) == false,
+                 "Init preset should disable Pico zone 2");
+
+    const auto alphaZone1Strip = ZoneWrapper::getMidiValue(InstrumentType::Alpha,
+                                                           Zone::Zone1,
+                                                           ZoneWrapper::id_strip1Rel,
+                                                           ZoneWrapper::default_strip1Rel,
+                                                           liveState);
+    ok &= expect(static_cast<int>(alphaZone1Strip.valueType) == static_cast<int>(MidiValueType::Pitchbend),
+                 "Init preset should map Alpha zone 1 strip1Rel to pitch-bend");
+
+    const auto tauRootKey = LayoutWrapper::getLayoutKey({ 0, 12, InstrumentType::Tau }, liveState);
+    ok &= expect(tauRootKey.mappingValue == "60"
+                 && tauRootKey.keyColour == KeyColour::Green
+                 && tauRootKey.zone == Zone::Zone1
+                 && tauRootKey.keyMappingType == KeyMappingType::Note,
+                 "Init preset should use the requested Tau main keyboard mapping");
+
+    const auto tauButtonKey = LayoutWrapper::getLayoutKey({ 2, 3, InstrumentType::Tau }, liveState);
+    ok &= expect(tauButtonKey.mappingValue == "Trigger;AllNotesOff;0;0;0"
+                 && tauButtonKey.keyColour == KeyColour::Red
+                 && tauButtonKey.zone == Zone::Zone1
+                 && tauButtonKey.keyMappingType == KeyMappingType::MidiMsg,
+                 "Init preset should keep the Tau button All Notes Off trigger");
+
+    const auto picoTransposeDownKey = LayoutWrapper::getLayoutKey({ 1, 0, InstrumentType::Pico }, liveState);
+    ok &= expect(picoTransposeDownKey.mappingValue == "Transpose;Momentary;-12"
+                 && picoTransposeDownKey.keyColour == KeyColour::Yellow
+                 && picoTransposeDownKey.keyType == EigenharpKeyType::Button
+                 && picoTransposeDownKey.zone == Zone::Zone1
+                 && picoTransposeDownKey.keyMappingType == KeyMappingType::AppCtrl,
+                 "Init preset should keep the Pico transpose-down button mapping");
+
+    const auto picoCurve = ExpressionCurveWrapper::getCurve(InstrumentType::Pico,
+                                                            ExpressionCurveTarget::Breath,
+                                                            liveState).getData();
+    ok &= expectNear(picoCurve.leftControl.x, 0.1588706523180008, 1.0e-6,
+                     "Init preset should keep the Pico breath curve left control X value");
+    ok &= expectNear(picoCurve.rightControl.y, 0.9200893044471741, 1.0e-6,
+                     "Init preset should keep the Pico breath curve right control Y value");
+
+    auto snapshotState = initSnapshot.createCopy();
+    ok &= expect(ZoneWrapper::getTranspose(InstrumentType::Tau, Zone::Zone1, snapshotState) == 1,
+                 "auto-created Init slot should store Tau zone 1 transpose at +1");
+    ok &= expect(ZoneWrapper::getTranspose(InstrumentType::Pico, Zone::Zone1, snapshotState) == -12,
+                 "auto-created Init slot should store Pico zone 1 transpose at -12");
+
+    return ok;
 }
 
 bool setZoneEnabledValue(ECMapperAudioProcessor& processor, ecm::InstrumentType deviceType, ecm::Zone zone, bool enabled)
@@ -337,6 +434,7 @@ int main()
 
     bool ok = true;
 
+    ok &= verifyInitPresetDefaultState();
     ok &= verifyParameterLayoutGroupingAndRanges();
 
     ok &= expect(applyControlMessage(processor, 1, 22, 0),

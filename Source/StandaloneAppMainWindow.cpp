@@ -227,8 +227,9 @@ StandaloneAppMainWindow::StandaloneAppMainWindow(const juce::String& name)
     processor = std::make_unique<ECMapperAudioProcessor>();
     processor->setDeviceManager(&deviceManager);
     
+    const bool hasSavedAppState = getAppStateFile().existsAsFile();
     loadAppState();
-    if (!processor->hasPresetSlot(1))
+    if (!hasSavedAppState)
         processor->loadStandalonePresetBank();
 
     processorPlayer.setProcessor(processor.get());

@@ -104,6 +104,8 @@ DeviceKeyCounts getDeviceKeyCounts(const ecm::InstrumentType deviceType)
     }
 }
 
+void materializePresetState(juce::ValueTree& rootState);
+
 juce::ValueTree createPresetSnapshotRoot(const juce::ValueTree& stateTree)
 {
     auto snapshot = juce::ValueTree(stateTree.getType());
@@ -118,6 +120,736 @@ juce::ValueTree createPresetSnapshotRoot(const juce::ValueTree& stateTree)
     }
 
     return snapshot;
+}
+
+juce::ValueTree createBundledInitPresetSnapshot()
+{
+    static constexpr auto kBundledInitPresetBankXml = R"xml(
+<ECMapperPresetBank>
+  <ECMapperPreset slot="1" name="Init">
+    <ECMapperState ecmapperVersion="2.0.0">
+      <preset uppermpepb="48" lowermpepb="48" uppermpevoicecount="0" lowermpevoicecount="15"
+              ecmapperVersion="2.0.0">
+        <preset ecmapperVersion="2.0.0">
+          <device1>
+            <zone1>
+              <pressure midiValType="3" midiCCNo="0"/>
+              <yaw midiValType="1" midiCCNo="74"/>
+              <roll midiValType="2" midiCCNo="0"/>
+              <strip1Rel midiValType="5" midiCCNo="0"/>
+              <strip1Abs midiValType="5" midiCCNo="0"/>
+              <strip2Rel midiValType="5" midiCCNo="0"/>
+              <strip2Abs midiValType="5" midiCCNo="0"/>
+              <breath midiValType="1" midiCCNo="2"/>
+            </zone1>
+            <zone2>
+              <pressure midiValType="3" midiCCNo="0"/>
+              <yaw midiValType="1" midiCCNo="74"/>
+              <roll midiValType="2" midiCCNo="0"/>
+              <strip1Rel midiValType="5" midiCCNo="0"/>
+              <strip1Abs midiValType="5" midiCCNo="0"/>
+              <strip2Rel midiValType="5" midiCCNo="0"/>
+              <strip2Abs midiValType="5" midiCCNo="0"/>
+              <breath midiValType="1" midiCCNo="2"/>
+            </zone2>
+            <zone3>
+              <pressure midiValType="3" midiCCNo="0"/>
+              <yaw midiValType="1" midiCCNo="74"/>
+              <roll midiValType="2" midiCCNo="0"/>
+              <strip1Rel midiValType="5" midiCCNo="0"/>
+              <strip1Abs midiValType="5" midiCCNo="0"/>
+              <strip2Rel midiValType="5" midiCCNo="0"/>
+              <strip2Abs midiValType="5" midiCCNo="0"/>
+              <breath midiValType="1" midiCCNo="2"/>
+            </zone3>
+            <layout/>
+          </device1>
+          <device2>
+            <zone1>
+              <pressure midiValType="3" midiCCNo="0"/>
+              <yaw midiValType="1" midiCCNo="74"/>
+              <roll midiValType="2" midiCCNo="0"/>
+              <strip1Rel midiValType="5" midiCCNo="0"/>
+              <strip1Abs midiValType="5" midiCCNo="0"/>
+              <strip2Rel midiValType="5" midiCCNo="0"/>
+              <strip2Abs midiValType="5" midiCCNo="0"/>
+              <breath midiValType="1" midiCCNo="2"/>
+            </zone1>
+            <zone2>
+              <pressure midiValType="3" midiCCNo="0"/>
+              <yaw midiValType="1" midiCCNo="74"/>
+              <roll midiValType="2" midiCCNo="0"/>
+              <strip1Rel midiValType="5" midiCCNo="0"/>
+              <strip1Abs midiValType="5" midiCCNo="0"/>
+              <strip2Rel midiValType="5" midiCCNo="0"/>
+              <strip2Abs midiValType="5" midiCCNo="0"/>
+              <breath midiValType="1" midiCCNo="2"/>
+            </zone2>
+            <zone3>
+              <pressure midiValType="3" midiCCNo="0"/>
+              <yaw midiValType="1" midiCCNo="74"/>
+              <roll midiValType="2" midiCCNo="0"/>
+              <strip1Rel midiValType="5" midiCCNo="0"/>
+              <strip1Abs midiValType="5" midiCCNo="0"/>
+              <strip2Rel midiValType="5" midiCCNo="0"/>
+              <strip2Abs midiValType="5" midiCCNo="0"/>
+              <breath midiValType="1" midiCCNo="2"/>
+            </zone3>
+            <layout/>
+          </device2>
+          <device3>
+            <layout>
+              <key_0_0 mappingValue="60" keyColour="1"/>
+              <key_0_1 mappingValue="61"/>
+              <key_0_2 mappingValue="62"/>
+              <key_0_3 mappingValue="63"/>
+              <key_0_4 mappingValue="64"/>
+              <key_0_5 mappingValue="65"/>
+              <key_0_6 mappingValue="66"/>
+              <key_0_7 mappingValue="67"/>
+              <key_0_8 mappingValue="68"/>
+              <key_0_9 mappingValue="64"/>
+              <key_0_10 mappingValue="65"/>
+              <key_0_11 mappingValue="66"/>
+              <key_0_12 mappingValue="67"/>
+              <key_0_13 mappingValue="68"/>
+              <key_0_14 mappingValue="69"/>
+              <key_0_15 mappingValue="70"/>
+              <key_0_16 mappingValue="71"/>
+              <key_0_17 mappingValue="72" keyColour="1"/>
+              <key_1_0/>
+              <key_1_1/>
+              <key_1_2/>
+              <key_1_3 keyMappingType="20" mappingValue="Trigger;AllNotesOff;0;0;0"
+                       keyColour="2"/>
+            </layout>
+            <zone1>
+              <pressure midiValType="3" midiCCNo="0"/>
+              <yaw midiValType="1" midiCCNo="74"/>
+              <roll midiValType="2" midiCCNo="0"/>
+              <strip1Rel midiValType="5" midiCCNo="0"/>
+              <strip1Abs midiValType="5" midiCCNo="0"/>
+              <strip2Rel midiValType="5" midiCCNo="0"/>
+              <strip2Abs midiValType="5" midiCCNo="0"/>
+              <breath midiValType="1" midiCCNo="2"/>
+            </zone1>
+            <zone2>
+              <pressure midiValType="3" midiCCNo="0"/>
+              <yaw midiValType="1" midiCCNo="74"/>
+              <roll midiValType="2" midiCCNo="0"/>
+              <strip1Rel midiValType="5" midiCCNo="0"/>
+              <strip1Abs midiValType="5" midiCCNo="0"/>
+              <strip2Rel midiValType="5" midiCCNo="0"/>
+              <strip2Abs midiValType="5" midiCCNo="0"/>
+              <breath midiValType="1" midiCCNo="2"/>
+            </zone2>
+            <zone3>
+              <pressure midiValType="3" midiCCNo="0"/>
+              <yaw midiValType="1" midiCCNo="74"/>
+              <roll midiValType="2" midiCCNo="0"/>
+              <strip1Rel midiValType="5" midiCCNo="0"/>
+              <strip1Abs midiValType="5" midiCCNo="0"/>
+              <strip2Rel midiValType="5" midiCCNo="0"/>
+              <strip2Abs midiValType="5" midiCCNo="0"/>
+              <breath midiValType="1" midiCCNo="2"/>
+            </zone3>
+          </device3>
+          <device0>
+            <layout/>
+          </device0>
+        </preset>
+        <device3>
+          <layout>
+            <key_0_0 mappingValue="60" keyColour="1" keyType="1" zone="1" keyMappingType="10"/>
+            <key_0_1 mappingValue="61" keyColour="0" keyType="1" zone="1" keyMappingType="10"/>
+            <key_0_2 mappingValue="62" keyColour="0" keyType="1" zone="1" keyMappingType="10"/>
+            <key_0_3 mappingValue="63" keyColour="0" keyType="1" zone="1" keyMappingType="10"/>
+            <key_0_4 mappingValue="64" keyColour="0" keyType="1" zone="1" keyMappingType="10"/>
+            <key_0_5 mappingValue="65" keyColour="0" keyType="1" zone="1" keyMappingType="10"/>
+            <key_0_6 mappingValue="66" keyColour="0" keyType="1" zone="1" keyMappingType="10"/>
+            <key_0_7 mappingValue="67" keyColour="0" keyType="1" zone="1" keyMappingType="10"/>
+            <key_0_8 mappingValue="68" keyColour="0" keyType="1" zone="1" keyMappingType="10"/>
+            <key_0_9 mappingValue="64" keyColour="0" keyType="1" zone="1" keyMappingType="10"/>
+            <key_0_10 mappingValue="65" keyColour="0" keyType="1" zone="1" keyMappingType="10"/>
+            <key_0_11 mappingValue="66" keyColour="0" keyType="1" zone="1" keyMappingType="10"/>
+            <key_0_12 mappingValue="67" keyColour="0" keyType="1" zone="1" keyMappingType="10"/>
+            <key_0_13 mappingValue="68" keyColour="0" keyType="1" zone="1" keyMappingType="10"/>
+            <key_0_14 mappingValue="69" keyColour="0" keyType="1" zone="1" keyMappingType="10"/>
+            <key_0_15 mappingValue="70" keyColour="0" keyType="1" zone="1" keyMappingType="10"/>
+            <key_0_16 mappingValue="71" keyColour="0" keyType="1" zone="1" keyMappingType="10"/>
+            <key_0_17 mappingValue="72" keyColour="1" keyType="1" zone="1" keyMappingType="10"/>
+            <key_1_0 keyMappingType="50" mappingValue="Transpose;Momentary;-12" keyColour="3"
+                     keyType="3" zone="1"/>
+            <key_1_1 keyMappingType="50" mappingValue="Transpose;Momentary;12" keyColour="3"
+                     keyType="3" zone="1"/>
+            <key_1_2 keyColour="0" keyType="3" zone="1" keyMappingType="0" mappingValue=""/>
+            <key_1_3 keyMappingType="20" mappingValue="Trigger;AllNotesOff;0;0;0"
+                     keyColour="2" keyType="3" zone="1"/>
+          </layout>
+          <zone1 transpose="-12" keyPitchbend="1" channelMaxPitchbend="12" enabled="1"
+                 midiChannelType="17">
+            <pressure midiValType="3" midiCCNo="0"/>
+            <yaw midiValType="1" midiCCNo="74"/>
+            <roll midiValType="2" midiCCNo="0"/>
+            <strip1Rel midiValType="2" midiCCNo="0"/>
+            <strip1Abs midiValType="5" midiCCNo="0"/>
+            <strip2Rel midiValType="5" midiCCNo="0"/>
+            <strip2Abs midiValType="5" midiCCNo="0"/>
+            <breath midiValType="1" midiCCNo="2"/>
+          </zone1>
+          <zone2 enabled="0" transpose="0" keyPitchbend="1" channelMaxPitchbend="12"
+                 midiChannelType="17">
+            <pressure midiValType="3" midiCCNo="0"/>
+            <yaw midiValType="1" midiCCNo="74"/>
+            <roll midiValType="2" midiCCNo="0"/>
+            <strip1Rel midiValType="5" midiCCNo="0"/>
+            <strip1Abs midiValType="5" midiCCNo="0"/>
+            <strip2Rel midiValType="5" midiCCNo="0"/>
+            <strip2Abs midiValType="5" midiCCNo="0"/>
+            <breath midiValType="1" midiCCNo="2"/>
+          </zone2>
+          <zone3 enabled="0" transpose="0" keyPitchbend="1" channelMaxPitchbend="12"
+                 midiChannelType="17">
+            <pressure midiValType="3" midiCCNo="0"/>
+            <yaw midiValType="1" midiCCNo="74"/>
+            <roll midiValType="2" midiCCNo="0"/>
+            <strip1Rel midiValType="5" midiCCNo="0"/>
+            <strip1Abs midiValType="5" midiCCNo="0"/>
+            <strip2Rel midiValType="5" midiCCNo="0"/>
+            <strip2Abs midiValType="5" midiCCNo="0"/>
+            <breath midiValType="1" midiCCNo="2"/>
+          </zone3>
+          <expressionCurves>
+            <curve4 startY="1.0" leftX="0.25" leftY="0.0" centerY="0.0" rightX="0.75"
+                    rightY="0.0" endY="1.0"/>
+            <curve5 startY="0.0" leftX="0.1208959668874741" leftY="0.3734933137893677"
+                    centerY="0.5" rightX="0.8891416192054749" rightY="0.61328125"
+                    endY="1.0"/>
+            <curve2 startY="0.0" leftX="0.25" leftY="0.25" centerY="0.5" rightX="0.75"
+                    rightY="0.75" endY="1.0"/>
+            <curve0 startY="0.0" leftX="0.1588706523180008" leftY="0.5009207725524902"
+                    centerY="0.7503069043159485" rightX="0.7057209014892578" rightY="0.9200893044471741"
+                    endY="1.0"/>
+            <curve1 startY="0.0" leftX="0.25" leftY="0.25" centerY="0.5" rightX="0.75"
+                    rightY="0.75" endY="1.0"/>
+            <curve3 startY="0.0" leftX="0.25" leftY="0.25" centerY="0.5" rightX="0.75"
+                    rightY="0.75" endY="1.0"/>
+          </expressionCurves>
+        </device3>
+        <device1>
+          <zone1 enabled="1" transpose="0" keyPitchbend="1" channelMaxPitchbend="12"
+                 midiChannelType="17">
+            <pressure midiValType="3" midiCCNo="0"/>
+            <yaw midiValType="1" midiCCNo="74"/>
+            <roll midiValType="2" midiCCNo="0"/>
+            <strip1Rel midiValType="2" midiCCNo="0"/>
+            <strip1Abs midiValType="5" midiCCNo="0"/>
+            <strip2Rel midiValType="5" midiCCNo="0"/>
+            <strip2Abs midiValType="5" midiCCNo="0"/>
+            <breath midiValType="1" midiCCNo="2"/>
+          </zone1>
+          <zone2 enabled="0" transpose="0" keyPitchbend="1" channelMaxPitchbend="12"
+                 midiChannelType="17">
+            <pressure midiValType="3" midiCCNo="0"/>
+            <yaw midiValType="1" midiCCNo="74"/>
+            <roll midiValType="2" midiCCNo="0"/>
+            <strip1Rel midiValType="5" midiCCNo="0"/>
+            <strip1Abs midiValType="5" midiCCNo="0"/>
+            <strip2Rel midiValType="5" midiCCNo="0"/>
+            <strip2Abs midiValType="5" midiCCNo="0"/>
+            <breath midiValType="1" midiCCNo="2"/>
+          </zone2>
+          <zone3 enabled="0" transpose="0" keyPitchbend="1" channelMaxPitchbend="12"
+                 midiChannelType="17">
+            <pressure midiValType="3" midiCCNo="0"/>
+            <yaw midiValType="1" midiCCNo="74"/>
+            <roll midiValType="2" midiCCNo="0"/>
+            <strip1Rel midiValType="5" midiCCNo="0"/>
+            <strip1Abs midiValType="5" midiCCNo="0"/>
+            <strip2Rel midiValType="5" midiCCNo="0"/>
+            <strip2Abs midiValType="5" midiCCNo="0"/>
+            <breath midiValType="1" midiCCNo="2"/>
+          </zone3>
+          <layout>
+            <key_0_0 keyMappingType="10" mappingValue="48" keyColour="1" zone="1"
+                     keyType="1"/>
+            <key_0_1 keyMappingType="10" mappingValue="49" zone="1" keyColour="0"
+                     keyType="1"/>
+            <key_0_2 keyMappingType="10" mappingValue="50" zone="1" keyColour="0"
+                     keyType="1"/>
+            <key_0_3 keyMappingType="10" mappingValue="51" zone="1" keyColour="0"
+                     keyType="1"/>
+            <key_0_4 keyMappingType="10" mappingValue="52" keyColour="0" zone="1"
+                     keyType="1"/>
+            <key_0_5 keyMappingType="10" mappingValue="53" zone="1" keyColour="0"
+                     keyType="1"/>
+            <key_0_6 keyMappingType="10" mappingValue="54" zone="1" keyColour="0"
+                     keyType="1"/>
+            <key_0_7 keyMappingType="10" mappingValue="55" zone="1" keyColour="0"
+                     keyType="1"/>
+            <key_0_8 keyMappingType="10" mappingValue="56" zone="1" keyColour="0"
+                     keyType="1"/>
+            <key_0_9 keyMappingType="10" mappingValue="57" zone="1" keyColour="0"
+                     keyType="1"/>
+            <key_0_10 keyMappingType="10" mappingValue="58" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_11 keyMappingType="10" mappingValue="59" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_12 keyMappingType="10" mappingValue="60" zone="1" keyColour="1"
+                      keyType="1"/>
+            <key_0_13 keyMappingType="10" mappingValue="61" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_14 keyMappingType="10" mappingValue="62" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_15 keyMappingType="10" mappingValue="63" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_16 keyMappingType="10" mappingValue="64" keyColour="0" zone="1"
+                      keyType="1"/>
+            <key_0_17 keyMappingType="10" mappingValue="65" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_18 keyMappingType="10" mappingValue="66" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_19 keyMappingType="10" mappingValue="67" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_20 keyMappingType="10" mappingValue="68" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_21 keyMappingType="10" mappingValue="69" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_22 keyMappingType="10" mappingValue="70" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_23 keyMappingType="10" mappingValue="71" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_24 keyMappingType="10" mappingValue="52" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_25 keyMappingType="10" mappingValue="53" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_26 keyMappingType="10" mappingValue="54" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_27 keyMappingType="10" mappingValue="55" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_28 keyMappingType="10" mappingValue="56" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_29 keyMappingType="10" mappingValue="57" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_30 keyMappingType="10" mappingValue="58" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_31 keyMappingType="10" mappingValue="59" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_32 keyMappingType="10" mappingValue="60" zone="1" keyColour="1"
+                      keyType="1"/>
+            <key_0_33 keyMappingType="10" mappingValue="61" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_34 keyMappingType="10" mappingValue="62" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_35 keyMappingType="10" mappingValue="63" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_36 keyMappingType="10" mappingValue="64" keyColour="0" zone="1"
+                      keyType="1"/>
+            <key_0_37 keyMappingType="10" mappingValue="65" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_38 keyMappingType="10" mappingValue="66" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_39 keyMappingType="10" mappingValue="67" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_40 keyMappingType="10" mappingValue="68" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_41 keyMappingType="10" mappingValue="69" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_42 keyMappingType="10" mappingValue="70" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_43 keyMappingType="10" mappingValue="71" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_44 keyMappingType="10" mappingValue="72" zone="1" keyColour="1"
+                      keyType="1"/>
+            <key_0_45 keyMappingType="10" mappingValue="73" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_46 keyMappingType="10" mappingValue="74" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_47 keyMappingType="10" mappingValue="75" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_48 keyMappingType="10" mappingValue="56" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_49 keyMappingType="10" mappingValue="57" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_50 keyMappingType="10" mappingValue="58" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_51 keyMappingType="10" mappingValue="59" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_52 keyMappingType="10" mappingValue="60" zone="1" keyColour="1"
+                      keyType="1"/>
+            <key_0_53 keyMappingType="10" mappingValue="61" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_54 keyMappingType="10" mappingValue="62" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_55 keyMappingType="10" mappingValue="63" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_56 keyMappingType="10" mappingValue="64" keyColour="0" zone="1"
+                      keyType="1"/>
+            <key_0_57 keyMappingType="10" mappingValue="65" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_58 keyMappingType="10" mappingValue="66" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_59 keyMappingType="10" mappingValue="67" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_60 keyMappingType="10" mappingValue="68" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_61 keyMappingType="10" mappingValue="69" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_62 keyMappingType="10" mappingValue="70" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_63 keyMappingType="10" mappingValue="71" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_64 keyMappingType="10" mappingValue="72" zone="1" keyColour="1"
+                      keyType="1"/>
+            <key_0_65 keyMappingType="10" mappingValue="73" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_66 keyMappingType="10" mappingValue="74" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_67 keyMappingType="10" mappingValue="75" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_68 keyMappingType="10" mappingValue="76" keyColour="0" zone="1"
+                      keyType="1"/>
+            <key_0_69 keyMappingType="10" mappingValue="77" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_70 keyMappingType="10" mappingValue="78" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_71 keyMappingType="10" mappingValue="79" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_72 keyMappingType="10" mappingValue="60" keyColour="1" zone="1"
+                      keyType="1"/>
+            <key_0_73 keyMappingType="10" mappingValue="61" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_74 keyMappingType="10" mappingValue="62" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_75 keyMappingType="10" mappingValue="63" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_76 keyMappingType="10" mappingValue="64" keyColour="0" zone="1"
+                      keyType="1"/>
+            <key_0_77 keyMappingType="10" mappingValue="65" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_78 keyMappingType="10" mappingValue="66" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_79 keyMappingType="10" mappingValue="67" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_80 keyMappingType="10" mappingValue="68" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_81 keyMappingType="10" mappingValue="69" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_82 keyMappingType="10" mappingValue="70" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_83 keyMappingType="10" mappingValue="71" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_84 keyMappingType="10" mappingValue="72" zone="1" keyColour="1"
+                      keyType="1"/>
+            <key_0_85 keyMappingType="10" mappingValue="73" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_86 keyMappingType="10" mappingValue="74" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_87 keyMappingType="10" mappingValue="75" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_88 keyMappingType="10" mappingValue="76" keyColour="0" zone="1"
+                      keyType="1"/>
+            <key_0_89 keyMappingType="10" mappingValue="77" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_90 keyMappingType="10" mappingValue="78" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_91 keyMappingType="10" mappingValue="79" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_92 keyMappingType="10" mappingValue="80" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_93 keyMappingType="10" mappingValue="81" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_94 keyMappingType="10" mappingValue="82" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_95 keyMappingType="10" mappingValue="83" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_96 keyMappingType="10" mappingValue="64" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_97 keyMappingType="10" mappingValue="65" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_98 keyMappingType="10" mappingValue="66" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_99 keyMappingType="10" mappingValue="67" zone="1" keyColour="0"
+                      keyType="1"/>
+            <key_0_100 keyMappingType="10" mappingValue="68" zone="1" keyColour="0"
+                       keyType="1"/>
+            <key_0_101 keyMappingType="10" mappingValue="69" zone="1" keyColour="0"
+                       keyType="1"/>
+            <key_0_102 keyMappingType="10" mappingValue="70" zone="1" keyColour="0"
+                       keyType="1"/>
+            <key_0_103 keyMappingType="10" mappingValue="71" zone="1" keyColour="0"
+                       keyType="1"/>
+            <key_0_104 keyMappingType="10" mappingValue="72" zone="1" keyColour="1"
+                       keyType="1"/>
+            <key_0_105 keyMappingType="10" mappingValue="73" zone="1" keyColour="0"
+                       keyType="1"/>
+            <key_0_106 keyMappingType="10" mappingValue="74" zone="1" keyColour="0"
+                       keyType="1"/>
+            <key_0_107 keyMappingType="10" mappingValue="75" zone="1" keyColour="0"
+                       keyType="1"/>
+            <key_0_108 keyMappingType="10" mappingValue="76" keyColour="0" zone="1"
+                       keyType="1"/>
+            <key_0_109 keyMappingType="10" mappingValue="77" zone="1" keyColour="0"
+                       keyType="1"/>
+            <key_0_110 keyMappingType="10" mappingValue="78" zone="1" keyColour="0"
+                       keyType="1"/>
+            <key_0_111 keyMappingType="10" mappingValue="79" zone="1" keyColour="0"
+                       keyType="1"/>
+            <key_0_112 keyMappingType="10" mappingValue="80" zone="1" keyColour="0"
+                       keyType="1"/>
+            <key_0_113 keyMappingType="10" mappingValue="81" zone="1" keyColour="0"
+                       keyType="1"/>
+            <key_0_114 keyMappingType="10" mappingValue="82" zone="1" keyColour="0"
+                       keyType="1"/>
+            <key_0_115 keyMappingType="10" mappingValue="83" zone="1" keyColour="0"
+                       keyType="1"/>
+            <key_0_116 keyMappingType="10" mappingValue="84" zone="1" keyColour="1"
+                       keyType="1"/>
+            <key_0_117 keyMappingType="10" mappingValue="85" zone="1" keyColour="0"
+                       keyType="1"/>
+            <key_0_118 keyMappingType="10" mappingValue="86" zone="1" keyColour="0"
+                       keyType="1"/>
+            <key_0_119 keyMappingType="10" mappingValue="87" zone="1" keyColour="0"
+                       keyType="1"/>
+            <key_1_0 zone="3" keyMappingType="10" mappingValue="48" keyColour="0"
+                     keyType="2"/>
+            <key_1_1 zone="3" keyMappingType="10" mappingValue="49" keyColour="0"
+                     keyType="2"/>
+            <key_1_2 zone="3" keyMappingType="10" mappingValue="50" keyColour="0"
+                     keyType="2"/>
+            <key_1_3 zone="3" keyColour="1" keyMappingType="10" mappingValue="51"
+                     keyType="2"/>
+            <key_1_4 zone="3" keyMappingType="10" mappingValue="52" keyColour="0"
+                     keyType="2"/>
+            <key_1_5 zone="3" keyMappingType="10" mappingValue="53" keyColour="0"
+                     keyType="2"/>
+            <key_1_6 zone="3" keyMappingType="10" mappingValue="54" keyColour="0"
+                     keyType="2"/>
+            <key_1_7 zone="3" keyColour="1" keyMappingType="10" mappingValue="55"
+                     keyType="2"/>
+            <key_1_8 zone="3" keyMappingType="10" mappingValue="56" keyColour="0"
+                     keyType="2"/>
+            <key_1_9 zone="3" keyMappingType="10" mappingValue="57" keyColour="0"
+                     keyType="2"/>
+            <key_1_10 zone="3" keyMappingType="10" mappingValue="58" keyColour="0"
+                      keyType="2"/>
+            <key_1_11 zone="3" keyColour="2" keyMappingType="20" mappingValue="Trigger;AllNotesOff;0;0;0"
+                      keyType="2"/>
+          </layout>
+          <expressionCurves>
+            <curve4 startY="1.0" leftX="0.25" leftY="0.0" centerY="0.0" rightX="0.75"
+                    rightY="0.0" endY="1.0"/>
+            <curve0 startY="0.0" leftX="0.1585040986537933" leftY="0.4975364804267883"
+                    centerY="0.7521368861198425" rightX="0.7000512480735779" rightY="0.9312118887901306"
+                    endY="1.0"/>
+            <curve1 startY="0.0" leftX="0.25" leftY="0.25" centerY="0.5" rightX="0.75"
+                    rightY="0.75" endY="1.0"/>
+            <curve2 startY="0.0" leftX="0.25" leftY="0.25" centerY="0.5" rightX="0.75"
+                    rightY="0.75" endY="1.0"/>
+            <curve3 startY="0.0" leftX="0.25" leftY="0.25" centerY="0.5" rightX="0.75"
+                    rightY="0.75" endY="1.0"/>
+            <curve5 startY="0.0" leftX="0.1259889304637909" leftY="0.3751673996448517"
+                    centerY="0.5" rightX="0.8862737417221069" rightY="0.6078683137893677"
+                    endY="1.0"/>
+          </expressionCurves>
+        </device1>
+        <device2>
+          <zone1 transpose="1" enabled="1" keyPitchbend="1" channelMaxPitchbend="12"
+                 midiChannelType="17">
+            <pressure midiValType="3" midiCCNo="0"/>
+            <yaw midiValType="1" midiCCNo="74"/>
+            <roll midiValType="2" midiCCNo="0"/>
+            <strip1Rel midiValType="2" midiCCNo="0"/>
+            <strip1Abs midiValType="5" midiCCNo="0"/>
+            <strip2Rel midiValType="5" midiCCNo="0"/>
+            <strip2Abs midiValType="5" midiCCNo="0"/>
+            <breath midiValType="1" midiCCNo="2"/>
+          </zone1>
+          <zone2 enabled="0" transpose="0" keyPitchbend="1" channelMaxPitchbend="12"
+                 midiChannelType="17">
+            <pressure midiValType="3" midiCCNo="0"/>
+            <yaw midiValType="1" midiCCNo="74"/>
+            <roll midiValType="2" midiCCNo="0"/>
+            <strip1Rel midiValType="5" midiCCNo="0"/>
+            <strip1Abs midiValType="5" midiCCNo="0"/>
+            <strip2Rel midiValType="5" midiCCNo="0"/>
+            <strip2Abs midiValType="5" midiCCNo="0"/>
+            <breath midiValType="1" midiCCNo="2"/>
+          </zone2>
+          <zone3 enabled="0" transpose="0" keyPitchbend="1" channelMaxPitchbend="12"
+                 midiChannelType="17">
+            <pressure midiValType="3" midiCCNo="0"/>
+            <yaw midiValType="1" midiCCNo="74"/>
+            <roll midiValType="2" midiCCNo="0"/>
+            <strip1Rel midiValType="5" midiCCNo="0"/>
+            <strip1Abs midiValType="5" midiCCNo="0"/>
+            <strip2Rel midiValType="5" midiCCNo="0"/>
+            <strip2Abs midiValType="5" midiCCNo="0"/>
+            <breath midiValType="1" midiCCNo="2"/>
+          </zone3>
+          <layout ecmapperVersion="2.0.0">
+            <key_0_0 mappingValue="48" keyColour="1" zone="1" keyType="1" keyMappingType="10"/>
+            <key_0_1 mappingValue="49" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_2 mappingValue="50" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_3 mappingValue="51" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_4 mappingValue="52" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_5 mappingValue="53" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_6 mappingValue="54" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_7 mappingValue="55" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_8 mappingValue="56" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_9 mappingValue="57" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_10 mappingValue="58" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_11 mappingValue="59" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_12 mappingValue="60" zone="1" keyColour="1" keyType="1" keyMappingType="10"/>
+            <key_0_13 mappingValue="61" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_14 mappingValue="62" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_15 mappingValue="63" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_16 mappingValue="52" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_17 mappingValue="53" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_18 mappingValue="54" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_19 mappingValue="55" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_20 mappingValue="56" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_21 mappingValue="57" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_22 mappingValue="58" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_23 mappingValue="59" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_24 mappingValue="60" zone="1" keyColour="1" keyType="1" keyMappingType="10"/>
+            <key_0_25 mappingValue="61" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_26 mappingValue="62" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_27 mappingValue="63" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_28 mappingValue="64" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_29 mappingValue="65" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_30 mappingValue="66" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_31 mappingValue="67" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_32 mappingValue="56" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_33 mappingValue="57" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_34 mappingValue="58" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_35 mappingValue="59" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_36 mappingValue="60" zone="1" keyColour="1" keyType="1" keyMappingType="10"/>
+            <key_0_37 mappingValue="61" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_38 mappingValue="62" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_39 mappingValue="63" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_40 mappingValue="64" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_41 mappingValue="65" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_42 mappingValue="66" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_43 mappingValue="67" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_44 mappingValue="68" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_45 mappingValue="69" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_46 mappingValue="70" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_47 mappingValue="71" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_48 mappingValue="72" zone="1" keyColour="1" keyType="1" keyMappingType="10"/>
+            <key_0_49 mappingValue="73" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_50 mappingValue="74" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_51 mappingValue="75" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_52 mappingValue="60" keyColour="1" zone="1" keyType="1" keyMappingType="10"/>
+            <key_0_53 mappingValue="61" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_54 mappingValue="62" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_55 mappingValue="63" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_56 mappingValue="64" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_57 mappingValue="65" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_58 mappingValue="66" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_59 mappingValue="67" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_60 mappingValue="68" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_61 mappingValue="69" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_62 mappingValue="70" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_63 mappingValue="71" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_64 mappingValue="72" zone="1" keyColour="1" keyType="1" keyMappingType="10"/>
+            <key_0_65 mappingValue="73" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_66 mappingValue="74" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_67 mappingValue="75" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_68 mappingValue="76" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_69 mappingValue="77" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_70 mappingValue="78" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_0_71 mappingValue="79" zone="1" keyColour="0" keyType="1" keyMappingType="10"/>
+            <key_1_0 zone="3" keyMappingType="10" mappingValue="48" keyColour="0"
+                     keyType="2"/>
+            <key_1_1 zone="3" keyMappingType="10" mappingValue="49" keyColour="0"
+                     keyType="2"/>
+            <key_1_2 zone="3" keyMappingType="10" mappingValue="50" keyColour="0"
+                     keyType="2"/>
+            <key_1_3 zone="3" keyMappingType="10" keyColour="1" mappingValue="51"
+                     keyType="2"/>
+            <key_1_4 zone="3" keyMappingType="10" mappingValue="52" keyColour="0"
+                     keyType="2"/>
+            <key_1_5 zone="3" keyMappingType="10" mappingValue="53" keyColour="0"
+                     keyType="2"/>
+            <key_1_6 zone="3" keyMappingType="10" mappingValue="54" keyColour="0"
+                     keyType="2"/>
+            <key_1_7 zone="3" keyMappingType="10" keyColour="1" mappingValue="55"
+                     keyType="2"/>
+            <key_1_8 zone="3" keyMappingType="10" mappingValue="56" keyColour="0"
+                     keyType="2"/>
+            <key_1_9 zone="3" keyMappingType="10" mappingValue="57" keyColour="0"
+                     keyType="2"/>
+            <key_1_10 zone="3" keyMappingType="10" mappingValue="58" keyColour="0"
+                      keyType="2"/>
+            <key_1_11 zone="3" keyMappingType="10" mappingValue="59" keyColour="0"
+                      keyType="2"/>
+            <key_1_4/>
+            <key_1_5/>
+            <key_1_6/>
+            <key_1_7/>
+            <key_2_0 keyColour="0" keyType="3" zone="1" keyMappingType="0" mappingValue=""/>
+            <key_2_1 keyColour="0" keyType="3" zone="1" keyMappingType="0" mappingValue=""/>
+            <key_2_2 keyColour="0" keyType="3" zone="1" keyMappingType="0" mappingValue=""/>
+            <key_2_3 keyMappingType="20" mappingValue="Trigger;AllNotesOff;0;0;0"
+                     keyColour="2" keyType="3" zone="1"/>
+            <key_1_12 keyColour="2" keyMappingType="20" mappingValue="Trigger;AllNotesOff;0;0;0"/>
+            <key_1_8 keyColour="0"/>
+            <key_2_4 keyColour="0" keyType="3" zone="1" keyMappingType="0" mappingValue=""/>
+            <key_2_5 keyColour="0" keyType="3" zone="1" keyMappingType="0" mappingValue=""/>
+            <key_2_6 keyColour="0" keyType="3" zone="1" keyMappingType="0" mappingValue=""/>
+            <key_2_7 keyColour="0" keyType="3" zone="1" keyMappingType="0" mappingValue=""/>
+          </layout>
+          <expressionCurves>
+            <curve4 startY="1.0" leftX="0.25" leftY="0.0" centerY="0.0" rightX="0.75"
+                    rightY="0.0" endY="1.0"/>
+            <curve0 startY="0.0" leftX="0.154296875" leftY="0.497963160276413" centerY="0.754101574420929"
+                    rightX="0.6970183849334717" rightY="0.9284877181053162" endY="1.0"/>
+            <curve1 startY="0.0" leftX="0.25" leftY="0.25" centerY="0.5" rightX="0.75"
+                    rightY="0.75" endY="1.0"/>
+            <curve2 startY="0.0" leftX="0.25" leftY="0.25" centerY="0.5" rightX="0.75"
+                    rightY="0.75" endY="1.0"/>
+            <curve3 startY="0.0" leftX="0.25" leftY="0.25" centerY="0.5" rightX="0.75"
+                    rightY="0.75" endY="1.0"/>
+            <curve5 startY="0.0" leftX="0.1286837458610535" leftY="0.3696428537368774"
+                    centerY="0.5" rightX="0.8864467740058899" rightY="0.6027064919471741"
+                    endY="1.0"/>
+          </expressionCurves>
+        </device2>
+        <device0>
+          <layout/>
+        </device0>
+      </preset>
+    </ECMapperState>
+  </ECMapperPreset>
+</ECMapperPresetBank>
+)xml";
+
+    const auto xml = juce::XmlDocument::parse(juce::String(kBundledInitPresetBankXml));
+    if (xml == nullptr)
+        return {};
+
+    auto importResult = ecm::PresetBankFileUtil::readPresetBankTree(juce::ValueTree::fromXml(*xml));
+    if (!importResult.presetBank.isValid())
+        return {};
+
+    auto preset = importResult.presetBank.getChildWithProperty("slot", 1);
+    if (!preset.isValid() && importResult.presetBank.getNumChildren() > 0)
+        preset = importResult.presetBank.getChild(0);
+
+    auto snapshot = preset.getNumChildren() > 0 ? preset.getChild(0).createCopy() : juce::ValueTree();
+    if (!snapshot.isValid())
+        return {};
+
+    ecm::SettingsWrapper::normalizeStateTree(snapshot);
+    materializePresetState(snapshot);
+    return createPresetSnapshotRoot(snapshot);
+}
+
+juce::ValueTree getBundledInitPresetSnapshot()
+{
+    static const auto snapshot = createBundledInitPresetSnapshot();
+    return snapshot.createCopy();
 }
 
 void materializeLayoutKeysForDevice(const ecm::InstrumentType deviceType, juce::ValueTree& rootState)
@@ -317,6 +1049,11 @@ ECMapperAudioProcessor::ECMapperAudioProcessor() :
         });
     state.state.addListener(layoutChangeHandler.get());
     state.state.addListener(this);
+
+    ensureInitPresetExists();
+    if (const auto initSnapshot = getPresetSnapshot(1); initSnapshot.isValid())
+        applyPresetState(initSnapshot);
+    setCurrentPresetSelection(1, "Init");
 }
 
 ECMapperAudioProcessor::~ECMapperAudioProcessor() {
@@ -1328,7 +2065,10 @@ void ECMapperAudioProcessor::ensureInitPresetExists()
     if (hasPresetSlot(1))
         return;
 
-    const auto snapshot = makeComparableState(state.state.createCopy());
+    auto snapshot = getBundledInitPresetSnapshot();
+    if (!snapshot.isValid())
+        snapshot = makeComparableState(state.state.createCopy());
+
     auto preset = juce::ValueTree("ECMapperPreset");
     preset.setProperty("slot", 1, nullptr);
     preset.setProperty("name", "Init", nullptr);
