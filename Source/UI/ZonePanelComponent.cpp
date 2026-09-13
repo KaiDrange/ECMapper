@@ -39,13 +39,29 @@ ZonePanelComponent::ZonePanelComponent(InstrumentType deviceType, Zone zone, flo
     } else {
         transposeInput.setValue(ZoneWrapper::getTranspose(deviceType, zone, pluginState.state));
     }
-    transposeInput.input.onFocusLost = [this] {
+    auto transposeTextChange = transposeInput.input.onTextChange;
+    transposeInput.input.onTextChange = [this, transposeTextChange] {
+        if (transposeTextChange)
+            transposeTextChange();
+        transposeInputDirty_ = true;
+
+        const auto text = transposeInput.input.getText();
+        if (text.isEmpty() || text == "-")
+            return;
+
+        ZoneWrapper::setTranspose(this->deviceType, this->zone, transposeInput.getValue(), this->pluginState.state);
+    };
+    auto transposeFocusLost = transposeInput.input.onFocusLost;
+    transposeInput.input.onFocusLost = [this, transposeFocusLost] {
+        if (transposeFocusLost)
+            transposeFocusLost();
         auto value = transposeInput.getValue();
         ZoneWrapper::setTranspose(this->deviceType, this->zone, value, this->pluginState.state);
         if (auto* param = dynamic_cast<juce::AudioParameterInt*>(
                 this->pluginState.getParameter(ZoneWrapper::getTransposeParameterID(this->deviceType, this->zone)))) {
             param->setValueNotifyingHost(param->getNormalisableRange().convertTo0to1((float) value));
         }
+        transposeInputDirty_ = false;
     };
 
     addAndMakeVisible(keyPitchbendRangeInput);
@@ -159,7 +175,8 @@ void ZonePanelComponent::valueTreePropertyChanged(juce::ValueTree& vTree, const 
 void ZonePanelComponent::refreshFromState()
 {
     enableZoneButton.setToggleState(ZoneWrapper::getEnabled(deviceType, zone, pluginState.state), juce::dontSendNotification);
-    transposeInput.setValue(ZoneWrapper::getTranspose(deviceType, zone, pluginState.state));
+    if (!transposeInputDirty_ && !transposeInput.input.hasKeyboardFocus(true))
+        transposeInput.setValue(ZoneWrapper::getTranspose(deviceType, zone, pluginState.state));
     keyPitchbendRangeInput.setValue(ZoneWrapper::getKeyPitchbend(deviceType, zone, pluginState.state));
     channelMaxPBInput.setValue(ZoneWrapper::getChannelMaxPitchbend(deviceType, zone, pluginState.state));
     midiChannelDropdown.setSelectedItemId(static_cast<int>(ZoneWrapper::getMidiChannelType(deviceType, zone, pluginState.state)));

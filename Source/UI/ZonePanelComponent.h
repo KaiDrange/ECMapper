@@ -42,6 +42,7 @@ private:
     NumberInputComponent transposeInput;
     NumberInputComponent keyPitchbendRangeInput;
     NumberInputComponent channelMaxPBInput;
+    bool transposeInputDirty_ = false;
     
     InstrumentType deviceType;
     Zone zone;

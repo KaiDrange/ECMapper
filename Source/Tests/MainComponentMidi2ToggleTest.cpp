@@ -123,6 +123,27 @@ int main()
     ok &= expect(ecm::LayoutWrapper::getLayoutKey({ 0, 4, ecm::InstrumentType::Alpha }, processor.state.state).mappingValue == "72",
                  "a legacy alpha layout should remain readable before editing the lower MPE pitch-bend range");
 
+    component.alphaPage->zonesViewButton.setToggleState(true, juce::dontSendNotification);
+    component.alphaPage->zonesViewButton.onClick();
+    component.alphaPage->zonePanels[0]->transposeInput.input.setText("12", juce::sendNotificationSync);
+    component.alphaPage->zonePanels[0]->transposeInput.input.onTextChange();
+
+    ok &= expect(component.alphaPage->zonePanels[0]->transposeInputDirty_,
+                 "editing the alpha zone transpose field should mark the edit as pending before the next refresh");
+    ok &= expect(ecm::ZoneWrapper::getTranspose(ecm::InstrumentType::Alpha, ecm::Zone::Zone1, processor.state.state) == 12,
+                 "typing a valid alpha zone transpose value should update the pending zone state before refresh");
+
+    component.alphaPage->refreshFromState();
+
+    ok &= expect(component.alphaPage->zonePanels[0]->transposeInput.input.getText() == "12",
+                 "refreshing the alpha zone panel during editing should not overwrite the pending transpose text");
+
+    component.alphaPage->zonePanels[0]->transposeInput.input.onFocusLost();
+    component.alphaPage->refreshFromState();
+
+    ok &= expect(ecm::ZoneWrapper::getTranspose(ecm::InstrumentType::Alpha, ecm::Zone::Zone1, processor.state.state) == 12,
+                 "committing the alpha zone transpose edit should update the stored transpose value");
+
     component.lowerMPEPitchbendRange.setValue(11);
     component.lowerMPEPitchbendRange.input.onFocusLost();
     component.refreshFromState();
