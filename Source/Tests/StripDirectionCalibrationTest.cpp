@@ -184,6 +184,37 @@ bool verifyLiveCalibrationUpdate() {
     return ok;
 }
 
+bool verifyDefaultCalibrationFallbacks() {
+    using namespace ecm;
+
+    DummyProcessor processor;
+    juce::AudioProcessorValueTreeState pluginState(processor, nullptr, "TestState", {});
+    juce::CriticalSection stateLock;
+    ConfigLookup configLookups[] = {
+        ConfigLookup(InstrumentType::Alpha, pluginState, stateLock),
+        ConfigLookup(InstrumentType::Tau, pluginState, stateLock),
+        ConfigLookup(InstrumentType::Pico, pluginState, stateLock)
+    };
+
+    MidiService midiService(configLookups, stateLock);
+    midiService.start(pluginState, nullptr);
+
+    bool ok = true;
+    ok &= expectNear(midiService.breathZeroThreshold_[static_cast<int>(InstrumentType::Alpha) - 1], 0.03125f,
+                     "alpha breath threshold should use the shared default calibration fallback");
+    ok &= expectNear(midiService.breathZeroThreshold_[static_cast<int>(InstrumentType::Tau) - 1], 0.03125f,
+                     "tau breath threshold should use the shared default calibration fallback");
+    ok &= expectNear(midiService.breathZeroThreshold_[static_cast<int>(InstrumentType::Pico) - 1], 0.03125f,
+                     "pico breath threshold should match the Alpha/Tau default calibration fallback");
+    ok &= expectNear(midiService.stripZeroThreshold_[static_cast<int>(InstrumentType::Pico) - 1], 0.0366f,
+                     "pico strip threshold should match the Alpha/Tau default calibration fallback");
+    ok &= expectNear(midiService.stripSensitivity_[static_cast<int>(InstrumentType::Pico) - 1], 1.3f,
+                     "pico strip sensitivity should match the Alpha/Tau default calibration fallback");
+
+    midiService.stop();
+    return ok;
+}
+
 } // namespace
 
 int main() {
@@ -192,6 +223,7 @@ int main() {
     juce::Logger::setCurrentLogger(&logger);
 
     bool ok = verifyHelperCalibration();
+    ok &= verifyDefaultCalibrationFallbacks();
     ok &= verifyLiveCalibrationUpdate();
 
     juce::Logger::setCurrentLogger(nullptr);

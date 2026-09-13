@@ -310,7 +310,7 @@ void MidiService::updateCalibration() {
     Defs defaults[3] = {
         { InstrumentType::Alpha, 0.03125f, 0.0366f, 1.3f },
         { InstrumentType::Tau,   0.03125f, 0.0366f, 1.3f },
-        { InstrumentType::Pico,  0.125f,   0.12f,   1.2f }
+        { InstrumentType::Pico,  0.03125f, 0.0366f, 1.3f }
     };
     
     for (int i = 0; i < 3; i++) {

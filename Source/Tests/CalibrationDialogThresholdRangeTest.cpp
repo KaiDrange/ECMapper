@@ -18,6 +18,10 @@ bool expectNear(double actual, double expected, const char* message) {
     return true;
 }
 
+bool expectDefaultValue(const juce::Slider& slider, double expected, const char* message) {
+    return expectNear(slider.getValue(), expected, message);
+}
+
 bool expectStep(const juce::Slider& slider, const char* name) {
     return expectNear(slider.getInterval(), 0.001, name);
 }
@@ -48,6 +52,15 @@ int main() {
     CalibrationDialogComponent dialog(root);
 
     bool ok = true;
+    ok &= expectDefaultValue(dialog.alphaPanel->breathThresholdSlider, 0.031, "alpha breath threshold should default to the shared calibration value");
+    ok &= expectDefaultValue(dialog.tauPanel->breathThresholdSlider, 0.031, "tau breath threshold should default to the shared calibration value");
+    ok &= expectDefaultValue(dialog.picoPanel->breathThresholdSlider, 0.031, "pico breath threshold should match the Alpha/Tau default calibration value");
+    ok &= expectDefaultValue(dialog.alphaPanel->stripThresholdSlider, 0.037, "alpha strip threshold should default to the shared calibration value");
+    ok &= expectDefaultValue(dialog.tauPanel->stripThresholdSlider, 0.037, "tau strip threshold should default to the shared calibration value");
+    ok &= expectDefaultValue(dialog.picoPanel->stripThresholdSlider, 0.037, "pico strip threshold should match the Alpha/Tau default calibration value");
+    ok &= expectDefaultValue(dialog.alphaPanel->stripSensitivitySlider, 1.3, "alpha strip sensitivity should default to the shared calibration value");
+    ok &= expectDefaultValue(dialog.tauPanel->stripSensitivitySlider, 1.3, "tau strip sensitivity should default to the shared calibration value");
+    ok &= expectDefaultValue(dialog.picoPanel->stripSensitivitySlider, 1.3, "pico strip sensitivity should match the Alpha/Tau default calibration value");
     ok &= expectThresholdRange(dialog.alphaPanel->breathThresholdSlider, "alpha breath threshold range should be 0.0 to 0.2");
     ok &= expectThresholdRange(dialog.alphaPanel->stripThresholdSlider, "alpha strip threshold range should be 0.0 to 0.2");
     ok &= expectThresholdRange(dialog.tauPanel->breathThresholdSlider, "tau breath threshold range should be 0.0 to 0.2");

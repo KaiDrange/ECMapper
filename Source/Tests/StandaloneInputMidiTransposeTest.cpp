@@ -53,6 +53,8 @@ bool verifyInitPresetDefaultState()
 
     ECMapperAudioProcessor processor;
     bool ok = true;
+    constexpr InstrumentType deviceTypes[] = { InstrumentType::Alpha, InstrumentType::Tau, InstrumentType::Pico };
+    constexpr Zone zones[] = { Zone::Zone1, Zone::Zone2, Zone::Zone3 };
 
     ok &= expect(processor.currentPresetSlot_.load() == 1,
                  "processor should default to preset slot 1 when no state is restored");
@@ -78,12 +80,10 @@ bool verifyInitPresetDefaultState()
     ok &= expect(SettingsWrapper::getUpperMPEPB(liveState) == 48,
                  "default Init preset should use 48 semitones upper-zone pitch-bend range");
 
-    ok &= expect(ZoneWrapper::getTranspose(InstrumentType::Alpha, Zone::Zone1, liveState) == 0,
-                 "Init preset should keep Alpha zone 1 transpose at 0");
-    ok &= expect(ZoneWrapper::getTranspose(InstrumentType::Tau, Zone::Zone1, liveState) == 1,
-                 "Init preset should set Tau zone 1 transpose to +1");
-    ok &= expect(ZoneWrapper::getTranspose(InstrumentType::Pico, Zone::Zone1, liveState) == -12,
-                 "Init preset should set Pico zone 1 transpose to -12");
+    for (const auto deviceType : deviceTypes)
+        for (const auto zone : zones)
+            ok &= expect(ZoneWrapper::getTranspose(deviceType, zone, liveState) == 0,
+                         "Init preset should keep every zone transpose at 0");
     ok &= expect(ZoneWrapper::getEnabled(InstrumentType::Alpha, Zone::Zone2, liveState) == false,
                  "Init preset should disable Alpha zone 2");
     ok &= expect(ZoneWrapper::getEnabled(InstrumentType::Tau, Zone::Zone3, liveState) == false,
@@ -130,10 +130,10 @@ bool verifyInitPresetDefaultState()
                      "Init preset should keep the Pico breath curve right control Y value");
 
     auto snapshotState = initSnapshot.createCopy();
-    ok &= expect(ZoneWrapper::getTranspose(InstrumentType::Tau, Zone::Zone1, snapshotState) == 1,
-                 "auto-created Init slot should store Tau zone 1 transpose at +1");
-    ok &= expect(ZoneWrapper::getTranspose(InstrumentType::Pico, Zone::Zone1, snapshotState) == -12,
-                 "auto-created Init slot should store Pico zone 1 transpose at -12");
+    for (const auto deviceType : deviceTypes)
+        for (const auto zone : zones)
+            ok &= expect(ZoneWrapper::getTranspose(deviceType, zone, snapshotState) == 0,
+                         "auto-created Init slot should store every zone transpose at 0");
 
     return ok;
 }

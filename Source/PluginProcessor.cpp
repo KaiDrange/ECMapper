@@ -286,7 +286,7 @@ juce::ValueTree createBundledInitPresetSnapshot()
             <key_1_3 keyMappingType="20" mappingValue="Trigger;AllNotesOff;0;0;0"
                      keyColour="2" keyType="3" zone="1"/>
           </layout>
-          <zone1 transpose="-12" keyPitchbend="1" channelMaxPitchbend="12" enabled="1"
+          <zone1 transpose="0" keyPitchbend="1" channelMaxPitchbend="12" enabled="1"
                  midiChannelType="17">
             <pressure midiValType="3" midiCCNo="0"/>
             <yaw midiValType="1" midiCCNo="74"/>
@@ -654,7 +654,7 @@ juce::ValueTree createBundledInitPresetSnapshot()
           </expressionCurves>
         </device1>
         <device2>
-          <zone1 transpose="1" enabled="1" keyPitchbend="1" channelMaxPitchbend="12"
+          <zone1 transpose="0" enabled="1" keyPitchbend="1" channelMaxPitchbend="12"
                  midiChannelType="17">
             <pressure midiValType="3" midiCCNo="0"/>
             <yaw midiValType="1" midiCCNo="74"/>

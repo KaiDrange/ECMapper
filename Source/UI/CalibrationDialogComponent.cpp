@@ -73,9 +73,9 @@ void CalibrationDialogComponent::DeviceCalibrationPanel::resized()
 
 void CalibrationDialogComponent::DeviceCalibrationPanel::updateValues()
 {
-    float breathD = (type == InstrumentType::Pico) ? 0.125f : 0.03125f;
-    float stripTD = (type == InstrumentType::Pico) ? 0.12f : 0.0366f;
-    float stripGD = (type == InstrumentType::Pico) ? 1.2f : 1.3f;
+    constexpr float breathD = 0.03125f;
+    constexpr float stripTD = 0.0366f;
+    constexpr float stripGD = 1.3f;
 
     breathThresholdSlider.setValue(SettingsWrapper::getCalibrationValue(type, SettingsWrapper::id_breathThreshold, breathD, state), juce::dontSendNotification);
     breathSensitivitySlider.setValue(SettingsWrapper::getCalibrationValue(type, SettingsWrapper::id_breathSensitivity, 1.7f, state), juce::dontSendNotification);
