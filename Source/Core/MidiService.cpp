@@ -131,16 +131,13 @@ void MidiService::start(juce::AudioProcessorValueTreeState& pluginState, Hardwar
                 service->ciDevice_ = std::make_unique<juce::midi_ci::Device>(opts);
                 service->ciDevice_->addListener(*service);
                 
-                // Advertise MPE profile support
-                using namespace juce::midi_ci;
-                Profile mpeProfile { std::byte { 0x7E }, std::byte { 0x01 }, std::byte { 0x00 },
-                                         std::byte { 0x01 }, std::byte { 0x00 } };
-
-                if (auto* host = service->ciDevice_->getProfileHost())
-                {
-                    host->addProfile (ProfileAtAddress { mpeProfile, ChannelAddress().withChannel (ChannelInGroup::wholeGroup) }, 0);
-                    host->addProfile (ProfileAtAddress { mpeProfile, ChannelAddress().withChannel (ChannelInGroup::channel0) }, 16);
-                }
+                // Keep the Profile host alive so ECMapper can still query remote
+                // devices, but do not advertise a local MPE profile for now.
+                // MIDI 2.0 Workbench reports warnings for the group/channel-scoped
+                // MPE replies JUCE generates from this registration, and skipping
+                // local registration is the narrowest ECMapper-side way to suppress
+                // those replies without changing JUCE logic.
+                ignoreUnused(service->ciDevice_->getProfileHost());
                 
                 service->ciDevice_->sendDiscovery();
             }

@@ -3,7 +3,9 @@
 #include <JuceHeader.h>
 
 #include "Core/ConfigLookup.h"
+#define private public
 #include "Core/MidiService.h"
+#undef private
 #include "Core/SettingsWrapper.h"
 
 namespace {
@@ -214,8 +216,8 @@ bool verifyCIPropertyReportsCurrentMPELayout() {
                  "resource list should advertise both standard and custom properties");
 
     if (const auto* deviceInfoEntry = findResourceListEntry(resourceList, "DeviceInfo")) {
-        ok &= expect(static_cast<bool>(deviceInfoEntry->getProperty("canGet")),
-                     "resource list should mark DeviceInfo as readable");
+        ok &= expect(! deviceInfoEntry->hasProperty("canGet"),
+                     "resource list should omit canGet for the standard DeviceInfo property");
     } else {
         ok &= expect(false, "resource list should advertise the standard DeviceInfo property");
     }
@@ -283,6 +285,59 @@ bool verifyCIPropertyReportsCurrentMPELayout() {
     return ok;
 }
 
+bool verifyMidi2DoesNotAdvertiseLocalMPEProfile()
+{
+    using namespace ecm;
+    using namespace juce::midi_ci;
+
+    DummyProcessor processor;
+    juce::AudioProcessorValueTreeState pluginState(processor, nullptr, "TestState", {});
+    juce::CriticalSection stateLock;
+    ConfigLookup configLookups[] = {
+        ConfigLookup(InstrumentType::Alpha, pluginState, stateLock),
+        ConfigLookup(InstrumentType::Tau, pluginState, stateLock),
+        ConfigLookup(InstrumentType::Pico, pluginState, stateLock)
+    };
+
+    SettingsWrapper::setMidi2Mode(true, pluginState.state);
+
+    MidiService midiService(configLookups, stateLock);
+    midiService.start(pluginState, nullptr);
+
+    bool ok = true;
+    ok &= expect(juce::MessageManager::getInstance()->runDispatchLoopUntil(50),
+                 "MIDI-CI startup should complete its async initialization");
+
+    const auto* host = midiService.ciDevice_ != nullptr ? midiService.ciDevice_->getProfileHost() : nullptr;
+    ok &= expect(host != nullptr,
+                 "MIDI-CI profile host should exist in MIDI 2 mode");
+
+    if (host != nullptr)
+    {
+        const auto* groupState = host->getProfileStates().getStateForDestination(
+            ChannelAddress().withGroup(0).withChannel(ChannelInGroup::wholeGroup));
+        const auto* channelState = host->getProfileStates().getStateForDestination(
+            ChannelAddress().withGroup(0).withChannel(ChannelInGroup::channel0));
+
+        ok &= expect(groupState != nullptr,
+                     "group profile state should be inspectable");
+        ok &= expect(channelState != nullptr,
+                     "channel profile state should be inspectable");
+
+        if (groupState != nullptr)
+            ok &= expect(groupState->empty(),
+                         "ECMapper should not advertise a group-scoped local MPE profile in MIDI 2 mode");
+
+        if (channelState != nullptr)
+            ok &= expect(channelState->empty(),
+                         "ECMapper should not advertise a channel-scoped local MPE profile in MIDI 2 mode");
+    }
+
+    midiService.stop();
+    juce::MessageManager::getInstance()->runDispatchLoopUntil(50);
+    return ok;
+}
+
 } // namespace
 
 int main() {
@@ -292,7 +347,8 @@ int main() {
 
     const bool ok = verifyStartupLayoutUsesConfiguredPerNoteRangesAndDefaultMasterRange()
                  && verifyFullLowerZoneDisablesUpperZoneButKeepsConfiguredPerNoteRange()
-                 && verifyCIPropertyReportsCurrentMPELayout();
+                 && verifyCIPropertyReportsCurrentMPELayout()
+                 && verifyMidi2DoesNotAdvertiseLocalMPEProfile();
     juce::Logger::setCurrentLogger(nullptr);
 
     if (!ok)

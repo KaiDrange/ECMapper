@@ -17,6 +17,18 @@ juce::var createByteArrayProperty(const std::array<std::byte, Size>& bytes)
     return values;
 }
 
+// MIDI-CI profile identifiers are 5-byte values defined by the MIDI-CI Profile
+// Configuration message set. For MPE, ECMapper only needs to recognise the
+// standard profile ID regardless of whether the profile is reported for the
+// lower zone (`0x7E`) or upper zone (`0x7F`). The byte layout checked here is:
+//   [0] profile / bank selector: `0x7E` lower-zone MPE or `0x7F` upper-zone MPE
+//   [1] profile number MSB: `0x01`
+//   [2] profile number LSB: ignored here because JUCE already normalises the
+//       profile object and ECMapper only distinguishes MPE vs non-MPE
+//   [3] profile version / level byte: `0x01` for the MPE profile definition
+//   [4] profile level / optional data: not used here
+// For the normative layout of Profile identifiers, see the MIDI-CI/Profile
+// specification sections describing Standard Profiles and MPE profile IDs.
 bool isMPEProfile(const juce::midi_ci::Profile& profile)
 {
     return (profile[0] == std::byte { 0x7E } || profile[0] == std::byte { 0x7F })
@@ -71,7 +83,7 @@ juce::var createDeviceInfoPropertyResourceListEntry()
 {
     auto resource = std::make_unique<juce::DynamicObject>();
     resource->setProperty("resource", deviceInfoPropertyResource);
-    resource->setProperty("canGet", true);
+    // resource->setProperty("canGet", true);
     resource->setProperty("mediaTypes", juce::Array<juce::var> { "application/json" });
     resource->setProperty("encodings", juce::Array<juce::var> { "ASCII" });
     return resource.release();
@@ -111,6 +123,14 @@ juce::midi_ci::PropertyReplyData createMPELayoutPropertyReply(const juce::MPEZon
 juce::midi_ci::PropertyReplyData createDeviceInfoPropertyReply()
 {
     auto body = std::make_unique<juce::DynamicObject>();
+    // These numeric arrays mirror the common Device Identity style fields used by
+    // MIDI-CI `DeviceInfo` JSON resources:
+    //   manufacturerId = 3-byte SysEx manufacturer ID (`0x7D` = educational / development ID)
+    //   familyId       = 2-byte manufacturer-defined product family
+    //   modelId        = 2-byte manufacturer-defined model identifier
+    //   versionId      = 4-byte manufacturer-defined version/revision identifier
+    // The exact JSON property names come from the MIDI-CI Property Exchange
+    // `DeviceInfo` resource conventions.
     body->setProperty("manufacturerId", createByteArrayProperty(std::array { std::byte { 0x7D }, std::byte { 0x00 }, std::byte { 0x00 } }));
     body->setProperty("manufacturer", "ECMapper");
     body->setProperty("familyId", createByteArrayProperty(std::array { std::byte { 0x01 }, std::byte { 0x00 } }));
@@ -289,6 +309,16 @@ void MidiService::sendCISysex (int group, juce::midi_ci::MUID destinationMUID, s
                              + " to MUID=0x" + juce::String::toHexString(destinationMUID.get()));
 
     std::vector<std::byte> msg;
+    // Common MIDI-CI SysEx framing, before JUCE repacks it into UMP:
+    //   `0x7E`   = Universal Non-Realtime SysEx
+    //   deviceID = SysEx device ID / channel target (`0x7F` would mean broadcast)
+    //   `0x0D`   = Sub-ID#1 for MIDI-CI
+    //   subID2   = MIDI-CI message type (Discovery, Protocol Negotiation, Profile, PE...)
+    //   `0x02`   = MIDI-CI message version / format version used by this implementation
+    // Then follow the source and destination MUID values, each packed as four 7-bit
+    // bytes least-significant chunk first, followed by the message-specific body.
+    // See the MIDI 2.0 / MIDI-CI specification sections covering Universal SysEx,
+    // Discovery/CI message headers, and MUID encoding.
     msg.push_back(std::byte { 0x7e });
     msg.push_back(deviceID);
     msg.push_back(std::byte { 0x0d });
@@ -340,6 +370,15 @@ void MidiService::sendCISysex (int group, juce::midi_ci::MUID destinationMUID, s
 void MidiService::sendInitiateProtocolNegotiation (int group, juce::midi_ci::MUID destinationMUID, std::byte deviceID)
 {
     std::vector<std::byte> body;
+    // Protocol Negotiation Initiate message body:
+    //   `0x30` = authority level / protocol negotiation function block value used here
+    //   `0x01` = number of offered protocols
+    //   `0x02 0x00 0x00 0x00 0x00` = the 5-byte MIDI 2.0 protocol identifier in
+    //                                MIDI-CI protocol list format
+    // The surrounding SysEx header is added by `sendCISysex(..., 0x10, ...)`, where
+    // `0x10` is the MIDI-CI Sub-ID#2 for Initiate Protocol Negotiation.
+    // See the MIDI-CI specification section on Protocol Negotiation messages and
+    // the protocol ID table for the byte layout.
     body.push_back(std::byte { 0x30 });
     body.push_back(std::byte { 0x01 });
     body.push_back(std::byte { 0x02 });
@@ -357,6 +396,17 @@ void MidiService::sendIdentityResponse (int group, std::byte deviceID)
     juce::Logger::writeToLog("MidiService: Sending Identity Response.");
 
     std::vector<std::byte> msg;
+    // Standard SysEx Identity Reply payload:
+    //   `0x7E` = Universal Non-Realtime SysEx
+    //   deviceID = target device ID from the original inquiry
+    //   `0x06` = General Information
+    //   `0x02` = Identity Reply
+    //   `0x7D 0x00 0x00` = manufacturer ID (development / educational ID)
+    //   `0x01 0x00`      = family code
+    //   `0x01 0x00`      = model number
+    //   `0x01 0x00 0x00 0x00` = version / revision bytes
+    // For details, see the MIDI 1.0 Detailed Specification section covering the
+    // Universal Non-Realtime Identity Request / Identity Reply message format.
     msg.push_back(std::byte { 0x7e });
     msg.push_back(deviceID);
     msg.push_back(std::byte { 0x06 });
