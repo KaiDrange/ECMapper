@@ -63,6 +63,22 @@ ecm::LayoutWrapper::LayoutKey makeNoteKey(int keyNo, int noteNumber) {
     return key;
 }
 
+ecm::LayoutWrapper::LayoutKey makeTauKey(int course,
+                                         int keyNo,
+                                         ecm::EigenharpKeyType keyType,
+                                         ecm::KeyMappingType mappingType,
+                                         juce::String mappingValue,
+                                         ecm::Zone zone = ecm::Zone::Zone1) {
+    ecm::LayoutWrapper::LayoutKey key;
+    key.keyId = { course, keyNo, ecm::InstrumentType::Tau };
+    key.keyType = keyType;
+    key.keyColour = ecm::KeyColour::Off;
+    key.zone = zone;
+    key.keyMappingType = mappingType;
+    key.mappingValue = std::move(mappingValue);
+    return key;
+}
+
 } // namespace
 
 int main() {
@@ -191,6 +207,70 @@ int main() {
                  "normalizing duplicate legacy device trees should preserve the already-loaded preset layout mapping");
     ok &= expect(!duplicateState.getChildWithName(LayoutWrapper::id_device + juce::String((int)InstrumentType::Pico)).isValid(),
                  "normalizing duplicate legacy device trees should still remove the legacy root device node");
+
+    juce::ValueTree tauCurrentRoot { "TauCurrentRoot" };
+    auto tauPercKey = makeTauKey(1, 0, EigenharpKeyType::Perc, KeyMappingType::Note, "48", Zone::Zone3);
+    LayoutWrapper::setLayoutKey(tauPercKey, tauCurrentRoot);
+    auto resolvedTauPercKey = LayoutWrapper::getLayoutKey({ 1, 0, InstrumentType::Tau }, tauCurrentRoot);
+    ok &= expect(resolvedTauPercKey.keyId.course == 1 && resolvedTauPercKey.keyId.keyNo == 0,
+                 "Tau percussion keys should use course 1 with zero-based numbering");
+    ok &= expect(resolvedTauPercKey.mappingValue == "48",
+                 "Tau percussion mappings should round-trip with the current numbering");
+
+    auto tauButtonKey = makeTauKey(2, 7, EigenharpKeyType::Button, KeyMappingType::None, {});
+    LayoutWrapper::setLayoutKey(tauButtonKey, tauCurrentRoot);
+    auto resolvedTauButtonKey = LayoutWrapper::getLayoutKey({ 2, 7, InstrumentType::Tau }, tauCurrentRoot);
+    ok &= expect(resolvedTauButtonKey.keyId.course == 2 && resolvedTauButtonKey.keyId.keyNo == 7,
+                 "Tau buttons should use course 2 with zero-based numbering");
+    ok &= expect(resolvedTauButtonKey.keyType == EigenharpKeyType::Button,
+                 "Tau buttons should keep their button type with the current numbering");
+
+    auto tauCurrentPercOverlapCandidate = makeTauKey(1, 5, EigenharpKeyType::Perc, KeyMappingType::Note, "53", Zone::Zone3);
+    LayoutWrapper::setLayoutKey(tauCurrentPercOverlapCandidate, tauCurrentRoot);
+    auto tauCurrentButtonOverlapCandidate = makeTauKey(2, 0, EigenharpKeyType::Button, KeyMappingType::None, {}, Zone::Zone1);
+    LayoutWrapper::setLayoutKey(tauCurrentButtonOverlapCandidate, tauCurrentRoot);
+    auto resolvedTauCurrentPercOverlapCandidate = LayoutWrapper::getLayoutKey({ 1, 5, InstrumentType::Tau }, tauCurrentRoot);
+    auto resolvedTauCurrentButtonOverlapCandidate = LayoutWrapper::getLayoutKey({ 2, 0, InstrumentType::Tau }, tauCurrentRoot);
+    ok &= expect(resolvedTauCurrentPercOverlapCandidate.keyId.course == 1
+                 && resolvedTauCurrentPercOverlapCandidate.keyId.keyNo == 5
+                 && resolvedTauCurrentPercOverlapCandidate.zone == Zone::Zone3,
+                 "Tau percussion key 6 should keep its own course 1 entry");
+    ok &= expect(resolvedTauCurrentButtonOverlapCandidate.keyId.course == 2
+                 && resolvedTauCurrentButtonOverlapCandidate.keyId.keyNo == 0
+                 && resolvedTauCurrentButtonOverlapCandidate.zone == Zone::Zone1,
+                 "Tau round button 1 should stay separate from Tau percussion key 6");
+
+    juce::ValueTree tauLegacyRoot { "TauLegacyRoot" };
+    auto tauLegacyLayout = LayoutWrapper::getLayoutTree(InstrumentType::Tau, tauLegacyRoot);
+    auto tauLegacyPerc = tauLegacyLayout.getOrCreateChildWithName(LayoutWrapper::id_key + juce::String("_0_72"), nullptr);
+    tauLegacyPerc.setProperty(LayoutWrapper::id_keyType, (int)EigenharpKeyType::Perc, nullptr);
+    tauLegacyPerc.setProperty(LayoutWrapper::id_keyColour, (int)KeyColour::Off, nullptr);
+    tauLegacyPerc.setProperty(LayoutWrapper::id_zone, (int)Zone::Zone3, nullptr);
+    tauLegacyPerc.setProperty(LayoutWrapper::id_keyMappingType, (int)KeyMappingType::Note, nullptr);
+    tauLegacyPerc.setProperty(LayoutWrapper::id_mappingValue, "49", nullptr);
+
+    auto tauLegacyButton = tauLegacyLayout.getOrCreateChildWithName(LayoutWrapper::id_key + juce::String("_1_5"), nullptr);
+    tauLegacyButton.setProperty(LayoutWrapper::id_keyType, (int)EigenharpKeyType::Button, nullptr);
+    tauLegacyButton.setProperty(LayoutWrapper::id_keyColour, (int)KeyColour::Yellow, nullptr);
+    tauLegacyButton.setProperty(LayoutWrapper::id_zone, (int)Zone::Zone1, nullptr);
+    tauLegacyButton.setProperty(LayoutWrapper::id_keyMappingType, (int)KeyMappingType::None, nullptr);
+    tauLegacyButton.setProperty(LayoutWrapper::id_mappingValue, {}, nullptr);
+
+    auto migratedTauLegacyPerc = LayoutWrapper::getLayoutKey({ 1, 0, InstrumentType::Tau }, tauLegacyRoot);
+    ok &= expect(migratedTauLegacyPerc.mappingValue == "49",
+                 "legacy Tau percussion numbering should migrate to the current course 1 numbering");
+    ok &= expect(tauLegacyLayout.getChildWithName(LayoutWrapper::id_key + juce::String("_1_0")).isValid(),
+                 "legacy Tau percussion nodes should migrate to key_1_* entries");
+    ok &= expect(!tauLegacyLayout.getChildWithName(LayoutWrapper::id_key + juce::String("_0_72")).isValid(),
+                 "legacy Tau percussion nodes should be removed after migration");
+
+    auto migratedTauLegacyButton = LayoutWrapper::getLayoutKey({ 2, 0, InstrumentType::Tau }, tauLegacyRoot);
+    ok &= expect(migratedTauLegacyButton.keyType == EigenharpKeyType::Button,
+                 "legacy Tau button numbering should migrate to the current course 2 numbering");
+    ok &= expect(tauLegacyLayout.getChildWithName(LayoutWrapper::id_key + juce::String("_2_0")).isValid(),
+                 "legacy Tau button nodes should migrate to key_2_* entries");
+    ok &= expect(!tauLegacyLayout.getChildWithName(LayoutWrapper::id_key + juce::String("_1_5")).isValid(),
+                 "legacy Tau button nodes should be removed after migration");
 
     auto persistentState = SettingsWrapper::createPersistentStateTree(pluginState.state);
     ok &= expect(persistentState.hasProperty(SettingsWrapper::id_ecMapperVersion),

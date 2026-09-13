@@ -59,6 +59,17 @@ bool verifyClientRoleStillForcesReceiveMode()
     return ok;
 }
 
+bool verifyTauButtonsUseSeparateCourseFromTauPercussion()
+{
+    bool ok = true;
+    ok &= expect(ecm::HardwareService::getButtonCourseForInstrument(ecm::InstrumentType::Tau) == 2,
+                 "Tau round buttons should route on course 2 so they do not collide with Tau percussion keys");
+    ok &= expect(ecm::HardwareService::getButtonCourseForInstrument(ecm::InstrumentType::Pico) == 1,
+                 "Pico buttons should keep routing on course 1");
+
+    return ok;
+}
+
 } // namespace
 
 int main()
@@ -66,6 +77,7 @@ int main()
     bool ok = true;
     ok &= verifyHostStartupDefaultsLocalModeForSavedTransmitDevice();
     ok &= verifyClientRoleStillForcesReceiveMode();
+    ok &= verifyTauButtonsUseSeparateCourseFromTauPercussion();
 
     if (!ok)
         return 1;

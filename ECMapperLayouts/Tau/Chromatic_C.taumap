@@ -73,25 +73,25 @@
   <key_0_69 mappingValue="77" zone="1"/>
   <key_0_70 mappingValue="78" zone="1"/>
   <key_0_71 mappingValue="79" zone="1"/>
-  <key_0_72 zone="3" keyMappingType="10" mappingValue="48"/>
-  <key_0_73 zone="3" keyMappingType="10" mappingValue="49"/>
-  <key_0_74 zone="3" keyMappingType="10" mappingValue="50"/>
-  <key_0_75 zone="3" keyMappingType="10" keyColour="1" mappingValue="51"/>
-  <key_0_76 zone="3" keyMappingType="10" mappingValue="52"/>
-  <key_0_77 zone="3" keyMappingType="10" mappingValue="53"/>
-  <key_0_78 zone="3" keyMappingType="10" mappingValue="54"/>
-  <key_0_79 zone="3" keyMappingType="10" keyColour="1" mappingValue="55"/>
-  <key_0_80 zone="3" keyMappingType="10" mappingValue="56"/>
-  <key_0_81 zone="3" keyMappingType="10" mappingValue="57"/>
-  <key_0_82 zone="3" keyMappingType="10" mappingValue="58"/>
-  <key_0_83 zone="3" keyMappingType="10" mappingValue="59" keyColour="0"/>
-  <key_1_4/>
-  <key_1_5/>
-  <key_1_6/>
-  <key_1_7/>
-  <key_1_88/>
-  <key_1_89/>
-  <key_1_90/>
-  <key_1_91 keyMappingType="20" mappingValue="Trigger;AllNotesOff;0;0;0"
+  <key_1_0 zone="3" keyMappingType="10" mappingValue="48"/>
+  <key_1_1 zone="3" keyMappingType="10" mappingValue="49"/>
+  <key_1_2 zone="3" keyMappingType="10" mappingValue="50"/>
+  <key_1_3 zone="3" keyMappingType="10" keyColour="1" mappingValue="51"/>
+  <key_1_4 zone="3" keyMappingType="10" mappingValue="52"/>
+  <key_1_5 zone="3" keyMappingType="10" mappingValue="53"/>
+  <key_1_6 zone="3" keyMappingType="10" mappingValue="54"/>
+  <key_1_7 zone="3" keyMappingType="10" keyColour="1" mappingValue="55"/>
+  <key_1_8 zone="3" keyMappingType="10" mappingValue="56"/>
+  <key_1_9 zone="3" keyMappingType="10" mappingValue="57"/>
+  <key_1_10 zone="3" keyMappingType="10" mappingValue="58"/>
+  <key_1_11 zone="3" keyMappingType="10" mappingValue="59" keyColour="0"/>
+  <key_2_0/>
+  <key_2_1/>
+  <key_2_2/>
+  <key_2_3/>
+  <key_2_4/>
+  <key_2_5/>
+  <key_2_6/>
+  <key_2_7 keyMappingType="20" mappingValue="Trigger;AllNotesOff;0;0;0"
             keyColour="2"/>
 </layout>

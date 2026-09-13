@@ -14,6 +14,11 @@ DeviceMode HardwareService::sanitizeLocalDeviceModeForAppRole(const AppRole role
     return DeviceMode::Local;
 }
 
+unsigned HardwareService::getButtonCourseForInstrument(const InstrumentType type) noexcept
+{
+    return type == InstrumentType::Tau ? 2u : 1u;
+}
+
 AppRole HardwareService::resolveStartupAppRole(AppRole requestedRole,
                                                const bool discoveryPortOccupied,
                                                const bool localHardwareSupported) noexcept {
@@ -438,7 +443,7 @@ void HardwareService::key(const char* dev, unsigned long long t, unsigned course
 }
 
 void HardwareService::button(const char* dev, unsigned long long t, unsigned key, bool a) {
-    this->key(dev, t, 1, key, a, 0.0f, 0.0f, 0.0f);
+    this->key(dev, t, getButtonCourseForInstrument(getInstrumentTypeFromDev(dev)), key, a, 0.0f, 0.0f, 0.0f);
 }
 
 void HardwareService::breath(const char* dev, unsigned long long t, float val) {

@@ -28,6 +28,7 @@ public:
     ~HardwareService() override;
 
     static DeviceMode sanitizeLocalDeviceModeForAppRole(AppRole role, DeviceMode mode) noexcept;
+    static unsigned getButtonCourseForInstrument(InstrumentType type) noexcept;
     
     static AppRole resolveStartupAppRole(AppRole requestedRole,
                                          bool discoveryPortOccupied,

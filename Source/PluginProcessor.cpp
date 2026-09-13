@@ -139,10 +139,10 @@ void materializeLayoutKeysForDevice(const ecm::InstrumentType deviceType, juce::
                 materializeKey({ 1, keyNo, deviceType });
             break;
         case ecm::InstrumentType::Tau:
-            for (int keyNo = 72; keyNo < 72 + counts.perc; ++keyNo)
-                materializeKey({ 0, keyNo, deviceType });
-            for (int keyNo = 5; keyNo < 5 + counts.buttons; ++keyNo)
+            for (int keyNo = 0; keyNo < counts.perc; ++keyNo)
                 materializeKey({ 1, keyNo, deviceType });
+            for (int keyNo = 0; keyNo < counts.buttons; ++keyNo)
+                materializeKey({ 2, keyNo, deviceType });
             break;
         case ecm::InstrumentType::Pico:
             for (int keyNo = 0; keyNo < counts.buttons; ++keyNo)
