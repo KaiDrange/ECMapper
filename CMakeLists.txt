@@ -32,6 +32,18 @@ else()
 endif()
 option(ECMAPPER_ENABLE_HARDWARE "Enable direct hardware communication via EigenLite" ${ECMAPPER_ENABLE_HARDWARE_DEFAULT})
 
+if(APPLE)
+    set(ECMAPPER_RELEASE_COPY_DIR_DEFAULT "${CMAKE_CURRENT_SOURCE_DIR}/Release")
+else()
+    set(ECMAPPER_RELEASE_COPY_DIR_DEFAULT "")
+endif()
+set(ECMAPPER_RELEASE_COPY_DIR "${ECMAPPER_RELEASE_COPY_DIR_DEFAULT}" CACHE PATH
+        "Directory that receives copied release build artifacts")
+set(ECMAPPER_MACOS_CODESIGN_IDENTITY "" CACHE STRING
+        "Developer ID Application identity used to sign copied macOS release bundles")
+set(ECMAPPER_NOTARIZATION_KEYCHAIN_PROFILE "" CACHE STRING
+        "Apple notarytool keychain profile used by the macOS notarization targets")
+
 # ------------------------------------------------------------------------------
 # Dependencies
 
@@ -92,6 +104,47 @@ set(COMMON_LIBS
         juce::juce_recommended_warning_flags
 )
 
+function(ecmapper_add_release_copy target source destination)
+    if(NOT ECMAPPER_RELEASE_COPY_DIR)
+        return()
+    endif()
+
+    set(copy_script "${CMAKE_CURRENT_BINARY_DIR}/${target}_$<CONFIG>_release_copy.cmake")
+    string(CONCAT copy_script_content
+            "set(copy_config \"$<CONFIG>\")\n"
+            "set(copy_source \"${source}\")\n"
+            "set(copy_destination \"${destination}\")\n"
+            "set(copy_codesign_identity \"${ECMAPPER_MACOS_CODESIGN_IDENTITY}\")\n"
+            "include(\"${CMAKE_CURRENT_SOURCE_DIR}/cmake/copy_release_artifacts.cmake\")\n")
+
+    file(GENERATE OUTPUT "${copy_script}" CONTENT "${copy_script_content}")
+
+    add_custom_command(TARGET "${target}" POST_BUILD
+            COMMAND "${CMAKE_COMMAND}" -P "${copy_script}"
+            VERBATIM)
+endfunction()
+
+function(ecmapper_add_release_notary_step target bundle action)
+    if(NOT APPLE OR NOT ECMAPPER_RELEASE_COPY_DIR)
+        return()
+    endif()
+
+    set(notarize_script "${CMAKE_CURRENT_BINARY_DIR}/${target}_$<CONFIG>_release_notary_step.cmake")
+    string(CONCAT notarize_script_content
+            "set(notarize_config \"$<CONFIG>\")\n"
+            "set(notarize_bundle \"${bundle}\")\n"
+            "set(notarize_action \"${action}\")\n"
+            "set(notarize_keychain_profile \"${ECMAPPER_NOTARIZATION_KEYCHAIN_PROFILE}\")\n"
+            "set(notarize_record_path \"${CMAKE_CURRENT_BINARY_DIR}/${target}_$<CONFIG>_notary.txt\")\n"
+            "include(\"${CMAKE_CURRENT_SOURCE_DIR}/cmake/notarize_release_artifacts.cmake\")\n")
+
+    file(GENERATE OUTPUT "${notarize_script}" CONTENT "${notarize_script_content}")
+
+    add_custom_target("${target}"
+            COMMAND "${CMAKE_COMMAND}" -P "${notarize_script}"
+            VERBATIM)
+endfunction()
+
 # ------------------------------------------------------------------------------
 # Standalone Application
 
@@ -130,6 +183,12 @@ if(ECMAPPER_BUILD_APP)
                 MACOSX_BUNDLE_GUI_IDENTIFIER "com.tictech.ecmapper.app"
                 MACOSX_BUNDLE_BUNDLE_NAME "ECMapper"
         )
+
+        ecmapper_add_release_copy(
+                ECMapper_App
+                "${CMAKE_CURRENT_BINARY_DIR}/ECMapper_App_artefacts/$<CONFIG>/ECMapper.app"
+                "${ECMAPPER_RELEASE_COPY_DIR}"
+        )
     endif()
 endif()
 
@@ -146,7 +205,7 @@ if(ECMAPPER_BUILD_PLUGIN)
             IS_SYNTH TRUE
             NEEDS_MIDI_INPUT TRUE
             NEEDS_MIDI_OUTPUT TRUE
-            COPY_PLUGIN_AFTER_BUILD TRUE
+            COPY_PLUGIN_AFTER_BUILD FALSE
     )
 
     target_sources(ECMapper_Plugin PRIVATE
@@ -172,6 +231,46 @@ if(ECMAPPER_BUILD_PLUGIN)
                 MACOSX_BUNDLE_GUI_IDENTIFIER "com.tictech.ecmapper.plugin"
                 MACOSX_BUNDLE_BUNDLE_NAME "ECMapper"
         )
+
+        ecmapper_add_release_copy(
+                ECMapper_Plugin_VST3
+                "${CMAKE_CURRENT_BINARY_DIR}/ECMapper_Plugin_artefacts/$<CONFIG>/VST3/ECMapper.vst3"
+                "${ECMAPPER_RELEASE_COPY_DIR}"
+        )
+    endif()
+endif()
+
+if(APPLE AND ECMAPPER_RELEASE_COPY_DIR)
+    if(ECMAPPER_BUILD_APP)
+        ecmapper_add_release_notary_step(
+                ECMapper_NotarizeApp
+                "${ECMAPPER_RELEASE_COPY_DIR}/ECMapper.app"
+                submit
+        )
+        add_dependencies(ECMapper_NotarizeApp ECMapper_App)
+
+        ecmapper_add_release_notary_step(
+                ECMapper_StapleApp
+                "${ECMAPPER_RELEASE_COPY_DIR}/ECMapper.app"
+                staple
+        )
+        add_dependencies(ECMapper_StapleApp ECMapper_App)
+    endif()
+
+    if(ECMAPPER_BUILD_PLUGIN)
+        ecmapper_add_release_notary_step(
+                ECMapper_NotarizePlugin
+                "${ECMAPPER_RELEASE_COPY_DIR}/ECMapper.vst3"
+                submit
+        )
+        add_dependencies(ECMapper_NotarizePlugin ECMapper_Plugin_VST3)
+
+        ecmapper_add_release_notary_step(
+                ECMapper_StaplePlugin
+                "${ECMAPPER_RELEASE_COPY_DIR}/ECMapper.vst3"
+                staple
+        )
+        add_dependencies(ECMapper_StaplePlugin ECMapper_Plugin_VST3)
     endif()
 endif()
 

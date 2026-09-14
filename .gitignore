@@ -16,3 +16,5 @@ cmake-build*/
 **/*.au
 **/*.dylib
 **/*.a
+
+Release/

@@ -19,6 +19,7 @@
       "name": "macos-debug",
       "inherits": "macos-base",
       "displayName": "macOS Debug",
+      "generator": "Ninja",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug"
       },
@@ -89,52 +90,100 @@
   ],
   "buildPresets": [
     {
-      "name": "macos-debug-app",
-      "displayName": "Build Standalone App",
+      "name": "macos-debug-standalone-app",
+      "displayName": "Build app",
       "configurePreset": "macos-debug",
-      "targets": [ "ECMapper_App" ]
+      "configuration": "Debug",
+      "targets": [ "ECMapper_App" ],
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      }
     },
     {
-      "name": "macos-debug-plugin",
-      "displayName": "Build VST3 Plugin",
+      "name": "macos-debug-vst-plugin",
+      "displayName": "Build plugin",
       "configurePreset": "macos-debug",
-      "targets": [ "ECMapper_Plugin_VST3" ]
+      "configuration": "Debug",
+      "targets": [ "ECMapper_Plugin_VST3" ],
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      }
     },
     {
-      "name": "macos-release-app",
-      "displayName": "Build Standalone App",
+      "name": "macos-release-standalone-app",
+      "displayName": "Build app",
       "configurePreset": "macos-release",
-      "targets": [ "ECMapper_App" ]
+      "configuration": "Release",
+      "targets": [ "ECMapper_App" ],
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      }
     },
     {
-      "name": "macos-release-plugin",
-      "displayName": "Build VST3 Plugin",
+      "name": "macos-release-vst-plugin",
+      "displayName": "Build plugin",
       "configurePreset": "macos-release",
-      "targets": [ "ECMapper_Plugin_VST3" ]
+      "configuration": "Release",
+      "targets": [ "ECMapper_Plugin_VST3" ],
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      }
     },
     {
-      "name": "windows-debug-app",
-      "displayName": "Build Standalone App",
+      "name": "windows-debug-standalone-app",
+      "displayName": "Build app",
       "configurePreset": "windows-debug",
-      "targets": [ "ECMapper_App" ]
+      "configuration": "Debug",
+      "targets": [ "ECMapper_App" ],
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
     },
     {
-      "name": "windows-debug-plugin",
-      "displayName": "Build VST3 Plugin",
+      "name": "windows-debug-vst-plugin",
+      "displayName": "Build plugin",
       "configurePreset": "windows-debug",
-      "targets": [ "ECMapper_Plugin_VST3" ]
+      "configuration": "Debug",
+      "targets": [ "ECMapper_Plugin_VST3" ],
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
     },
     {
-      "name": "windows-release-app",
-      "displayName": "Build Standalone App",
+      "name": "windows-release-standalone-app",
+      "displayName": "Build app",
       "configurePreset": "windows-release",
-      "targets": [ "ECMapper_App" ]
+      "configuration": "Release",
+      "targets": [ "ECMapper_App" ],
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
     },
     {
-      "name": "windows-release-plugin",
-      "displayName": "Build VST3 Plugin",
+      "name": "windows-release-vst-plugin",
+      "displayName": "Build plugin",
       "configurePreset": "windows-release",
-      "targets": [ "ECMapper_Plugin_VST3" ]
+      "configuration": "Release",
+      "targets": [ "ECMapper_Plugin_VST3" ],
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
     }
   ]
 }
