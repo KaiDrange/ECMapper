@@ -1,13 +1,13 @@
-# ECMapper (Combined) v2.0-alpha
+# ECMapper
 
-This is a fresh redesign of the EigenCore and ECMapper applications, combined into a single application/plugin.
+ECMapper is an application and VST3 plugin for the EigenLabs Eigenharp instruments. It is intended as an
+alternative to the official EigenD software. ECMapper interprets high resolution data from the hardware instruments
+and converts it into MIDI. Both MIDI 1.0 and MIDI 2.0 are supported. Currently, only Mac is supported.
 
 ## Overview
 
-Initially supporting Mac (Standalone and VST3), with Windows support planned.
-Uses JUCE with experimental MIDI 2.0 support.
-Uses EigenLite for hardware communication.
-Windows builds are client-only for now: OSC/network features work, but direct device communication is disabled.
+Uses the JUCE Framework. EigenLite by the Technobear is used for hardware communication. More information can be found here:
+https://ticticelectro.com/ECMapper
 
 ## Build Instructions
 
@@ -18,8 +18,15 @@ cmake ..
 cmake --build .
 ```
 
-On Windows, use the `windows-debug` or `windows-release` preset. Those presets turn off the EigenLite hardware path and build the client mode only.
-That setup also requires a Visual Studio or clang-cl toolchain; MinGW is not supported by JUCE in this project.
+## Credits:
 
-## Legacy Code
-The old separate versions of EigenCore and ECMapper are archived in the `old/` directory.
+This project is made possible only because of the open-source work of TheTechnobear. ECMapper is completely dependent on his EigenLite API, 
+and his work on "MEC", another alternative to EigenD has been an inspiration.
+
+Thanks also to John Lambert/EigenLabs for making EigenD open-source so that community projects like these are even possible.
+
+EigenLite: https://github.com/thetechnobear/EigenLite
+
+JUCE Framework: https://juce.com/
+
+JUCE is dual-licensed under the AGPLv3 and the commercial JUCE licence. See `JUCE/LICENSE.md` in this repository and the JUCE website for the full licence terms.
