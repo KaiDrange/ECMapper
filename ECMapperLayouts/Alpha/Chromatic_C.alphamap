@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<layout>
+<layout ecmapperVersion="2.0.0">
   <key_0_0 keyMappingType="10" mappingValue="48" keyColour="1" zone="1"/>
   <key_0_1 keyMappingType="10" mappingValue="49" zone="1"/>
   <key_0_2 keyMappingType="10" mappingValue="50" zone="1"/>

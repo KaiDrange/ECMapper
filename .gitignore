@@ -16,6 +16,3 @@ cmake-build*/
 **/*.au
 **/*.dylib
 **/*.a
-
-# Project specific
-old/

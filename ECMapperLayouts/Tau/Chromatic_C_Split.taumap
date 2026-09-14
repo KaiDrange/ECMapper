@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<layout>
+<layout ecmapperVersion="2.0.0">
   <key_0_0 mappingValue="48" keyColour="3" zone="2"/>
   <key_0_1 mappingValue="49" zone="2"/>
   <key_0_2 mappingValue="50" zone="2"/>
@@ -85,13 +85,13 @@
   <key_1_9 zone="3" keyMappingType="10" mappingValue="57"/>
   <key_1_10 zone="3" keyMappingType="10" mappingValue="58"/>
   <key_1_11 zone="3" keyMappingType="10" mappingValue="59" keyColour="0"/>
+  <key_1_4/>
+  <key_1_5/>
+  <key_1_6/>
+  <key_1_7/>
   <key_2_0/>
   <key_2_1/>
   <key_2_2/>
-  <key_2_3/>
-  <key_2_4/>
-  <key_2_5/>
-  <key_2_6/>
-  <key_2_7 keyMappingType="20" mappingValue="Trigger;AllNotesOff;0;0;0"
-            keyColour="2"/>
+  <key_2_3 keyMappingType="20" mappingValue="Trigger;AllNotesOff;0;0;0"
+           keyColour="2"/>
 </layout>
