@@ -106,6 +106,20 @@ DeviceKeyCounts getDeviceKeyCounts(const ecm::InstrumentType deviceType)
 
 void materializePresetState(juce::ValueTree& rootState);
 
+bool presetBackedPropertyExists(const juce::ValueTree& rootState, const juce::Identifier& propertyId)
+{
+    if (const auto presetTree = rootState.getChildWithName(ecm::SettingsWrapper::id_preset); presetTree.isValid())
+        return presetTree.hasProperty(propertyId);
+
+    return false;
+}
+
+void applyFreshPluginTransportDefaults(juce::ValueTree& rootState)
+{
+    if (!presetBackedPropertyExists(rootState, ecm::SettingsWrapper::id_midi2Mode))
+        ecm::SettingsWrapper::setMidi2Mode(false, rootState);
+}
+
 juce::ValueTree createPresetSnapshotRoot(const juce::ValueTree& stateTree)
 {
     auto snapshot = juce::ValueTree(stateTree.getType());
@@ -1023,7 +1037,6 @@ ECMapperAudioProcessor::ECMapperAudioProcessor() :
     hardwareService(hardwareToMapperQueue, mapperToHardwareQueue),
     midiService(configLookups, presetStateLock_),
     oscBridge(hardwareService, hardwareToMapperQueue, mapperToHardwareQueue, outgoingOSCQueue, logger) {
-    
     hardwareService.addListener(this);
     hardwareService.setOSCBroadcastQueue(&outgoingOSCQueue);
     midiService.setOSCBroadcastQueue(&outgoingOSCQueue);
@@ -1047,12 +1060,14 @@ ECMapperAudioProcessor::ECMapperAudioProcessor() :
                 midiService.queueTransposeChangeFlush(deviceType, zone);
             requestRuntimeConfigRefresh();
         });
-    state.state.addListener(layoutChangeHandler.get());
-    state.state.addListener(this);
 
     ensureInitPresetExists();
     if (const auto initSnapshot = getPresetSnapshot(1); initSnapshot.isValid())
         applyPresetState(initSnapshot);
+    applyFreshPluginTransportDefaults(state.state);
+    refreshDerivedStateAfterPresetChange();
+    state.state.addListener(layoutChangeHandler.get());
+    state.state.addListener(this);
     setCurrentPresetSelection(1, "Init");
 }
 

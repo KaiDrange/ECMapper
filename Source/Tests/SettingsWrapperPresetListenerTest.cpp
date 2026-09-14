@@ -84,6 +84,18 @@ bool verifyPresetBackedSettingsNotifyListeners()
     return ok;
 }
 
+bool verifyPresetBackedDefaults()
+{
+    juce::ValueTree rootState("ECMapperState");
+
+    bool ok = true;
+    ok &= expect(ecm::SettingsWrapper::getMidi2Mode(rootState),
+                 "first-launch state should default to MIDI 2.0 mode");
+    ok &= expect(ecm::SettingsWrapper::getPluginOutputMode(rootState) == ecm::OutputTransportMode::Vst3Direct,
+                 "first-launch plugin state should default to VST3 Direct output mode");
+    return ok;
+}
+
 bool verifyGlobalSettingsStillNotifyListeners()
 {
     juce::ValueTree rootState("ECMapperState");
@@ -104,6 +116,7 @@ bool verifyGlobalSettingsStillNotifyListeners()
 int main()
 {
     bool ok = true;
+    ok &= verifyPresetBackedDefaults();
     ok &= verifyPresetBackedSettingsNotifyListeners();
     ok &= verifyGlobalSettingsStillNotifyListeners();
 

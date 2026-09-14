@@ -558,6 +558,25 @@ target_include_directories(SettingsWrapperPresetListenerTest PRIVATE Source)
 target_compile_definitions(SettingsWrapperPresetListenerTest PRIVATE ECMAPPER_ENABLE_HARDWARE=0 JUCE_MODAL_LOOPS_PERMITTED=1)
 juce_generate_juce_header(SettingsWrapperPresetListenerTest)
 
+juce_add_console_app(PluginStartupTransportDefaultsTest
+        PRODUCT_NAME "PluginStartupTransportDefaultsTest"
+        VERSION "1.0.0"
+        COMPANY_NAME "Tic Tech"
+        BUNDLE_ID "com.tictech.ecmapper.pluginstartuptransportdefaultstest"
+)
+
+target_sources(PluginStartupTransportDefaultsTest PRIVATE
+        Source/Tests/PluginStartupTransportDefaultsTest.cpp
+        Source/PluginProcessor.cpp
+        Source/PluginEditor.cpp
+        ${SHARED_SOURCES}
+)
+
+target_link_libraries(PluginStartupTransportDefaultsTest PRIVATE ${COMMON_LIBS})
+target_include_directories(PluginStartupTransportDefaultsTest PRIVATE Source)
+target_compile_definitions(PluginStartupTransportDefaultsTest PRIVATE ECMAPPER_ENABLE_HARDWARE=0 JUCE_MODAL_LOOPS_PERMITTED=1)
+juce_generate_juce_header(PluginStartupTransportDefaultsTest)
+
 juce_add_console_app(MainMenuBarModelTest
         PRODUCT_NAME "MainMenuBarModelTest"
         VERSION "1.0.0"

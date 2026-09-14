@@ -93,8 +93,8 @@ private:
     static constexpr int default_upperMPEVoiceCount = 0;
     static constexpr int default_lowerMPEPB = 48;
     static constexpr int default_upperMPEPB = 48;
-    static constexpr bool default_midi2Mode = false;
-    static constexpr int default_pluginOutputMode = static_cast<int>(OutputTransportMode::LegacyMidi);
+    static constexpr bool default_midi2Mode = true;
+    static constexpr int default_pluginOutputMode = static_cast<int>(OutputTransportMode::Vst3Direct);
     static constexpr int default_activeTab = 0;
     static constexpr int default_activeCalibrationTab = 0;
 
