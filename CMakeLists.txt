@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.22)
 
+set(CMAKE_OSX_DEPLOYMENT_TARGET "13.0" CACHE STRING
+        "Minimum macOS deployment version for ECMapper")
+
 project(ECMapper VERSION 2.0.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
