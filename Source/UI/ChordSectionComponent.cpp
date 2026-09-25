@@ -46,12 +46,12 @@ ChordSectionComponent::~ChordSectionComponent() = default;
 
 void ChordSectionComponent::resized() {
     auto area = getLocalBounds();
-    float lineHeight = area.getHeight() * 0.04f;
-    chordNameInput.setBounds(area.removeFromTop(lineHeight));
+    float lineHeight = static_cast<float>(area.getHeight()) * 0.04f;
+    chordNameInput.setBounds(area.removeFromTop(static_cast<int>(lineHeight)));
     for (auto & chordNote : chordNotes) {
-        area.removeFromTop(lineHeight);
-        chordNote.label.setBounds(area.removeFromTop(lineHeight));
-        auto line = area.removeFromTop(lineHeight);
+        area.removeFromTop(static_cast<int>(lineHeight));
+        chordNote.label.setBounds(area.removeFromTop(static_cast<int>(lineHeight)));
+        auto line = area.removeFromTop(static_cast<int>(lineHeight));
         chordNote.setButton.setBounds(line.removeFromLeft(line.getWidth() / 2));
         chordNote.clearButton.setBounds(line);
     }

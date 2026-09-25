@@ -1,4 +1,14 @@
+#include <JuceHeader.h>
+
+// This test intentionally exposes private members for regression checks.
+#if defined(__clang__)
+ #pragma clang diagnostic push
+ #pragma clang diagnostic ignored "-Wkeyword-macro"
+#endif
 #define private public
+#if defined(__clang__)
+ #pragma clang diagnostic pop
+#endif
 #include "Core/MidiService.h"
 #undef private
 
@@ -7,7 +17,6 @@
 #include <iostream>
 #include <vector>
 
-#include <JuceHeader.h>
 
 #include "Core/ConfigLookup.h"
 #include "Core/OSCMessage.h"

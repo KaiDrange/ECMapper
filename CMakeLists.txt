@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.22)
 set(CMAKE_OSX_DEPLOYMENT_TARGET "13.0" CACHE STRING
         "Minimum macOS deployment version for ECMapper")
 
-project(ECMapper VERSION 2.0.0 LANGUAGES C CXX)
+project(ECMapper_Dev VERSION 2.1.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -153,10 +153,10 @@ endfunction()
 
 if(ECMAPPER_BUILD_APP)
     juce_add_gui_app(ECMapper_App
-            PRODUCT_NAME "ECMapper"
-            VERSION "2.0.0"
+            PRODUCT_NAME "${PROJECT_NAME}"
+            VERSION "${PROJECT_VERSION}"
             COMPANY_NAME "Tic Tech"
-            BUNDLE_ID "com.tictech.ecmapper.app"
+            BUNDLE_ID "com.tictech.ecmapper.dev.app"
             ICON_BIG "${CMAKE_CURRENT_SOURCE_DIR}/assets/app_icon.png"
     )
 
@@ -179,17 +179,17 @@ if(ECMAPPER_BUILD_APP)
     target_compile_definitions(ECMapper_App PRIVATE ECMAPPER_ENABLE_HARDWARE=$<BOOL:${ECMAPPER_ENABLE_HARDWARE}>)
     juce_generate_juce_header(ECMapper_App)
 
-    set_target_properties(ECMapper_App PROPERTIES OUTPUT_NAME "ECMapper")
+    set_target_properties(ECMapper_App PROPERTIES OUTPUT_NAME "${PROJECT_NAME}")
 
     if(APPLE)
         set_target_properties(ECMapper_App PROPERTIES
-                MACOSX_BUNDLE_GUI_IDENTIFIER "com.tictech.ecmapper.app"
-                MACOSX_BUNDLE_BUNDLE_NAME "ECMapper"
+                MACOSX_BUNDLE_GUI_IDENTIFIER "com.tictech.ecmapper.dev.app"
+                MACOSX_BUNDLE_BUNDLE_NAME "${PROJECT_NAME}"
         )
 
         ecmapper_add_release_copy(
                 ECMapper_App
-                "${CMAKE_CURRENT_BINARY_DIR}/ECMapper_App_artefacts/$<CONFIG>/ECMapper.app"
+                "${CMAKE_CURRENT_BINARY_DIR}/ECMapper_App_artefacts/$<CONFIG>/${PROJECT_NAME}.app"
                 "${ECMAPPER_RELEASE_COPY_DIR}"
         )
     endif()
@@ -200,10 +200,11 @@ endif()
 
 if(ECMAPPER_BUILD_PLUGIN)
     juce_add_plugin(ECMapper_Plugin
-            PRODUCT_NAME "ECMapper"
-            VERSION "2.0.0"
+            PRODUCT_NAME "${PROJECT_NAME}"
+            VERSION "${PROJECT_VERSION}"
             COMPANY_NAME "Tic Tech"
-            BUNDLE_ID "com.tictech.ecmapper.plugin"
+            BUNDLE_ID "com.tictech.ecmapper.dev.plugin"
+            PLUGIN_CODE EcDv
             FORMATS VST3
             IS_SYNTH TRUE
             NEEDS_MIDI_INPUT TRUE
@@ -227,17 +228,17 @@ if(ECMAPPER_BUILD_PLUGIN)
     target_include_directories(ECMapper_Plugin PRIVATE Source)
     juce_generate_juce_header(ECMapper_Plugin)
 
-    set_target_properties(ECMapper_Plugin PROPERTIES OUTPUT_NAME "ECMapper")
+    set_target_properties(ECMapper_Plugin PROPERTIES OUTPUT_NAME "${PROJECT_NAME}")
 
     if(APPLE)
         set_target_properties(ECMapper_Plugin PROPERTIES
-                MACOSX_BUNDLE_GUI_IDENTIFIER "com.tictech.ecmapper.plugin"
-                MACOSX_BUNDLE_BUNDLE_NAME "ECMapper"
+                MACOSX_BUNDLE_GUI_IDENTIFIER "com.tictech.ecmapper.dev.plugin"
+                MACOSX_BUNDLE_BUNDLE_NAME "${PROJECT_NAME}"
         )
 
         ecmapper_add_release_copy(
                 ECMapper_Plugin_VST3
-                "${CMAKE_CURRENT_BINARY_DIR}/ECMapper_Plugin_artefacts/$<CONFIG>/VST3/ECMapper.vst3"
+                "${CMAKE_CURRENT_BINARY_DIR}/ECMapper_Plugin_artefacts/$<CONFIG>/VST3/${PROJECT_NAME}.vst3"
                 "${ECMAPPER_RELEASE_COPY_DIR}"
         )
     endif()
@@ -247,14 +248,14 @@ if(APPLE AND ECMAPPER_RELEASE_COPY_DIR)
     if(ECMAPPER_BUILD_APP)
         ecmapper_add_release_notary_step(
                 ECMapper_NotarizeApp
-                "${ECMAPPER_RELEASE_COPY_DIR}/ECMapper.app"
+                "${ECMAPPER_RELEASE_COPY_DIR}/${PROJECT_NAME}.app"
                 submit
         )
         add_dependencies(ECMapper_NotarizeApp ECMapper_App)
 
         ecmapper_add_release_notary_step(
                 ECMapper_StapleApp
-                "${ECMAPPER_RELEASE_COPY_DIR}/ECMapper.app"
+                "${ECMAPPER_RELEASE_COPY_DIR}/${PROJECT_NAME}.app"
                 staple
         )
         add_dependencies(ECMapper_StapleApp ECMapper_App)
@@ -263,14 +264,14 @@ if(APPLE AND ECMAPPER_RELEASE_COPY_DIR)
     if(ECMAPPER_BUILD_PLUGIN)
         ecmapper_add_release_notary_step(
                 ECMapper_NotarizePlugin
-                "${ECMAPPER_RELEASE_COPY_DIR}/ECMapper.vst3"
+                "${ECMAPPER_RELEASE_COPY_DIR}/${PROJECT_NAME}.vst3"
                 submit
         )
         add_dependencies(ECMapper_NotarizePlugin ECMapper_Plugin_VST3)
 
         ecmapper_add_release_notary_step(
                 ECMapper_StaplePlugin
-                "${ECMAPPER_RELEASE_COPY_DIR}/ECMapper.vst3"
+                "${ECMAPPER_RELEASE_COPY_DIR}/${PROJECT_NAME}.vst3"
                 staple
         )
         add_dependencies(ECMapper_StaplePlugin ECMapper_Plugin_VST3)

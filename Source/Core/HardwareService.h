@@ -100,7 +100,8 @@ private:
     
     juce::ValueTree* state_ = nullptr;
     
-    osc::MessageFifo& hardwareToMapperQueue_;
+    // Only hardware-enabled builds write directly to this queue.
+    [[maybe_unused]] osc::MessageFifo& hardwareToMapperQueue_;
     osc::MessageFifo& mapperToHardwareQueue_;
     osc::MessageFifo* oscBroadcastQueue_ = nullptr;
     

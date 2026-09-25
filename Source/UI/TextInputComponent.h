@@ -24,7 +24,6 @@ public:
 private:
     void sendChangeMessage();
     juce::Label label;
-    int minLength;
     int maxLength;
     juce::String legalChars;
     juce::ListenerList<Listener> listeners;

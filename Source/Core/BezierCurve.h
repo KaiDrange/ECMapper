@@ -14,7 +14,7 @@ public:
     
 private:
     std::array<float, TABLE_LENGTH> table;
-    float x0, y0, x1, y1, x2, y2, x3, y3;
+    float y0, y1, y2, y3;
     
     float getCurvePoint(float n1, float n2, int tablePos) const noexcept;
 };

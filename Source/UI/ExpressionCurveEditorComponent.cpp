@@ -53,11 +53,11 @@ ExpressionCurveData presetData(int presetId)
 
 } // namespace
 
-ExpressionCurveEditorComponent::PresetSwatchButton::PresetSwatchButton(int presetId, const ExpressionCurveData& previewData, juce::Colour curveColour)
-    : juce::Button("preset-" + juce::String(presetId)),
-      presetId(presetId),
-      previewData(previewData),
-      curveColour(curveColour)
+ExpressionCurveEditorComponent::PresetSwatchButton::PresetSwatchButton(int presetIdToUse, const ExpressionCurveData& previewDataToUse, juce::Colour curveColourToUse)
+    : juce::Button("preset-" + juce::String(presetIdToUse)),
+      presetId(presetIdToUse),
+      previewData(previewDataToUse),
+      curveColour(curveColourToUse)
 {
     setTooltip("Apply preset " + juce::String(presetId));
 }
@@ -110,13 +110,13 @@ void ExpressionCurveEditorComponent::PresetSwatchButton::paintButton(juce::Graph
     juce::ignoreUnused(presetId);
 }
 
-ExpressionCurveEditorComponent::ExpressionCurveEditorComponent(InstrumentType deviceType, ExpressionCurveTarget target, juce::AudioProcessorValueTreeState& pluginState, MidiService& midiService, juce::String labelText)
-    : deviceType(deviceType),
-      target(target),
-      pluginState(pluginState),
-      midiService(midiService),
-      labelText(labelText.isEmpty() ? getDefaultCurveLabel(target) : labelText),
-      curve(ExpressionCurveWrapper::getCurve(deviceType, target, pluginState.state)) {
+ExpressionCurveEditorComponent::ExpressionCurveEditorComponent(InstrumentType deviceTypeToUse, ExpressionCurveTarget targetToUse, juce::AudioProcessorValueTreeState& pluginStateToUse, MidiService& midiServiceToUse, juce::String labelTextToUse)
+    : deviceType(deviceTypeToUse),
+      target(targetToUse),
+      pluginState(pluginStateToUse),
+      midiService(midiServiceToUse),
+      labelText(labelTextToUse.isEmpty() ? getDefaultCurveLabel(targetToUse) : labelTextToUse),
+      curve(ExpressionCurveWrapper::getCurve(deviceTypeToUse, targetToUse, pluginStateToUse.state)) {
     auto deviceTabIndex = static_cast<int>(deviceType) - 1;
     auto curveColour = Style::tabColour(deviceTabIndex);
 
@@ -175,9 +175,9 @@ void ExpressionCurveEditorComponent::paint(juce::Graphics& g) {
     auto gridColour = Style::border().withAlpha(0.55f);
     g.setColour(gridColour);
     for (int i = 1; i < 4; ++i) {
-        auto x = plotArea.getX() + plotArea.getWidth() * (i / 4.0f);
+        auto x = plotArea.getX() + plotArea.getWidth() * (static_cast<float>(i) / 4.0f);
         g.drawVerticalLine((int)std::round(x), plotArea.getY(), plotArea.getBottom());
-        auto y = plotArea.getY() + plotArea.getHeight() * (i / 4.0f);
+        auto y = plotArea.getY() + plotArea.getHeight() * (static_cast<float>(i) / 4.0f);
         g.drawHorizontalLine((int)std::round(y), plotArea.getX(), plotArea.getRight());
     }
 
@@ -258,7 +258,7 @@ void ExpressionCurveEditorComponent::paint(juce::Graphics& g) {
         
         float alpha = 1.0f;
         if (target == ExpressionCurveTarget::Velocity || target == ExpressionCurveTarget::ReleaseVelocity) {
-            float age = (now - marker.timestamp) / 1000.0f;
+            float age = static_cast<float>(now - marker.timestamp) / 1000.0f;
             alpha = std::clamp(1.0f - age / 1.5f, 0.0f, 1.0f);
         }
 
@@ -304,6 +304,8 @@ ExpressionCurvePoint ExpressionCurveEditorComponent::toCurvePoint(const juce::Po
     normalizedY = std::clamp(normalizedY, 0.0f, 1.0f);
 
     switch (handle) {
+        case Handle::None:
+            break;
         case Handle::Start:
             normalizedX = 0.0f;
             break;

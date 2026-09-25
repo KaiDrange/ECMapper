@@ -56,6 +56,7 @@ juce::String FileUtil::getFileExtension(InstrumentType instrumentType) {
         case InstrumentType::Alpha: return "*.alphamap";
         case InstrumentType::Tau:   return "*.taumap";
         case InstrumentType::Pico:  return "*.picomap";
+        case InstrumentType::None:
         default:                    return "";
     }
 }
@@ -65,6 +66,7 @@ juce::String FileUtil::getDeviceFolder(InstrumentType instrumentType) {
         case InstrumentType::Alpha: return "Alpha";
         case InstrumentType::Tau:   return "Tau";
         case InstrumentType::Pico:  return "Pico";
+        case InstrumentType::None:
         default:                    return "";
     }
 }

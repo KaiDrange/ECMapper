@@ -37,7 +37,7 @@ juce::PopupMenu MainMenuBarModel::getMenuForIndex(int topLevelMenuIndex, const j
     }
     else if (menuName == "Help")
     {
-        menu.addItem(30, "About ECMapper");
+        menu.addItem(30, "About ECMapper_Dev");
         menu.addSeparator();
         menu.addItem(33, "Input Midi reference");
         menu.addSeparator();

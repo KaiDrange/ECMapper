@@ -92,7 +92,7 @@ void LayoutChangeHandler::sendLEDMsg(LayoutWrapper::LayoutKey layoutKey) {
     msg.type = osc::MessageType::LED;
     msg.key = static_cast<unsigned int>(layoutKey.keyId.keyNo);
     msg.course = static_cast<unsigned int>(layoutKey.keyId.course);
-    msg.value = static_cast<unsigned int>(layoutKey.keyColour);
+    msg.value = static_cast<float>(layoutKey.keyColour);
     msg.device = layoutKey.keyId.deviceType;
     
     oscSendQueue_.add(msg);

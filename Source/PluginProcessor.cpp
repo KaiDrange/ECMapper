@@ -3,11 +3,16 @@
 #include "Core/SettingsWrapper.h"
 #include "Core/PresetBankFileUtil.h"
 #include "Core/Midi2Protocol.h"
+// Keep vendor-header diagnostics separate from application code.
+JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE("-Wshadow-field-in-constructor")
 #include "../JUCE/modules/juce_audio_processors_headless/format_types/VST3_SDK/pluginterfaces/vst/ivstevents.h"
 #include "../JUCE/modules/juce_audio_processors_headless/format_types/VST3_SDK/pluginterfaces/vst/ivstmidicontrollers.h"
 #include "../JUCE/modules/juce_audio_processors_headless/format_types/VST3_SDK/pluginterfaces/vst/ivstnoteexpression.h"
+JUCE_END_IGNORE_WARNINGS_GCC_LIKE
 #include <cmath>
 #include <string_view>
+
+bool ecmapperAppendDirectVst3Events(juce::AudioProcessor& processor, Steinberg::Vst::IEventList& outputEvents);
 
 namespace {
 
@@ -18,8 +23,6 @@ constexpr int kZone3EnableCcNumber = 27;
 constexpr int kPresetParameterDefaultIndex = 0;
 constexpr int kTransposeParameterMinimum = -64;
 constexpr int kTransposeParameterMaximum = 63;
-
-bool ecmapperAppendDirectVst3Events(juce::AudioProcessor& processor, Steinberg::Vst::IEventList& outputEvents);
 
 int transposeFromCc(int ccValue)
 {
@@ -37,6 +40,7 @@ juce::String getDeviceGroupId(const ecm::InstrumentType deviceType)
         case ecm::InstrumentType::Alpha: return "alpha";
         case ecm::InstrumentType::Tau:   return "tau";
         case ecm::InstrumentType::Pico:  return "pico";
+        case ecm::InstrumentType::None:
         default:                         return "device";
     }
 }
@@ -47,6 +51,7 @@ juce::String getDeviceDisplayName(const ecm::InstrumentType deviceType)
         case ecm::InstrumentType::Alpha: return "Alpha";
         case ecm::InstrumentType::Tau:   return "Tau";
         case ecm::InstrumentType::Pico:  return "Pico";
+        case ecm::InstrumentType::None:
         default:                         return "Device";
     }
 }
@@ -100,6 +105,7 @@ DeviceKeyCounts getDeviceKeyCounts(const ecm::InstrumentType deviceType)
         case ecm::InstrumentType::Alpha: return { 120, 12, 0 };
         case ecm::InstrumentType::Tau:   return { 72, 12, 8 };
         case ecm::InstrumentType::Pico:  return { 18, 0, 4 };
+        case ecm::InstrumentType::None:
         default:                         return {};
     }
 }
@@ -894,6 +900,7 @@ void materializeLayoutKeysForDevice(const ecm::InstrumentType deviceType, juce::
             for (int keyNo = 0; keyNo < counts.buttons; ++keyNo)
                 materializeKey({ 1, keyNo, deviceType });
             break;
+        case ecm::InstrumentType::None:
         default:
             break;
     }
@@ -1543,7 +1550,7 @@ void ECMapperAudioProcessor::updateGlobalSettings() {
         clientIP = ecm::SettingsWrapper::getClientListenIP(state.state);
         clientPort = ecm::SettingsWrapper::getClientListenPort(state.state);
         
-        const bool midi2 = ecm::SettingsWrapper::getMidi2Mode(state.state);
+        [[maybe_unused]] const bool midi2 = ecm::SettingsWrapper::getMidi2Mode(state.state);
         ECM_LOGGER(logger, "updateGlobalSettings: MIDI 2.0 Mode is " + juce::String(midi2 ? "Enabled" : "Disabled"));
     }
 

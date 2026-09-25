@@ -3,11 +3,11 @@
 namespace ecm {
 
 TextInputComponent::TextInputComponent(const juce::String& labelText,
-                                       int minLength,
-                                       int maxLength,
-                                       const juce::String& legalChars,
-                                       bool labelAboveInput)
-    : minLength(minLength), maxLength(maxLength), legalChars(legalChars), labelAboveInput(labelAboveInput) {
+                                       int /*minLength*/,
+                                       int maxLengthToUse,
+                                       const juce::String& legalCharsToUse,
+                                       bool labelAboveInputToUse)
+    : maxLength(maxLengthToUse), legalChars(legalCharsToUse), labelAboveInput(labelAboveInputToUse) {
     
     label.setText(labelText, juce::dontSendNotification);
     if (maxLength > 0)

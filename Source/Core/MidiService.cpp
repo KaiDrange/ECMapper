@@ -490,6 +490,14 @@ void MidiService::processMessage(const osc::Message& oscMsg, osc::Message& outgo
             }
             break;
         }
+        case osc::MessageType::Undefined:
+        case osc::MessageType::Device:
+        case osc::MessageType::Pedal:
+        case osc::MessageType::LED:
+        case osc::MessageType::Ping:
+        case osc::MessageType::Reset:
+        case osc::MessageType::RequestLEDs:
+        case osc::MessageType::AppCtrl:
         default: break;
     }
 
@@ -534,7 +542,7 @@ void MidiService::processCmdKey(const osc::Message& oscMsg, osc::Message& outgoi
     state->status = oscMsg.active ? KeyStatus::Active : KeyStatus::Off;
 }
 
-void MidiService::processAppCtrlKey(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& buffer, int eventTime, int* presetSlotRequest) {
+void MidiService::processAppCtrlKey(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& /*buffer*/, int /*eventTime*/, int* presetSlotRequest) {
     int deviceIndex = static_cast<int>(keyLookup.keyId.deviceType) - 1;
     if (deviceIndex < 0 || deviceIndex > 2) return;
 
@@ -562,8 +570,8 @@ void MidiService::processAppCtrlKey(const osc::Message& oscMsg, osc::Message& ou
                 outgoingOscMsg.type = osc::MessageType::LED;
                 outgoingOscMsg.device = keyLookup.keyId.deviceType;
                 std::strncpy(outgoingOscMsg.devId, oscMsg.devId, 63);
-                outgoingOscMsg.course = keyLookup.keyId.course;
-                outgoingOscMsg.key = keyLookup.keyId.keyNo;
+                outgoingOscMsg.course = static_cast<unsigned int>(keyLookup.keyId.course);
+                outgoingOscMsg.key = static_cast<unsigned int>(keyLookup.keyId.keyNo);
                 outgoingOscMsg.value = state->isLatchOn ? static_cast<float>(KeyColour::Yellow) : static_cast<float>(keyLookup.keyColour);
 
                 resendLEDs(oscMsg.devId, keyLookup.keyId.deviceType);
@@ -945,7 +953,7 @@ void MidiService::consume (juce::universal_midi_packets::Iterator b, juce::unive
         View view (*it);
 
         const auto mt = juce::universal_midi_packets::Utils::getMessageType (view[0]);
-        const auto group = juce::universal_midi_packets::Utils::getGroup (view[0]);
+        [[maybe_unused]] const auto group = juce::universal_midi_packets::Utils::getGroup (view[0]);
 
         if (mt == juce::universal_midi_packets::Utils::MessageKind::channelVoice2)
         {
@@ -1337,7 +1345,7 @@ void MidiService::reduceBreath(juce::MidiBuffer&, PerformanceEventSink& sink, in
         const int decaySamples = std::min(effectiveBlockSamples, breathSamplesSinceUpdate_[i] - BREATH_STABILITY_HOLD_SAMPLES);
         const float decayAmount = static_cast<float>(decaySamples) * BREATH_RELEASE_PER_SAMPLE;
         ehBreath_[i] = (ehBreath_[i] > breathZeroThreshold_[i]) ? std::max(0.0f, ehBreath_[i] - decayAmount) : 0.0f;
-        createBreath(i, runtimeLookups[i], sink, eventTime, voiceRouter);
+        createBreath(i, runtimeLookups[static_cast<std::size_t>(i)], sink, eventTime, voiceRouter);
     }
 }
 
@@ -1385,8 +1393,8 @@ void MidiService::createNoteOn(const ConfigLookup::Key& keyLookup, KeyState* sta
     // Prepare activeNotes BEFORE calling createNoteHold if it depends on them, 
     // but createNoteHold usually just sends expression data.
     for (int i = 0; i < 4; i++) {
-        if (keyLookup.notes[i] > -1) {
-            state->activeNotes[i] = std::clamp(keyLookup.notes[i] + totalTranspose, 0, 127);
+        if (keyLookup.notes[static_cast<std::size_t>(i)] > -1) {
+            state->activeNotes[i] = std::clamp(keyLookup.notes[static_cast<std::size_t>(i)] + totalTranspose, 0, 127);
         } else {
             state->activeNotes[i] = -1;
         }
@@ -1456,7 +1464,7 @@ void MidiService::createMidiMsgOn(const ConfigLookup::Key& keyLookup, KeyState* 
     if (keyLookup.msgType == 4) {
         createAllNotesOff(sink, eventTime);
     } else if (keyLookup.msgType == 1) {
-        sink.pushEvent(PerformanceEvent::controllerChange(state->midiChannel, -1, keyLookup.cmdCC, keyLookup.cmdOn / 127.0f, false, eventTime, zoneIndex));
+        sink.pushEvent(PerformanceEvent::controllerChange(state->midiChannel, -1, keyLookup.cmdCC, static_cast<float>(keyLookup.cmdOn) / 127.0f, false, eventTime, zoneIndex));
     } else if (keyLookup.msgType == 2) {
         sink.pushEvent(PerformanceEvent::programChange(state->midiChannel, keyLookup.cmdOn, eventTime, zoneIndex));
     } else if (keyLookup.msgType == 3) {
@@ -1470,9 +1478,9 @@ void MidiService::createMidiMsgOn(const ConfigLookup::Key& keyLookup, KeyState* 
         outgoingOscMsg.type = osc::MessageType::LED;
         outgoingOscMsg.device = keyLookup.keyId.deviceType;
         std::strncpy(outgoingOscMsg.devId, devId, 63);
-        outgoingOscMsg.course = keyLookup.keyId.course;
-        outgoingOscMsg.key = keyLookup.keyId.keyNo;
-        outgoingOscMsg.value = static_cast<unsigned int>(KeyColour::Yellow);
+        outgoingOscMsg.course = static_cast<unsigned int>(keyLookup.keyId.course);
+        outgoingOscMsg.key = static_cast<unsigned int>(keyLookup.keyId.keyNo);
+        outgoingOscMsg.value = static_cast<float>(KeyColour::Yellow);
     }
 }
 
@@ -1483,7 +1491,7 @@ void MidiService::createMidiMsgOff(const ConfigLookup::Key& keyLookup, KeyState*
         if (keyLookup.msgType == 4) {
             createAllNotesOff(sink, eventTime);
         } else if (keyLookup.msgType == 1) {
-            sink.pushEvent(PerformanceEvent::controllerChange(state->midiChannel, -1, keyLookup.cmdCC, keyLookup.cmdOff / 127.0f, false, eventTime, zoneIndex));
+            sink.pushEvent(PerformanceEvent::controllerChange(state->midiChannel, -1, keyLookup.cmdCC, static_cast<float>(keyLookup.cmdOff) / 127.0f, false, eventTime, zoneIndex));
         } else if (keyLookup.msgType == 2) {
             sink.pushEvent(PerformanceEvent::programChange(state->midiChannel, keyLookup.cmdOff, eventTime, zoneIndex));
         } else if (keyLookup.msgType == 3) {
@@ -1499,9 +1507,9 @@ void MidiService::createMidiMsgOff(const ConfigLookup::Key& keyLookup, KeyState*
         outgoingOscMsg.type = osc::MessageType::LED;
         outgoingOscMsg.device = keyLookup.keyId.deviceType;
         std::strncpy(outgoingOscMsg.devId, devId, 63);
-        outgoingOscMsg.course = keyLookup.keyId.course;
-        outgoingOscMsg.key = keyLookup.keyId.keyNo;
-        outgoingOscMsg.value = static_cast<unsigned int>(keyLookup.keyColour);
+        outgoingOscMsg.course = static_cast<unsigned int>(keyLookup.keyId.course);
+        outgoingOscMsg.key = static_cast<unsigned int>(keyLookup.keyId.keyNo);
+        outgoingOscMsg.value = static_cast<float>(keyLookup.keyColour);
     }
 }
 

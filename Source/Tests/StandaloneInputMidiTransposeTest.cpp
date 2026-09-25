@@ -1,4 +1,14 @@
+#include <JuceHeader.h>
+
+// This test intentionally exposes private members for regression checks.
+#if defined(__clang__)
+ #pragma clang diagnostic push
+ #pragma clang diagnostic ignored "-Wkeyword-macro"
+#endif
 #define private public
+#if defined(__clang__)
+ #pragma clang diagnostic pop
+#endif
 #include "PluginProcessor.h"
 #undef private
 
@@ -236,7 +246,7 @@ bool verifyParameterLayoutGroupingAndRanges()
             if (transposeParameter != nullptr)
             {
                 const auto range = transposeParameter->getNormalisableRange();
-                ok &= expect(range.start == -64.0f && range.end == 63.0f,
+                ok &= expect(juce::exactlyEqual(range.start, -64.0f) && juce::exactlyEqual(range.end, 63.0f),
                              (juce::String(deviceName) + " " + zoneLabel + " transpose should match the MIDI CC range").toRawUTF8());
             }
         }

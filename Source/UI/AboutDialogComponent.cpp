@@ -5,8 +5,8 @@ AboutDialogComponent::AboutDialogComponent(const juce::String& appName,
                                            const juce::String& versionString)
     : sourceButton("Source code", juce::URL(sourceCodeUrl)),
       releasesButton("Releases", juce::URL(releasesUrl)),
-      eigenLiteButton("EigenLite", juce::URL(eigenLiteUrl)),
-      juceButton("JUCE", juce::URL(juceUrl))
+      juceButton("JUCE", juce::URL(juceUrl)),
+      eigenLiteButton("EigenLite", juce::URL(eigenLiteUrl))
 {
     setSize(dialogWidth, dialogHeight);
 

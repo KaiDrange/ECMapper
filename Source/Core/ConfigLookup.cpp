@@ -142,7 +142,7 @@ void ConfigLookup::updateKeyUnlocked(LayoutWrapper::KeyId keyId) {
             return maxPb > 0.0f ? std::min(pb / maxPb, 1.0f) : 0.0f;
         };
 
-        bool midi2 = SettingsWrapper::getMidi2Mode(pluginState.state);
+        [[maybe_unused]] const bool midi2 = SettingsWrapper::getMidi2Mode(pluginState.state);
         float maxPb = 1.0f;
 
         if (key.output == MidiChannelType::MPE_Low)
@@ -251,7 +251,7 @@ void ConfigLookup::updateBreathUnlocked(Zone zone) {
     
     breath[zoneIdx].midiValue = ZoneWrapper::getMidiValue(deviceType, zone, ZoneWrapper::id_breath, ZoneWrapper::default_breath, pluginState.state);
     
-    const float globalPB = (float)ZoneWrapper::getChannelMaxPitchbend(deviceType, zone, pluginState.state);
+    [[maybe_unused]] const float globalPB = (float)ZoneWrapper::getChannelMaxPitchbend(deviceType, zone, pluginState.state);
 
     breath[zoneIdx].pbRange = 1.0f;
 
@@ -297,7 +297,7 @@ void ConfigLookup::updateStripsUnlocked(Zone zone) {
     strip2[zoneIdx].absMidiValue = ZoneWrapper::getMidiValue(deviceType, zone, ZoneWrapper::id_strip2Abs, ZoneWrapper::default_strip2Abs, pluginState.state);
     strip2[zoneIdx].relMidiValue = ZoneWrapper::getMidiValue(deviceType, zone, ZoneWrapper::id_strip2Rel, ZoneWrapper::default_strip2Rel, pluginState.state);
     
-    const float globalPB = (float)ZoneWrapper::getChannelMaxPitchbend(deviceType, zone, pluginState.state);
+    [[maybe_unused]] const float globalPB = (float)ZoneWrapper::getChannelMaxPitchbend(deviceType, zone, pluginState.state);
 
     strip1[zoneIdx].pbRange = strip2[zoneIdx].pbRange = 1.0f;
 

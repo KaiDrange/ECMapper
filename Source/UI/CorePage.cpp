@@ -176,6 +176,7 @@ void CorePage::updateDeviceList() {
             case InstrumentType::Alpha: typeStr = "Alpha"; break;
             case InstrumentType::Tau: typeStr = "Tau"; break;
             case InstrumentType::Pico: typeStr = "Pico"; break;
+            case InstrumentType::None:
             default: typeStr = "Unknown"; break;
         }
         
@@ -218,7 +219,7 @@ void CorePage::updateDeviceList() {
         addAndMakeVisible(row->emptyAddButton.get());
         
         for (int i = 0; i < (int)d.oscTargets.size(); ++i) {
-            auto& target = d.oscTargets[i];
+            auto& target = d.oscTargets[static_cast<std::size_t>(i)];
             auto tRow = std::make_unique<TargetRow>();
             
             tRow->ipLabel = std::make_unique<juce::Label>("", "Host:");
@@ -227,9 +228,9 @@ void CorePage::updateDeviceList() {
             
             tRow->ipInput = std::make_unique<juce::TextEditor>();
             tRow->ipInput->setText(target.ip, juce::dontSendNotification);
-            tRow->ipInput->onReturnKey = [this, dev = d.dev, targetIndex = i, r = row.get(), ti = i] {
+            tRow->ipInput->onReturnKey = [this, dev = d.dev, r = row.get(), ti = i] {
                 if (ti < (int)r->targets.size()) {
-                    auto& t = r->targets[ti];
+                    auto& t = r->targets[static_cast<std::size_t>(ti)];
                     hardwareService_.updateDeviceOSCTarget(dev, ti, t->ipInput->getText(), t->portInput->getText().getIntValue(), t->ledToggle->getToggleState());
                 }
             };
@@ -255,7 +256,7 @@ void CorePage::updateDeviceList() {
             tRow->ledToggle->setTooltip(isHost ? "Toggle Send LEDs" : "Toggle Control LEDs");
             tRow->ledToggle->onClick = [this, dev = d.dev, ti = i, r = row.get()] {
                 if (ti < (int)r->targets.size()) {
-                    auto& t = r->targets[ti];
+                    auto& t = r->targets[static_cast<std::size_t>(ti)];
                     hardwareService_.updateDeviceOSCTarget(dev, ti, t->ipInput->getText(), t->portInput->getText().getIntValue(), t->ledToggle->getToggleState());
                 }
             };
@@ -277,13 +278,13 @@ void CorePage::updateDeviceList() {
             row->targets.push_back(std::move(tRow));
         }
         
-        auto updateVisibility = [row = row.get(), isHost]() {
-            bool oscVisible = row->modeCombo->getSelectedId() > 1;
-            bool canAdd = row->targets.size() < 3;
-            bool canRemove = row->targets.size() > 1;
-            bool empty = row->targets.empty();
+        auto updateVisibility = [deviceRow = row.get(), isHost]() {
+            bool oscVisible = deviceRow->modeCombo->getSelectedId() > 1;
+            bool canAdd = deviceRow->targets.size() < 3;
+            bool canRemove = deviceRow->targets.size() > 1;
+            bool empty = deviceRow->targets.empty();
             
-            for (auto& t : row->targets) {
+            for (auto& t : deviceRow->targets) {
                 t->ipLabel->setVisible(oscVisible);
                 t->ipInput->setVisible(oscVisible);
                 t->portLabel->setVisible(oscVisible);
@@ -293,7 +294,7 @@ void CorePage::updateDeviceList() {
                 t->removeButton->setVisible(oscVisible && canRemove);
             }
             
-            row->emptyAddButton->setVisible(oscVisible && empty);
+            deviceRow->emptyAddButton->setVisible(oscVisible && empty);
         };
         
         row->modeCombo->onChange = [this, dev = d.dev, combo = row->modeCombo.get(), updateVisibility] {
@@ -402,7 +403,7 @@ void CorePage::resized() {
         
         if (oscVisible) {
             for (int i = 1; i < (int)row->targets.size(); ++i) {
-                auto& t = row->targets[i];
+                auto& t = row->targets[static_cast<std::size_t>(i)];
                 auto oscRow = rowArea.removeFromTop(35);
                 oscRow.removeFromLeft(isHost ? 265 : 160); // align with first target
                 t->ipLabel->setBounds(oscRow.removeFromLeft(40));

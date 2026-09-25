@@ -5,10 +5,10 @@ namespace ecm {
 
 NumberInputComponent::NumberInputComponent(const juce::String& labelText,
                                            int maxDigits,
-                                           int minValue,
-                                           int maxValue,
-                                           bool labelAboveInput)
-    : minValue(minValue), maxValue(maxValue), labelAboveInput(labelAboveInput) {
+                                           int minValueToUse,
+                                           int maxValueToUse,
+                                           bool labelAboveInputToUse)
+    : maxValue(maxValueToUse), minValue(minValueToUse), labelAboveInput(labelAboveInputToUse) {
     
     label.setText(labelText, juce::dontSendNotification);
     input.setInputFilter(new juce::TextEditor::LengthAndCharacterRestriction(maxDigits, "-0123456789"), true);
@@ -34,7 +34,7 @@ NumberInputComponent::NumberInputComponent(const juce::String& labelText,
 void NumberInputComponent::resized() {
     auto area = getLocalBounds();
     if (labelAboveInput)
-        label.setBounds(area.removeFromTop(juce::jmax(14, (int) std::round(area.getHeight() * 0.42f))));
+        label.setBounds(area.removeFromTop(juce::jmax(14, (int) std::round(static_cast<float>(area.getHeight()) * 0.42f))));
     else
         label.setBounds(area.removeFromLeft(area.getWidth() / 2));
     input.setBounds(area);

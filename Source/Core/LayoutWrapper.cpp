@@ -280,6 +280,7 @@ EigenharpKeyType LayoutWrapper::getCorrectDefaultKeyType(InstrumentType deviceTy
             return EigenharpKeyType::Normal;
         case InstrumentType::Pico:
             return course == 0 ? EigenharpKeyType::Normal : EigenharpKeyType::Button;
+        case InstrumentType::None:
         default:
             return EigenharpKeyType::Normal;
     }

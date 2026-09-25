@@ -73,7 +73,6 @@ private:
     ECMapperAudioProcessor& processor;
 
     juce::AudioProcessorValueTreeState& pluginState;
-    juce::AudioDeviceManager* deviceManager;
 
     juce::Label pendingModeMessage;
 

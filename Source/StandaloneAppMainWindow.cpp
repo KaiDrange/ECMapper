@@ -80,13 +80,13 @@ public:
         midiInputBox_.setSelectedId(getSelectedDeviceId(availableInputs_, currentMidiInputId, true));
 
         for (int zoneIndex = 0; zoneIndex < 3; ++zoneIndex) {
-            configureCombo(zoneLabels_[zoneIndex], zoneBoxes_[zoneIndex], "Zone " + juce::String(zoneIndex + 1) + " MIDI Output");
-            addAndMakeVisible(zoneBoxes_[zoneIndex]);
-            zoneBoxes_[zoneIndex].addItem("None", getComboIdForIndex(0));
+            configureCombo(zoneLabels_[static_cast<std::size_t>(zoneIndex)], zoneBoxes_[static_cast<std::size_t>(zoneIndex)], "Zone " + juce::String(zoneIndex + 1) + " MIDI Output");
+            addAndMakeVisible(zoneBoxes_[static_cast<std::size_t>(zoneIndex)]);
+            zoneBoxes_[static_cast<std::size_t>(zoneIndex)].addItem("None", getComboIdForIndex(0));
             for (int outputIndex = 0; outputIndex < availableOutputs_.size(); ++outputIndex)
-                zoneBoxes_[zoneIndex].addItem(availableOutputs_.getReference(outputIndex).name, getComboIdForIndex(outputIndex + 1));
-            zoneBoxes_[zoneIndex].setSelectedId(getSelectedDeviceId(availableOutputs_, currentZoneOutputIds[zoneIndex], true));
-            zoneBoxes_[zoneIndex].setEnabled(!midi2ModeEnabled);
+                zoneBoxes_[static_cast<std::size_t>(zoneIndex)].addItem(availableOutputs_.getReference(outputIndex).name, getComboIdForIndex(outputIndex + 1));
+            zoneBoxes_[static_cast<std::size_t>(zoneIndex)].setSelectedId(getSelectedDeviceId(availableOutputs_, currentZoneOutputIds[static_cast<std::size_t>(zoneIndex)], true));
+            zoneBoxes_[static_cast<std::size_t>(zoneIndex)].setEnabled(!midi2ModeEnabled);
         }
 
         configureCombo(bufferSizeLabel_, bufferSizeBox_, "Buffer Size");
@@ -105,7 +105,7 @@ public:
             if (onSave_) {
                 std::array<juce::String, 3> zoneOutputIds;
                 for (int zoneIndex = 0; zoneIndex < 3; ++zoneIndex)
-                    zoneOutputIds[zoneIndex] = selectedDeviceId(zoneBoxes_[zoneIndex], availableOutputs_);
+                    zoneOutputIds[static_cast<std::size_t>(zoneIndex)] = selectedDeviceId(zoneBoxes_[static_cast<std::size_t>(zoneIndex)], availableOutputs_);
 
                 onSave_(selectedDeviceId(midiInputBox_, availableInputs_), zoneOutputIds, bufferSizeBox_.getSelectedId());
             }
@@ -124,7 +124,7 @@ public:
 
         layoutRow(area, midiInputLabel_, midiInputBox_);
         for (int zoneIndex = 0; zoneIndex < 3; ++zoneIndex)
-            layoutRow(area, zoneLabels_[zoneIndex], zoneBoxes_[zoneIndex]);
+            layoutRow(area, zoneLabels_[static_cast<std::size_t>(zoneIndex)], zoneBoxes_[static_cast<std::size_t>(zoneIndex)]);
         layoutRow(area, bufferSizeLabel_, bufferSizeBox_);
 
         auto buttonArea = area.removeFromBottom(36);
@@ -315,7 +315,7 @@ void StandaloneAppMainWindow::updateMidiOutput()
     ECM_LOG("StandaloneAppMainWindow::updateMidiOutput() called.");
     auto availableOutputs = juce::MidiOutput::getAvailableDevices();
     ECM_LOG("ECMapper: Available MIDI Outputs: " + juce::String(availableOutputs.size()));
-    for (auto& device : availableOutputs)
+    for ([[maybe_unused]] auto& device : availableOutputs)
         ECM_LOG("  - " + device.name + " [" + device.identifier + "]");
 
     juce::MidiOutput* currentOutput = deviceManager.getDefaultMidiOutput();
@@ -416,7 +416,7 @@ void StandaloneAppMainWindow::restoreMidiInputSelection()
 juce::String StandaloneAppMainWindow::getConfiguredZoneOutputId(int zoneIndex) const
 {
     zoneIndex = juce::jlimit(0, 2, zoneIndex);
-    return standaloneZoneOutputIds_[zoneIndex];
+    return standaloneZoneOutputIds_[static_cast<std::size_t>(zoneIndex)];
 }
 
 juce::String StandaloneAppMainWindow::getConfiguredMidiInputId() const
@@ -434,7 +434,7 @@ void StandaloneAppMainWindow::saveAudioSettings()
         settingsNode->setAttribute(bufferSizeAttribute, getRequestedBufferSize());
         settingsNode->setAttribute(midiInputAttribute, standaloneMidiInputId_);
         for (int zoneIndex = 0; zoneIndex < 3; ++zoneIndex)
-            settingsNode->setAttribute(getZoneOutputAttributeName(zoneIndex), standaloneZoneOutputIds_[zoneIndex]);
+            settingsNode->setAttribute(getZoneOutputAttributeName(zoneIndex), standaloneZoneOutputIds_[static_cast<std::size_t>(zoneIndex)]);
 
         auto file = getAudioSettingsFile();
         if (!file.getParentDirectory().exists())
@@ -463,7 +463,7 @@ void StandaloneAppMainWindow::loadAudioSettings()
                 requestedBufferSize_ = settingsNode->getIntAttribute(bufferSizeAttribute, defaultBufferSize);
                 standaloneMidiInputId_ = settingsNode->getStringAttribute(midiInputAttribute);
                 for (int zoneIndex = 0; zoneIndex < 3; ++zoneIndex)
-                    standaloneZoneOutputIds_[zoneIndex] = settingsNode->getStringAttribute(getZoneOutputAttributeName(zoneIndex));
+                    standaloneZoneOutputIds_[static_cast<std::size_t>(zoneIndex)] = settingsNode->getStringAttribute(getZoneOutputAttributeName(zoneIndex));
                 xml->removeChildElement(settingsNode, true);
             }
 
@@ -587,13 +587,13 @@ void StandaloneAppMainWindow::requestQuit()
 void StandaloneAppMainWindow::showAboutDialog()
 {
     auto about = std::make_unique<AboutDialogComponent>(
-        "ECMapper",
+        ProjectInfo::projectName,
         ProjectInfo::versionString
     );
 
     juce::DialogWindow::LaunchOptions options;
     options.content.setOwned(about.release());
-    options.dialogTitle = "About ECMapper";
+    options.dialogTitle = juce::String("About ") + ProjectInfo::projectName;
     options.escapeKeyTriggersCloseButton = true;
     options.useNativeTitleBar = true;
     options.resizable = false;

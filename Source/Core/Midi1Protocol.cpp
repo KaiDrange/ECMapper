@@ -53,7 +53,7 @@ void Midi1Protocol::addNoteOff(juce::MidiBuffer& buffer, int channel, int noteNu
     buffer.addEvent(juce::MidiMessage::noteOff(channel, noteNumber, velocity), eventTime);
 }
 
-void Midi1Protocol::addPitchBend(juce::MidiBuffer& buffer, int channel, int noteNumber, float value, int eventTime) {
+void Midi1Protocol::addPitchBend(juce::MidiBuffer& buffer, int channel, int /*noteNumber*/, float value, int eventTime) {
     // value is expected to be in range [0, 1] (where 0.5 is center)
     // MIDI 1.0 Pitch Wheel is 14-bit: 0 to 16383. Center is 8192.
     int pb = std::clamp(static_cast<int>(value * 16384.0f), 0, 16383);

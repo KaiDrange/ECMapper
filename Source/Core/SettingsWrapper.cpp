@@ -269,6 +269,7 @@ static juce::String getDeviceNodeName(InstrumentType type) {
         case InstrumentType::Pico: return "Pico";
         case InstrumentType::Tau: return "Tau";
         case InstrumentType::Alpha: return "Alpha";
+        case InstrumentType::None:
         default: return "Unknown";
     }
 }

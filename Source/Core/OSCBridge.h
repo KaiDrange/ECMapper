@@ -53,7 +53,7 @@ private:
     osc::MessageFifo& hardwareToMapperQueue_;
     osc::MessageFifo& mapperToHardwareQueue_;
     osc::MessageFifo& outgoingOSCQueue_;
-    Logger& logger_;
+    [[maybe_unused]] Logger& logger_;
     
     juce::OSCSender discoverySender_;
     

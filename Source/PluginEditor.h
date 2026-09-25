@@ -13,7 +13,6 @@ public:
     void resized() override;
 
 private:
-    ECMapperAudioProcessor& audioProcessor;
     std::unique_ptr<ecm::MainComponent> mainComponent;
     ecm::AppLookAndFeel lookAndFeel;
 

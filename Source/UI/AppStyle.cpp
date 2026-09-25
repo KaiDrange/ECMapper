@@ -21,6 +21,7 @@ juce::Colour zoneColour(Zone zone)
         case Zone::Zone2: return juce::Colours::maroon;
         case Zone::Zone3: return juce::Colours::darkorange;
         case Zone::AllZones: return juce::Colours::white;
+        case Zone::NoZone:
         default: return juce::Colours::black;
     }
 }
@@ -158,7 +159,7 @@ void AppLookAndFeel::drawButtonText(juce::Graphics& g, juce::TextButton& button,
 
     if (button.getProperties().contains("isSaveButton"))
     {
-        auto size = juce::jmin(textArea.getWidth(), textArea.getHeight()) * 0.72f;
+        auto size = static_cast<float>(juce::jmin(textArea.getWidth(), textArea.getHeight())) * 0.72f;
         auto r = textArea.toFloat().withSizeKeepingCentre(size, size);
 
         juce::Path p;

@@ -2,7 +2,7 @@
 #include "PluginEditor.h"
 
 ECMapperAudioProcessorEditor::ECMapperAudioProcessorEditor(ECMapperAudioProcessor& p)
-    : AudioProcessorEditor(&p), audioProcessor(p) {
+    : AudioProcessorEditor(&p) {
     
     mainComponent = std::make_unique<ecm::MainComponent>(p.state, p.getHardwareService(), p, p.getDeviceManager());
     addAndMakeVisible(mainComponent.get());

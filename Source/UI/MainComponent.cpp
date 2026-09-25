@@ -41,7 +41,7 @@ void configureModeButton(juce::TextButton& button, int radioGroupId = 0)
 
 }
 
-MainComponent::MainComponent(juce::AudioProcessorValueTreeState& pluginStateToUse, HardwareService& hardwareService, ECMapperAudioProcessor& processorToUse, juce::AudioDeviceManager* deviceManagerToUse)
+MainComponent::MainComponent(juce::AudioProcessorValueTreeState& pluginStateToUse, HardwareService& hardwareService, ECMapperAudioProcessor& processorToUse, juce::AudioDeviceManager* /*deviceManagerToUse*/)
     : lowerMPEVoiceCount("Lower MPE voices:", 2, 0, 15, true), 
       upperMPEVoiceCount("Upper MPE voices:", 2, 0, 15, true),  
       lowerMPEPitchbendRange("Lower MPE pb:", 2, 0, 96, true), 
@@ -52,8 +52,7 @@ MainComponent::MainComponent(juce::AudioProcessorValueTreeState& pluginStateToUs
       picoTabButton("Pico"),
       calibrationButton(juce::CharPointer_UTF8("\xE2\x9A\x99")),
       processor(processorToUse),
-      pluginState(pluginStateToUse),
-      deviceManager(deviceManagerToUse) {
+      pluginState(pluginStateToUse) {
 
     isStandaloneApp_ = juce::JUCEApplicationBase::isStandaloneApp();
 

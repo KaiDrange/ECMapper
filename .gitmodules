@@ -3,4 +3,4 @@
 	url = https://github.com/KaiDrange/JUCE.git
 [submodule "EigenLite"]
 	path = EigenLite
-	url = https://github.com/TheTechnobear/EigenLite.git
+	url = https://github.com/KaiDrange/EigenLite.git

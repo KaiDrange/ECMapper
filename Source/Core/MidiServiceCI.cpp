@@ -204,7 +204,7 @@ void MidiService::deviceAdded (juce::midi_ci::MUID x)
     }
 }
 
-void MidiService::deviceRemoved (juce::midi_ci::MUID x)
+void MidiService::deviceRemoved ([[maybe_unused]] juce::midi_ci::MUID x)
 {
     ECM_LOG("MidiService: Remote MIDI-CI device removed: 0x" + juce::String::toHexString(x.get()));
 }

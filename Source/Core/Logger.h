@@ -14,8 +14,8 @@ public:
     
 private:
     juce::CriticalSection lock_;
-    bool logToFile_;
-    bool logToConsole_;
+    [[maybe_unused]] bool logToFile_;
+    [[maybe_unused]] bool logToConsole_;
     juce::File logFile_;
     
     juce::String timeToLogTimeStamp(juce::Time time);

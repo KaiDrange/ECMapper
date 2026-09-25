@@ -150,9 +150,9 @@ void PresetBrowserComponent::handleSlotSelected(int slot)
         return;
 
     closeDialog();
-    juce::MessageManager::callAsync([processor = &processor, slot]
+    juce::MessageManager::callAsync([targetProcessor = &processor, slot]
     {
-        processor->loadPresetSlot(slot);
+        targetProcessor->loadPresetSlot(slot);
     });
 }
 

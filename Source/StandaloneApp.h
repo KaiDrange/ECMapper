@@ -8,8 +8,8 @@ class ECMapperStandaloneApplication : public juce::JUCEApplication
 public:
     ECMapperStandaloneApplication() = default;
 
-    const juce::String getApplicationName() override { return "ECMapper"; }
-    const juce::String getApplicationVersion() override { return "2.0.0-alpha"; }
+    const juce::String getApplicationName() override { return ProjectInfo::projectName; }
+    const juce::String getApplicationVersion() override { return ProjectInfo::versionString; }
 
     bool moreThanOneInstanceAllowed() override { return true; }
 

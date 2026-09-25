@@ -77,11 +77,11 @@ AppCtrlSectionComponent::AppCtrlSectionComponent() :
 
 void AppCtrlSectionComponent::resized() {
     auto area = getLocalBounds();
-    float lineHeight = area.getHeight() * 0.05f;
+    float lineHeight = static_cast<float>(area.getHeight()) * 0.05f;
 
     auto groupArea = area.removeFromTop(static_cast<int>(lineHeight * 5));
     typeRadioGroup.setBounds(groupArea);
-    groupArea.reduce(static_cast<int>(groupArea.getWidth() * 0.1f), static_cast<int>(lineHeight));
+    groupArea.reduce(static_cast<int>(static_cast<float>(groupArea.getWidth()) * 0.1f), static_cast<int>(lineHeight));
     groupArea.removeFromTop(static_cast<int>(lineHeight));
     typePreset.setBounds(groupArea.removeFromTop(static_cast<int>(lineHeight)));
     typeTranspose.setBounds(groupArea.removeFromTop(static_cast<int>(lineHeight)));
@@ -96,7 +96,7 @@ void AppCtrlSectionComponent::resized() {
         area.removeFromTop(static_cast<int>(lineHeight));
         auto modeArea = area.removeFromTop(static_cast<int>(lineHeight * 6));
         modeRadioGroup.setBounds(modeArea);
-        modeArea.reduce(static_cast<int>(modeArea.getWidth() * 0.1f), static_cast<int>(lineHeight));
+        modeArea.reduce(static_cast<int>(static_cast<float>(modeArea.getWidth()) * 0.1f), static_cast<int>(lineHeight));
         modeArea.removeFromTop(static_cast<int>(lineHeight));
         modeLatch.setBounds(modeArea.removeFromTop(static_cast<int>(lineHeight)));
         modeMomentary.setBounds(modeArea.removeFromTop(static_cast<int>(lineHeight)));

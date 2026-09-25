@@ -4,11 +4,11 @@
 
 namespace ecm {
 
-KeyConfigComponent::KeyConfigComponent(LayoutWrapper::KeyId id, EigenharpKeyType keyType, juce::AudioProcessorValueTreeState& pluginState) 
+KeyConfigComponent::KeyConfigComponent(LayoutWrapper::KeyId id, EigenharpKeyType keyTypeToUse, juce::AudioProcessorValueTreeState& pluginStateToUse)
     : juce::DrawableButton("btn", juce::DrawableButton::ImageStretched), 
-      keyType(keyType), 
+      keyType(keyTypeToUse),
       keyId(id), 
-      pluginState(pluginState) {
+      pluginState(pluginStateToUse) {
     setClickingTogglesState(true);
 }
 
@@ -138,21 +138,21 @@ void KeyConfigComponent::paint(juce::Graphics& g) {
     {
         auto labelArea = area.reduced(4, 3);
         if (keyIsRound)
-            labelArea.reduce(0, (int)(labelArea.getHeight() * 0.10f));
+            labelArea.reduce(0, (int)(static_cast<float>(labelArea.getHeight()) * 0.10f));
         else
-            labelArea.removeFromTop((int)(labelArea.getHeight() * 0.36f));
+            labelArea.removeFromTop((int)(static_cast<float>(labelArea.getHeight()) * 0.36f));
         g.setColour(Style::text().withAlpha(0.92f));
         g.drawFittedText(keyText, labelArea, keyIsRound ? juce::Justification::centred : juce::Justification::centredBottom, 1);
     }
 
-    auto lightPosition = area.getX() + area.getWidth() / 2.0f;
+    auto lightPosition = static_cast<float>(area.getX()) + static_cast<float>(area.getWidth()) / 2.0f;
     auto ledColour = Utils::keyColourEnumToColour(layoutKey.keyColour);
     g.setColour(ledColour.withAlpha(0.08f));
-    g.fillEllipse(lightPosition - 5.5f, area.getY() - 0.4f, 11.0f, 11.0f);
+    g.fillEllipse(lightPosition - 5.5f, static_cast<float>(area.getY()) - 0.4f, 11.0f, 11.0f);
     g.setColour(ledColour.withAlpha(0.16f));
-    g.fillEllipse(lightPosition - 3.8f, area.getY() + 1.2f, 7.6f, 7.6f);
+    g.fillEllipse(lightPosition - 3.8f, static_cast<float>(area.getY()) + 1.2f, 7.6f, 7.6f);
     g.setColour(ledColour);
-    g.fillEllipse(lightPosition - 1.25f, area.getY() + 2.6f, 2.5f, 2.5f);
+    g.fillEllipse(lightPosition - 1.25f, static_cast<float>(area.getY()) + 2.6f, 2.5f, 2.5f);
 
     auto zoneColour = Style::zoneColour(layoutKey.zone);
     if (layoutKey.zone != Zone::NoZone)

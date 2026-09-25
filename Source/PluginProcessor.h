@@ -36,7 +36,7 @@ public:
 
     bool hasEditor() const override { return true; }
 
-    const juce::String getName() const override { return "ECMapper"; }
+    const juce::String getName() const override { return "ECMapper_Dev"; }
 
     bool acceptsMidi() const override { return true; }
     bool producesMidi() const override { return true; }

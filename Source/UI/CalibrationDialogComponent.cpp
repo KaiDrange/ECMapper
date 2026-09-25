@@ -10,8 +10,8 @@ constexpr float calibrationThresholdMax = 0.2f;
 
 }
 
-CalibrationDialogComponent::DeviceCalibrationPanel::DeviceCalibrationPanel(InstrumentType type, juce::ValueTree& state, juce::Slider::Listener* listener)
-    : type(type), state(state)
+CalibrationDialogComponent::DeviceCalibrationPanel::DeviceCalibrationPanel(InstrumentType typeToUse, juce::ValueTree& stateToUse, juce::Slider::Listener* listener)
+    : type(typeToUse), state(stateToUse)
 {
     auto setupSlider = [this, listener](juce::Slider& s, juce::Label& l, const juce::String& name, float min, float max, float step) {
         l.setText(name, juce::dontSendNotification);
@@ -87,8 +87,8 @@ void CalibrationDialogComponent::DeviceCalibrationPanel::updateValues()
     invertStripDirectionButton.setToggleState(SettingsWrapper::getCalibrationBool(type, SettingsWrapper::id_invertStripDirection, false, state), juce::dontSendNotification);
 }
 
-CalibrationDialogComponent::CalibrationDialogComponent(juce::ValueTree& state)
-    : state(state)
+CalibrationDialogComponent::CalibrationDialogComponent(juce::ValueTree& stateToUse)
+    : state(stateToUse)
 {
     alphaPanel = std::make_unique<DeviceCalibrationPanel>(InstrumentType::Alpha, state, this);
     tauPanel = std::make_unique<DeviceCalibrationPanel>(InstrumentType::Tau, state, this);

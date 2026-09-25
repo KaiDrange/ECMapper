@@ -3,14 +3,14 @@
 
 namespace ecm {
 
-ZonePanelComponent::ZonePanelComponent(InstrumentType deviceType, Zone zone, float widthFactor, float heightFactor, juce::AudioProcessorValueTreeState& pluginState)
-    : PanelComponent(widthFactor, heightFactor), 
+ZonePanelComponent::ZonePanelComponent(InstrumentType deviceTypeToUse, Zone zoneToUse, float widthFactorToUse, float heightFactorToUse, juce::AudioProcessorValueTreeState& pluginStateToUse)
+    : PanelComponent(widthFactorToUse, heightFactorToUse),
       transposeInput("Transpose:", 3, -96, 96, false), 
       keyPitchbendRangeInput("Key pitchbend:", 2, 0, 96, false), 
       channelMaxPBInput("Channel max pb:", 2, 0, 96, false), 
-      deviceType(deviceType), 
-      zone(zone), 
-      pluginState(pluginState) {
+      deviceType(deviceTypeToUse),
+      zone(zoneToUse),
+      pluginState(pluginStateToUse) {
     
     addAndMakeVisible(label);
     label.setText("Zone " + juce::String(static_cast<int>(zone)), juce::dontSendNotification);
@@ -127,31 +127,31 @@ void ZonePanelComponent::paint(juce::Graphics& g) {
 
 void ZonePanelComponent::resized() {
     auto area = getLocalBounds();
-    area.reduce(area.getWidth() * 0.01f, area.getWidth() * 0.01f);
-    float lineHeight = area.getHeight() * 0.1f;
+    area.reduce(static_cast<int>(static_cast<float>(area.getWidth()) * 0.01f), static_cast<int>(static_cast<float>(area.getWidth()) * 0.01f));
+    float lineHeight = static_cast<float>(area.getHeight()) * 0.1f;
     auto colWidth = area.getWidth() / 2;
     
-    auto topArea = area.removeFromTop(lineHeight * 1.5f);
-    label.setBounds(topArea.removeFromLeft(area.getWidth() * 0.2f));
-    enableZoneButton.setBounds(topArea.removeFromRight(area.getWidth() * 0.1f));
+    auto topArea = area.removeFromTop(static_cast<int>(lineHeight * 1.5f));
+    label.setBounds(topArea.removeFromLeft(static_cast<int>(static_cast<float>(area.getWidth()) * 0.2f)));
+    enableZoneButton.setBounds(topArea.removeFromRight(static_cast<int>(static_cast<float>(area.getWidth()) * 0.1f)));
 
     auto col1 = area.removeFromLeft(colWidth);
-    col1.reduce(col1.getWidth() * 0.01f, col1.getWidth() * 0.01f);
-    pressureDropdown.setBounds(col1.removeFromTop(lineHeight));
-    yawDropdown.setBounds(col1.removeFromTop(lineHeight));
-    rollDropdown.setBounds(col1.removeFromTop(lineHeight));
-    strip1RelativeDropdown.setBounds(col1.removeFromTop(lineHeight));
-    strip1AbsoluteDropdown.setBounds(col1.removeFromTop(lineHeight));
-    strip2RelativeDropdown.setBounds(col1.removeFromTop(lineHeight));
-    strip2AbsoluteDropdown.setBounds(col1.removeFromTop(lineHeight));
-    breathDropdown.setBounds(col1.removeFromTop(lineHeight));
+    col1.reduce(static_cast<int>(static_cast<float>(col1.getWidth()) * 0.01f), static_cast<int>(static_cast<float>(col1.getWidth()) * 0.01f));
+    pressureDropdown.setBounds(col1.removeFromTop(static_cast<int>(lineHeight)));
+    yawDropdown.setBounds(col1.removeFromTop(static_cast<int>(lineHeight)));
+    rollDropdown.setBounds(col1.removeFromTop(static_cast<int>(lineHeight)));
+    strip1RelativeDropdown.setBounds(col1.removeFromTop(static_cast<int>(lineHeight)));
+    strip1AbsoluteDropdown.setBounds(col1.removeFromTop(static_cast<int>(lineHeight)));
+    strip2RelativeDropdown.setBounds(col1.removeFromTop(static_cast<int>(lineHeight)));
+    strip2AbsoluteDropdown.setBounds(col1.removeFromTop(static_cast<int>(lineHeight)));
+    breathDropdown.setBounds(col1.removeFromTop(static_cast<int>(lineHeight)));
     
     auto col2 = area;
-    col2.reduce(col2.getWidth() * 0.01f, col2.getWidth() * 0.01f);
-    midiChannelDropdown.setBounds(col2.removeFromTop(lineHeight));
-    transposeInput.setBounds(col2.removeFromTop(lineHeight));
-    keyPitchbendRangeInput.setBounds(col2.removeFromTop(lineHeight));
-    channelMaxPBInput.setBounds(col2.removeFromTop(lineHeight));
+    col2.reduce(static_cast<int>(static_cast<float>(col2.getWidth()) * 0.01f), static_cast<int>(static_cast<float>(col2.getWidth()) * 0.01f));
+    midiChannelDropdown.setBounds(col2.removeFromTop(static_cast<int>(lineHeight)));
+    transposeInput.setBounds(col2.removeFromTop(static_cast<int>(lineHeight)));
+    keyPitchbendRangeInput.setBounds(col2.removeFromTop(static_cast<int>(lineHeight)));
+    channelMaxPBInput.setBounds(col2.removeFromTop(static_cast<int>(lineHeight)));
 }
 
 void ZonePanelComponent::valueTreePropertyChanged(juce::ValueTree& vTree, const juce::Identifier& property) {

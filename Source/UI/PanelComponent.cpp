@@ -3,8 +3,8 @@
 
 namespace ecm {
 
-PanelComponent::PanelComponent(float widthFactor, float heightFactor)
-    : widthFactor(widthFactor), heightFactor(heightFactor) {
+PanelComponent::PanelComponent(float widthFactorToUse, float heightFactorToUse)
+    : widthFactor(widthFactorToUse), heightFactor(heightFactorToUse) {
 }
 
 void PanelComponent::paint(juce::Graphics& g) {

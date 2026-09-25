@@ -82,38 +82,38 @@ MidiMessageSectionComponent::MidiMessageSectionComponent() :
 
 void MidiMessageSectionComponent::resized() {
     auto area = getLocalBounds();
-    float lineHeight = area.getHeight() * 0.04f;
+    float lineHeight = static_cast<float>(area.getHeight()) * 0.04f;
 
-    auto groupArea = area.removeFromTop(lineHeight * 6);
+    auto groupArea = area.removeFromTop(static_cast<int>(lineHeight * 6));
     cmdKeyTypeRadioGroup.setBounds(groupArea);
-    groupArea.reduce(groupArea.getWidth() * 0.1f, lineHeight);
-    groupArea.removeFromTop(lineHeight);
-    cmdKeyTypeLatch.setBounds(groupArea.removeFromTop(lineHeight));
-    cmdKeyTypeMomentary.setBounds(groupArea.removeFromTop(lineHeight));
-    cmdKeyTypeTrigger.setBounds(groupArea.removeFromTop(lineHeight));
+    groupArea.reduce(static_cast<int>(static_cast<float>(groupArea.getWidth()) * 0.1f), static_cast<int>(lineHeight));
+    groupArea.removeFromTop(static_cast<int>(lineHeight));
+    cmdKeyTypeLatch.setBounds(groupArea.removeFromTop(static_cast<int>(lineHeight)));
+    cmdKeyTypeMomentary.setBounds(groupArea.removeFromTop(static_cast<int>(lineHeight)));
+    cmdKeyTypeTrigger.setBounds(groupArea.removeFromTop(static_cast<int>(lineHeight)));
     
-    groupArea = area.removeFromTop(lineHeight * 7);
+    groupArea = area.removeFromTop(static_cast<int>(lineHeight * 7));
     midiMsgTypeRadioGroup.setBounds(groupArea);
-    groupArea.reduce(groupArea.getWidth() * 0.1f, lineHeight);
-    groupArea.removeFromTop(lineHeight);
-    midiMsgTypeCC.setBounds(groupArea.removeFromTop(lineHeight));
-    midiMsgTypeProgChange.setBounds(groupArea.removeFromTop(lineHeight));
-    midiMsgTypeRealtime.setBounds(groupArea.removeFromTop(lineHeight));
-    midiMsgTypeAllNotesOff.setBounds(groupArea.removeFromTop(lineHeight));
+    groupArea.reduce(static_cast<int>(static_cast<float>(groupArea.getWidth()) * 0.1f), static_cast<int>(lineHeight));
+    groupArea.removeFromTop(static_cast<int>(lineHeight));
+    midiMsgTypeCC.setBounds(groupArea.removeFromTop(static_cast<int>(lineHeight)));
+    midiMsgTypeProgChange.setBounds(groupArea.removeFromTop(static_cast<int>(lineHeight)));
+    midiMsgTypeRealtime.setBounds(groupArea.removeFromTop(static_cast<int>(lineHeight)));
+    midiMsgTypeAllNotesOff.setBounds(groupArea.removeFromTop(static_cast<int>(lineHeight)));
     
-    area.removeFromTop(lineHeight);
+    area.removeFromTop(static_cast<int>(lineHeight));
 
-    midiCmdValue.setBounds(area.removeFromTop(lineHeight));
-    onValue.setBounds(area.removeFromTop(lineHeight));
-    offValue.setBounds(area.removeFromTop(lineHeight));
+    midiCmdValue.setBounds(area.removeFromTop(static_cast<int>(lineHeight)));
+    onValue.setBounds(area.removeFromTop(static_cast<int>(lineHeight)));
+    offValue.setBounds(area.removeFromTop(static_cast<int>(lineHeight)));
 
-    area.removeFromTop(lineHeight);
+    area.removeFromTop(static_cast<int>(lineHeight));
 
-    groupArea = area.removeFromTop(lineHeight * 6);
+    groupArea = area.removeFromTop(static_cast<int>(lineHeight * 6));
     realtimeMsgGroup.setBounds(groupArea);
-    groupArea.reduce(groupArea.getWidth() * 0.1f, lineHeight);
-    realtimeOn.setBounds(groupArea.removeFromTop(lineHeight * 2));
-    realtimeOff.setBounds(groupArea.removeFromTop(lineHeight * 2));
+    groupArea.reduce(static_cast<int>(static_cast<float>(groupArea.getWidth()) * 0.1f), static_cast<int>(lineHeight));
+    realtimeOn.setBounds(groupArea.removeFromTop(static_cast<int>(lineHeight * 2)));
+    realtimeOff.setBounds(groupArea.removeFromTop(static_cast<int>(lineHeight * 2)));
 }
 
 juce::String MidiMessageSectionComponent::getMessageString() {

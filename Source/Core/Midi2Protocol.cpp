@@ -176,7 +176,7 @@ void Midi2Protocol::addMidiContinue(juce::MidiBuffer& buffer, uint8_t group, int
     addToBuffer(buffer, ump.data(), (int)ump.size(), eventTime);
 }
 
-void Midi2Protocol::setupTransport(juce::MidiBuffer& buffer, const juce::MPEZoneLayout& layout) {
+void Midi2Protocol::setupTransport(juce::MidiBuffer& /*buffer*/, [[maybe_unused]] const juce::MPEZoneLayout& layout) {
     ECM_LOG("Midi2Protocol: Setting up MPE Zone Layout. Lower channels: " + juce::String(layout.getLowerZone().numMemberChannels)
             + ", Lower PB: " + juce::String(layout.getLowerZone().perNotePitchbendRange)
             + ", Upper channels: " + juce::String(layout.getUpperZone().numMemberChannels)

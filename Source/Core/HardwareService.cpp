@@ -671,7 +671,7 @@ void HardwareService::checkStaleDevices() {
         auto currentTime = juce::Time::getMillisecondCounter();
         
         for (int i = (int)connectedDevices_.size(); --i >= 0;) {
-            auto& d = connectedDevices_[i];
+            auto& d = connectedDevices_[static_cast<std::size_t>(i)];
             if (d.isRemote) {
                 // If no message for 60 seconds, remove
                 if (currentTime - d.lastMessageTime > 60000) {

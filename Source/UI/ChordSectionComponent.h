@@ -41,7 +41,6 @@ private:
     
     TextInputComponent chordNameInput;
     ChordNote chordNotes[4];
-    int noteSettingIndex = -1;
 
     juce::ListenerList<Listener> listeners;
     

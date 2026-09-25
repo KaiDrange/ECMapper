@@ -25,7 +25,7 @@ juce::String toString(DeviceMode mode) {
     return "UnknownMode";
 }
 
-juce::String toString(AppRole role) {
+[[maybe_unused]] juce::String toString(AppRole role) {
     switch (role) {
         case AppRole::Host: return "Host";
         case AppRole::Client: return "Client";
@@ -34,7 +34,7 @@ juce::String toString(AppRole role) {
     return "UnknownRole";
 }
 
-juce::String describeConnection(const std::string& dev,
+[[maybe_unused]] juce::String describeConnection(const std::string& dev,
                                 const std::string& originalDevId,
                                 InstrumentType type,
                                 DeviceMode mode,
@@ -52,7 +52,7 @@ juce::String describeConnection(const std::string& dev,
         + ", receiveLEDs=" + juce::String(receiveLEDs ? "true" : "false");
 }
 
-juce::String describeDevice(const ConnectedDevice& device) {
+[[maybe_unused]] juce::String describeDevice(const ConnectedDevice& device) {
     juce::String targets;
 
     for (size_t i = 0; i < device.oscTargets.size(); ++i) {
@@ -92,12 +92,12 @@ OSCBridge::OSCBridge(HardwareService& hardwareService,
                     osc::MessageFifo& mapperToHardwareQueue, 
                     osc::MessageFifo& outgoingOSCQueue,
                     ecm::Logger& logger)
-    : hardwareService_(hardwareService),
+    : juce::Thread("OSCBridge"),
+      hardwareService_(hardwareService),
       hardwareToMapperQueue_(hardwareToMapperQueue),
       mapperToHardwareQueue_(mapperToHardwareQueue),
       outgoingOSCQueue_(outgoingOSCQueue),
-      logger_(logger),
-      juce::Thread("OSCBridge") {
+      logger_(logger) {
     instanceId_ = juce::Uuid().toString();
     hardwareService_.addListener(this);
     discoverySender_.connect("127.0.0.1", 12121);
@@ -346,7 +346,7 @@ void OSCBridge::refreshKnownRemoteLEDs() {
 
 void OSCBridge::updateConnections() {
     if (!hostEnabled_) {
-        size_t clearedConnectionCount = 0;
+        [[maybe_unused]] size_t clearedConnectionCount = 0;
 
         {
             const juce::ScopedLock sl(connectionsLock_);
@@ -366,7 +366,7 @@ void OSCBridge::updateConnections() {
     ECM_LOGGER(logger_, "OSCBridge rebuilding host connections: instanceId=" + instanceId_
                 + ", role=" + toString(hardwareService_.getAppRole())
                 + ", deviceCount=" + juce::String(static_cast<int>(devices.size())));
-    for (const auto& device : devices) {
+    for ([[maybe_unused]] const auto& device : devices) {
         ECM_LOGGER(logger_, "  device: " + describeDevice(device));
     }
     
@@ -472,12 +472,12 @@ void OSCBridge::setReceiverEnabled(bool enabled) {
     setSenderEnabled(enabled);
 }
 
-void OSCBridge::setSenderTarget(const juce::String& ip, int port) {
+void OSCBridge::setSenderTarget(const juce::String& /*ip*/, int /*port*/) {
     // Old global method, ignore or use as default?
     // For now we rely on per-device settings.
 }
 
-void OSCBridge::setReceiverPort(int port) {
+void OSCBridge::setReceiverPort(int /*port*/) {
     // Old global method, ignore.
 }
 
@@ -620,6 +620,9 @@ void OSCBridge::sendOutgoingMessages() {
                     case osc::MessageType::RequestLEDs:
                         conn->sender->send("/ECMapper/requestLEDs", juce::String(conn->originalDevId), instanceId_);
                         break;
+                    case osc::MessageType::Undefined:
+                    case osc::MessageType::Ping:
+                    case osc::MessageType::AppCtrl:
                     default: break;
                 }
             }
@@ -816,7 +819,7 @@ void OSCBridge::oscMessageReceived(const juce::OSCMessage& message) {
         msg.type = osc::MessageType::LED;
         msg.course = (unsigned int)getInt(message[0]);
         msg.key = (unsigned int)getInt(message[1]);
-        msg.value = (unsigned int)getInt(message[2]);
+        msg.value = static_cast<float>(static_cast<unsigned int>(getInt(message[2])));
         msg.device = (InstrumentType)getInt(message[3]);
         
         juce::String senderId;
