@@ -279,7 +279,7 @@ void CorePage::updateDeviceList() {
             row->headphoneGainLabel = std::make_unique<juce::Label>("", "Headphone gain");
             row->headphoneGainLabel->setJustificationType(juce::Justification::centred);
             deviceContent.addAndMakeVisible(row->headphoneGainLabel.get());
-            row->headphoneEnabled = std::make_unique<juce::TextButton>("Enable headphones");
+            row->headphoneEnabled = std::make_unique<juce::TextButton>("Enable");
             row->headphoneEnabled->setClickingTogglesState(true);
             row->headphoneEnabled->getToggleStateValue().referTo(settings.getPropertyAsValue(SettingsWrapper::id_headphoneEnabled, nullptr));
             row->headphoneEnabled->setEnabled(canControl);
@@ -509,36 +509,53 @@ void CorePage::resized() {
     int y = 0;
     for (auto& row : deviceRows_) {
         const bool oscVisible = row->modeCombo->getSelectedId() > 1 || !isHost;
-        const int targetCount = oscVisible ? juce::jmax(1, static_cast<int>(row->targets.size())) : 0;
-        const int height = 52 + (row->headphoneGain ? 110 : 0) + targetCount * 36;
+        const int extraTargets = oscVisible ? juce::jmax(0, static_cast<int>(row->targets.size()) - 1) : 0;
+        const int connectionHeight = 36 + extraTargets * 36;
+        const int height = 16 + juce::jmax(connectionHeight, row->headphoneGain ? 90 : 36);
         row->card->setBounds(0, y, width, height);
         auto cardArea = juce::Rectangle<int>(0, y, width, height).reduced(12, 8);
+        if (row->headphoneGain) {
+            auto headphones = cardArea.removeFromRight(164).withSizeKeepingCentre(164, 90);
+            row->headphoneEnabled->setBounds(headphones.removeFromLeft(70).withSizeKeepingCentre(66, 28));
+            headphones.removeFromLeft(4);
+            row->headphoneGainLabel->setBounds(headphones.removeFromTop(20));
+            row->headphoneGain->setBounds(headphones.withSizeKeepingCentre(70, 70));
+            cardArea.removeFromRight(8);
+        }
+        cardArea = cardArea.withSizeKeepingCentre(cardArea.getWidth(), connectionHeight);
         auto header = cardArea.removeFromTop(36);
         row->statusLed->setBounds(header.removeFromLeft(24).withSizeKeepingCentre(20, 20));
-        if (isHost) row->modeCombo->setBounds(header.removeFromRight(120).reduced(2));
-        row->nameLabel->setBounds(header);
-        row->nameLabel->setTooltip(row->nameLabel->getText());
 
-        if (row->headphoneGain) {
-            auto audioRow = cardArea.removeFromTop(110);
-            row->headphoneEnabled->setBounds(audioRow.removeFromLeft(170).withSizeKeepingCentre(154, 30));
-            layoutKnob(audioRow.removeFromLeft(150), *row->headphoneGainLabel, *row->headphoneGain);
-        }
+        const int ipWidth = juce::jlimit(100, 160, cardArea.getWidth() / 6);
+        const int targetWidth = 40 + ipWidth + 4 + 38 + 60 + 4 + (isHost ? 0 : 90) + 48;
+        const int reservedWidth = (isHost ? 94 : 0)
+            + (oscVisible ? (row->targets.empty() ? 110 : targetWidth) : 0);
+        row->nameLabel->setBounds(header.removeFromLeft(juce::jlimit(100, 240, header.getWidth() - reservedWidth)));
+        row->nameLabel->setTooltip(row->nameLabel->getText());
+        if (isHost) row->modeCombo->setBounds(header.removeFromLeft(94).reduced(2));
+
+        const int targetX = header.getX();
+        const auto layoutTarget = [isHost, ipWidth](TargetRow& target, juce::Rectangle<int> bounds) {
+            target.ipLabel->setBounds(bounds.removeFromLeft(40));
+            target.ipInput->setBounds(bounds.removeFromLeft(ipWidth).reduced(2));
+            bounds.removeFromLeft(4);
+            target.portLabel->setBounds(bounds.removeFromLeft(38));
+            target.portInput->setBounds(bounds.removeFromLeft(60).reduced(2));
+            bounds.removeFromLeft(4);
+            if (!isHost) target.ledToggle->setBounds(bounds.removeFromLeft(90).reduced(2));
+            if (target.addButton->isVisible()) target.addButton->setBounds(bounds.removeFromLeft(24).reduced(2));
+            if (target.removeButton->isVisible()) target.removeButton->setBounds(bounds.removeFromLeft(24).reduced(2));
+        };
         if (oscVisible) {
             if (row->targets.empty()) {
-                row->emptyAddButton->setBounds(cardArea.removeFromTop(36).removeFromLeft(110).reduced(2));
-            }
-            for (auto& target : row->targets) {
-                auto targetArea = cardArea.removeFromTop(36);
-                target->ipLabel->setBounds(targetArea.removeFromLeft(45));
-                target->ipInput->setBounds(targetArea.removeFromLeft(juce::jlimit(100, 220, width / 4)).reduced(2));
-                targetArea.removeFromLeft(8);
-                target->portLabel->setBounds(targetArea.removeFromLeft(38));
-                target->portInput->setBounds(targetArea.removeFromLeft(70).reduced(2));
-                targetArea.removeFromLeft(8);
-                if (!isHost) target->ledToggle->setBounds(targetArea.removeFromLeft(110).reduced(2));
-                if (target->addButton->isVisible()) target->addButton->setBounds(targetArea.removeFromLeft(30).reduced(2));
-                if (target->removeButton->isVisible()) target->removeButton->setBounds(targetArea.removeFromLeft(30).reduced(2));
+                row->emptyAddButton->setBounds(header.removeFromLeft(110).reduced(2));
+            } else {
+                layoutTarget(*row->targets.front(), header);
+                for (std::size_t i = 1; i < row->targets.size(); ++i) {
+                    auto targetArea = cardArea.removeFromTop(36);
+                    targetArea.removeFromLeft(targetX - targetArea.getX());
+                    layoutTarget(*row->targets[i], targetArea);
+                }
             }
         }
         y += height + 10;
