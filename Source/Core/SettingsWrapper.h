@@ -25,6 +25,23 @@ public:
     static inline const juce::Identifier id_clientListenIP { "clientListenIP" };
     static inline const juce::Identifier id_clientListenPort { "clientListenPort" };
 
+    static inline const juce::Identifier id_clockSettings { "clockSettings" };
+    static inline const juce::Identifier id_clockSource { "clockSource" };
+    static inline const juce::Identifier id_clockBpm { "clockBpm" };
+    static inline const juce::Identifier id_timeSignature { "timeSignature" };
+    static juce::ValueTree getClockSettings(juce::ValueTree& rootState);
+
+    static inline const juce::Identifier id_audioOutput { "audioOutput" };
+    static inline const juce::Identifier id_metronomeVolume { "metronomeVolume" };
+    static inline const juce::Identifier id_audioInputVolume { "audioInputVolume" };
+    static inline const juce::Identifier id_headphoneEnabled { "headphoneEnabled" };
+    static inline const juce::Identifier id_headphoneGain { "headphoneGain" };
+
+    // UI settings for the upcoming audio bridge. Volumes are percentages;
+    // headphone gain uses the hardware's native 0..127 range.
+    static juce::ValueTree getAudioOutputSettings(juce::ValueTree& rootState);
+    static juce::ValueTree getHeadphoneSettings(const juce::String& deviceId, juce::ValueTree& rootState);
+
     static inline const juce::Identifier id_calibration { "calibration" };
     static inline const juce::Identifier id_breathThreshold { "breathThreshold" };
     static inline const juce::Identifier id_breathSensitivity { "breathSensitivity" };

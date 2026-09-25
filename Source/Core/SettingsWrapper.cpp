@@ -320,6 +320,35 @@ void SettingsWrapper::resetCalibration(InstrumentType type, juce::ValueTree& roo
     }
 }
 
+juce::ValueTree SettingsWrapper::getClockSettings(juce::ValueTree& rootState) {
+    auto clock = getSettingsTree(rootState).getOrCreateChildWithName(id_clockSettings, nullptr);
+    if (!clock.hasProperty(id_clockSource)) clock.setProperty(id_clockSource, "midiMaster", nullptr);
+    if (!clock.hasProperty(id_clockBpm)) clock.setProperty(id_clockBpm, 120.0, nullptr);
+    if (!clock.hasProperty(id_timeSignature)) clock.setProperty(id_timeSignature, "4/4", nullptr);
+    return clock;
+}
+
+juce::ValueTree SettingsWrapper::getAudioOutputSettings(juce::ValueTree& rootState) {
+    auto audio = getSettingsTree(rootState).getOrCreateChildWithName(id_audioOutput, nullptr);
+    if (!audio.hasProperty(id_metronomeVolume)) audio.setProperty(id_metronomeVolume, 100.0, nullptr);
+    if (!audio.hasProperty(id_audioInputVolume)) audio.setProperty(id_audioInputVolume, 100.0, nullptr);
+    return audio;
+}
+
+juce::ValueTree SettingsWrapper::getHeadphoneSettings(const juce::String& deviceId, juce::ValueTree& rootState) {
+    if (deviceId.isEmpty()) return {};
+    auto audio = getAudioOutputSettings(rootState);
+    auto device = audio.getChildWithProperty(id_devId, deviceId);
+    if (!device.isValid()) {
+        device = juce::ValueTree(id_deviceNode);
+        device.setProperty(id_devId, deviceId, nullptr);
+        audio.appendChild(device, nullptr);
+    }
+    if (!device.hasProperty(id_headphoneEnabled)) device.setProperty(id_headphoneEnabled, false, nullptr);
+    if (!device.hasProperty(id_headphoneGain)) device.setProperty(id_headphoneGain, 70, nullptr);
+    return device;
+}
+
 void SettingsWrapper::saveDeviceSettings(const ConnectedDevice& device, juce::ValueTree& rootState) {
     auto settings = getSettingsTree(rootState);
     auto devices = settings.getOrCreateChildWithName(id_devices, nullptr);

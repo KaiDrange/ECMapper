@@ -19,6 +19,7 @@ public:
 
 private:
     void updateDeviceList();
+    void updateClockControls();
 
     HardwareService& hardwareService_;
     juce::ValueTree& state_;
@@ -31,6 +32,29 @@ private:
     juce::Label clientPortLabel;
     juce::TextEditor clientPortInput;
     
+    juce::GroupComponent audioGroup { "audioOutput", "Audio output - all devices" };
+    juce::Slider metronomeVolume;
+    juce::Slider audioInputVolume;
+    juce::Label metronomeLabel { "", "Metronome volume" };
+    juce::Label audioInputLabel { "", "Audio input volume" };
+    juce::GroupComponent clockGroup { "clock", "Clock and transport" };
+    juce::ToggleButton midiClockIn { "MIDI Clock In" };
+    juce::ToggleButton midiClockMaster { "MIDI Clock Master" };
+    juce::ToggleButton abletonLink { "Ableton Link" };
+    juce::Label bpmLabel { "", "BPM" };
+    juce::Slider bpmInput;
+    juce::Label timeSignatureLabel { "", "Time signature" };
+    juce::ComboBox timeSignature;
+    juce::TextButton startButton { "Start" };
+    juce::TextButton stopButton { "Stop" };
+    juce::ValueTree clockSettings;
+    bool transportRunning = false; // UI state only; never restore playback on launch.
+
+    juce::Label devicesLabel { "", "Connected hardware" };
+    juce::Label emptyDevicesLabel;
+    juce::Viewport deviceViewport;
+    juce::Component deviceContent;
+
     struct TargetRow {
         std::unique_ptr<juce::Label> ipLabel;
         std::unique_ptr<juce::TextEditor> ipInput;
@@ -43,6 +67,10 @@ private:
 
     struct DeviceRow {
         std::string dev;
+        std::unique_ptr<juce::GroupComponent> card;
+        std::unique_ptr<juce::Slider> headphoneGain;
+        std::unique_ptr<juce::Label> headphoneGainLabel;
+        std::unique_ptr<juce::TextButton> headphoneEnabled;
         std::unique_ptr<juce::ImageComponent> statusLed;
         std::unique_ptr<juce::Label> nameLabel;
         std::unique_ptr<juce::ComboBox> modeCombo;

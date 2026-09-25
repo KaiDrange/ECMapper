@@ -46,7 +46,7 @@ MainComponent::MainComponent(juce::AudioProcessorValueTreeState& pluginStateToUs
       upperMPEVoiceCount("Upper MPE voices:", 2, 0, 15, true),  
       lowerMPEPitchbendRange("Lower MPE pb:", 2, 0, 96, true), 
       upperMPEPitchbendRange("Upper MPE pb:", 2, 0, 96, true),
-      communicationTabButton("Communication"),
+      communicationTabButton("Connections"),
       alphaTabButton("Alpha"),
       tauTabButton("Tau"),
       picoTabButton("Pico"),
@@ -148,7 +148,7 @@ MainComponent::MainComponent(juce::AudioProcessorValueTreeState& pluginStateToUs
         addAndMakeVisible(button);
     };
 
-    configureTab(communicationTabButton, "Communication", Style::tabColour(0), 0);
+    configureTab(communicationTabButton, "Connections", Style::tabColour(0), 0);
     configureTab(alphaTabButton, "Alpha", Style::tabColour(1), 1);
     configureTab(tauTabButton, "Tau", Style::tabColour(2), 2);
     configureTab(picoTabButton, "Pico", Style::tabColour(3), 3);

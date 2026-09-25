@@ -6,6 +6,17 @@ namespace ecm {
 
 namespace {
 
+void configureAudioKnob(juce::Slider& slider, const juce::String& name, double maximum)
+{
+    slider.setName(name);
+    slider.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
+    slider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 64, 20);
+    slider.setRange(0.0, maximum, 1.0);
+    slider.setScrollWheelEnabled(false);
+    slider.setColour(juce::Slider::rotarySliderFillColourId, Style::accent());
+    slider.setColour(juce::Slider::rotarySliderOutlineColourId, Style::border());
+}
+
 juce::Image createStatusLed(juce::Colour bodyColour, juce::Colour glowColour, bool glowEnabled)
 {
     constexpr int size = 32;
@@ -110,6 +121,71 @@ CorePage::CorePage(HardwareService& hardwareService, juce::ValueTree& state)
     addAndMakeVisible(clientPortLabel);
     addAndMakeVisible(clientPortInput);
     
+    addAndMakeVisible(audioGroup);
+    configureAudioKnob(metronomeVolume, "Metronome volume", 100.0);
+    configureAudioKnob(audioInputVolume, "Audio input volume", 100.0);
+    auto audioSettings = SettingsWrapper::getAudioOutputSettings(state_);
+    metronomeVolume.getValueObject().referTo(audioSettings.getPropertyAsValue(SettingsWrapper::id_metronomeVolume, nullptr));
+    audioInputVolume.getValueObject().referTo(audioSettings.getPropertyAsValue(SettingsWrapper::id_audioInputVolume, nullptr));
+    for (auto* slider : { &metronomeVolume, &audioInputVolume }) {
+        slider->setTextValueSuffix(" %");
+        slider->setDoubleClickReturnValue(true, 100.0);
+        addAndMakeVisible(slider);
+    }
+    for (auto* label : { &metronomeLabel, &audioInputLabel }) {
+        label->setJustificationType(juce::Justification::centred);
+        addAndMakeVisible(label);
+    }
+    metronomeVolume.setTooltip("Metronome level for all Alpha and Tau outputs");
+    audioInputVolume.setTooltip("Audio input level for all Alpha and Tau outputs");
+    clockSettings = SettingsWrapper::getClockSettings(state_);
+    addAndMakeVisible(clockGroup);
+    const auto configureClockSource = [this](juce::ToggleButton& button, const char* source) {
+        button.setRadioGroupId(1001);
+        button.onClick = [this, source] {
+            clockSettings.setProperty(SettingsWrapper::id_clockSource, source, nullptr);
+            updateClockControls();
+        };
+        addAndMakeVisible(button);
+    };
+    configureClockSource(midiClockIn, "midiIn");
+    configureClockSource(midiClockMaster, "midiMaster");
+    configureClockSource(abletonLink, "abletonLink");
+    midiClockIn.setTooltip("Follow incoming MIDI clock (slave mode)");
+    midiClockMaster.setTooltip("Set the tempo locally as MIDI clock master");
+    abletonLink.setTooltip("Use Ableton Link for tempo synchronization");
+
+    bpmInput.setName("BPM");
+    bpmInput.setSliderStyle(juce::Slider::IncDecButtons);
+    bpmInput.setTextBoxStyle(juce::Slider::TextBoxLeft, false, 62, 26);
+    bpmInput.setRange(20.0, 300.0, 0.1);
+    bpmInput.setScrollWheelEnabled(false);
+    bpmInput.getValueObject().referTo(clockSettings.getPropertyAsValue(SettingsWrapper::id_clockBpm, nullptr));
+    addAndMakeVisible(bpmLabel);
+    addAndMakeVisible(bpmInput);
+    addAndMakeVisible(timeSignatureLabel);
+    addAndMakeVisible(timeSignature);
+    timeSignature.addItemList({ "None", "2/4", "3/4", "4/4", "5/4", "6/4", "3/8", "6/8", "7/8", "9/8", "12/8" }, 1);
+    timeSignature.onChange = [this] {
+        clockSettings.setProperty(SettingsWrapper::id_timeSignature, timeSignature.getText(), nullptr);
+    };
+    for (auto* button : { &startButton, &stopButton }) {
+        button->setColour(juce::TextButton::buttonOnColourId, Style::accent());
+        button->setColour(juce::TextButton::textColourOnId, Style::background());
+        addAndMakeVisible(button);
+    }
+    startButton.onClick = [this] { transportRunning = true; updateClockControls(); };
+    stopButton.onClick = [this] { transportRunning = false; updateClockControls(); };
+    updateClockControls();
+
+    addAndMakeVisible(devicesLabel);
+    emptyDevicesLabel.setJustificationType(juce::Justification::centred);
+    emptyDevicesLabel.setColour(juce::Label::textColourId, Style::mutedText());
+    addAndMakeVisible(emptyDevicesLabel);
+    deviceViewport.setViewedComponent(&deviceContent, false);
+    deviceViewport.setScrollBarsShown(true, false);
+    addAndMakeVisible(deviceViewport);
+
     hardwareService_.addListener(this);
     updateDeviceList();
     
@@ -121,12 +197,28 @@ CorePage::~CorePage() {
 }
 
 void CorePage::deviceListChanged() {
-    juce::MessageManager::callAsync([this] {
-        updateDeviceList();
+    juce::MessageManager::callAsync([safeThis = juce::Component::SafePointer<CorePage>(this)] {
+        if (safeThis != nullptr) safeThis->updateDeviceList();
     });
 }
 
+void CorePage::updateClockControls() {
+    const auto source = clockSettings.getProperty(SettingsWrapper::id_clockSource).toString();
+    const bool slave = source == "midiIn";
+    const bool link = source == "abletonLink";
+    midiClockIn.setToggleState(slave, juce::dontSendNotification);
+    midiClockMaster.setToggleState(!slave && !link, juce::dontSendNotification);
+    abletonLink.setToggleState(link, juce::dontSendNotification);
+    bpmInput.setEnabled(!slave);
+    bpmLabel.setEnabled(!slave);
+    bpmInput.setTooltip(slave ? "Tempo follows incoming MIDI clock" : "Tempo in beats per minute (20-300)");
+    timeSignature.setText(clockSettings.getProperty(SettingsWrapper::id_timeSignature).toString(), juce::dontSendNotification);
+    startButton.setToggleState(transportRunning, juce::dontSendNotification);
+    stopButton.setToggleState(!transportRunning, juce::dontSendNotification);
+}
+
 void CorePage::timerCallback() {
+    updateClockControls();
     auto devices = hardwareService_.getConnectedDevices();
     auto currentTime = juce::Time::getMillisecondCounter();
     
@@ -155,6 +247,7 @@ void CorePage::updateDeviceList() {
     deviceRows_.clear();
     
     bool isHost = hardwareService_.getAppRole() == AppRole::Host;
+    roleCombo.setSelectedId(isHost ? 1 : 2, juce::dontSendNotification);
     
     clientIpLabel.setVisible(!isHost);
     clientIpInput.setVisible(!isHost);
@@ -162,14 +255,43 @@ void CorePage::updateDeviceList() {
     clientPortInput.setVisible(!isHost);
 
     auto devices = hardwareService_.getConnectedDevices();
+    emptyDevicesLabel.setText(isHost ? "No local devices connected" : "No remote devices discovered", juce::dontSendNotification);
+    emptyDevicesLabel.setVisible(devices.empty());
     
     for (const auto& d : devices) {
         auto row = std::make_unique<DeviceRow>();
         row->dev = d.dev;
+        row->card = std::make_unique<juce::GroupComponent>();
+        row->card->setColour(juce::GroupComponent::outlineColourId, Style::border());
+        deviceContent.addAndMakeVisible(row->card.get());
+
+        if (d.type == InstrumentType::Alpha || d.type == InstrumentType::Tau) {
+            auto settings = SettingsWrapper::getHeadphoneSettings(
+                d.isRemote && !d.remoteOriginalDevId.empty() ? juce::String(d.remoteOriginalDevId) : juce::String(d.dev), state_);
+            const bool canControl = isHost && !d.isRemote;
+            row->headphoneGain = std::make_unique<juce::Slider>();
+            configureAudioKnob(*row->headphoneGain, "Headphone gain", 127.0);
+            row->headphoneGain->getValueObject().referTo(settings.getPropertyAsValue(SettingsWrapper::id_headphoneGain, nullptr));
+            row->headphoneGain->setDoubleClickReturnValue(true, 70.0);
+            row->headphoneGain->setEnabled(canControl);
+            row->headphoneGain->setTooltip("Hardware headphone gain (0-127). Controlled by the Host.");
+            deviceContent.addAndMakeVisible(row->headphoneGain.get());
+            row->headphoneGainLabel = std::make_unique<juce::Label>("", "Headphone gain");
+            row->headphoneGainLabel->setJustificationType(juce::Justification::centred);
+            deviceContent.addAndMakeVisible(row->headphoneGainLabel.get());
+            row->headphoneEnabled = std::make_unique<juce::TextButton>("Enable headphones");
+            row->headphoneEnabled->setClickingTogglesState(true);
+            row->headphoneEnabled->getToggleStateValue().referTo(settings.getPropertyAsValue(SettingsWrapper::id_headphoneEnabled, nullptr));
+            row->headphoneEnabled->setEnabled(canControl);
+            row->headphoneEnabled->setColour(juce::TextButton::buttonOnColourId, Style::accent());
+            row->headphoneEnabled->setColour(juce::TextButton::textColourOnId, Style::background());
+            row->headphoneEnabled->setTooltip("Enable this device's headphone output. Controlled by the Host.");
+            deviceContent.addAndMakeVisible(row->headphoneEnabled.get());
+        }
         
         row->statusLed = std::make_unique<juce::ImageComponent>();
         row->statusLed->setImage(ledGreen);
-        addAndMakeVisible(row->statusLed.get());
+        deviceContent.addAndMakeVisible(row->statusLed.get());
         
         juce::String typeStr;
         switch (d.type) {
@@ -184,7 +306,7 @@ void CorePage::updateDeviceList() {
         if (d.isRemote) labelText += " [Remote]";
         row->nameLabel = std::make_unique<juce::Label>("", labelText);
         row->nameLabel->setColour(juce::Label::textColourId, d.isRemote ? Style::accentStrong() : Style::text());
-        addAndMakeVisible(row->nameLabel.get());
+        deviceContent.addAndMakeVisible(row->nameLabel.get());
         
         row->modeCombo = std::make_unique<juce::ComboBox>();
         row->modeCombo->addItem("Local", 1);
@@ -216,7 +338,7 @@ void CorePage::updateDeviceList() {
         row->emptyAddButton->onClick = [this, dev = d.dev] {
             hardwareService_.addDeviceOSCTarget(dev, "127.0.0.1", 12130);
         };
-        addAndMakeVisible(row->emptyAddButton.get());
+        deviceContent.addAndMakeVisible(row->emptyAddButton.get());
         
         for (int i = 0; i < (int)d.oscTargets.size(); ++i) {
             auto& target = d.oscTargets[static_cast<std::size_t>(i)];
@@ -224,7 +346,7 @@ void CorePage::updateDeviceList() {
             
             tRow->ipLabel = std::make_unique<juce::Label>("", "Host:");
             tRow->ipLabel->setColour(juce::Label::textColourId, Style::mutedText());
-            addAndMakeVisible(tRow->ipLabel.get());
+            deviceContent.addAndMakeVisible(tRow->ipLabel.get());
             
             tRow->ipInput = std::make_unique<juce::TextEditor>();
             tRow->ipInput->setText(target.ip, juce::dontSendNotification);
@@ -235,18 +357,18 @@ void CorePage::updateDeviceList() {
                 }
             };
             tRow->ipInput->onFocusLost = tRow->ipInput->onReturnKey;
-            addAndMakeVisible(tRow->ipInput.get());
+            deviceContent.addAndMakeVisible(tRow->ipInput.get());
             
             tRow->portLabel = std::make_unique<juce::Label>("", "Port:");
             tRow->portLabel->setColour(juce::Label::textColourId, Style::mutedText());
-            addAndMakeVisible(tRow->portLabel.get());
+            deviceContent.addAndMakeVisible(tRow->portLabel.get());
             
             tRow->portInput = std::make_unique<juce::TextEditor>();
             tRow->portInput->setText(juce::String(target.port), juce::dontSendNotification);
             tRow->portInput->setInputRestrictions(5, "0123456789");
             tRow->portInput->onReturnKey = tRow->ipInput->onReturnKey;
             tRow->portInput->onFocusLost = tRow->ipInput->onReturnKey;
-            addAndMakeVisible(tRow->portInput.get());
+            deviceContent.addAndMakeVisible(tRow->portInput.get());
             
             tRow->ledToggle = std::make_unique<juce::TextButton>(isHost ? "L" : "Control LEDs");
             tRow->ledToggle->setClickingTogglesState(true);
@@ -260,20 +382,20 @@ void CorePage::updateDeviceList() {
                     hardwareService_.updateDeviceOSCTarget(dev, ti, t->ipInput->getText(), t->portInput->getText().getIntValue(), t->ledToggle->getToggleState());
                 }
             };
-            addAndMakeVisible(tRow->ledToggle.get());
+            deviceContent.addAndMakeVisible(tRow->ledToggle.get());
             if (isHost) tRow->ledToggle->setVisible(false);
             
             tRow->addButton = std::make_unique<juce::TextButton>("+");
             tRow->addButton->onClick = [this, dev = d.dev] {
                 hardwareService_.addDeviceOSCTarget(dev, "127.0.0.1", 12130);
             };
-            addAndMakeVisible(tRow->addButton.get());
+            deviceContent.addAndMakeVisible(tRow->addButton.get());
             
             tRow->removeButton = std::make_unique<juce::TextButton>("X");
             tRow->removeButton->onClick = [this, dev = d.dev, ti = i] {
                 hardwareService_.removeDeviceOSCTarget(dev, ti);
             };
-            addAndMakeVisible(tRow->removeButton.get());
+            deviceContent.addAndMakeVisible(tRow->removeButton.get());
             
             row->targets.push_back(std::move(tRow));
         }
@@ -312,7 +434,8 @@ void CorePage::updateDeviceList() {
         
         updateVisibility();
         
-        addAndMakeVisible(row->modeCombo.get());
+        deviceContent.addAndMakeVisible(row->modeCombo.get());
+        row->modeCombo->setVisible(isHost);
         deviceRows_.push_back(std::move(row));
     }
     
@@ -322,108 +445,105 @@ void CorePage::updateDeviceList() {
 
 void CorePage::paint(juce::Graphics& g) {
     g.fillAll(Style::background());
-
     g.setColour(Style::tabColour(0).withAlpha(0.80f));
     g.fillRect(0, 0, getWidth(), 3);
-    
-    auto area = getLocalBounds().reduced(20);
-    auto headerArea = area.removeFromTop(40);
-    
     g.setColour(Style::text());
     g.setFont(20.0f);
-    g.drawText("Communication", headerArea.removeFromLeft(200), juce::Justification::centredLeft);
-    
-    if (deviceRows_.empty()) {
-        g.setColour(Style::mutedText());
-        auto emptyArea = getLocalBounds().reduced(20);
-        emptyArea.removeFromTop(100);
-        g.drawFittedText(hardwareService_.getAppRole() == AppRole::Host ? "No local devices connected" : "No remote devices discovered", emptyArea, juce::Justification::centred, 1);
-    }
+    g.drawText("Connections", getLocalBounds().reduced(20).removeFromTop(32), juce::Justification::centredLeft);
 }
 
 void CorePage::resized() {
     auto area = getLocalBounds().reduced(20);
-    area.removeFromTop(40); // Title area
-    
-    auto roleArea = area.removeFromTop(40);
+    area.removeFromTop(36);
+    const bool isHost = hardwareService_.getAppRole() == AppRole::Host;
+    auto roleArea = area.removeFromTop(36);
     roleLabel.setBounds(roleArea.removeFromLeft(50));
-    roleCombo.setBounds(roleArea.removeFromLeft(200).reduced(5));
-    
-    if (hardwareService_.getAppRole() == AppRole::Client) {
-        auto clientArea = area.removeFromTop(40);
-        clientIpLabel.setBounds(clientArea.removeFromLeft(70));
-        clientIpInput.setBounds(clientArea.removeFromLeft(120).reduced(5));
-        clientArea.removeFromLeft(10);
+    roleCombo.setBounds(roleArea.removeFromLeft(200).reduced(2));
+
+    if (!isHost) {
+        auto clientArea = area.removeFromTop(36);
+        clientIpLabel.setBounds(clientArea.removeFromLeft(80));
+        clientIpInput.setBounds(clientArea.removeFromLeft(120).reduced(2));
+        clientArea.removeFromLeft(12);
         clientPortLabel.setBounds(clientArea.removeFromLeft(80));
-        clientPortInput.setBounds(clientArea.removeFromLeft(80).reduced(5));
+        clientPortInput.setBounds(clientArea.removeFromLeft(80).reduced(2));
     }
-    
+    area.removeFromTop(8);
+    auto controlsArea = area.removeFromTop(140);
+    auto audioArea = controlsArea.removeFromLeft(340);
+    controlsArea.removeFromLeft(12);
+    clockGroup.setBounds(controlsArea);
+    auto clockArea = controlsArea.reduced(12, 10);
+    clockArea.removeFromTop(10);
+    auto sources = clockArea.removeFromTop(28);
+    midiClockIn.setBounds(sources.removeFromLeft(112));
+    midiClockMaster.setBounds(sources.removeFromLeft(140));
+    abletonLink.setBounds(sources);
+    clockArea.removeFromTop(6);
+    auto tempo = clockArea.removeFromTop(28);
+    bpmLabel.setBounds(tempo.removeFromLeft(36));
+    bpmInput.setBounds(tempo.removeFromLeft(100));
+    tempo.removeFromLeft(12);
+    timeSignatureLabel.setBounds(tempo.removeFromLeft(98));
+    timeSignature.setBounds(tempo.removeFromLeft(80));
+    clockArea.removeFromTop(8);
+    auto transport = clockArea.removeFromTop(28);
+    startButton.setBounds(transport.removeFromLeft(90));
+    transport.removeFromLeft(8);
+    stopButton.setBounds(transport.removeFromLeft(90));
+    audioGroup.setBounds(audioArea);
+    audioArea = audioArea.reduced(16, 10);
+    audioArea.removeFromTop(10);
+    auto layoutKnob = [](juce::Rectangle<int> bounds, juce::Label& label, juce::Slider& slider) {
+        label.setBounds(bounds.removeFromTop(22));
+        slider.setBounds(bounds.withSizeKeepingCentre(90, bounds.getHeight()));
+    };
+    layoutKnob(audioArea.removeFromLeft(154), metronomeLabel, metronomeVolume);
+    layoutKnob(audioArea.removeFromLeft(154), audioInputLabel, audioInputVolume);
     area.removeFromTop(10);
-    
-    bool isHost = hardwareService_.getAppRole() == AppRole::Host;
-    
+    devicesLabel.setBounds(area.removeFromTop(26));
+    deviceViewport.setBounds(area);
+    emptyDevicesLabel.setBounds(area.removeFromTop(80));
+
+    const int width = juce::jmax(0, deviceViewport.getWidth() - deviceViewport.getScrollBarThickness());
+    int y = 0;
     for (auto& row : deviceRows_) {
-        bool oscVisible = row->modeCombo->getSelectedId() > 1 || !isHost;
-        int rowHeight = 35;
+        const bool oscVisible = row->modeCombo->getSelectedId() > 1 || !isHost;
+        const int targetCount = oscVisible ? juce::jmax(1, static_cast<int>(row->targets.size())) : 0;
+        const int height = 52 + (row->headphoneGain ? 110 : 0) + targetCount * 36;
+        row->card->setBounds(0, y, width, height);
+        auto cardArea = juce::Rectangle<int>(0, y, width, height).reduced(12, 8);
+        auto header = cardArea.removeFromTop(36);
+        row->statusLed->setBounds(header.removeFromLeft(24).withSizeKeepingCentre(20, 20));
+        if (isHost) row->modeCombo->setBounds(header.removeFromRight(120).reduced(2));
+        row->nameLabel->setBounds(header);
+        row->nameLabel->setTooltip(row->nameLabel->getText());
+
+        if (row->headphoneGain) {
+            auto audioRow = cardArea.removeFromTop(110);
+            row->headphoneEnabled->setBounds(audioRow.removeFromLeft(170).withSizeKeepingCentre(154, 30));
+            layoutKnob(audioRow.removeFromLeft(150), *row->headphoneGainLabel, *row->headphoneGain);
+        }
         if (oscVisible) {
-            int additionalRows = std::max(0, (int)row->targets.size() - 1);
-            rowHeight += additionalRows * 35;
-        }
-        auto rowArea = area.removeFromTop(rowHeight);
-        
-        auto mainRow = rowArea.removeFromTop(35);
-        row->statusLed->setBounds(mainRow.removeFromLeft(20).reduced(4));
-        row->nameLabel->setBounds(mainRow.removeFromLeft(140));
-        
-        if (isHost) {
-            row->modeCombo->setBounds(mainRow.removeFromLeft(100).reduced(2));
-            mainRow.removeFromLeft(5);
-        }
-        
-        if (oscVisible && !row->targets.empty()) {
-            auto& t = row->targets[0];
-            t->ipLabel->setBounds(mainRow.removeFromLeft(40));
-            t->ipInput->setBounds(mainRow.removeFromLeft(100).reduced(2));
-            mainRow.removeFromLeft(5);
-            t->portLabel->setBounds(mainRow.removeFromLeft(35));
-            t->portInput->setBounds(mainRow.removeFromLeft(50).reduced(2));
-            mainRow.removeFromLeft(5);
-            
-            if (!isHost) {
-                t->ledToggle->setBounds(mainRow.removeFromLeft(100).reduced(2));
-            } else {
-                t->ledToggle->setBounds(mainRow.removeFromLeft(25).reduced(2));
+            if (row->targets.empty()) {
+                row->emptyAddButton->setBounds(cardArea.removeFromTop(36).removeFromLeft(110).reduced(2));
             }
-            
-            if (t->addButton->isVisible()) t->addButton->setBounds(mainRow.removeFromLeft(25).reduced(2));
-            if (t->removeButton->isVisible()) t->removeButton->setBounds(mainRow.removeFromLeft(25).reduced(2));
-        } else if (oscVisible && row->targets.empty()) {
-            row->emptyAddButton->setBounds(mainRow.removeFromLeft(100).reduced(2));
-        }
-        
-        if (oscVisible) {
-            for (int i = 1; i < (int)row->targets.size(); ++i) {
-                auto& t = row->targets[static_cast<std::size_t>(i)];
-                auto oscRow = rowArea.removeFromTop(35);
-                oscRow.removeFromLeft(isHost ? 265 : 160); // align with first target
-                t->ipLabel->setBounds(oscRow.removeFromLeft(40));
-                t->ipInput->setBounds(oscRow.removeFromLeft(100).reduced(2));
-                oscRow.removeFromLeft(5);
-                t->portLabel->setBounds(oscRow.removeFromLeft(35));
-                t->portInput->setBounds(oscRow.removeFromLeft(50).reduced(2));
-                oscRow.removeFromLeft(5);
-                
-                if (!isHost) {
-                    t->ledToggle->setBounds(oscRow.removeFromLeft(100).reduced(2));
-                } else {
-                    t->ledToggle->setBounds(oscRow.removeFromLeft(25).reduced(2));
-                }
-                
-                if (t->addButton->isVisible()) t->addButton->setBounds(oscRow.removeFromLeft(25).reduced(2));
-                if (t->removeButton->isVisible()) t->removeButton->setBounds(oscRow.removeFromLeft(25).reduced(2));
+            for (auto& target : row->targets) {
+                auto targetArea = cardArea.removeFromTop(36);
+                target->ipLabel->setBounds(targetArea.removeFromLeft(45));
+                target->ipInput->setBounds(targetArea.removeFromLeft(juce::jlimit(100, 220, width / 4)).reduced(2));
+                targetArea.removeFromLeft(8);
+                target->portLabel->setBounds(targetArea.removeFromLeft(38));
+                target->portInput->setBounds(targetArea.removeFromLeft(70).reduced(2));
+                targetArea.removeFromLeft(8);
+                if (!isHost) target->ledToggle->setBounds(targetArea.removeFromLeft(110).reduced(2));
+                if (target->addButton->isVisible()) target->addButton->setBounds(targetArea.removeFromLeft(30).reduced(2));
+                if (target->removeButton->isVisible()) target->removeButton->setBounds(targetArea.removeFromLeft(30).reduced(2));
             }
         }
+        y += height + 10;
     }
+    deviceContent.setSize(width, juce::jmax(deviceViewport.getHeight(), y));
 }
 
 } // namespace ecm
