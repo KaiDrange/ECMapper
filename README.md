@@ -18,12 +18,17 @@ cmake ..
 cmake --build .
 ```
 
-## Temporary Eigenharp audio test
+## Eigenharp headphone metronome
 
-In Host mode, Connections > Start plays `assets/B1_WhileTheShadowsGrow.wav`
-through each enabled Alpha/Tau headphone output. Stop stops playback; Start
-always restarts the file. Playback ends at EOF. The metronome volume knob controls
-this test source, and headphone gain controls the instrument hardware. The knob
+In Host mode, select **MIDI clock master** in Connections, set BPM and time
+signature, then press Start. The metronome plays through every enabled Alpha/Tau
+headphone output until Stop. Start always begins a new bar. `assets/click1.wav`
+is the first-beat accent; `assets/click2.wav` plays the remaining beats. Both are
+mono 48 kHz samples, embedded in the app and duplicated to left and right.
+BPM counts quarter notes; /8 signatures click on each eighth note. “None” plays
+unaccented quarter notes. Tempo and meter can be changed while playing.
+The metronome volume knob controls click level; headphone gain controls the
+instrument hardware. The headphone gain knob
 shows dB: the existing default is -57 dB. Each device has a Host-only
 **Limit to -30 dB** toggle, enabled by default (including older saved settings).
 Turning it off allows gain up to 0 dB without raising the current volume.
@@ -37,9 +42,9 @@ has no sample-rate selector; on macOS, select 48 kHz for its audio device in Aud
 MIDI Setup before launching. Enable headphones on the connected device before
 pressing Start. No sound is routed to the computer's normal audio output.
 
-The WAV is preloaded during audio preparation to avoid disk access in the audio
-callback. It is read from the source assets directory, not embedded in the app;
-`ECMAPPER_TEST_AUDIO_FILE` is a CMake cache path override. The bridge accumulates
+The clicks are decoded during audio preparation, with no allocation or file I/O
+in the audio callback. Beat timing uses the audio sample clock, retaining fractional
+beat lengths across callbacks. The bridge accumulates
 128 frames and queues each block immediately; the hardware thread sends it on its
 next poll, without waiting for a 512-frame group. Each device keeps the period
 sequence 1, 0, 0, 0 across writes (including silence and Start/Stop). Newly enabled
@@ -55,13 +60,14 @@ state: restoring 512-frame writes only recovered sound after a full power-off
 and reconnect. Start new timing experiments from a fully power-cycled Tau.
 Stopped playback sends silence. Already submitted USB audio may finish after Stop.
 When a plugin host reports offline rendering (`isNonRealtime()`), Eigenharp audio
-production stops and queued/partial test audio is discarded. Returning to real-time
+production stops and queued/partial metronome audio is discarded. Returning to real-time
 processing starts a fresh transport timing sequence and sends silence; press Start
-to restart the temporary WAV. Normal plugin MIDI processing continues. Audio already
+to restart the metronome. Normal plugin MIDI processing continues. Audio already
 submitted to USB may finish playing. This depends on the host reporting offline mode;
 real-time exports are not automatically muted.
 Other sample rates, clock/Link synchronization and remote playback control are not
-implemented by this temporary feature.
+implemented. External clock modes must be switched to local MIDI clock master
+mode before starting the metronome.
 
 Hardware test confirmed by the user on 2026-09-25: Tau playback was audible and
 played back perfectly when headphone gain was turned to maximum. The UI showed
@@ -69,10 +75,10 @@ played back perfectly when headphone gain was turned to maximum. The UI showed
 intended -30 dB UI ceiling and should be checked next session. This confirms the
 user's listening test, not a measured latency/drift or extended stability test.
 
-Build and run `EigenAudioBridgeTest` to check accumulation, stereo order,
-stop/restart, EOF, volume and queue overflow without hardware. Pass an absolute
-WAV path as its first argument to also check decoding that file. These checks do
-not establish stable playback or clock drift on a physical instrument.
+Build and run `EigenAudioBridgeTest` to check the bundled sample formats,
+beat/accent timing (including fractional beat lengths), mono duplication,
+stop/restart, offline rendering, volume and queue overflow without hardware.
+These checks do not establish stability or clock drift on a physical instrument.
 
 ## Credits:
 

@@ -40,12 +40,13 @@ public:
     void stopService();
     bool isServiceRunning() const { return isThreadRunning(); }
 
-    void prepareTestAudio(double sampleRate, juce::ValueTree& state);
-    void processTestAudio(int numFrames, bool nonRealtime = false) noexcept { audioBridge_.process(numFrames, nonRealtime); }
-    juce::String startTestAudio();
-    void stopTestAudio() noexcept { audioBridge_.stop(); }
-    bool isTestAudioPlaying() const noexcept { return audioBridge_.isPlaying(); }
-    void setTestAudioVolume(float volume) noexcept { audioBridge_.setVolume(volume); }
+    void updateMetronomeSettings(juce::ValueTree& state);
+    void prepareMetronome(double sampleRate, juce::ValueTree& state);
+    void processMetronome(int numFrames, bool nonRealtime = false) noexcept { audioBridge_.process(numFrames, nonRealtime); }
+    juce::String startMetronome();
+    void stopMetronome() noexcept { audioBridge_.stop(); }
+    bool isMetronomePlaying() const noexcept { return audioBridge_.isPlaying(); }
+    void setMetronomeVolume(float volume) noexcept { audioBridge_.setVolume(volume); }
     void setHeadphoneSettings(const std::string& dev, bool enabled, unsigned gain, bool limited = true);
 
     void turnOffAllLEDs();

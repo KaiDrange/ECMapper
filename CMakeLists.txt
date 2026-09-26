@@ -82,9 +82,7 @@ endif()
 # ------------------------------------------------------------------------------
 # Shared Configuration
 
-# Temporary, development-only WAV playback source (not embedded in release binaries).
-set(ECMAPPER_TEST_AUDIO_FILE "${CMAKE_CURRENT_SOURCE_DIR}/assets/B1_WhileTheShadowsGrow.wav" CACHE FILEPATH "Temporary Eigenharp playback WAV")
-add_compile_definitions(ECMAPPER_TEST_AUDIO_FILE="${ECMAPPER_TEST_AUDIO_FILE}")
+juce_add_binary_data(MetronomeSamples SOURCES assets/click1.wav assets/click2.wav)
 
 file(GLOB_RECURSE SHARED_SOURCES CONFIGURE_DEPENDS
         Source/UI/*.cpp Source/UI/*.h
@@ -96,6 +94,7 @@ file(GLOB_RECURSE CORE_SOURCES CONFIGURE_DEPENDS
 )
 
 set(COMMON_LIBS
+        MetronomeSamples
         eigenapi
         juce::juce_audio_utils
         juce::juce_audio_processors
@@ -669,6 +668,7 @@ target_sources(EigenAudioBridgeTest PRIVATE
 )
 target_include_directories(EigenAudioBridgeTest PRIVATE Source)
 target_link_libraries(EigenAudioBridgeTest PRIVATE
+    MetronomeSamples
     juce::juce_audio_formats
     juce::juce_audio_basics
     juce::juce_recommended_config_flags

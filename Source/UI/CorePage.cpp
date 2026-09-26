@@ -136,9 +136,9 @@ CorePage::CorePage(HardwareService& hardwareService, juce::ValueTree& state)
         label->setJustificationType(juce::Justification::centred);
         addAndMakeVisible(label);
     }
-    metronomeVolume.setTooltip("Metronome level for all Alpha and Tau outputs (currently the test WAV)");
+    metronomeVolume.setTooltip("Metronome level for all Alpha and Tau outputs");
     metronomeVolume.onValueChange = [this] {
-        hardwareService_.setTestAudioVolume(static_cast<float>(metronomeVolume.getValue()) / 100.0f);
+        hardwareService_.setMetronomeVolume(static_cast<float>(metronomeVolume.getValue()) / 100.0f);
     };
     metronomeVolume.onValueChange();
     audioInputVolume.setTooltip("Audio input level for all Alpha and Tau outputs");
@@ -148,6 +148,7 @@ CorePage::CorePage(HardwareService& hardwareService, juce::ValueTree& state)
         button.setRadioGroupId(1001);
         button.onClick = [this, source] {
             clockSettings.setProperty(SettingsWrapper::id_clockSource, source, nullptr);
+            hardwareService_.stopMetronome();
             updateClockControls();
         };
         addAndMakeVisible(button);
@@ -165,6 +166,7 @@ CorePage::CorePage(HardwareService& hardwareService, juce::ValueTree& state)
     bpmInput.setRange(20.0, 300.0, 0.1);
     bpmInput.setScrollWheelEnabled(false);
     bpmInput.getValueObject().referTo(clockSettings.getPropertyAsValue(SettingsWrapper::id_clockBpm, nullptr));
+    bpmInput.onValueChange = [this] { hardwareService_.updateMetronomeSettings(state_); };
     addAndMakeVisible(bpmLabel);
     addAndMakeVisible(bpmInput);
     addAndMakeVisible(timeSignatureLabel);
@@ -172,19 +174,20 @@ CorePage::CorePage(HardwareService& hardwareService, juce::ValueTree& state)
     timeSignature.addItemList({ "None", "2/4", "3/4", "4/4", "5/4", "6/4", "3/8", "6/8", "7/8", "9/8", "12/8" }, 1);
     timeSignature.onChange = [this] {
         clockSettings.setProperty(SettingsWrapper::id_timeSignature, timeSignature.getText(), nullptr);
+        hardwareService_.updateMetronomeSettings(state_);
     };
     for (auto* button : { &startButton, &stopButton }) {
         button->setColour(juce::TextButton::buttonOnColourId, Style::accent());
         button->setColour(juce::TextButton::textColourOnId, Style::background());
         addAndMakeVisible(button);
     }
-    startButton.setTooltip("Play the temporary 48 kHz test WAV from the beginning");
+    startButton.setTooltip("Start the metronome on the first beat of a bar");
     startButton.onClick = [this] {
-        if (const auto error = hardwareService_.startTestAudio(); error.isNotEmpty())
-            juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "Test audio", error);
+        if (const auto error = hardwareService_.startMetronome(); error.isNotEmpty())
+            juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "Metronome", error);
         updateClockControls();
     };
-    stopButton.onClick = [this] { hardwareService_.stopTestAudio(); updateClockControls(); };
+    stopButton.onClick = [this] { hardwareService_.stopMetronome(); updateClockControls(); };
     updateClockControls();
 
     addAndMakeVisible(devicesLabel);
@@ -222,7 +225,7 @@ void CorePage::updateClockControls() {
     bpmLabel.setEnabled(!slave);
     bpmInput.setTooltip(slave ? "Tempo follows incoming MIDI clock" : "Tempo in beats per minute (20-300)");
     timeSignature.setText(clockSettings.getProperty(SettingsWrapper::id_timeSignature).toString(), juce::dontSendNotification);
-    const bool transportRunning = hardwareService_.isTestAudioPlaying();
+    const bool transportRunning = hardwareService_.isMetronomePlaying();
     startButton.setToggleState(transportRunning, juce::dontSendNotification);
     stopButton.setToggleState(!transportRunning, juce::dontSendNotification);
 }

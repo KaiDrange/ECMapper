@@ -7,7 +7,7 @@
 
 namespace ecm {
 
-// Temporary WAV source and 48 kHz transport bridge. JUCE's audio callback is
+// Sample-clocked metronome and 48 kHz transport bridge. JUCE's audio callback is
 // the sole producer; HardwareService is the sole consumer. No USB, file I/O,
 // allocation or locks on the producer path. prepare() requires both stopped.
 class EigenAudioBridge {
@@ -23,7 +23,8 @@ public:
         uint64_t transportState = 0;
     };
 
-    void prepare(const juce::File& file, double hostSampleRate);
+    void prepare(double hostSampleRate);
+    void setTiming(double bpm, int beatsPerBar, int beatUnit) noexcept;
     void setHostActive(bool active) noexcept;
     juce::String start(); // Non-audio thread. Empty string means success.
     void stop() noexcept;
@@ -38,7 +39,12 @@ public:
 
 private:
     void requestPlayback(bool play) noexcept;
-    juce::AudioBuffer<float> source_;
+    std::array<juce::AudioBuffer<float>, 2> clicks_;
+    std::atomic<double> bpm_ { 120.0 };
+    std::atomic<int> meter_ { (4 << 8) | 4 };
+    double beatPhase_ = 0.0;
+    int beat_ = 0;
+    int click_ = 0;
     juce::AbstractFifo fifo_ { queueBlocks };
     std::array<Block, queueBlocks> queue_;
     Block accumulator_;
@@ -48,7 +54,6 @@ private:
     // Low bit = offline; increments on each transition to invalidate queued audio.
     std::atomic<uint64_t> transportState_ { 0 };
     std::atomic<uint64_t> command_ { 0 }; // Low bit = play; upper bits = generation.
-    std::atomic<uint64_t> finishedGeneration_ { 0 };
     std::atomic<uint64_t> callbackCount_ { 0 };
     std::atomic<int> playbackPosition_ { 0 };
     std::atomic<double> hostSampleRate_ { 0.0 };

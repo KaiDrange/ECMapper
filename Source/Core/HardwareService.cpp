@@ -94,17 +94,32 @@ void HardwareService::stopService() {
 #endif
 }
 
-void HardwareService::prepareTestAudio(double sampleRate, juce::ValueTree& state) {
+void HardwareService::prepareMetronome(double sampleRate, juce::ValueTree& state) {
     // JUCE calls this with processBlock stopped; stop the FIFO consumer too.
     stopService();
     auto audio = SettingsWrapper::getAudioOutputSettings(state);
-    setTestAudioVolume(static_cast<float>(audio.getProperty(SettingsWrapper::id_metronomeVolume)) / 100.0f);
-    audioBridge_.prepare(juce::File(ECMAPPER_TEST_AUDIO_FILE), sampleRate);
+    setMetronomeVolume(static_cast<float>(audio.getProperty(SettingsWrapper::id_metronomeVolume)) / 100.0f);
+    updateMetronomeSettings(state);
+    audioBridge_.prepare(sampleRate);
 }
 
-juce::String HardwareService::startTestAudio() {
+void HardwareService::updateMetronomeSettings(juce::ValueTree& state) {
+    auto clock = SettingsWrapper::getClockSettings(state);
+    const auto signature = clock.getProperty(SettingsWrapper::id_timeSignature).toString();
+    audioBridge_.setTiming(static_cast<double>(clock.getProperty(SettingsWrapper::id_clockBpm)),
+                          signature.upToFirstOccurrenceOf("/", false, false).getIntValue(),
+                          signature.fromFirstOccurrenceOf("/", false, false).getIntValue());
+}
+
+juce::String HardwareService::startMetronome() {
     if (!supportsLocalHardware() || appRole_ != AppRole::Host)
-        return "Test playback is available in Host mode with local hardware only.";
+        return "The metronome is available in Host mode with local hardware only.";
+    if (state_ != nullptr) {
+        auto clock = SettingsWrapper::getClockSettings(*state_);
+        if (clock.getProperty(SettingsWrapper::id_clockSource).toString() != "midiMaster")
+            return "Select the local MIDI clock master mode to use the metronome. External clock synchronization is not implemented yet.";
+        updateMetronomeSettings(*state_);
+    }
     const juce::ScopedLock lock(deviceListLock_);
     const bool hasOutput = std::any_of(connectedDevices_.begin(), connectedDevices_.end(), [](const ConnectedDevice& device) {
         return !device.isRemote && device.headphoneEnabled
@@ -112,7 +127,7 @@ juce::String HardwareService::startTestAudio() {
     });
     if (!hasOutput) return "Enable headphones on a connected Alpha or Tau before starting playback.";
     const auto error = audioBridge_.start();
-    std::cout << "[AudioTest] Start: " << audioBridge_.diagnosticSummary()
+    std::cout << "[Metronome] Start: " << audioBridge_.diagnosticSummary()
               << (error.isEmpty() ? juce::String() : " error=" + error) << std::endl;
     return error;
 }
@@ -217,7 +232,7 @@ void HardwareService::processAudioOutput() {
     const auto now = juce::Time::getMillisecondCounter();
     if (now - audioReportTime_ >= 1000) {
         if (!devices.empty()) {
-            std::cout << "[AudioTest] " << audioBridge_.diagnosticSummary()
+            std::cout << "[Metronome] " << audioBridge_.diagnosticSummary()
                       << " blocks=" << audioBlocksSinceReport_ << " dispatches=" << audioWritesSinceReport_
                       << " peak=" << audioPeakSinceReport_;
             for (const auto& device : devices)
