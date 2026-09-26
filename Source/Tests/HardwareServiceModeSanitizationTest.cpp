@@ -59,6 +59,36 @@ bool verifyClientRoleStillForcesReceiveMode()
     return ok;
 }
 
+bool verifyStandaloneClockWithoutHardware()
+{
+    // Match standalone runtime detection without opening USB devices or a window.
+    const auto previousFactory = juce::JUCEApplicationBase::createInstance;
+    juce::JUCEApplicationBase::createInstance = []() -> juce::JUCEApplicationBase* { return nullptr; };
+    bool ok = true;
+    {
+        ecm::osc::MessageFifo input;
+        ecm::osc::MessageFifo output;
+        ecm::HardwareService service(input, output);
+        juce::ValueTree state("ECMapperState");
+        service.prepareMetronome(44100, state);
+        ok &= expect(!service.supportsLocalHardware() && service.getAppRole() == ecm::AppRole::Client,
+                     "clock-only regression must exercise a build without local hardware support");
+        ok &= expect(service.startMetronome().isEmpty() && service.isMetronomePlaying(),
+                     "standalone master must start without Alpha/Tau, including Client mode at 44.1 kHz");
+        juce::MidiBuffer clock;
+        service.processMetronome(1024, false, nullptr, &clock);
+        ok &= expect(clock.getNumEvents() == 3 && (*clock.begin()).getMessage().isMidiStart(),
+                     "hardware-free service must generate Start and clock pulses");
+        service.stopMetronome();
+        clock.clear();
+        service.processMetronome(128, false, nullptr, &clock);
+        ok &= expect(clock.getNumEvents() == 1 && (*clock.begin()).getMessage().isMidiStop(),
+                     "hardware-free service must generate Stop");
+    }
+    juce::JUCEApplicationBase::createInstance = previousFactory;
+    return ok;
+}
+
 bool verifyTauButtonsUseSeparateCourseFromTauPercussion()
 {
     bool ok = true;
@@ -78,6 +108,7 @@ int main()
     ok &= verifyHostStartupDefaultsLocalModeForSavedTransmitDevice();
     ok &= verifyClientRoleStillForcesReceiveMode();
     ok &= verifyTauButtonsUseSeparateCourseFromTauPercussion();
+    ok &= verifyStandaloneClockWithoutHardware();
 
     if (!ok)
         return 1;

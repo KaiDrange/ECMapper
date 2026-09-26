@@ -341,6 +341,7 @@ void StandaloneAppMainWindow::updateMidiOutput()
         processorPlayer.setMidiOutput(primaryOutput);
         processor->setMidiOutput(primaryOutput);
 
+        processor->setStandaloneLegacyMidiOutputs({}, nullptr);
         openStandaloneZoneMidiOutputs();
         std::array<juce::MidiOutput*, 3> zoneOutputs { nullptr, nullptr, nullptr };
         if (!isMidi2ModeEnabled()) {

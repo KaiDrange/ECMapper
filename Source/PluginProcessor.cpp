@@ -1086,7 +1086,7 @@ ECMapperAudioProcessor::~ECMapperAudioProcessor() {
 }
 
 void ECMapperAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
-    juce::ignoreUnused(samplesPerBlock);
+    masterClockBuffer_.ensureSize(static_cast<size_t>(juce::jmax(128, samplesPerBlock)));
     ECM_LOGGER(logger, "prepareToPlay() called.");
     
     updateGlobalSettings();
@@ -1120,7 +1120,14 @@ bool ECMapperAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) 
 
 void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& audioBuffer, juce::MidiBuffer& midiMessages) {
     audioBuffer.clear();
-    hardwareService.processMetronome(audioBuffer.getNumSamples(), isNonRealtime());
+    const bool standalone = juce::JUCEApplicationBase::isStandaloneApp();
+    const double clockBlockStartMs = juce::Time::getMillisecondCounterHiRes();
+    masterClockBuffer_.clear();
+    hardwareService.processMetronome(audioBuffer.getNumSamples(), isNonRealtime(),
+                                     standalone ? &midiMessages : nullptr,
+                                     standalone ? &masterClockBuffer_ : nullptr);
+    if (standalone)
+        midiService.scheduleMasterClock(masterClockBuffer_, clockBlockStartMs, getSampleRate());
 
     const bool useVst3Direct = !juce::JUCEApplicationBase::isStandaloneApp()
                                && ecm::SettingsWrapper::getPluginOutputMode(state.state) == ecm::OutputTransportMode::Vst3Direct;
@@ -1526,6 +1533,7 @@ void ECMapperAudioProcessor::setStateInformation(const void* data, const int siz
 }
 
 void ECMapperAudioProcessor::updateGlobalSettings() {
+    hardwareService.updateMetronomeSettings(state.state);
     ecm::AppRole role;
     juce::String clientIP;
     int clientPort;
@@ -2042,6 +2050,10 @@ void ECMapperAudioProcessor::parameterChanged(const juce::String& parameterID, f
 
 void ECMapperAudioProcessor::valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier& property)
 {
+    if (property == ecm::SettingsWrapper::id_clockSource
+        || property == ecm::SettingsWrapper::id_clockBpm
+        || property == ecm::SettingsWrapper::id_timeSignature)
+        hardwareService.updateMetronomeSettings(state.state);
     if (isRuntimeConfigStateProperty(property))
         requestRuntimeConfigRefresh();
 }

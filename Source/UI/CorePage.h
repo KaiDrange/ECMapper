@@ -38,6 +38,7 @@ private:
     juce::Label metronomeLabel { "", "Metronome volume" };
     juce::Label audioInputLabel { "", "Audio input volume" };
     juce::GroupComponent clockGroup { "clock", "Clock and transport" };
+    juce::ToggleButton metronomeOnly { "Metronome only" };
     juce::ToggleButton midiClockIn { "MIDI Clock In" };
     juce::ToggleButton midiClockMaster { "MIDI Clock Master" };
     juce::ToggleButton abletonLink { "Ableton Link" };

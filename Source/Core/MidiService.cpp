@@ -174,9 +174,11 @@ void MidiService::start(juce::AudioProcessorValueTreeState& pluginState, Hardwar
     sendIdentification();
     
     initialized_ = true;
+    if (juce::JUCEApplicationBase::isStandaloneApp()) clockOutput_.start();
 }
 
 void MidiService::stop() {
+    clockOutput_.stop();
     juce::universal_midi_packets::Endpoints::getInstance()->removeListener(*this);
     if (pluginState_ != nullptr) {
         pluginState_->state.removeListener(this);
@@ -881,6 +883,10 @@ void MidiService::setStandaloneLegacyMidiOutputs(const std::array<juce::MidiOutp
     const juce::ScopedLock sl(standaloneLegacyOutputLock_);
     standaloneLegacyOutputs_ = outputs;
     standaloneDefaultLegacyOutput_ = defaultOutput;
+    std::array<juce::String, 3> identifiers;
+    for (size_t i = 0; i < outputs.size(); ++i)
+        if (outputs[i] != nullptr) identifiers[i] = outputs[i]->getIdentifier();
+    standaloneClockDestinations_ = distinctMidiClockDestinations(identifiers);
 }
 
 bool MidiService::isStandaloneLegacyZoneRoutingEnabled() const
@@ -896,19 +902,33 @@ bool MidiService::isStandaloneLegacyZoneRoutingEnabled() const
 
 void MidiService::sendStandaloneLegacyMidiBuffers(const juce::MidiBuffer& sharedBuffer, const std::array<juce::MidiBuffer, 3>& zoneBuffers)
 {
-    std::array<juce::MidiOutput*, 3> outputs {};
-    juce::MidiOutput* fallbackOutput = nullptr;
-    {
-        const juce::ScopedLock sl(standaloneLegacyOutputLock_);
-        outputs = standaloneLegacyOutputs_;
-        fallbackOutput = standaloneDefaultLegacyOutput_;
-    }
+    const juce::ScopedLock sl(standaloneLegacyOutputLock_);
+    const auto outputs = standaloneLegacyOutputs_;
+    auto* fallbackOutput = standaloneDefaultLegacyOutput_;
 
     sendMidiBufferToDistinctOutputs(sharedBuffer, outputs, fallbackOutput);
 
     for (size_t i = 0; i < zoneBuffers.size(); ++i) {
         auto* output = outputs[i] != nullptr ? outputs[i] : fallbackOutput;
         sendMidiBufferToOutput(zoneBuffers[i], output);
+    }
+}
+
+void MidiService::sendMasterClockMessage(uint8_t status) {
+    if (isMidi2Mode_.load()) {
+        const juce::ScopedLock lock(umpOutputLock_);
+        for (size_t zone = 0; zone < directUmpOutputs_.size(); ++zone) {
+            auto& output = directUmpOutputs_[zone];
+            if (!output.isAlive()) continue;
+            const auto packet = midiClockSystemPacket(status, static_cast<uint8_t>(zone));
+            output.send(juce::universal_midi_packets::Iterator(&packet, 1),
+                        juce::universal_midi_packets::Iterator(&packet + 1, 0));
+        }
+    } else {
+        const juce::ScopedLock lock(standaloneLegacyOutputLock_);
+        const juce::MidiMessage message(&status, 1);
+        for (size_t zone = 0; zone < standaloneLegacyOutputs_.size(); ++zone)
+            if (standaloneClockDestinations_[zone]) standaloneLegacyOutputs_[zone]->sendMessageNow(message);
     }
 }
 

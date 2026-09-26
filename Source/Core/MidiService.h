@@ -10,6 +10,7 @@
 #include <vector>
 #include <list>
 #include "MidiProtocol.h"
+#include "MidiClockOutput.h"
 #include "ExpressionEmissionPolicy.h"
 #include "PerformanceEventSink.h"
 #include "Vst3DirectEventQueue.h"
@@ -58,6 +59,9 @@ public:
     void createLayoutRPNs(juce::MidiBuffer& buffer);
     void queueTransposeChangeFlush(InstrumentType deviceType, Zone zone);
     void drainPendingMidiMessages(juce::MidiBuffer& buffer, int eventTime = 0);
+    void scheduleMasterClock(const juce::MidiBuffer& buffer, double blockStartMs, double sampleRate) {
+        clockOutput_.schedule(buffer, blockStartMs, sampleRate);
+    }
     void drainDirectUMPs(juce::MidiBuffer& buffer, bool silentIfFailed = false);
     void setMidiOutput(juce::MidiOutput* output);
     void setStandaloneLegacyMidiOutputs(const std::array<juce::MidiOutput*, 3>& outputs, juce::MidiOutput* defaultOutput);
@@ -248,6 +252,9 @@ private:
     std::array<juce::MidiOutput*, 3> standaloneLegacyOutputs_ { nullptr, nullptr, nullptr };
     juce::MidiOutput* standaloneDefaultLegacyOutput_ = nullptr;
     juce::CriticalSection standaloneLegacyOutputLock_;
+    std::array<bool, 3> standaloneClockDestinations_ {};
+    void sendMasterClockMessage(uint8_t status);
+    MidiClockOutput clockOutput_ { [this](uint8_t status) { sendMasterClockMessage(status); } };
 
     std::unique_ptr<juce::midi_ci::Device> ciDevice_;
     juce::universal_midi_packets::ToBytestreamDispatcher dispatcher_ { 4096 };

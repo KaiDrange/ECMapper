@@ -153,11 +153,14 @@ CorePage::CorePage(HardwareService& hardwareService, juce::ValueTree& state)
         };
         addAndMakeVisible(button);
     };
+    configureClockSource(metronomeOnly, "metronomeOnly");
+    metronomeOnly.setTooltip("Play the local metronome without sending MIDI Clock or Start/Stop");
     configureClockSource(midiClockIn, "midiIn");
     configureClockSource(midiClockMaster, "midiMaster");
     configureClockSource(abletonLink, "abletonLink");
-    midiClockIn.setTooltip("Follow incoming MIDI clock (slave mode)");
-    midiClockMaster.setTooltip("Set the tempo locally as MIDI clock master");
+    midiClockIn.setTooltip("Follow Clock, Start, Stop and Continue from the MIDI input selected in Audio/MIDI settings (standalone only)");
+    midiClockIn.setEnabled(juce::JUCEApplicationBase::isStandaloneApp());
+    midiClockMaster.setTooltip("Set the tempo locally; standalone sends MIDI Clock and Start/Stop to each distinct zone output");
     abletonLink.setTooltip("Use Ableton Link for tempo synchronization");
 
     bpmInput.setName("BPM");
@@ -219,13 +222,16 @@ void CorePage::updateClockControls() {
     const bool slave = source == "midiIn";
     const bool link = source == "abletonLink";
     midiClockIn.setToggleState(slave, juce::dontSendNotification);
-    midiClockMaster.setToggleState(!slave && !link, juce::dontSendNotification);
+    metronomeOnly.setToggleState(source == "metronomeOnly", juce::dontSendNotification);
+    midiClockMaster.setToggleState(source == "midiMaster", juce::dontSendNotification);
     abletonLink.setToggleState(link, juce::dontSendNotification);
     bpmInput.setEnabled(!slave);
     bpmLabel.setEnabled(!slave);
-    bpmInput.setTooltip(slave ? "Tempo follows incoming MIDI clock" : "Tempo in beats per minute (20-300)");
+    bpmInput.setTooltip(slave ? "Local tempo is unused in slave mode; tempo follows the selected MIDI input" : "Tempo in beats per minute (20-300)");
     timeSignature.setText(clockSettings.getProperty(SettingsWrapper::id_timeSignature).toString(), juce::dontSendNotification);
     const bool transportRunning = hardwareService_.isMetronomePlaying();
+    startButton.setEnabled(!slave);
+    startButton.setTooltip(slave ? "Send MIDI Start or Continue from the selected input" : "Start the metronome on the first beat of a bar");
     startButton.setToggleState(transportRunning, juce::dontSendNotification);
     stopButton.setToggleState(!transportRunning, juce::dontSendNotification);
 }
@@ -511,15 +517,18 @@ void CorePage::resized() {
         clientPortInput.setBounds(clientArea.removeFromLeft(80).reduced(2));
     }
     area.removeFromTop(8);
-    auto controlsArea = area.removeFromTop(140);
+    auto controlsArea = area.removeFromTop(168);
     auto audioArea = controlsArea.removeFromLeft(340);
     controlsArea.removeFromLeft(12);
     clockGroup.setBounds(controlsArea);
     auto clockArea = controlsArea.reduced(12, 10);
     clockArea.removeFromTop(10);
+    const int sourceWidth = clockArea.getWidth() / 2;
     auto sources = clockArea.removeFromTop(28);
-    midiClockIn.setBounds(sources.removeFromLeft(112));
-    midiClockMaster.setBounds(sources.removeFromLeft(140));
+    metronomeOnly.setBounds(sources.removeFromLeft(sourceWidth));
+    midiClockIn.setBounds(sources);
+    sources = clockArea.removeFromTop(28);
+    midiClockMaster.setBounds(sources.removeFromLeft(sourceWidth));
     abletonLink.setBounds(sources);
     clockArea.removeFromTop(6);
     auto tempo = clockArea.removeFromTop(28);

@@ -6,7 +6,7 @@
 
 namespace ecm {
 
-juce::String Metronome::prepare(double hostSampleRate) {
+juce::String Metronome::prepare(const double hostSampleRate) {
     reset();
     for (auto& click : clicks_) click.setSize(0, 0);
     gain_.reset(48000.0, 0.01);
@@ -33,16 +33,20 @@ juce::String Metronome::prepare(double hostSampleRate) {
     return {};
 }
 
-void Metronome::setVolume(float volume) noexcept {
+void Metronome::setVolume(const float volume) noexcept {
     volume_.store(juce::jlimit(0.0f, 1.0f, volume));
 }
 
-void Metronome::setTiming(double bpm, int beatsPerBar, int beatUnit) noexcept {
+void Metronome::setTiming(const double bpm, const int beatsPerBar, const int beatUnit) noexcept {
     bpm_.store(std::isfinite(bpm) ? juce::jlimit(20.0, 300.0, bpm) : 120.0);
     meter_.store((juce::jlimit(0, 12, beatsPerBar) << 8) | (beatUnit == 8 ? 8 : 4));
 }
 
 void Metronome::reset() noexcept {
+    midiClockPosition_ = 0;
+    samplesSinceClock_ = 0;
+    midiPlaying_ = false;
+    midiClickActive_ = false;
     position_ = 0;
     beatPhase_ = 0.0;
     beat_ = 0;
@@ -53,10 +57,19 @@ void Metronome::beginBlock() noexcept {
     gain_.setTargetValue(volume_.load());
     const int meter = meter_.load();
     beatsPerBar_ = meter >> 8;
+    clocksPerBeat_ = 96 / (meter & 255);
     phaseIncrement_ = bpm_.load() * (meter & 255) / (48000.0 * 240.0);
 }
 
-float Metronome::nextSample(bool play) noexcept {
+void Metronome::seekQuarterNote(const double position) noexcept {
+    const double beats = position * 24.0 / clocksPerBeat_;
+    const double nextBeat = std::ceil(beats - 1.0e-9);
+    beatPhase_ = juce::jmax(0.0, nextBeat - beats);
+    beat_ = beatsPerBar_ > 0 ? static_cast<int>(std::fmod(nextBeat, beatsPerBar_)) : 0;
+    position_ = clicks_[static_cast<size_t>(click_)].getNumSamples();
+}
+
+float Metronome::nextSample(const bool play) noexcept {
     const float gain = gain_.getNextValue();
     float sample = 0.0f;
     if (play) {
@@ -72,6 +85,48 @@ float Metronome::nextSample(bool play) noexcept {
         beatPhase_ -= phaseIncrement_;
     }
     return sample;
+}
+
+void Metronome::handleMidiClock(const juce::MidiMessage& message) noexcept {
+    if (message.isMidiStart()) {
+        midiClockPosition_ = 0;
+        midiPlaying_ = true;
+        midiClickActive_ = false;
+        samplesSinceClock_ = 0;
+    } else if (message.isMidiContinue()) {
+        midiPlaying_ = true;
+        samplesSinceClock_ = 0;
+    } else if (message.isMidiStop()) {
+        midiPlaying_ = false;
+        midiClickActive_ = false;
+    } else if (message.isSongPositionPointer()) {
+        // MIDI song positions are six clocks (one sixteenth note).
+        midiClockPosition_ = static_cast<uint64_t>(message.getSongPositionPointerMidiBeat()) * 6;
+        midiClickActive_ = false;
+    } else if (message.isMidiClock()) {
+        samplesSinceClock_ = 0;
+        if (!midiPlaying_) return;
+        if (midiClockPosition_ % static_cast<uint64_t>(clocksPerBeat_) == 0) {
+            const auto beat = midiClockPosition_ / static_cast<uint64_t>(clocksPerBeat_);
+            click_ = beatsPerBar_ > 0 && beat % static_cast<uint64_t>(beatsPerBar_) == 0 ? 0 : 1;
+            position_ = 0;
+            midiClickActive_ = true;
+        }
+        ++midiClockPosition_;
+    }
+}
+
+float Metronome::nextMidiSample() noexcept {
+    const float gain = gain_.getNextValue();
+    // A disconnected clock must not leave the transport showing as running.
+    if (midiPlaying_ && ++samplesSinceClock_ >= 96000) {
+        midiPlaying_ = false;
+        midiClickActive_ = false;
+    }
+    const auto& click = clicks_[static_cast<size_t>(click_)];
+    if (midiPlaying_ && midiClickActive_ && position_ < click.getNumSamples())
+        return click.getSample(0, position_++) * gain;
+    return 0.0f;
 }
 
 } // namespace ecm

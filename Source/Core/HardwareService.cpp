@@ -74,10 +74,13 @@ void HardwareService::startService(juce::ValueTree* state, bool resolveRoleFromD
 #endif
     
     audioBridge_.setHostActive(supportsLocalHardware() && appRole_ == AppRole::Host);
+    updateAudioOutputAvailability();
     startThread();
 }
 
 void HardwareService::stopService() {
+    audioBridge_.stop();
+    audioBridge_.setAudioOutputEnabled(false);
     audioBridge_.setHostActive(false);
     if (!isThreadRunning()) return;
     
@@ -105,6 +108,10 @@ void HardwareService::prepareMetronome(double sampleRate, juce::ValueTree& state
 
 void HardwareService::updateMetronomeSettings(juce::ValueTree& state) {
     auto clock = SettingsWrapper::getClockSettings(state);
+    audioBridge_.setStandaloneClockEnabled(juce::JUCEApplicationBase::isStandaloneApp());
+    audioBridge_.setMidiClockOutputEnabled(clock.getProperty(SettingsWrapper::id_clockSource).toString() == "midiMaster");
+    audioBridge_.setMidiSlave(juce::JUCEApplicationBase::isStandaloneApp()
+                              && clock.getProperty(SettingsWrapper::id_clockSource).toString() == "midiIn");
     const auto signature = clock.getProperty(SettingsWrapper::id_timeSignature).toString();
     audioBridge_.setTiming(static_cast<double>(clock.getProperty(SettingsWrapper::id_clockBpm)),
                           signature.upToFirstOccurrenceOf("/", false, false).getIntValue(),
@@ -112,12 +119,14 @@ void HardwareService::updateMetronomeSettings(juce::ValueTree& state) {
 }
 
 juce::String HardwareService::startMetronome() {
-    if (!supportsLocalHardware() || appRole_ != AppRole::Host)
+    const bool standalone = juce::JUCEApplicationBase::isStandaloneApp();
+    if (!standalone && (!supportsLocalHardware() || appRole_ != AppRole::Host))
         return "The metronome is available in Host mode with local hardware only.";
     if (state_ != nullptr) {
         auto clock = SettingsWrapper::getClockSettings(*state_);
-        if (clock.getProperty(SettingsWrapper::id_clockSource).toString() != "midiMaster")
-            return "Select the local MIDI clock master mode to use the metronome. External clock synchronization is not implemented yet.";
+        const auto source = clock.getProperty(SettingsWrapper::id_clockSource).toString();
+        if (source != "midiMaster" && source != "metronomeOnly")
+            return "Manual Start requires Metronome only or MIDI Clock Master. In slave mode, send MIDI Start/Continue from the selected input.";
         updateMetronomeSettings(*state_);
     }
     const juce::ScopedLock lock(deviceListLock_);
@@ -125,7 +134,8 @@ juce::String HardwareService::startMetronome() {
         return !device.isRemote && device.headphoneEnabled
             && (device.type == InstrumentType::Alpha || device.type == InstrumentType::Tau);
     });
-    if (!hasOutput) return "Enable headphones on a connected Alpha or Tau before starting playback.";
+    if (!standalone && !hasOutput) return "Enable headphones on a connected Alpha or Tau before starting playback.";
+    updateAudioOutputAvailability();
     const auto error = audioBridge_.start();
     std::cout << "[Metronome] Start: " << audioBridge_.diagnosticSummary()
               << (error.isEmpty() ? juce::String() : " error=" + error) << std::endl;
@@ -148,6 +158,17 @@ void HardwareService::setHeadphoneSettings(const std::string& dev, bool enabled,
             break;
         }
     }
+    updateAudioOutputAvailability();
+}
+
+void HardwareService::updateAudioOutputAvailability() {
+    const juce::ScopedLock lock(deviceListLock_);
+    const bool hasOutput = supportsLocalHardware() && appRole_ == AppRole::Host
+        && std::any_of(connectedDevices_.begin(), connectedDevices_.end(), [](const ConnectedDevice& device) {
+            return !device.isRemote && device.headphoneEnabled
+                && (device.type == InstrumentType::Alpha || device.type == InstrumentType::Tau);
+        });
+    audioBridge_.setAudioOutputEnabled(hasOutput);
 }
 
 void HardwareService::processAudioOutput() {
@@ -541,6 +562,7 @@ void HardwareService::connected(const char* dev, EigenApi::DeviceType dt) {
         newDev.mode = sanitizeLocalDeviceModeForAppRole(appRole_, newDev.mode);
 
         connectedDevices_.push_back(newDev);
+        updateAudioOutputAvailability();
     }
     
     listeners_.call(&Listener::deviceListChanged);
@@ -560,6 +582,7 @@ void HardwareService::disconnected(const char* dev) {
         const juce::ScopedLock sl(deviceListLock_);
         connectedDevices_.erase(std::remove_if(connectedDevices_.begin(), connectedDevices_.end(),
             [dev](const ConnectedDevice& d) { return d.dev == dev; }), connectedDevices_.end());
+        updateAudioOutputAvailability();
     }
     listeners_.call(&Listener::deviceListChanged);
 }

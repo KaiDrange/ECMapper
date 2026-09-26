@@ -133,6 +133,7 @@ private:
     ecm::Vst3DirectEventQueue vst3DirectEventQueue_;
     ecm::Vst3DirectPerformanceEventSink vst3DirectPerformanceSink_ { vst3DirectEventQueue_ };
 
+    juce::MidiBuffer masterClockBuffer_;
     void updateGlobalSettings();
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     bool applyZoneControlMessages(const juce::MidiBuffer& midiMessages) const;

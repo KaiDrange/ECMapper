@@ -42,7 +42,7 @@ public:
 
     void updateMetronomeSettings(juce::ValueTree& state);
     void prepareMetronome(double sampleRate, juce::ValueTree& state);
-    void processMetronome(int numFrames, bool nonRealtime = false) noexcept { audioBridge_.process(numFrames, nonRealtime); }
+    void processMetronome(int numFrames, bool nonRealtime = false, const juce::MidiBuffer* midi = nullptr, juce::MidiBuffer* clockOutput = nullptr) noexcept { audioBridge_.process(numFrames, nonRealtime, midi, clockOutput); }
     juce::String startMetronome();
     void stopMetronome() noexcept { audioBridge_.stop(); }
     bool isMetronomePlaying() const noexcept { return audioBridge_.isPlaying(); }
@@ -105,6 +105,7 @@ public:
 private:
     void run() override;
     void processAudioOutput();
+    void updateAudioOutputAvailability();
     EigenAudioBridge audioBridge_;
     // Hardware-thread only; preserve timing cadence across Start/Stop and silence.
     std::map<std::string, unsigned> audioWritePhases_;
