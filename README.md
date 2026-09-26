@@ -54,6 +54,12 @@ The earlier period-1-on-every-write experiment may have left the Tau in a bad
 state: restoring 512-frame writes only recovered sound after a full power-off
 and reconnect. Start new timing experiments from a fully power-cycled Tau.
 Stopped playback sends silence. Already submitted USB audio may finish after Stop.
+When a plugin host reports offline rendering (`isNonRealtime()`), Eigenharp audio
+production stops and queued/partial test audio is discarded. Returning to real-time
+processing starts a fresh transport timing sequence and sends silence; press Start
+to restart the temporary WAV. Normal plugin MIDI processing continues. Audio already
+submitted to USB may finish playing. This depends on the host reporting offline mode;
+real-time exports are not automatically muted.
 Other sample rates, clock/Link synchronization and remote playback control are not
 implemented by this temporary feature.
 

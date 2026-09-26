@@ -174,6 +174,11 @@ void HardwareService::processAudioOutput() {
             }
         }
     }
+    const auto transportState = audioBridge_.transportState();
+    if (audioTransportState_ != transportState) {
+        audioWritePhases_.clear();
+        audioTransportState_ = transportState;
+    }
     // Newly enabled/reconnected devices start with a timing command. Each device
     // keeps its own phase, so enabling one cannot disturb another's stream.
     for (auto it = audioWritePhases_.begin(); it != audioWritePhases_.end();) {
@@ -189,7 +194,14 @@ void HardwareService::processAudioOutput() {
         for (const float sample : block.stereo)
             audioPeakSinceReport_ = juce::jmax(audioPeakSinceReport_, std::abs(sample));
         for (const auto& device : devices) {
+            if (audioBridge_.isNonRealtime() || block.transportState != audioBridge_.transportState())
+                break;
             if (device.headphoneEnabled) {
+                // A complete offline/online transition may happen between hardware polls.
+                if (audioTransportState_ != block.transportState) {
+                    audioWritePhases_.clear();
+                    audioTransportState_ = block.transportState;
+                }
                 auto& phase = audioWritePhases_[device.dev];
                 const unsigned period = phase == 0 ? EigenApi::Eigenharp::AUDIO_PERIOD_48 : 0;
                 if (eigenApi_->writeAudio(device.dev.c_str(), block.stereo.data(), EigenAudioBridge::blockFrames,

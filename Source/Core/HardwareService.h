@@ -41,7 +41,7 @@ public:
     bool isServiceRunning() const { return isThreadRunning(); }
 
     void prepareTestAudio(double sampleRate, juce::ValueTree& state);
-    void processTestAudio(int numFrames) noexcept { audioBridge_.process(numFrames); }
+    void processTestAudio(int numFrames, bool nonRealtime = false) noexcept { audioBridge_.process(numFrames, nonRealtime); }
     juce::String startTestAudio();
     void stopTestAudio() noexcept { audioBridge_.stop(); }
     bool isTestAudioPlaying() const noexcept { return audioBridge_.isPlaying(); }
@@ -107,6 +107,7 @@ private:
     EigenAudioBridge audioBridge_;
     // Hardware-thread only; preserve timing cadence across Start/Stop and silence.
     std::map<std::string, unsigned> audioWritePhases_;
+    uint64_t audioTransportState_ = 0;
     [[maybe_unused]] juce::uint32 audioReportTime_ = 0;
     [[maybe_unused]] unsigned audioBlocksSinceReport_ = 0;
     [[maybe_unused]] unsigned audioWritesSinceReport_ = 0;

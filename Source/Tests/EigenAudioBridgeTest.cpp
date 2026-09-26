@@ -114,6 +114,38 @@ int main(int argc, char* argv[]) {
     bridge.setHostActive(false);
     ok &= expect(!bridge.pop(block) && !bridge.isPlaying(), "Leaving Host mode must discard pending audio");
 
+    bridge.setVolume(1.0f);
+    bridge.prepare(file, 48000);
+    bridge.setHostActive(true);
+    bridge.start();
+    bridge.process(blockFrames + 31);
+    const auto realtimeState = bridge.transportState();
+    bridge.process(8192, true);
+    ok &= expect(bridge.isNonRealtime() && !bridge.isPlaying(), "Offline rendering must stop hardware playback");
+    ok &= expect(bridge.start().isNotEmpty(), "Start must be rejected during offline rendering");
+    ok &= expect(!bridge.pop(block), "Offline transition must discard queued realtime audio");
+    const auto dropsBeforeOffline = bridge.droppedBlocks();
+    for (int i = 0; i < 100; ++i) bridge.process(8192, true);
+    ok &= expect(!bridge.pop(block) && bridge.droppedBlocks() == dropsBeforeOffline,
+                 "Offline rendering must not generate or overflow hardware audio");
+    bridge.process(blockFrames - 1, false);
+    ok &= expect(!bridge.pop(block), "Realtime resume must discard partial pre-offline accumulation");
+    bridge.process(1);
+    ok &= expect(bridge.pop(block) && isSilence(block) && block.transportState != realtimeState,
+                 "Realtime resume must use a new transport epoch and send silence until Start");
+    bridge.start();
+    bridge.process(blockFrames);
+    const auto previousState = bridge.transportState();
+    // No consumer poll between transitions: the old queue must still be rejected.
+    bridge.process(0, true);
+    bridge.process(blockFrames, false);
+    ok &= expect(bridge.pop(block) && isSilence(block) && block.transportState != previousState,
+                 "Fast offline/realtime transitions must not leak stale audio");
+    bridge.start();
+    bridge.process(blockFrames);
+    ok &= expect(bridge.pop(block) && std::abs(block.stereo[0] - sampleAt(0)) < 0.000001f,
+                 "Explicit Start must work again after offline rendering");
+
     bridge.prepare(file, 44100);
     bridge.setHostActive(true);
     ok &= expect(bridge.start().isNotEmpty(), "Non-48 kHz host must be rejected");

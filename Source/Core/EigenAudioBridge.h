@@ -20,6 +20,7 @@ public:
     struct Block {
         std::array<float, blockFrames * 2> stereo {};
         uint64_t generation = 0;
+        uint64_t transportState = 0;
     };
 
     void prepare(const juce::File& file, double hostSampleRate);
@@ -28,7 +29,9 @@ public:
     void stop() noexcept;
     bool isPlaying() const noexcept;
     void setVolume(float volume) noexcept;
-    void process(int numFrames) noexcept;
+    void process(int numFrames, bool nonRealtime = false) noexcept;
+    uint64_t transportState() const noexcept { return transportState_.load(); }
+    bool isNonRealtime() const noexcept { return (transportState() & 1) != 0; }
     bool pop(Block& block) noexcept;
     juce::String diagnosticSummary() const; // Non-audio thread only.
     uint64_t droppedBlocks() const noexcept { return dropped_.load(); }
@@ -42,6 +45,8 @@ private:
     int accumulated_ = 0;
     int position_ = 0;
     uint64_t observedGeneration_ = 0;
+    // Low bit = offline; increments on each transition to invalidate queued audio.
+    std::atomic<uint64_t> transportState_ { 0 };
     std::atomic<uint64_t> command_ { 0 }; // Low bit = play; upper bits = generation.
     std::atomic<uint64_t> finishedGeneration_ { 0 };
     std::atomic<uint64_t> callbackCount_ { 0 };

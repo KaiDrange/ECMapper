@@ -1120,7 +1120,7 @@ bool ECMapperAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) 
 
 void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& audioBuffer, juce::MidiBuffer& midiMessages) {
     audioBuffer.clear();
-    hardwareService.processTestAudio(audioBuffer.getNumSamples());
+    hardwareService.processTestAudio(audioBuffer.getNumSamples(), isNonRealtime());
 
     const bool useVst3Direct = !juce::JUCEApplicationBase::isStandaloneApp()
                                && ecm::SettingsWrapper::getPluginOutputMode(state.state) == ecm::OutputTransportMode::Vst3Direct;

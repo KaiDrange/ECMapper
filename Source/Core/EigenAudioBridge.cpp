@@ -56,6 +56,7 @@ void EigenAudioBridge::setHostActive(bool active) noexcept {
 
 juce::String EigenAudioBridge::start() {
     const juce::ScopedLock lock(preparationLock_);
+    if (isNonRealtime()) return "Eigenharp playback is disabled during offline rendering.";
     if (!ready_.load()) return error_;
     if (!hostActive_.load()) return "Test playback is available in Host mode only.";
     requestPlayback(true);
@@ -66,14 +67,21 @@ void EigenAudioBridge::stop() noexcept { requestPlayback(false); }
 
 bool EigenAudioBridge::isPlaying() const noexcept {
     const auto command = command_.load();
-    return hostActive_.load() && (command & 1) != 0 && finishedGeneration_.load() != command;
+    return !isNonRealtime() && hostActive_.load() && (command & 1) != 0 && finishedGeneration_.load() != command;
 }
 
 void EigenAudioBridge::setVolume(float volume) noexcept {
     volume_.store(juce::jlimit(0.0f, 1.0f, volume));
 }
 
-void EigenAudioBridge::process(int numFrames) noexcept {
+void EigenAudioBridge::process(int numFrames, bool nonRealtime) noexcept {
+    // Producer only. Never reset the shared FIFO while its consumer is active.
+    if (nonRealtime != isNonRealtime()) {
+        transportState_.fetch_add(1);
+        accumulated_ = 0;
+        if (nonRealtime) stop();
+    }
+    if (nonRealtime) return;
     callbackCount_.fetch_add(1, std::memory_order_relaxed);
     if (!ready_.load() || !hostActive_.load()) return;
     const auto command = command_.load();
@@ -91,6 +99,7 @@ void EigenAudioBridge::process(int numFrames) noexcept {
         if (play && ++position_ == source_.getNumSamples()) finishedGeneration_.store(command);
         if (++accumulated_ == blockFrames) {
             accumulator_.generation = command;
+            accumulator_.transportState = transportState();
             const auto write = fifo_.write(1);
             if (write.blockSize1 != 0) queue_[static_cast<std::size_t>(write.startIndex1)] = accumulator_;
             else dropped_.fetch_add(1);
@@ -106,6 +115,7 @@ juce::String EigenAudioBridge::diagnosticSummary() const {
         + " rate=" + juce::String(hostSampleRate_.load(), 0)
         + " blockFrames=" + juce::String(blockFrames)
         + " periods=1,0,0,0"
+        + " offline=" + juce::String(isNonRealtime() ? 1 : 0)
         + " playing=" + juce::String(isPlaying() ? 1 : 0)
         + " callbacks=" + juce::String(static_cast<juce::int64>(callbackCount_.load()))
         + " position=" + juce::String(playbackPosition_.load())
@@ -118,7 +128,8 @@ bool EigenAudioBridge::pop(Block& block) noexcept {
         const auto read = fifo_.read(1);
         if (read.blockSize1 == 0) return false;
         const auto& queued = queue_[static_cast<std::size_t>(read.startIndex1)];
-        if (queued.generation == command_.load() && hostActive_.load()) {
+        if (queued.generation == command_.load() && hostActive_.load()
+            && !isNonRealtime() && queued.transportState == transportState()) {
             block = queued;
             return true;
         }
