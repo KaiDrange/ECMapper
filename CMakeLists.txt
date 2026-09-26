@@ -675,5 +675,5 @@ target_link_libraries(EigenAudioBridgeTest PRIVATE
     juce::juce_recommended_warning_flags
 )
 
-add_executable(MacIsoOutputStartupTest Source/Tests/MacIsoOutputStartupTest.cpp)
-target_include_directories(MacIsoOutputStartupTest PRIVATE EigenLite/eigenapi)
+add_executable(USBTransferBuffersTest EigenLite/tests/USBTransferBuffersTest.cpp)
+target_include_directories(USBTransferBuffersTest PRIVATE EigenLite/eigenapi)
