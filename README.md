@@ -40,7 +40,19 @@ pressing Start. No sound is routed to the computer's normal audio output.
 The WAV is preloaded during audio preparation to avoid disk access in the audio
 callback. It is read from the source assets directory, not embedded in the app;
 `ECMAPPER_TEST_AUDIO_FILE` is a CMake cache path override. The bridge accumulates
-512 frames, queues them to the hardware thread and uses EigenLite period 1.
+128 frames and queues each block immediately; the hardware thread sends it on its
+next poll, without waiting for a 512-frame group. Each device keeps the period
+sequence 1, 0, 0, 0 across writes (including silence and Start/Stop). Newly enabled
+outputs begin with period 1. FIFO capacity remains 3584 frames, with no prefill.
+Use a 128-frame JUCE buffer to avoid larger host callbacks batching these writes.
+
+The user confirmed four consecutive 128-frame writes with periods 1/0/0/0 worked
+from a fresh Tau state, including with a 128-frame JUCE buffer. Those tests still
+accumulated 512 frames before dispatch. This build tests immediate 128-frame
+dispatch; playback stability and actual latency have not yet been confirmed.
+The earlier period-1-on-every-write experiment may have left the Tau in a bad
+state: restoring 512-frame writes only recovered sound after a full power-off
+and reconnect. Start new timing experiments from a fully power-cycled Tau.
 Stopped playback sends silence. Already submitted USB audio may finish after Stop.
 Other sample rates, clock/Link synchronization and remote playback control are not
 implemented by this temporary feature.

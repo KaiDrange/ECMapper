@@ -174,6 +174,15 @@ void HardwareService::processAudioOutput() {
             }
         }
     }
+    // Newly enabled/reconnected devices start with a timing command. Each device
+    // keeps its own phase, so enabling one cannot disturb another's stream.
+    for (auto it = audioWritePhases_.begin(); it != audioWritePhases_.end();) {
+        const bool active = std::any_of(devices.begin(), devices.end(), [&](const AudioDevice& device) {
+            return device.dev == it->first && device.headphoneEnabled;
+        });
+        if (!active) it = audioWritePhases_.erase(it);
+        else ++it;
+    }
     EigenAudioBridge::Block block;
     for (int count = 0; count < EigenAudioBridge::queueBlocks && audioBridge_.pop(block); ++count) {
         ++audioBlocksSinceReport_;
@@ -181,9 +190,15 @@ void HardwareService::processAudioOutput() {
             audioPeakSinceReport_ = juce::jmax(audioPeakSinceReport_, std::abs(sample));
         for (const auto& device : devices) {
             if (device.headphoneEnabled) {
+                auto& phase = audioWritePhases_[device.dev];
+                const unsigned period = phase == 0 ? EigenApi::Eigenharp::AUDIO_PERIOD_48 : 0;
                 if (eigenApi_->writeAudio(device.dev.c_str(), block.stereo.data(), EigenAudioBridge::blockFrames,
-                                         EigenApi::Eigenharp::AUDIO_PERIOD_48))
+                                         period)) {
+                    phase = (phase + 1) % EigenAudioBridge::blocksPerPeriod;
                     ++audioWritesSinceReport_;
+                } else {
+                    phase = 0;
+                }
             }
         }
     }

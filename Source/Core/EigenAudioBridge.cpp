@@ -104,6 +104,8 @@ juce::String EigenAudioBridge::diagnosticSummary() const {
     return "ready=" + juce::String(ready_.load() ? 1 : 0)
         + " host=" + juce::String(hostActive_.load() ? 1 : 0)
         + " rate=" + juce::String(hostSampleRate_.load(), 0)
+        + " blockFrames=" + juce::String(blockFrames)
+        + " periods=1,0,0,0"
         + " playing=" + juce::String(isPlaying() ? 1 : 0)
         + " callbacks=" + juce::String(static_cast<juce::int64>(callbackCount_.load()))
         + " position=" + juce::String(playbackPosition_.load())

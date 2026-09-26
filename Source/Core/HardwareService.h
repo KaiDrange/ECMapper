@@ -1,5 +1,6 @@
 #pragma once
 #include <JuceHeader.h>
+#include <map>
 #include "OSCMessage.h"
 #include "Enums.h"
 #include "EigenAudioBridge.h"
@@ -104,6 +105,8 @@ private:
     void run() override;
     void processAudioOutput();
     EigenAudioBridge audioBridge_;
+    // Hardware-thread only; preserve timing cadence across Start/Stop and silence.
+    std::map<std::string, unsigned> audioWritePhases_;
     [[maybe_unused]] juce::uint32 audioReportTime_ = 0;
     [[maybe_unused]] unsigned audioBlocksSinceReport_ = 0;
     [[maybe_unused]] unsigned audioWritesSinceReport_ = 0;

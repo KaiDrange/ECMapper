@@ -12,8 +12,11 @@ namespace ecm {
 // allocation or locks on the producer path. prepare() requires both stopped.
 class EigenAudioBridge {
 public:
-    static constexpr int blockFrames = 512;
-    static constexpr int queueBlocks = 8;
+    static constexpr int blockFrames = 128;
+    static constexpr unsigned blocksPerPeriod = 512 / blockFrames;
+    static_assert(512 % blockFrames == 0);
+    // AbstractFifo reserves one slot: capacity is 3584 frames, with no prefill.
+    static constexpr int queueBlocks = 1 + 3584 / blockFrames;
     struct Block {
         std::array<float, blockFrames * 2> stereo {};
         uint64_t generation = 0;
