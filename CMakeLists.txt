@@ -665,6 +665,7 @@ juce_add_console_app(EigenAudioBridgeTest PRODUCT_NAME "EigenAudioBridgeTest")
 target_sources(EigenAudioBridgeTest PRIVATE
     Source/Tests/EigenAudioBridgeTest.cpp
     Source/Core/EigenAudioBridge.cpp
+    Source/Core/Metronome.cpp
 )
 target_include_directories(EigenAudioBridgeTest PRIVATE Source)
 target_link_libraries(EigenAudioBridgeTest PRIVATE

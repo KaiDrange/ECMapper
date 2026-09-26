@@ -1,13 +1,13 @@
 #pragma once
 
-#include <juce_audio_formats/juce_audio_formats.h>
+#include "Metronome.h"
 #include <juce_audio_basics/juce_audio_basics.h>
 #include <array>
 #include <atomic>
 
 namespace ecm {
 
-// Sample-clocked metronome and 48 kHz transport bridge. JUCE's audio callback is
+// 48 kHz headphone transport bridge owning a mono metronome source. JUCE's audio callback is
 // the sole producer; HardwareService is the sole consumer. No USB, file I/O,
 // allocation or locks on the producer path. prepare() requires both stopped.
 class EigenAudioBridge {
@@ -24,12 +24,12 @@ public:
     };
 
     void prepare(double hostSampleRate);
-    void setTiming(double bpm, int beatsPerBar, int beatUnit) noexcept;
+    void setTiming(double bpm, int beatsPerBar, int beatUnit) noexcept { metronome_.setTiming(bpm, beatsPerBar, beatUnit); }
     void setHostActive(bool active) noexcept;
     juce::String start(); // Non-audio thread. Empty string means success.
     void stop() noexcept;
     bool isPlaying() const noexcept;
-    void setVolume(float volume) noexcept;
+    void setVolume(float volume) noexcept { metronome_.setVolume(volume); }
     void process(int numFrames, bool nonRealtime = false) noexcept;
     uint64_t transportState() const noexcept { return transportState_.load(); }
     bool isNonRealtime() const noexcept { return (transportState() & 1) != 0; }
@@ -39,17 +39,11 @@ public:
 
 private:
     void requestPlayback(bool play) noexcept;
-    std::array<juce::AudioBuffer<float>, 2> clicks_;
-    std::atomic<double> bpm_ { 120.0 };
-    std::atomic<int> meter_ { (4 << 8) | 4 };
-    double beatPhase_ = 0.0;
-    int beat_ = 0;
-    int click_ = 0;
+    Metronome metronome_;
     juce::AbstractFifo fifo_ { queueBlocks };
     std::array<Block, queueBlocks> queue_;
     Block accumulator_;
     int accumulated_ = 0;
-    int position_ = 0;
     uint64_t observedGeneration_ = 0;
     // Low bit = offline; increments on each transition to invalidate queued audio.
     std::atomic<uint64_t> transportState_ { 0 };
@@ -60,8 +54,6 @@ private:
     std::atomic<uint64_t> dropped_ { 0 };
     std::atomic<bool> hostActive_ { false };
     std::atomic<bool> ready_ { false };
-    std::atomic<float> volume_ { 1.0f };
-    juce::SmoothedValue<float> gain_;
     juce::CriticalSection preparationLock_;
     juce::String error_ { "Audio is not running. Select a 48 kHz audio device first." };
 };
