@@ -73,10 +73,12 @@ void HardwareService::startService(juce::ValueTree* state, bool resolveRoleFromD
     }
 #endif
     
+    audioBridge_.setHostActive(supportsLocalHardware() && appRole_ == AppRole::Host);
     startThread();
 }
 
 void HardwareService::stopService() {
+    audioBridge_.setHostActive(false);
     if (!isThreadRunning()) return;
     
     signalThreadShouldExit();
@@ -88,6 +90,119 @@ void HardwareService::stopService() {
         eigenApi_->removeCallback(this);
         eigenApi_->removeLifecycleCallback(this);
         eigenApi_.reset();
+    }
+#endif
+}
+
+void HardwareService::prepareTestAudio(double sampleRate, juce::ValueTree& state) {
+    // JUCE calls this with processBlock stopped; stop the FIFO consumer too.
+    stopService();
+    auto audio = SettingsWrapper::getAudioOutputSettings(state);
+    setTestAudioVolume(static_cast<float>(audio.getProperty(SettingsWrapper::id_metronomeVolume)) / 100.0f);
+    audioBridge_.prepare(juce::File(ECMAPPER_TEST_AUDIO_FILE), sampleRate);
+}
+
+juce::String HardwareService::startTestAudio() {
+    if (!supportsLocalHardware() || appRole_ != AppRole::Host)
+        return "Test playback is available in Host mode with local hardware only.";
+    const juce::ScopedLock lock(deviceListLock_);
+    const bool hasOutput = std::any_of(connectedDevices_.begin(), connectedDevices_.end(), [](const ConnectedDevice& device) {
+        return !device.isRemote && device.headphoneEnabled
+            && (device.type == InstrumentType::Alpha || device.type == InstrumentType::Tau);
+    });
+    if (!hasOutput) return "Enable headphones on a connected Alpha or Tau before starting playback.";
+    const auto error = audioBridge_.start();
+    std::cout << "[AudioTest] Start: " << audioBridge_.diagnosticSummary()
+              << (error.isEmpty() ? juce::String() : " error=" + error) << std::endl;
+    return error;
+}
+
+void HardwareService::setHeadphoneSettings(const std::string& dev, bool enabled, unsigned gain, bool limited) {
+    const juce::ScopedLock lock(deviceListLock_);
+    if (appRole_ != AppRole::Host) return;
+    for (auto& device : connectedDevices_) {
+        if (device.dev == dev && !device.isRemote
+            && (device.type == InstrumentType::Alpha || device.type == InstrumentType::Tau)) {
+            gain = juce::jmin(limited ? 97u : 127u, gain);
+            if (device.headphoneEnabled != enabled || device.headphoneGain != gain || device.headphoneLimited != limited) {
+                device.headphoneEnabled = enabled;
+                device.headphoneGain = gain;
+                device.headphoneLimited = limited;
+                device.headphoneSettingsPending = true;
+            }
+            break;
+        }
+    }
+}
+
+void HardwareService::processAudioOutput() {
+#if ECMAPPER_ENABLE_HARDWARE
+    struct AudioDevice {
+        std::string dev;
+        bool headphoneEnabled;
+        unsigned headphoneGain;
+        bool headphoneLimited;
+        bool settingsPending;
+    };
+    std::vector<AudioDevice> devices;
+    {
+        const juce::ScopedLock lock(deviceListLock_);
+        for (const auto& device : connectedDevices_) {
+            if (!device.isRemote && (device.type == InstrumentType::Alpha || device.type == InstrumentType::Tau))
+                devices.push_back({device.dev, device.headphoneEnabled, device.headphoneGain, device.headphoneLimited, device.headphoneSettingsPending});
+        }
+    }
+    // USB register access and audio writes must not hold the UI's device-list lock.
+    for (const auto& device : devices) {
+        if (!device.settingsPending) continue;
+        // Apply the cap before raising gain, and write the current gain before
+        // removing the cap, so an older louder setting cannot be revealed.
+        bool limitSet = !device.headphoneLimited || eigenApi_->setHeadphoneLimited(device.dev.c_str(), true);
+        const bool gainSet = limitSet && eigenApi_->setHeadphoneGain(device.dev.c_str(), device.headphoneGain);
+        if (!device.headphoneLimited)
+            limitSet = gainSet && eigenApi_->setHeadphoneLimited(device.dev.c_str(), false);
+        const bool enabledSet = limitSet && gainSet
+            && eigenApi_->setHeadphoneEnabled(device.dev.c_str(), device.headphoneEnabled);
+        if (limitSet && gainSet && enabledSet) {
+            const juce::ScopedLock lock(deviceListLock_);
+            for (auto& current : connectedDevices_) {
+                // Keep a newer UI change pending if one arrived during the USB call.
+                if (current.dev == device.dev && current.headphoneEnabled == device.headphoneEnabled
+                    && current.headphoneGain == device.headphoneGain
+                    && current.headphoneLimited == device.headphoneLimited)
+                    current.headphoneSettingsPending = false;
+            }
+        }
+    }
+    EigenAudioBridge::Block block;
+    for (int count = 0; count < EigenAudioBridge::queueBlocks && audioBridge_.pop(block); ++count) {
+        ++audioBlocksSinceReport_;
+        for (const float sample : block.stereo)
+            audioPeakSinceReport_ = juce::jmax(audioPeakSinceReport_, std::abs(sample));
+        for (const auto& device : devices) {
+            if (device.headphoneEnabled) {
+                if (eigenApi_->writeAudio(device.dev.c_str(), block.stereo.data(), EigenAudioBridge::blockFrames,
+                                         EigenApi::Eigenharp::AUDIO_PERIOD_48))
+                    ++audioWritesSinceReport_;
+            }
+        }
+    }
+    const auto now = juce::Time::getMillisecondCounter();
+    if (now - audioReportTime_ >= 1000) {
+        if (!devices.empty()) {
+            std::cout << "[AudioTest] " << audioBridge_.diagnosticSummary()
+                      << " blocks=" << audioBlocksSinceReport_ << " dispatches=" << audioWritesSinceReport_
+                      << " peak=" << audioPeakSinceReport_;
+            for (const auto& device : devices)
+                std::cout << " dev=" << device.dev << " enabled=" << device.headphoneEnabled
+                          << " gain=" << device.headphoneGain
+                          << " gainDb=" << juce::jmin(device.headphoneLimited ? -30 : 0, static_cast<int>(device.headphoneGain) - 127)
+                          << " limited=" << device.headphoneLimited << " settingsPending=" << device.settingsPending;
+            std::cout << std::endl;
+        }
+        audioReportTime_ = now;
+        audioBlocksSinceReport_ = audioWritesSinceReport_ = 0;
+        audioPeakSinceReport_ = 0.0f;
     }
 #endif
 }
@@ -256,6 +371,7 @@ void HardwareService::run() {
         if (appRole_ == AppRole::Host && eigenApi_) {
             try {
                 eigenApi_->process();
+                processAudioOutput();
             } catch (...) {
                 std::cerr << "EigenAPI process() threw an exception." << std::endl;
             }
@@ -369,7 +485,16 @@ void HardwareService::connected(const char* dev, EigenApi::DeviceType dt) {
         
         newDev.dev = dev;
         newDev.type = devType;
-        if (state_) SettingsWrapper::loadDeviceSettings(newDev, *state_);
+        if (state_) {
+            SettingsWrapper::loadDeviceSettings(newDev, *state_);
+            if (devType == InstrumentType::Alpha || devType == InstrumentType::Tau) {
+                auto headphones = SettingsWrapper::getHeadphoneSettings(dev, *state_);
+                newDev.headphoneEnabled = headphones.getProperty(SettingsWrapper::id_headphoneEnabled);
+                newDev.headphoneLimited = headphones.getProperty(SettingsWrapper::id_headphoneLimited, true);
+                newDev.headphoneGain = static_cast<unsigned>(juce::jlimit(0, newDev.headphoneLimited ? 97 : 127,
+                    static_cast<int>(headphones.getProperty(SettingsWrapper::id_headphoneGain))));
+            }
+        }
         
         newDev.mode = sanitizeLocalDeviceModeForAppRole(appRole_, newDev.mode);
 

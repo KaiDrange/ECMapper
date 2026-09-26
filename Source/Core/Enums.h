@@ -87,6 +87,10 @@ struct ConnectedDevice {
     InstrumentType type = InstrumentType::None;
     DeviceMode mode = DeviceMode::Local;
     bool isRemote = false;
+    bool headphoneEnabled = false;
+    unsigned headphoneGain = 70;
+    bool headphoneLimited = true;
+    bool headphoneSettingsPending = true;
     std::vector<OSCTarget> oscTargets;
     int assignedLEDColours[3][120] = { {0} };
     bool activeKeys[3][120] = { {false} };

@@ -1086,12 +1086,13 @@ ECMapperAudioProcessor::~ECMapperAudioProcessor() {
 }
 
 void ECMapperAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
-    juce::ignoreUnused(sampleRate, samplesPerBlock);
+    juce::ignoreUnused(samplesPerBlock);
     ECM_LOGGER(logger, "prepareToPlay() called.");
     
     updateGlobalSettings();
     midiService.start(state, &hardwareService);
     refreshZoneRuntimeStateFromParameters();
+    hardwareService.prepareTestAudio(sampleRate, state.state);
     hardwareService.startService(&state.state);
     oscBridge.setSenderEnabled(true);
     oscBridge.setReceiverEnabled(true);
@@ -1119,6 +1120,7 @@ bool ECMapperAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) 
 
 void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& audioBuffer, juce::MidiBuffer& midiMessages) {
     audioBuffer.clear();
+    hardwareService.processTestAudio(audioBuffer.getNumSamples());
 
     const bool useVst3Direct = !juce::JUCEApplicationBase::isStandaloneApp()
                                && ecm::SettingsWrapper::getPluginOutputMode(state.state) == ecm::OutputTransportMode::Vst3Direct;

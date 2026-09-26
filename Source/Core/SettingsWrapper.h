@@ -35,6 +35,7 @@ public:
     static inline const juce::Identifier id_metronomeVolume { "metronomeVolume" };
     static inline const juce::Identifier id_audioInputVolume { "audioInputVolume" };
     static inline const juce::Identifier id_headphoneEnabled { "headphoneEnabled" };
+    static inline const juce::Identifier id_headphoneLimited { "headphoneLimited" };
     static inline const juce::Identifier id_headphoneGain { "headphoneGain" };
 
     // UI settings for the upcoming audio bridge. Volumes are percentages;

@@ -48,7 +48,6 @@ private:
     juce::TextButton startButton { "Start" };
     juce::TextButton stopButton { "Stop" };
     juce::ValueTree clockSettings;
-    bool transportRunning = false; // UI state only; never restore playback on launch.
 
     juce::Label devicesLabel { "", "Connected hardware" };
     juce::Label emptyDevicesLabel;
@@ -71,6 +70,7 @@ private:
         std::unique_ptr<juce::Slider> headphoneGain;
         std::unique_ptr<juce::Label> headphoneGainLabel;
         std::unique_ptr<juce::TextButton> headphoneEnabled;
+        std::unique_ptr<juce::TextButton> headphoneLimited;
         std::unique_ptr<juce::ImageComponent> statusLed;
         std::unique_ptr<juce::Label> nameLabel;
         std::unique_ptr<juce::ComboBox> modeCombo;

@@ -2,6 +2,7 @@
 #include <JuceHeader.h>
 #include "OSCMessage.h"
 #include "Enums.h"
+#include "EigenAudioBridge.h"
 
 #if ECMAPPER_ENABLE_HARDWARE
 #include <eigenapi.h>
@@ -37,6 +38,14 @@ public:
     void startService(juce::ValueTree* state = nullptr, bool resolveRoleFromDiscoveryPort = true);
     void stopService();
     bool isServiceRunning() const { return isThreadRunning(); }
+
+    void prepareTestAudio(double sampleRate, juce::ValueTree& state);
+    void processTestAudio(int numFrames) noexcept { audioBridge_.process(numFrames); }
+    juce::String startTestAudio();
+    void stopTestAudio() noexcept { audioBridge_.stop(); }
+    bool isTestAudioPlaying() const noexcept { return audioBridge_.isPlaying(); }
+    void setTestAudioVolume(float volume) noexcept { audioBridge_.setVolume(volume); }
+    void setHeadphoneSettings(const std::string& dev, bool enabled, unsigned gain, bool limited = true);
 
     void turnOffAllLEDs();
     void turnOffDeviceLEDs(const std::string& devId);
@@ -93,6 +102,12 @@ public:
 
 private:
     void run() override;
+    void processAudioOutput();
+    EigenAudioBridge audioBridge_;
+    [[maybe_unused]] juce::uint32 audioReportTime_ = 0;
+    [[maybe_unused]] unsigned audioBlocksSinceReport_ = 0;
+    [[maybe_unused]] unsigned audioWritesSinceReport_ = 0;
+    [[maybe_unused]] float audioPeakSinceReport_ = 0.0f;
 
 #if ECMAPPER_ENABLE_HARDWARE
     std::unique_ptr<EigenApi::Eigenharp> eigenApi_;

@@ -136,7 +136,11 @@ CorePage::CorePage(HardwareService& hardwareService, juce::ValueTree& state)
         label->setJustificationType(juce::Justification::centred);
         addAndMakeVisible(label);
     }
-    metronomeVolume.setTooltip("Metronome level for all Alpha and Tau outputs");
+    metronomeVolume.setTooltip("Metronome level for all Alpha and Tau outputs (currently the test WAV)");
+    metronomeVolume.onValueChange = [this] {
+        hardwareService_.setTestAudioVolume(static_cast<float>(metronomeVolume.getValue()) / 100.0f);
+    };
+    metronomeVolume.onValueChange();
     audioInputVolume.setTooltip("Audio input level for all Alpha and Tau outputs");
     clockSettings = SettingsWrapper::getClockSettings(state_);
     addAndMakeVisible(clockGroup);
@@ -174,8 +178,13 @@ CorePage::CorePage(HardwareService& hardwareService, juce::ValueTree& state)
         button->setColour(juce::TextButton::textColourOnId, Style::background());
         addAndMakeVisible(button);
     }
-    startButton.onClick = [this] { transportRunning = true; updateClockControls(); };
-    stopButton.onClick = [this] { transportRunning = false; updateClockControls(); };
+    startButton.setTooltip("Play the temporary 48 kHz test WAV from the beginning");
+    startButton.onClick = [this] {
+        if (const auto error = hardwareService_.startTestAudio(); error.isNotEmpty())
+            juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "Test audio", error);
+        updateClockControls();
+    };
+    stopButton.onClick = [this] { hardwareService_.stopTestAudio(); updateClockControls(); };
     updateClockControls();
 
     addAndMakeVisible(devicesLabel);
@@ -213,6 +222,7 @@ void CorePage::updateClockControls() {
     bpmLabel.setEnabled(!slave);
     bpmInput.setTooltip(slave ? "Tempo follows incoming MIDI clock" : "Tempo in beats per minute (20-300)");
     timeSignature.setText(clockSettings.getProperty(SettingsWrapper::id_timeSignature).toString(), juce::dontSendNotification);
+    const bool transportRunning = hardwareService_.isTestAudioPlaying();
     startButton.setToggleState(transportRunning, juce::dontSendNotification);
     stopButton.setToggleState(!transportRunning, juce::dontSendNotification);
 }
@@ -270,11 +280,19 @@ void CorePage::updateDeviceList() {
                 d.isRemote && !d.remoteOriginalDevId.empty() ? juce::String(d.remoteOriginalDevId) : juce::String(d.dev), state_);
             const bool canControl = isHost && !d.isRemote;
             row->headphoneGain = std::make_unique<juce::Slider>();
-            configureAudioKnob(*row->headphoneGain, "Headphone gain", 127.0);
+            // EigenLite stores 127 - attenuation in dB, not a linear percentage.
+            const bool limited = settings.getProperty(SettingsWrapper::id_headphoneLimited, true);
+            configureAudioKnob(*row->headphoneGain, "Headphone gain", limited ? 97.0 : 127.0);
+            row->headphoneGain->textFromValueFunction = [](double value) {
+                return juce::String(juce::roundToInt(value) - 127) + " dB";
+            };
+            row->headphoneGain->valueFromTextFunction = [](const juce::String& text) {
+                return text.getDoubleValue() + 127.0;
+            };
             row->headphoneGain->getValueObject().referTo(settings.getPropertyAsValue(SettingsWrapper::id_headphoneGain, nullptr));
             row->headphoneGain->setDoubleClickReturnValue(true, 70.0);
             row->headphoneGain->setEnabled(canControl);
-            row->headphoneGain->setTooltip("Hardware headphone gain (0-127). Controlled by the Host.");
+            row->headphoneGain->setTooltip("Hardware headphone gain in dB. Limit on: maximum -30 dB. Limit off: maximum 0 dB. Controlled by the Host.");
             deviceContent.addAndMakeVisible(row->headphoneGain.get());
             row->headphoneGainLabel = std::make_unique<juce::Label>("", "Headphone gain");
             row->headphoneGainLabel->setJustificationType(juce::Justification::centred);
@@ -287,6 +305,27 @@ void CorePage::updateDeviceList() {
             row->headphoneEnabled->setColour(juce::TextButton::textColourOnId, Style::background());
             row->headphoneEnabled->setTooltip("Enable this device's headphone output. Controlled by the Host.");
             deviceContent.addAndMakeVisible(row->headphoneEnabled.get());
+            row->headphoneLimited = std::make_unique<juce::TextButton>("Limit to -30 dB");
+            row->headphoneLimited->setClickingTogglesState(true);
+            row->headphoneLimited->getToggleStateValue().referTo(settings.getPropertyAsValue(SettingsWrapper::id_headphoneLimited, nullptr));
+            row->headphoneLimited->setEnabled(canControl);
+            row->headphoneLimited->setColour(juce::TextButton::buttonOnColourId, Style::accent());
+            row->headphoneLimited->setColour(juce::TextButton::textColourOnId, Style::background());
+            row->headphoneLimited->setTooltip("Limit hardware headphone gain to -30 dB. On by default. Controlled by the Host.");
+            deviceContent.addAndMakeVisible(row->headphoneLimited.get());
+            const auto applyHeadphones = [this, deviceRow = row.get()] {
+                hardwareService_.setHeadphoneSettings(deviceRow->dev,
+                    deviceRow->headphoneEnabled->getToggleState(),
+                    static_cast<unsigned>(deviceRow->headphoneGain->getValue()),
+                    deviceRow->headphoneLimited->getToggleState());
+            };
+            row->headphoneGain->onValueChange = applyHeadphones;
+            row->headphoneEnabled->onClick = applyHeadphones;
+            row->headphoneLimited->onClick = [deviceRow = row.get(), applyHeadphones] {
+                deviceRow->headphoneGain->setRange(0.0, deviceRow->headphoneLimited->getToggleState() ? 97.0 : 127.0, 1.0);
+                applyHeadphones();
+            };
+            if (canControl) applyHeadphones();
         }
         
         row->statusLed = std::make_unique<juce::ImageComponent>();
@@ -511,11 +550,13 @@ void CorePage::resized() {
         const bool oscVisible = row->modeCombo->getSelectedId() > 1 || !isHost;
         const int extraTargets = oscVisible ? juce::jmax(0, static_cast<int>(row->targets.size()) - 1) : 0;
         const int connectionHeight = 36 + extraTargets * 36;
-        const int height = 16 + juce::jmax(connectionHeight, row->headphoneGain ? 90 : 36);
+        const int height = 16 + juce::jmax(connectionHeight, row->headphoneGain ? 116 : 36);
         row->card->setBounds(0, y, width, height);
         auto cardArea = juce::Rectangle<int>(0, y, width, height).reduced(12, 8);
         if (row->headphoneGain) {
-            auto headphones = cardArea.removeFromRight(164).withSizeKeepingCentre(164, 90);
+            auto headphones = cardArea.removeFromRight(164).withSizeKeepingCentre(164, 116);
+            row->headphoneLimited->setBounds(headphones.removeFromBottom(24).reduced(2, 0));
+            headphones.removeFromBottom(2);
             row->headphoneEnabled->setBounds(headphones.removeFromLeft(70).withSizeKeepingCentre(66, 28));
             headphones.removeFromLeft(4);
             row->headphoneGainLabel->setBounds(headphones.removeFromTop(20));

@@ -82,6 +82,10 @@ endif()
 # ------------------------------------------------------------------------------
 # Shared Configuration
 
+# Temporary, development-only WAV playback source (not embedded in release binaries).
+set(ECMAPPER_TEST_AUDIO_FILE "${CMAKE_CURRENT_SOURCE_DIR}/assets/B1_WhileTheShadowsGrow.wav" CACHE FILEPATH "Temporary Eigenharp playback WAV")
+add_compile_definitions(ECMAPPER_TEST_AUDIO_FILE="${ECMAPPER_TEST_AUDIO_FILE}")
+
 file(GLOB_RECURSE SHARED_SOURCES CONFIGURE_DEPENDS
         Source/UI/*.cpp Source/UI/*.h
         Source/Core/*.cpp Source/Core/*.h
@@ -657,3 +661,19 @@ target_include_directories(StripDirectionCalibrationTest PRIVATE Source)
 target_compile_definitions(StripDirectionCalibrationTest PRIVATE ECMAPPER_ENABLE_HARDWARE=0 JUCE_MODAL_LOOPS_PERMITTED=1)
 juce_generate_juce_header(StripDirectionCalibrationTest)
 
+
+juce_add_console_app(EigenAudioBridgeTest PRODUCT_NAME "EigenAudioBridgeTest")
+target_sources(EigenAudioBridgeTest PRIVATE
+    Source/Tests/EigenAudioBridgeTest.cpp
+    Source/Core/EigenAudioBridge.cpp
+)
+target_include_directories(EigenAudioBridgeTest PRIVATE Source)
+target_link_libraries(EigenAudioBridgeTest PRIVATE
+    juce::juce_audio_formats
+    juce::juce_audio_basics
+    juce::juce_recommended_config_flags
+    juce::juce_recommended_warning_flags
+)
+
+add_executable(MacIsoOutputStartupTest Source/Tests/MacIsoOutputStartupTest.cpp)
+target_include_directories(MacIsoOutputStartupTest PRIVATE EigenLite/eigenapi)

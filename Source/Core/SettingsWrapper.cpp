@@ -345,6 +345,7 @@ juce::ValueTree SettingsWrapper::getHeadphoneSettings(const juce::String& device
         audio.appendChild(device, nullptr);
     }
     if (!device.hasProperty(id_headphoneEnabled)) device.setProperty(id_headphoneEnabled, false, nullptr);
+    if (!device.hasProperty(id_headphoneLimited)) device.setProperty(id_headphoneLimited, true, nullptr);
     if (!device.hasProperty(id_headphoneGain)) device.setProperty(id_headphoneGain, 70, nullptr);
     return device;
 }
