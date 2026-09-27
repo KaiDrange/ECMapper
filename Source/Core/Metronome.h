@@ -24,12 +24,16 @@ public:
     // Call after successful prepare() and beginBlock(). No allocation, locks or file I/O.
     float nextSample(bool play) noexcept;
     float nextLinkSample(double quarterNote, double quarterNotesPerSample, bool play) noexcept;
+    float nextHostSample(double quarterNote, double quarterNotesPerSample, double barStart,
+                         int numerator, int denominator, bool play) noexcept;
     void handleMidiClock(const juce::MidiMessage& message) noexcept;
     float nextMidiSample() noexcept;
     bool midiPlaying() const noexcept { return midiPlaying_; }
     int samplePosition() const noexcept { return position_; } // Audio thread only.
 
 private:
+    float nextTimelineSample(double beats, double increment, double barStart,
+                             int beatsPerBar, bool play, bool allowNegative) noexcept;
     std::array<juce::AudioBuffer<float>, 2> clicks_;
     std::atomic<double> bpm_ { 120.0 };
     std::atomic<int> meter_ { (4 << 8) | 4 };

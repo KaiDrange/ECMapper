@@ -140,7 +140,7 @@ CorePage::CorePage(HardwareService& hardwareService, juce::ValueTree& state)
         box.setName(name);
         box.addItem("None", 4);
         box.addItem("Headphones", 1);
-        box.addItem("Audio out device", 2);
+        box.addItem("Audio out", 2);
         box.addItem("Both", 3);
         box.getSelectedIdAsValue().referTo(audioSettings.getPropertyAsValue(property, nullptr));
         box.onChange = [this] { hardwareService_.updateAudioSettings(state_); };
@@ -172,7 +172,13 @@ CorePage::CorePage(HardwareService& hardwareService, juce::ValueTree& state)
     metronomeOnly.setTooltip("Play the local metronome without sending MIDI Clock or Start/Stop");
     configureClockSource(midiClockIn, "midiIn");
     configureClockSource(midiClockMaster, "midiMaster");
+    configureClockSource(syncToHost, "host");
     configureClockSource(abletonLink, "abletonLink");
+    const bool standalone = juce::JUCEApplicationBase::isStandaloneApp();
+    midiClockIn.setVisible(standalone);
+    midiClockMaster.setVisible(standalone);
+    syncToHost.setVisible(!standalone);
+    syncToHost.setTooltip("Follow the host application's tempo, time signature and beat position");
     midiClockIn.setTooltip("Follow Clock, Start, Stop and Continue from the MIDI input selected in Audio/MIDI settings (standalone only)");
     midiClockIn.setEnabled(juce::JUCEApplicationBase::isStandaloneApp());
     midiClockMaster.setTooltip("Set the tempo locally; standalone sends MIDI Clock and Start/Stop to each distinct zone output");
@@ -250,6 +256,8 @@ void CorePage::updateClockControls() {
     const auto source = clockSettings.getProperty(SettingsWrapper::id_clockSource).toString();
     const bool slave = source == "midiIn";
     const bool link = source == "abletonLink";
+    const bool host = source == "host";
+    syncToHost.setToggleState(host, juce::dontSendNotification);
     midiClockIn.setToggleState(slave, juce::dontSendNotification);
     metronomeOnly.setToggleState(source == "metronomeOnly", juce::dontSendNotification);
     midiClockMaster.setToggleState(source == "midiMaster", juce::dontSendNotification);
@@ -259,22 +267,31 @@ void CorePage::updateClockControls() {
     syncStartStop.setVisible(transportRelevant);
     syncStartStop.setEnabled(transportRelevant);
     syncStartStop.setTooltip(link ? "Share Start and Stop with Link peers that also enable transport sync"
+                                 : host ? "Follow the host's transport; turn off to control local playback at the host tempo"
                                  : slave ? "Follow MIDI Start, Continue and Stop; turn off to control playback locally while following MIDI Clock"
                                          : "Send MIDI Start and Stop with the local transport; MIDI Clock is independent of this switch");
     syncStartStop.setToggleState(static_cast<bool>(clockSettings.getProperty(SettingsWrapper::id_syncStartStop)), juce::dontSendNotification);
     const int peers = hardwareService_.linkPeers();
-    linkStatus.setText(link ? (peers == 0 ? "Link: no peers" : "Link: " + juce::String(peers) + (peers == 1 ? " peer" : " peers")) : "", juce::dontSendNotification);
-    bpmInput.setRange(20.0, link ? 999.0 : 300.0, 0.1);
+    linkStatus.setText(host ? (hardwareService_.hostTimingAvailable() ? "Following host" : "Host timing unavailable")
+                          : link ? (peers == 0 ? "Link: no peers" : "Link: " + juce::String(peers) + (peers == 1 ? " peer" : " peers")) : "", juce::dontSendNotification);
+    bpmInput.setRange(host ? juce::jmin(20.0, hardwareService_.hostTempo()) : 20.0,
+                      host ? juce::jmax(300.0, hardwareService_.hostTempo()) : link ? 999.0 : 300.0, 0.1);
     if (!bpmInput.isMouseButtonDown(true) && !bpmInput.hasKeyboardFocus(true))
-        bpmInput.setValue(link ? hardwareService_.linkTempo() : static_cast<double>(clockSettings.getProperty(SettingsWrapper::id_clockBpm)), juce::dontSendNotification);
-    bpmInput.setEnabled(!slave);
-    bpmLabel.setEnabled(!slave);
-    bpmInput.setTooltip(slave ? "Local tempo is unused in slave mode; tempo follows the selected MIDI input"
+        bpmInput.setValue(host ? hardwareService_.hostTempo() : link ? hardwareService_.linkTempo() : static_cast<double>(clockSettings.getProperty(SettingsWrapper::id_clockBpm)), juce::dontSendNotification);
+    bpmInput.setEnabled(!slave && !host);
+    bpmLabel.setEnabled(!slave && !host);
+    bpmInput.setTooltip(host ? "Tempo follows the host application" : slave ? "Local tempo is unused in slave mode; tempo follows the selected MIDI input"
                              : link ? "Link session tempo; edits are shared with connected peers" : "Tempo in beats per minute (20-300)");
-    timeSignature.setText(clockSettings.getProperty(SettingsWrapper::id_timeSignature).toString(), juce::dontSendNotification);
+    timeSignature.setEnabled(!host);
+    timeSignatureLabel.setEnabled(!host);
+    timeSignature.setText(host ? hardwareService_.hostTimeSignature() : clockSettings.getProperty(SettingsWrapper::id_timeSignature).toString(), juce::dontSendNotification);
     const bool transportRunning = hardwareService_.isMetronomePlaying();
-    startButton.setEnabled(!slave || !sync);
-    startButton.setTooltip(slave && sync ? "Send MIDI Start or Continue from the selected input"
+    startButton.setEnabled((!slave && !host) || !sync);
+    stopButton.setEnabled(!host || !sync);
+    stopButton.setTooltip(host && sync ? "Use the host application's transport to stop playback" : "Stop local playback");
+    startButton.setTooltip(host && sync ? "Use the host application's transport to start playback"
+                               : host ? "Start locally using the host's tempo and beat position"
+                               : slave && sync ? "Send MIDI Start or Continue from the selected input"
                                : slave ? "Start locally on the next incoming MIDI clock pulse"
                                : link ? "Join the next Link bar (immediate when no peers are connected)" : "Start the metronome on the first beat of a bar");
     startButton.setToggleState(transportRunning, juce::dontSendNotification);
@@ -307,7 +324,18 @@ void CorePage::timerCallback() {
     repaint();
 }
 
+void CorePage::updateAudioRouteControls() {
+    const bool headphonesAvailable = HardwareService::supportsLocalHardware()
+        && hardwareService_.getAppRole() == AppRole::Host;
+    for (auto* route : { &metronomeRoute, &audioInputRoute }) {
+        route->setItemEnabled(1, headphonesAvailable);
+        route->setItemEnabled(3, headphonesAvailable);
+    }
+    hardwareService_.updateAudioSettings(state_);
+}
+
 void CorePage::updateDeviceList() {
+    updateAudioRouteControls();
     deviceRows_.clear();
     
     bool isHost = hardwareService_.getAppRole() == AppRole::Host;
@@ -572,6 +600,7 @@ void CorePage::resized() {
     auto sources = clockArea.removeFromTop(28);
     metronomeOnly.setBounds(sources.removeFromLeft(sourceWidth));
     midiClockIn.setBounds(sources);
+    syncToHost.setBounds(sources);
     sources = clockArea.removeFromTop(28);
     midiClockMaster.setBounds(sources.removeFromLeft(sourceWidth));
     abletonLink.setBounds(sources);

@@ -242,6 +242,8 @@ AppRole SettingsWrapper::getAppRole(juce::ValueTree& rootState) {
 void SettingsWrapper::setAppRole(AppRole role, juce::ValueTree& rootState) {
     auto settings = getSettingsTree(rootState);
     settings.setProperty(id_appRole, (int)role, nullptr);
+    // Persist valid routes immediately, including when the editor is closed.
+    getAudioOutputSettings(rootState);
 }
 
 juce::String SettingsWrapper::getClientListenIP(juce::ValueTree& rootState) {
@@ -322,7 +324,12 @@ void SettingsWrapper::resetCalibration(InstrumentType type, juce::ValueTree& roo
 
 juce::ValueTree SettingsWrapper::getClockSettings(juce::ValueTree& rootState) {
     auto clock = getSettingsTree(rootState).getOrCreateChildWithName(id_clockSettings, nullptr);
-    if (!clock.hasProperty(id_clockSource)) clock.setProperty(id_clockSource, "midiMaster", nullptr);
+    if (!clock.hasProperty(id_clockSource)) clock.setProperty(id_clockSource, "metronomeOnly", nullptr);
+    const auto source = clock.getProperty(id_clockSource).toString();
+    if (!juce::JUCEApplicationBase::isStandaloneApp() && (source == "midiIn" || source == "midiMaster"))
+        clock.setProperty(id_clockSource, "host", nullptr);
+    else if (juce::JUCEApplicationBase::isStandaloneApp() && source == "host")
+        clock.setProperty(id_clockSource, "metronomeOnly", nullptr);
     if (!clock.hasProperty(id_clockBpm)) clock.setProperty(id_clockBpm, 120.0, nullptr);
     if (!clock.hasProperty(id_syncStartStop))
         clock.setProperty(id_syncStartStop, clock.getProperty(id_linkStartStopSync, true), nullptr);
@@ -332,10 +339,19 @@ juce::ValueTree SettingsWrapper::getClockSettings(juce::ValueTree& rootState) {
 
 juce::ValueTree SettingsWrapper::getAudioOutputSettings(juce::ValueTree& rootState) {
     auto audio = getSettingsTree(rootState).getOrCreateChildWithName(id_audioOutput, nullptr);
-    if (!audio.hasProperty(id_metronomeRoute)) audio.setProperty(id_metronomeRoute, 1, nullptr);
-    if (!audio.hasProperty(id_audioInputRoute)) audio.setProperty(id_audioInputRoute, 1, nullptr);
+    if (!audio.hasProperty(id_metronomeRoute)) audio.setProperty(id_metronomeRoute, 4, nullptr);
+    if (!audio.hasProperty(id_audioInputRoute)) audio.setProperty(id_audioInputRoute, 4, nullptr);
     if (!audio.hasProperty(id_metronomeVolume)) audio.setProperty(id_metronomeVolume, 100.0, nullptr);
     if (!audio.hasProperty(id_audioInputVolume)) audio.setProperty(id_audioInputVolume, 100.0, nullptr);
+    if (getAppRole(rootState) == AppRole::Client) {
+        for (const auto& property : { id_metronomeRoute, id_audioInputRoute }) {
+            const int route = static_cast<int>(audio.getProperty(property));
+            // Strip only the unavailable headphone destination. Headphones alone
+            // becomes None; Both retains the explicitly selected audio device.
+            if (route == 1 || route == 3)
+                audio.setProperty(property, route == 3 ? 2 : 4, nullptr);
+        }
+    }
     return audio;
 }
 

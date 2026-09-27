@@ -43,7 +43,10 @@ public:
     void updateAudioSettings(juce::ValueTree& state);
     void updateMetronomeSettings(juce::ValueTree& state);
     void prepareMetronome(double sampleRate, juce::ValueTree& state);
-    void processMetronome(int numFrames, bool nonRealtime = false, const juce::MidiBuffer* midi = nullptr, juce::MidiBuffer* clockOutput = nullptr, juce::AudioBuffer<float>* audio = nullptr, int inputChannels = 0, int outputChannels = 0) noexcept { audioBridge_.process(numFrames, nonRealtime, midi, clockOutput, audio, inputChannels, outputChannels); }
+    void processMetronome(int numFrames, bool nonRealtime = false, const juce::MidiBuffer* midi = nullptr, juce::MidiBuffer* clockOutput = nullptr, juce::AudioBuffer<float>* audio = nullptr, int inputChannels = 0, int outputChannels = 0, const juce::AudioPlayHead::PositionInfo* hostPosition = nullptr) noexcept { audioBridge_.process(numFrames, nonRealtime, midi, clockOutput, audio, inputChannels, outputChannels, hostPosition); }
+    double hostTempo() const noexcept { return audioBridge_.hostTempo(); }
+    juce::String hostTimeSignature() const { return juce::String(audioBridge_.hostNumerator()) + "/" + juce::String(audioBridge_.hostDenominator()); }
+    bool hostTimingAvailable() const noexcept { return audioBridge_.hostTimingAvailable(); }
     juce::String startMetronome();
     void stopMetronome(bool shareWithLink = true) noexcept { audioBridge_.stop(shareWithLink); }
     void requestLinkTempo(double bpm) noexcept { audioBridge_.requestLinkTempo(bpm); }

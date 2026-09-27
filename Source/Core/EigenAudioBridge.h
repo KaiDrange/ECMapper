@@ -3,6 +3,7 @@
 #include "Metronome.h"
 #include "MidiClockOutput.h"
 #include "LinkClock.h"
+#include "HostClock.h"
 #include <juce_audio_basics/juce_audio_basics.h>
 #include <array>
 #include <atomic>
@@ -30,6 +31,16 @@ public:
     void prepare(double hostSampleRate);
     void setTiming(double bpm, int beatsPerBar, int beatUnit) noexcept;
     void setLinkEnabled(bool enabled);
+    void setHostSyncEnabled(bool enabled) noexcept {
+        if (hostSyncEnabled_.exchange(enabled) != enabled) {
+            hostTimingAvailable_.store(false);
+            stop(false);
+        }
+    }
+    double hostTempo() const noexcept { return hostTempo_.load(); }
+    int hostNumerator() const noexcept { return hostNumerator_.load(); }
+    int hostDenominator() const noexcept { return hostDenominator_.load(); }
+    bool hostTimingAvailable() const noexcept { return hostTimingAvailable_.load(); }
     void setStartStopSync(bool enabled) noexcept {
         startStopSync_.store(enabled);
         link_.setStartStopSync(enabled);
@@ -53,7 +64,7 @@ public:
     void setMidiClockOutputEnabled(bool enabled) noexcept {
         if (midiClockOutputEnabled_.exchange(enabled) != enabled) stop(false);
     }
-    void process(int numFrames, bool nonRealtime = false, const juce::MidiBuffer* midi = nullptr, juce::MidiBuffer* clockOutput = nullptr, juce::AudioBuffer<float>* audio = nullptr, int inputChannels = 0, int outputChannels = 0) noexcept;
+    void process(int numFrames, bool nonRealtime = false, const juce::MidiBuffer* midi = nullptr, juce::MidiBuffer* clockOutput = nullptr, juce::AudioBuffer<float>* audio = nullptr, int inputChannels = 0, int outputChannels = 0, const juce::AudioPlayHead::PositionInfo* hostPosition = nullptr) noexcept;
     uint64_t transportState() const noexcept { return transportState_.load(); }
     bool isNonRealtime() const noexcept { return (transportState() & 1) != 0; }
     bool pop(Block& block) noexcept;
@@ -69,6 +80,12 @@ private:
     bool hasPreviousHeadphoneSample_ = false;
     Metronome metronome_;
     LinkClock link_;
+    HostClock hostClock_;
+    std::atomic<bool> hostSyncEnabled_ { false };
+    std::atomic<bool> hostPlaying_ { false };
+    std::atomic<bool> hostTimingAvailable_ { false };
+    std::atomic<double> hostTempo_ { 120.0 };
+    std::atomic<int> hostNumerator_ { 4 }, hostDenominator_ { 4 };
     std::atomic<double> quantum_ { 4.0 };
     std::atomic<double> configuredBpm_ { 120.0 };
     std::atomic<double> outputLatency_ { 0.0 };

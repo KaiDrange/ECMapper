@@ -70,6 +70,7 @@ bool verifyStandaloneClockWithoutHardware()
         ecm::osc::MessageFifo output;
         ecm::HardwareService service(input, output);
         juce::ValueTree state("ECMapperState");
+        ecm::SettingsWrapper::getClockSettings(state).setProperty(ecm::SettingsWrapper::id_clockSource, "midiMaster", nullptr);
         service.prepareMetronome(44100, state);
         ok &= expect(!service.supportsLocalHardware() && service.getAppRole() == ecm::AppRole::Client,
                      "clock-only regression must exercise a build without local hardware support");

@@ -551,6 +551,96 @@ int main() {
         }
         expect(silentBlocks > 0, "Stopped metronome must still produce resampled input-monitoring audio");
     }
+    // The plugin follows the DAW's PPQ timeline, including meters that differ
+    // from local settings, seeks, loops and negative pre-roll positions.
+    ecm::EigenAudioBridge hostBridge;
+    hostBridge.prepare(48000);
+    hostBridge.setHostActive(true);
+    hostBridge.setAudioOutputEnabled(true);
+    hostBridge.setRouting(3, 4);
+    hostBridge.setHostSyncEnabled(true);
+    expect(hostBridge.start().isNotEmpty(), "Host-synced transport must reject manual Start");
+    juce::AudioPlayHead::PositionInfo host;
+    host.setBpm(120.0);
+    host.setTimeSignature(juce::AudioPlayHead::TimeSignature{3, 8});
+    host.setIsPlaying(true);
+    juce::AudioBuffer<float> hostAudio(2, 128);
+    juce::MidiBuffer hostMidi;
+    ecm::Metronome hostReference;
+    expect(hostReference.prepare(48000).isEmpty(), "Host reference must prepare");
+    hostReference.setTiming(120, 3, 8);
+    hostReference.beginBlock();
+    for (int frame = 0; frame < 72000; frame += 128) {
+        const double ppq = 1.5 + frame / 24000.0;
+        host.setPpqPosition(ppq);
+        host.setPpqPositionOfLastBarStart(std::floor(ppq / 1.5) * 1.5);
+        hostMidi.clear();
+        hostBridge.process(128, false, nullptr, &hostMidi, &hostAudio, 0, 2, &host);
+        expect(hostMidi.isEmpty(), "Host sync must never generate MIDI Clock or transport");
+        expect(hostBridge.pop(block), "Host playback must feed headphone output");
+        for (int i = 0; i < 128; ++i) {
+            const auto expected = hostReference.nextSample(true);
+            if (std::abs(hostAudio.getSample(0, i) - expected) > 1.0e-6f
+                || std::abs(block.stereo[static_cast<size_t>(i * 2)] - expected) > 1.0e-6f) {
+                expect(false, "Host meter, phase, or click tail mismatch across callback/bar boundaries");
+                return 1;
+            }
+        }
+    }
+    expect(hostBridge.isPlaying() && hostBridge.hostTimingAvailable()
+               && hostBridge.hostNumerator() == 3 && hostBridge.hostDenominator() == 8,
+           "UI host snapshot must reflect the active DAW meter and transport");
+    host.setPpqPosition(0.0); // Loop backwards to a bar start.
+    host.setPpqPositionOfLastBarStart(0.0);
+    hostBridge.process(128, false, nullptr, nullptr, &hostAudio, 0, 2, &host);
+    expect(hostBridge.pop(block), "Host loop must produce a fresh headphone block");
+    for (int i = 0; i < 128; ++i)
+        expect(std::abs(hostAudio.getSample(0, i) - clicks[0].getSample(0, i)) < 1.0e-6f,
+               "Looping must restart the accent at the host bar boundary");
+    host.setPpqPosition(0.5); // Seek to beat two, not the local first beat.
+    hostBridge.process(128, false, nullptr, nullptr, &hostAudio, 0, 2, &host);
+    for (int i = 0; i < 128; ++i)
+        expect(std::abs(hostAudio.getSample(0, i) - clicks[1].getSample(0, i)) < 1.0e-6f,
+               "Seeking must use the host beat's accent instead of restarting a local bar");
+    host.setPpqPosition(-1.0);
+    host.setPpqPositionOfLastBarStart(-1.0);
+    host.setTimeSignature(juce::AudioPlayHead::TimeSignature{7, 16});
+    hostBridge.process(128, false, nullptr, nullptr, &hostAudio, 0, 2, &host);
+    expect(hostAudio.getMagnitude(0, 128) > 0.0f && hostBridge.hostDenominator() == 16,
+           "Host sync must render negative pre-roll positions and sixteenth-note meters");
+    host.setPpqPosition(1.5);
+    host.setPpqPositionOfLastBarStart(1.5);
+    host.setTimeSignature(juce::AudioPlayHead::TimeSignature{4, 4});
+    host.setBpm(90.0);
+    hostBridge.process(128, false, nullptr, nullptr, &hostAudio, 0, 2, &host);
+    for (int i = 0; i < 128; ++i)
+        expect(std::abs(hostAudio.getSample(0, i) - clicks[0].getSample(0, i)) < 1.0e-6f,
+               "A meter-change bar origin need not be an integer quarter note");
+    expect(juce::approximatelyEqual(hostBridge.hostTempo(), 90.0), "Host tempo automation must update the UI snapshot");
+    host.setIsPlaying(false);
+    hostBridge.process(128, false, nullptr, nullptr, &hostAudio, 0, 2, &host);
+    expect(!hostBridge.isPlaying() && hostAudio.getMagnitude(0, 128) == 0.0f,
+           "Host Stop must silence playback immediately");
+    hostBridge.setStartStopSync(false);
+    expect(hostBridge.start().isEmpty(), "Disabling transport sync must allow local Start");
+    hostBridge.process(128, false, nullptr, nullptr, &hostAudio, 0, 2, &host);
+    expect(hostBridge.isPlaying() && hostAudio.getMagnitude(0, 128) > 0.0f,
+           "Local playback must run at the host tempo even while the DAW is stopped");
+    hostBridge.process(128, false, nullptr, nullptr, &hostAudio, 0, 2); // Missing playhead.
+    expect(!hostBridge.isPlaying() && !hostBridge.hostTimingAvailable() && hostAudio.getMagnitude(0, 128) == 0.0f,
+           "Missing host timing must silence playback rather than using stale data");
+    hostBridge.setStartStopSync(true);
+    host.setIsPlaying(true);
+    host.setBpm(juce::Optional<double>{});
+    hostBridge.process(128, false, nullptr, nullptr, &hostAudio, 0, 2, &host);
+    expect(!hostBridge.hostTimingAvailable(), "A playhead without tempo cannot supply synchronized timing");
+    host.setBpm(120.0);
+    hostBridge.process(128, true, nullptr, nullptr, &hostAudio, 0, 2, &host);
+    expect(!hostBridge.isPlaying() && hostAudio.getMagnitude(0, 128) == 0.0f && !hostBridge.pop(block),
+           "Offline host playback must remain silent and discard queued headphone audio");
+    hostBridge.process(128, false, nullptr, nullptr, &hostAudio, 0, 2, &host);
+    expect(hostBridge.isPlaying(), "Returning to realtime host sync must rejoin the DAW's running transport");
+
     if (ok) std::cout << "EigenAudioBridge checks passed\n";
     return ok ? 0 : 1;
 }

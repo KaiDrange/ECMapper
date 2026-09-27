@@ -1125,10 +1125,13 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& audioBuffer,
     const bool standalone = juce::JUCEApplicationBase::isStandaloneApp();
     const double clockBlockStartMs = juce::Time::getMillisecondCounterHiRes();
     masterClockBuffer_.clear();
+    const auto hostPosition = !standalone && getPlayHead() != nullptr
+        ? getPlayHead()->getPosition() : juce::Optional<juce::AudioPlayHead::PositionInfo>{};
     hardwareService.processMetronome(audioBuffer.getNumSamples(), isNonRealtime(),
                                      standalone ? &midiMessages : nullptr,
                                      standalone ? &masterClockBuffer_ : nullptr, &audioBuffer,
-                                     getTotalNumInputChannels(), getTotalNumOutputChannels());
+                                     getTotalNumInputChannels(), getTotalNumOutputChannels(),
+                                     hostPosition ? &*hostPosition : nullptr);
     if (standalone)
         midiService.scheduleMasterClock(masterClockBuffer_, clockBlockStartMs, getSampleRate());
 

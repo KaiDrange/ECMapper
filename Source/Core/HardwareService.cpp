@@ -55,8 +55,10 @@ void HardwareService::startService(juce::ValueTree* state, bool resolveRoleFromD
         appRole_ = SettingsWrapper::getAppRole(*state_);
     }
 
-    if (state_ != nullptr)
+    if (state_ != nullptr) {
         SettingsWrapper::setAppRole(appRole_, *state_);
+        updateAudioSettings(*state_);
+    }
 
 #if ECMAPPER_ENABLE_HARDWARE
     // Re-create the Eigenharp instance to ensure a clean discovery state
@@ -118,7 +120,10 @@ void HardwareService::updateMetronomeSettings(juce::ValueTree& state) {
     updateAudioSettings(state);
     auto clock = SettingsWrapper::getClockSettings(state);
     audioBridge_.setStandaloneClockEnabled(juce::JUCEApplicationBase::isStandaloneApp());
-    audioBridge_.setMidiClockOutputEnabled(clock.getProperty(SettingsWrapper::id_clockSource).toString() == "midiMaster");
+    audioBridge_.setMidiClockOutputEnabled(juce::JUCEApplicationBase::isStandaloneApp()
+                                           && clock.getProperty(SettingsWrapper::id_clockSource).toString() == "midiMaster");
+    audioBridge_.setHostSyncEnabled(!juce::JUCEApplicationBase::isStandaloneApp()
+                                     && clock.getProperty(SettingsWrapper::id_clockSource).toString() == "host");
     audioBridge_.setMidiSlave(juce::JUCEApplicationBase::isStandaloneApp()
                               && clock.getProperty(SettingsWrapper::id_clockSource).toString() == "midiIn");
     const auto signature = clock.getProperty(SettingsWrapper::id_timeSignature).toString();

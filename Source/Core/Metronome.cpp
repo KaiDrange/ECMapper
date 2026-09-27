@@ -102,6 +102,20 @@ float Metronome::nextSample(const bool play) noexcept {
 }
 
 float Metronome::nextLinkSample(const double quarterNote, const double quarterNotesPerSample, const bool play) noexcept {
+    return nextTimelineSample(quarterNote * 24.0 / clocksPerBeat_, quarterNotesPerSample * 24.0 / clocksPerBeat_,
+                              0.0, beatsPerBar_, play, false);
+}
+
+float Metronome::nextHostSample(const double quarterNote, const double quarterNotesPerSample, const double barStart,
+                                const int numerator, const int denominator, const bool play) noexcept {
+    const double barBeat = barStart * denominator / 4.0;
+    const double offset = barBeat - std::floor(barBeat);
+    return nextTimelineSample(quarterNote * denominator / 4.0 - offset, quarterNotesPerSample * denominator / 4.0,
+                              std::floor(barBeat), numerator, play, true);
+}
+
+float Metronome::nextTimelineSample(const double beats, const double increment, const double barStart,
+                                    const int beatsPerBar, const bool play, const bool allowNegative) noexcept {
     const float gain = gain_.getNextValue();
     if (!play) {
         linkClickActive_ = false;
@@ -109,13 +123,11 @@ float Metronome::nextLinkSample(const double quarterNote, const double quarterNo
         lastLinkBeat_ = -1.0;
         return 0.0f;
     }
-    const double beats = quarterNote * 24.0 / clocksPerBeat_;
-    const double increment = quarterNotesPerSample * 24.0 / clocksPerBeat_;
     const double beat = std::floor(beats + 1.0e-9);
     const double previous = hasLinkPosition_ ? previousLinkPosition_ : beats - increment;
     previousLinkPosition_ = beats;
     hasLinkPosition_ = true;
-    if (quarterNote < -1.0e-9) {
+    if (!allowNegative && beats < -1.0e-9) {
         linkClickActive_ = false;
         lastLinkBeat_ = -1.0;
         return 0.0f;
@@ -123,8 +135,8 @@ float Metronome::nextLinkSample(const double quarterNote, const double quarterNo
     // Follow absolute Link phase without resetting a click's tail each callback.
     // Compare against the last rendered sample so a clock correction across a
     // callback boundary cannot skip an entire beat.
-    if (std::abs(beat - lastLinkBeat_) > 0.5 && beat > std::floor(previous + 1.0e-9)) {
-        click_ = beatsPerBar_ > 0 && std::fmod(beat, beatsPerBar_) == 0.0 ? 0 : 1;
+    if ((!linkClickActive_ || std::abs(beat - lastLinkBeat_) > 0.5) && beat > std::floor(previous + 1.0e-9)) {
+        click_ = beatsPerBar > 0 && std::abs(std::remainder(beat - barStart, beatsPerBar)) < 1.0e-7 ? 0 : 1;
         position_ = 0;
         lastLinkBeat_ = beat;
         linkClickActive_ = true;

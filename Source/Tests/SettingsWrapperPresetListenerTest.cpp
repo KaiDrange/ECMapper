@@ -96,6 +96,79 @@ bool verifyPresetBackedDefaults()
     return ok;
 }
 
+bool verifyClockAndAudioDefaultsAndClientRoutes()
+{
+    using Settings = ecm::SettingsWrapper;
+    juce::ValueTree root("ECMapperState");
+    const auto clock = Settings::getClockSettings(root);
+    auto audio = Settings::getAudioOutputSettings(root);
+    bool ok = true;
+    ok &= expect(clock.getProperty(Settings::id_clockSource).toString() == "metronomeOnly",
+                 "new instances should default to Metronome only");
+    ok &= expect(juce::approximatelyEqual(static_cast<double>(clock.getProperty(Settings::id_clockBpm)), 120.0)
+                     && clock.getProperty(Settings::id_timeSignature).toString() == "4/4"
+                     && static_cast<bool>(clock.getProperty(Settings::id_syncStartStop)),
+                 "clock defaults should be 120 BPM, 4/4 and transport sync enabled");
+    ok &= expect(static_cast<int>(audio.getProperty(Settings::id_metronomeRoute)) == 4
+                     && static_cast<int>(audio.getProperty(Settings::id_audioInputRoute)) == 4,
+                 "both audio destinations should default to None");
+
+    audio.setProperty(Settings::id_metronomeRoute, 1, nullptr);
+    audio.setProperty(Settings::id_audioInputRoute, 3, nullptr);
+    Settings::getAudioOutputSettings(root);
+    ok &= expect(static_cast<int>(audio.getProperty(Settings::id_metronomeRoute)) == 1
+                     && static_cast<int>(audio.getProperty(Settings::id_audioInputRoute)) == 3,
+                 "Host should retain saved Headphones and Both routes");
+    Settings::setAppRole(ecm::AppRole::Client, root);
+    ok &= expect(static_cast<int>(audio.getProperty(Settings::id_metronomeRoute)) == 4
+                     && static_cast<int>(audio.getProperty(Settings::id_audioInputRoute)) == 2,
+                 "switching to Client must remove headphones while preserving the audio-device destination");
+
+    // Saved states or programmatic changes may bypass the role setter.
+    audio.setProperty(Settings::id_metronomeRoute, 3, nullptr);
+    audio.setProperty(Settings::id_audioInputRoute, 1, nullptr);
+    Settings::getAudioOutputSettings(root);
+    ok &= expect(static_cast<int>(audio.getProperty(Settings::id_metronomeRoute)) == 2
+                     && static_cast<int>(audio.getProperty(Settings::id_audioInputRoute)) == 4,
+                 "reading restored Client routes must sanitize both destinations");
+    Settings::setAppRole(ecm::AppRole::Host, root);
+    ok &= expect(static_cast<int>(audio.getProperty(Settings::id_metronomeRoute)) == 2
+                     && static_cast<int>(audio.getProperty(Settings::id_audioInputRoute)) == 4,
+                 "returning to Host must not silently re-enable headphones");
+    return ok;
+}
+
+bool verifyClockSourcesMatchApplicationType()
+{
+    using Settings = ecm::SettingsWrapper;
+    const auto previousFactory = juce::JUCEApplicationBase::createInstance;
+    juce::JUCEApplicationBase::createInstance = nullptr;
+    juce::ValueTree root("ECMapperState");
+    auto clock = Settings::getClockSettings(root);
+    bool ok = true;
+    for (const auto* legacy : { "midiIn", "midiMaster" }) {
+        clock.setProperty(Settings::id_clockSource, legacy, nullptr);
+        Settings::getClockSettings(root);
+        ok &= expect(clock.getProperty(Settings::id_clockSource).toString() == "host",
+                     "plugins must migrate saved MIDI clock modes to host sync");
+    }
+    clock.setProperty(Settings::id_clockSource, "abletonLink", nullptr);
+    Settings::getClockSettings(root);
+    ok &= expect(clock.getProperty(Settings::id_clockSource).toString() == "abletonLink",
+                 "Link must remain available in plugins");
+    juce::JUCEApplicationBase::createInstance = []() -> juce::JUCEApplicationBase* { return nullptr; };
+    clock.setProperty(Settings::id_clockSource, "midiMaster", nullptr);
+    Settings::getClockSettings(root);
+    ok &= expect(clock.getProperty(Settings::id_clockSource).toString() == "midiMaster",
+                 "standalone must retain MIDI clock modes");
+    clock.setProperty(Settings::id_clockSource, "host", nullptr);
+    Settings::getClockSettings(root);
+    ok &= expect(clock.getProperty(Settings::id_clockSource).toString() == "metronomeOnly",
+                 "standalone cannot retain a plugin-only host clock source");
+    juce::JUCEApplicationBase::createInstance = previousFactory;
+    return ok;
+}
+
 bool verifyGlobalSettingsStillNotifyListeners()
 {
     juce::ValueTree rootState("ECMapperState");
@@ -117,6 +190,8 @@ int main()
 {
     bool ok = true;
     ok &= verifyPresetBackedDefaults();
+    ok &= verifyClockAndAudioDefaultsAndClientRoutes();
+    ok &= verifyClockSourcesMatchApplicationType();
     ok &= verifyPresetBackedSettingsNotifyListeners();
     ok &= verifyGlobalSettingsStillNotifyListeners();
 

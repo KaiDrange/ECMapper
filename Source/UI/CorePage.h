@@ -20,6 +20,7 @@ public:
 private:
     void updateDeviceList();
     void updateClockControls();
+    void updateAudioRouteControls();
 
     HardwareService& hardwareService_;
     juce::ValueTree& state_;
@@ -42,6 +43,7 @@ private:
     juce::ToggleButton metronomeOnly { "Metronome only" };
     juce::ToggleButton midiClockIn { "MIDI Clock In" };
     juce::ToggleButton midiClockMaster { "MIDI Clock Master" };
+    juce::ToggleButton syncToHost { "Sync to Host" };
     juce::ToggleButton abletonLink { "Ableton Link" };
     juce::ToggleButton syncStartStop { "Sync start/stop" };
     juce::Label linkStatus;
