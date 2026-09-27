@@ -1093,6 +1093,9 @@ void ECMapperAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBloc
     midiService.start(state, &hardwareService);
     refreshZoneRuntimeStateFromParameters();
     hardwareService.prepareMetronome(sampleRate, state.state);
+    auto* audioDevice = deviceManager != nullptr ? deviceManager->getCurrentAudioDevice() : nullptr;
+    hardwareService.setMetronomeOutputLatency(audioDevice != nullptr && sampleRate > 0.0
+                                                ? audioDevice->getOutputLatencyInSamples() / sampleRate : 0.0);
     hardwareService.startService(&state.state);
     oscBridge.setSenderEnabled(true);
     oscBridge.setReceiverEnabled(true);
@@ -2052,6 +2055,7 @@ void ECMapperAudioProcessor::valueTreePropertyChanged(juce::ValueTree&, const ju
 {
     if (property == ecm::SettingsWrapper::id_clockSource
         || property == ecm::SettingsWrapper::id_clockBpm
+        || property == ecm::SettingsWrapper::id_syncStartStop
         || property == ecm::SettingsWrapper::id_timeSignature)
         hardwareService.updateMetronomeSettings(state.state);
     if (property == ecm::SettingsWrapper::id_metronomeRoute || property == ecm::SettingsWrapper::id_audioInputRoute

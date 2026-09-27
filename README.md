@@ -30,3 +30,6 @@ EigenLite: https://github.com/thetechnobear/EigenLite
 JUCE Framework: https://juce.com/
 
 JUCE is dual-licensed under the AGPLv3 and the commercial JUCE licence. See `JUCE/LICENSE.md` in this repository and the JUCE website for the full licence terms.
+
+Ableton Link is dual-licensed under GPLv2-or-later and a proprietary licence.
+See [Ableton's licensing terms](https://github.com/Ableton/link/blob/Link-4.1/LICENSE.md).

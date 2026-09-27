@@ -51,6 +51,7 @@ set(ECMAPPER_NOTARIZATION_KEYCHAIN_PROFILE "" CACHE STRING
 # Dependencies
 
 add_subdirectory(JUCE)
+include(cmake/ableton_link.cmake)
 if(ECMAPPER_ENABLE_HARDWARE)
     add_subdirectory(EigenLite/eigenapi)
 else()
@@ -94,6 +95,7 @@ file(GLOB_RECURSE CORE_SOURCES CONFIGURE_DEPENDS
 )
 
 set(COMMON_LIBS
+        Ableton::Link
         MetronomeSamples
         eigenapi
         juce::juce_audio_utils
@@ -668,14 +670,28 @@ target_sources(EigenAudioBridgeTest PRIVATE
     Source/Tests/EigenAudioBridgeTest.cpp
     Source/Core/EigenAudioBridge.cpp
     Source/Core/Metronome.cpp
+    Source/Core/LinkClock.cpp
 )
 target_include_directories(EigenAudioBridgeTest PRIVATE Source)
 target_link_libraries(EigenAudioBridgeTest PRIVATE
+    Ableton::Link
     MetronomeSamples
     juce::juce_audio_formats
     juce::juce_audio_basics
     juce::juce_recommended_config_flags
     juce::juce_recommended_warning_flags
+)
+
+juce_add_console_app(LinkClockTest PRODUCT_NAME "LinkClockTest")
+target_sources(LinkClockTest PRIVATE
+    Source/Tests/LinkClockTest.cpp
+    Source/Core/LinkClock.cpp
+    Source/Core/Metronome.cpp
+)
+target_include_directories(LinkClockTest PRIVATE Source)
+target_link_libraries(LinkClockTest PRIVATE
+    Ableton::Link MetronomeSamples juce::juce_audio_formats
+    juce::juce_recommended_config_flags juce::juce_recommended_warning_flags
 )
 
 add_executable(USBTransferBuffersTest EigenLite/tests/USBTransferBuffersTest.cpp)

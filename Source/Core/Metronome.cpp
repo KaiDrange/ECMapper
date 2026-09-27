@@ -58,6 +58,9 @@ void Metronome::reset() noexcept {
     samplesSinceClock_ = 0;
     midiPlaying_ = false;
     midiClickActive_ = false;
+    linkClickActive_ = false;
+    hasLinkPosition_ = false;
+    lastLinkBeat_ = -1.0;
     position_ = 0;
     beatPhase_ = 0.0;
     beat_ = 0;
@@ -96,6 +99,38 @@ float Metronome::nextSample(const bool play) noexcept {
         beatPhase_ -= phaseIncrement_;
     }
     return sample;
+}
+
+float Metronome::nextLinkSample(const double quarterNote, const double quarterNotesPerSample, const bool play) noexcept {
+    const float gain = gain_.getNextValue();
+    if (!play) {
+        linkClickActive_ = false;
+        hasLinkPosition_ = false;
+        lastLinkBeat_ = -1.0;
+        return 0.0f;
+    }
+    const double beats = quarterNote * 24.0 / clocksPerBeat_;
+    const double increment = quarterNotesPerSample * 24.0 / clocksPerBeat_;
+    const double beat = std::floor(beats + 1.0e-9);
+    const double previous = hasLinkPosition_ ? previousLinkPosition_ : beats - increment;
+    previousLinkPosition_ = beats;
+    hasLinkPosition_ = true;
+    if (quarterNote < -1.0e-9) {
+        linkClickActive_ = false;
+        lastLinkBeat_ = -1.0;
+        return 0.0f;
+    }
+    // Follow absolute Link phase without resetting a click's tail each callback.
+    // Compare against the last rendered sample so a clock correction across a
+    // callback boundary cannot skip an entire beat.
+    if (std::abs(beat - lastLinkBeat_) > 0.5 && beat > std::floor(previous + 1.0e-9)) {
+        click_ = beatsPerBar_ > 0 && std::fmod(beat, beatsPerBar_) == 0.0 ? 0 : 1;
+        position_ = 0;
+        lastLinkBeat_ = beat;
+        linkClickActive_ = true;
+    }
+    const auto& click = clicks_[static_cast<size_t>(click_)];
+    return linkClickActive_ && position_ < click.getNumSamples() ? click.getSample(0, position_++) * gain : 0.0f;
 }
 
 void Metronome::handleMidiClock(const juce::MidiMessage& message) noexcept {

@@ -284,6 +284,51 @@ int main() {
     localClick.start();
     localClick.process(2048, false, nullptr, &localClockEvents);
     expect(localClockEvents.isEmpty(), "Metronome-only restart must suppress all outgoing master messages");
+    // Transport sync is independent of MIDI Clock output.
+    ecm::MidiClockMaster unsyncedMaster;
+    juce::MidiBuffer unsyncedEvents;
+    unsyncedMaster.process(2048, 48000, 120, 3, true, unsyncedEvents, true, false);
+    expect(unsyncedEvents.getNumEvents() == 3, "Unsynced master must still send clock pulses");
+    for (auto event : unsyncedEvents)
+        expect(event.getMessage().isMidiClock(), "Unsynced master must not send Start");
+    unsyncedEvents.clear();
+    unsyncedMaster.process(128, 48000, 120, 4, true, unsyncedEvents, true, false);
+    expect(unsyncedEvents.isEmpty(), "Unsynced master must not send Stop");
+    unsyncedMaster.process(128, 48000, 120, 5, true, unsyncedEvents, true, false);
+    unsyncedEvents.clear();
+    unsyncedMaster.process(128, 48000, 120, 5, true, unsyncedEvents, true, true);
+    expect(unsyncedEvents.getNumEvents() == 1 && (*unsyncedEvents.begin()).getMessage().isMidiContinue(),
+           "Enabling sync while playing must resume receivers without resetting clock phase");
+    unsyncedEvents.clear();
+    unsyncedMaster.process(128, 48000, 120, 5, true, unsyncedEvents, true, false);
+    expect(unsyncedEvents.getNumEvents() == 1 && (*unsyncedEvents.begin()).getMessage().isMidiStop(),
+           "Disabling active transport sync must release receivers with one final Stop");
+
+    ecm::EigenAudioBridge localSlave;
+    localSlave.setStandaloneClockEnabled(true);
+    localSlave.setRouting(2, 4);
+    localSlave.prepare(48000);
+    localSlave.setMidiSlave(true);
+    localSlave.setStartStopSync(false);
+    juce::AudioBuffer<float> localSlaveAudio(2, 128);
+    midi.clear();
+    midi.addEvent(juce::MidiMessage::midiStart(), 0);
+    midi.addEvent(juce::MidiMessage::midiClock(), 10);
+    localSlave.process(128, false, &midi, nullptr, &localSlaveAudio, 0, 2);
+    expect(!localSlave.isPlaying() && localSlaveAudio.getMagnitude(0, 128) == 0.0f,
+           "Unsynced MIDI input must ignore remote Start");
+    expect(localSlave.start().isEmpty(), "Unsynced MIDI input must allow local Start");
+    midi.clear();
+    midi.addEvent(juce::MidiMessage::midiStop(), 0);
+    midi.addEvent(juce::MidiMessage::midiClock(), 10);
+    localSlave.process(128, false, &midi, nullptr, &localSlaveAudio, 0, 2);
+    expect(localSlave.isPlaying() && localSlaveAudio.getMagnitude(0, 128) > 0.0f,
+           "Local playback must follow clock pulses while ignoring remote Stop");
+    localSlave.stop();
+    localSlave.process(128, false, &midi, nullptr, &localSlaveAudio, 0, 2);
+    expect(!localSlave.isPlaying() && localSlaveAudio.getMagnitude(0, 128) == 0.0f,
+           "Local Stop must silence an unsynced MIDI input");
+
     // MIDI master phase must survive irregular callbacks without accumulating drift.
     for (double bpm : {120.0, 137.3, 300.0}) {
         ecm::MidiClockMaster master;
@@ -367,6 +412,20 @@ int main() {
         expect(sent[1].second >= startMs + 50 && sent[2].second >= startMs + 100,
                "Clock events must wait for their deadlines instead of bursting at callback start");
     }
+    // Clock-only MIDI must also survive the timestamped output worker.
+    sent.clear();
+    scheduled.clear();
+    scheduled.addEvent(juce::MidiMessage::midiClock(), 0);
+    sender.start();
+    sender.schedule(scheduled, juce::Time::getMillisecondCounterHiRes(), 48000);
+    for (int attempts = 0; attempts < 200; ++attempts) {
+        { const juce::ScopedLock lock(sentLock); if (!sent.empty()) break; }
+        juce::Thread::sleep(5);
+    }
+    sender.stop();
+    expect(sent.size() == 1 && sent.front().first == 0xf8,
+           "Clock-only sender must deliver clocks without inventing Start or shutdown Stop");
+
     // Each source has an independent destination mask and volume.
     for (int clickRoute = 1; clickRoute <= 4; ++clickRoute) {
         for (int inputRoute = 1; inputRoute <= 4; ++inputRoute) {

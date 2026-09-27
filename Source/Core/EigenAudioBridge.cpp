@@ -6,7 +6,9 @@ namespace ecm {
 void EigenAudioBridge::prepare(const double hostSampleRate) {
     const juce::ScopedLock lock(preparationLock_);
     ready_.store(false);
-    stop();
+    stop(false);
+    link_.prepare();
+    wasLinkPlaying_ = false;
     clockMaster_ = {};
     wasRenderingMetronome_ = false;
     inputGain_.reset(std::isfinite(hostSampleRate) && hostSampleRate > 0 ? hostSampleRate : 48000.0, 0.01);
@@ -36,7 +38,21 @@ void EigenAudioBridge::requestPlayback(const bool play) noexcept {
 
 void EigenAudioBridge::setHostActive(const bool active) noexcept {
     hostActive_.store(active);
-    if (!active && !standaloneClockEnabled_.load()) stop();
+    if (!active && !standaloneClockEnabled_.load()) stop(false);
+}
+
+void EigenAudioBridge::setTiming(const double bpm, const int beatsPerBar, const int beatUnit) noexcept {
+    metronome_.setTiming(bpm, beatsPerBar, beatUnit);
+    quantum_.store(beatsPerBar > 0 ? juce::jlimit(1, 12, beatsPerBar) * 4.0 / (beatUnit == 8 ? 8 : 4) : 4.0);
+    if (std::isfinite(bpm) && std::abs(configuredBpm_.exchange(bpm) - bpm) > 1.0e-9)
+        link_.requestTempo(bpm);
+}
+
+void EigenAudioBridge::setLinkEnabled(const bool enabled) {
+    if (link_.isEnabled() == enabled) return;
+    stop(false);
+    link_.setStartStopSync(startStopSync_.load());
+    link_.setEnabled(enabled);
 }
 
 void EigenAudioBridge::setAudioOutputEnabled(const bool enabled) noexcept {
@@ -55,7 +71,7 @@ void EigenAudioBridge::setRouting(int metronomeRoute, int inputRoute) noexcept {
 
 juce::String EigenAudioBridge::start() {
     const juce::ScopedLock lock(preparationLock_);
-    if (midiSlave_.load()) return "Transport follows the selected MIDI input in slave mode.";
+    if (midiSlave_.load() && startStopSync_.load()) return "Transport follows the selected MIDI input in slave mode.";
     if (isNonRealtime()) return "Eigenharp playback is disabled during offline rendering.";
     if (standaloneClockEnabled_.load()) {
         const double rate = hostSampleRate_.load();
@@ -65,21 +81,25 @@ juce::String EigenAudioBridge::start() {
         if (!hostActive_.load() && !metronomeUsesDeviceOutput()) return "The metronome is available in Host mode only.";
     }
     requestPlayback(true);
+    if (link_.isEnabled()) link_.requestStart();
     return {};
 }
 
-void EigenAudioBridge::stop() noexcept {
+void EigenAudioBridge::stop(const bool shareWithLink) noexcept {
     midiPlaying_.store(false);
     requestPlayback(false);
+    if (shareWithLink && link_.isEnabled()) link_.requestStop();
+    else link_.resetPlayback();
 }
 
 void EigenAudioBridge::setMidiSlave(const bool enabled) noexcept {
-    if (midiSlave_.exchange(enabled) != enabled) stop();
+    if (midiSlave_.exchange(enabled) != enabled) stop(false);
 }
 
 bool EigenAudioBridge::isPlaying() const noexcept {
     const auto command = command_.load();
-    return !isNonRealtime() && (standaloneClockEnabled_.load() || hostActive_.load() || metronomeUsesDeviceOutput()) && (midiSlave_.load() ? midiPlaying_.load() : (command & 1) != 0);
+    return !isNonRealtime() && (standaloneClockEnabled_.load() || hostActive_.load() || metronomeUsesDeviceOutput())
+        && (link_.isEnabled() ? link_.isPlaying() : (midiSlave_.load() ? midiPlaying_.load() : (command & 1) != 0));
 }
 
 void EigenAudioBridge::process(const int numFrames, const bool nonRealtime, const juce::MidiBuffer* midi, juce::MidiBuffer* clockOutput, juce::AudioBuffer<float>* audio, int inputChannels, int outputChannels) noexcept {
@@ -87,17 +107,29 @@ void EigenAudioBridge::process(const int numFrames, const bool nonRealtime, cons
     if (nonRealtime != isNonRealtime()) {
         transportState_.fetch_add(1);
         resetHeadphoneResampler();
-        if (nonRealtime) stop();
+        if (nonRealtime) stop(false);
+        else link_.prepare();
     }
-    const auto command = command_.load();
+    auto command = command_.load();
     const double quarterNotePosition = command != observedGeneration_ ? 0.0 : clockMaster_.quarterNotePosition();
     const double rate = hostSampleRate_.load();
     if (clockOutput != nullptr)
         clockMaster_.process(numFrames, rate, metronome_.bpm(), command,
                              !nonRealtime && std::isfinite(rate) && rate > 0.0
                                  && (standaloneClockEnabled_.load() || (ready_.load() && hostActive_.load()))
-                                 && !midiSlave_.load(), *clockOutput, midiClockOutputEnabled_.load());
+                                 && !midiSlave_.load() && !link_.isEnabled(), *clockOutput, midiClockOutputEnabled_.load(), startStopSync_.load());
     if (nonRealtime) { if (audio != nullptr) audio->clear(); return; }
+    const bool linked = link_.isEnabled();
+    const auto linkBlock = link_.process(numFrames, rate, quantum_.load(),
+                                         metronomeUsesDeviceOutput() ? outputLatency_.load() : 0.0);
+    if (linked && linkBlock.playing != wasLinkPlaying_) {
+        // Remote transport transitions also invalidate already queued USB audio.
+        requestPlayback(linkBlock.playing);
+        command = command_.load();
+        metronome_.reset();
+        resetHeadphoneResampler();
+    }
+    wasLinkPlaying_ = linked && linkBlock.playing;
     callbackCount_.fetch_add(1, std::memory_order_relaxed);
     const auto audioOutputState = audioOutputState_.load();
     const auto routing = routingState_.load();
@@ -115,14 +147,20 @@ void EigenAudioBridge::process(const int numFrames, const bool nonRealtime, cons
     if (command != observedGeneration_) {
         resetHeadphoneResampler();
         metronome_.reset();
+        if (midiSlave_.load() && !startStopSync_.load() && (command & 1) != 0)
+            metronome_.handleMidiClock(juce::MidiMessage::midiStart());
     }
     observedGeneration_ = command;
     const bool slave = midiSlave_.load();
     if (renderClick) {
         metronome_.beginBlock();
         if (!wasRenderingMetronome_) {
-            if (!slave && clockOutput != nullptr) metronome_.seekQuarterNote(quarterNotePosition);
-            else metronome_.reset();
+            if (!slave && !linked && clockOutput != nullptr) metronome_.seekQuarterNote(quarterNotePosition);
+            else {
+                metronome_.reset();
+                if (slave && !startStopSync_.load() && (command & 1) != 0)
+                    metronome_.handleMidiClock(juce::MidiMessage::midiStart());
+            }
         }
     }
     wasRenderingMetronome_ = renderClick;
@@ -135,13 +173,16 @@ void EigenAudioBridge::process(const int numFrames, const bool nonRealtime, cons
             while (event != end && (*event).samplePosition <= frame) {
                 const auto message = *event;
                 // Only short system messages are relevant; avoid copying/allocating SysEx.
-                if (message.numBytes > 0 && message.numBytes <= 3 && message.data[0] >= 0xf2)
+                if (message.numBytes > 0 && message.numBytes <= 3 && message.data[0] >= 0xf2
+                    && (startStopSync_.load() || message.data[0] == 0xf8))
                     metronome_.handleMidiClock(message.getMessage());
                 ++event;
             }
         }
-        const float click = renderClick ? (slave ? metronome_.nextMidiSample()
-                                                       : metronome_.nextSample((command & 1) != 0)) : 0.0f;
+        const float click = !renderClick ? 0.0f
+            : linked ? metronome_.nextLinkSample(linkBlock.beat + frame * linkBlock.beatsPerSample,
+                                                 linkBlock.beatsPerSample, linkBlock.playing)
+            : slave ? metronome_.nextMidiSample() : metronome_.nextSample((command & 1) != 0);
         const float gain = inputGain_.getNextValue();
         const float left = inputChannels > 0 ? audio->getSample(0, frame) * gain : 0.0f;
         const float right = inputChannels > 1 ? audio->getSample(1, frame) * gain : left;

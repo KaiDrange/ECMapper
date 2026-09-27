@@ -23,6 +23,7 @@ public:
     void beginBlock() noexcept; // Snapshot control settings once per callback.
     // Call after successful prepare() and beginBlock(). No allocation, locks or file I/O.
     float nextSample(bool play) noexcept;
+    float nextLinkSample(double quarterNote, double quarterNotesPerSample, bool play) noexcept;
     void handleMidiClock(const juce::MidiMessage& message) noexcept;
     float nextMidiSample() noexcept;
     bool midiPlaying() const noexcept { return midiPlaying_; }
@@ -46,6 +47,10 @@ private:
     int samplesSinceClock_ = 0;
     bool midiPlaying_ = false;
     bool midiClickActive_ = false;
+    bool linkClickActive_ = false;
+    bool hasLinkPosition_ = false;
+    double previousLinkPosition_ = 0.0;
+    double lastLinkBeat_ = -1.0;
 };
 
 } // namespace ecm

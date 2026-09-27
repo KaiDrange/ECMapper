@@ -11,15 +11,17 @@ class MidiClockMaster {
 public:
     [[nodiscard]] double quarterNotePosition() const noexcept { return quarterNotePosition_; }
     void process(const int frames, const double sampleRate, const double bpm, const uint64_t transport,
-                 const bool enabled, juce::MidiBuffer& output, const bool sendMidi = true) {
+                 const bool enabled, juce::MidiBuffer& output, const bool sendMidi = true, const bool syncTransport = true) {
         const bool play = enabled && (transport & 1) != 0;
-        if (sending_ && (!play || !sendMidi)) output.addEvent(juce::MidiMessage::midiStop(), 0);
+        if (sending_ && (!play || !sendMidi || !syncTransport)) output.addEvent(juce::MidiMessage::midiStop(), 0);
         if (play && (!playing_ || transport != transport_)) {
             phase_ = 0;
             quarterNotePosition_ = 0;
-            if (sendMidi) output.addEvent(juce::MidiMessage::midiStart(), 0);
+            if (sendMidi && syncTransport) output.addEvent(juce::MidiMessage::midiStart(), 0);
         }
-        sending_ = play && sendMidi;
+        else if (play && sendMidi && syncTransport && !sending_)
+            output.addEvent(juce::MidiMessage::midiContinue(), 0);
+        sending_ = play && sendMidi && syncTransport;
         playing_ = play;
         transport_ = transport;
         if (!play) return;
@@ -103,9 +105,10 @@ private:
             while (!threadShouldExit() && juce::Time::getMillisecondCounterHiRes() < event.dueMs)
                 wait(1);
             if (threadShouldExit()) break;
-            if (event.status == 0xfa) playing_ = true;
+            if (event.status == 0xfa || event.status == 0xfb) playing_ = true;
             if (event.status == 0xfc) playing_ = false;
-            if (event.status != 0xf8 || playing_) send_(event.status);
+            // Clock is valid without Start/Stop when transport sync is disabled.
+            send_(event.status);
         }
     }
     std::function<void(uint8_t)> send_;

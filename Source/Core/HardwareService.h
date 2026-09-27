@@ -45,7 +45,11 @@ public:
     void prepareMetronome(double sampleRate, juce::ValueTree& state);
     void processMetronome(int numFrames, bool nonRealtime = false, const juce::MidiBuffer* midi = nullptr, juce::MidiBuffer* clockOutput = nullptr, juce::AudioBuffer<float>* audio = nullptr, int inputChannels = 0, int outputChannels = 0) noexcept { audioBridge_.process(numFrames, nonRealtime, midi, clockOutput, audio, inputChannels, outputChannels); }
     juce::String startMetronome();
-    void stopMetronome() noexcept { audioBridge_.stop(); }
+    void stopMetronome(bool shareWithLink = true) noexcept { audioBridge_.stop(shareWithLink); }
+    void requestLinkTempo(double bpm) noexcept { audioBridge_.requestLinkTempo(bpm); }
+    double linkTempo() const { return audioBridge_.linkTempo(); }
+    int linkPeers() const noexcept { return audioBridge_.linkPeers(); }
+    void setMetronomeOutputLatency(double seconds) noexcept { audioBridge_.setOutputLatency(seconds); }
     bool isMetronomePlaying() const noexcept { return audioBridge_.isPlaying(); }
     void setMetronomeVolume(float volume) noexcept { audioBridge_.setVolume(volume); }
     void setHeadphoneSettings(const std::string& dev, bool enabled, unsigned gain, bool limited = true);

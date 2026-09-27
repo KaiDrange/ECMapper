@@ -2,6 +2,7 @@
 
 #include "Metronome.h"
 #include "MidiClockOutput.h"
+#include "LinkClock.h"
 #include <juce_audio_basics/juce_audio_basics.h>
 #include <array>
 #include <atomic>
@@ -27,12 +28,21 @@ public:
     };
 
     void prepare(double hostSampleRate);
-    void setTiming(const double bpm, int beatsPerBar, const int beatUnit) noexcept { metronome_.setTiming(bpm, beatsPerBar, beatUnit); }
+    void setTiming(double bpm, int beatsPerBar, int beatUnit) noexcept;
+    void setLinkEnabled(bool enabled);
+    void setStartStopSync(bool enabled) noexcept {
+        startStopSync_.store(enabled);
+        link_.setStartStopSync(enabled);
+    }
+    double linkTempo() const { return link_.tempo(); }
+    void requestLinkTempo(double bpm) noexcept { link_.requestTempo(bpm); }
+    int linkPeers() const noexcept { return link_.peers(); }
+    void setOutputLatency(double seconds) noexcept { outputLatency_.store(seconds); }
     void setHostActive(bool active) noexcept;
     void setStandaloneClockEnabled(bool enabled) noexcept { standaloneClockEnabled_.store(enabled); }
     void setAudioOutputEnabled(bool enabled) noexcept;
     juce::String start(); // Non-audio thread. Empty string means success.
-    void stop() noexcept;
+    void stop(bool shareWithLink = true) noexcept;
     bool isPlaying() const noexcept;
     void setVolume(float volume) noexcept { metronome_.setVolume(volume); }
     // Destination IDs: 1 = headphones, 2 = audio device/host, 3 = both, 4 = none.
@@ -41,7 +51,7 @@ public:
     void setInputVolume(float volume) noexcept { inputVolume_.store(juce::jlimit(0.0f, 1.0f, volume)); }
     void setMidiSlave(bool enabled) noexcept;
     void setMidiClockOutputEnabled(bool enabled) noexcept {
-        if (midiClockOutputEnabled_.exchange(enabled) != enabled) stop();
+        if (midiClockOutputEnabled_.exchange(enabled) != enabled) stop(false);
     }
     void process(int numFrames, bool nonRealtime = false, const juce::MidiBuffer* midi = nullptr, juce::MidiBuffer* clockOutput = nullptr, juce::AudioBuffer<float>* audio = nullptr, int inputChannels = 0, int outputChannels = 0) noexcept;
     uint64_t transportState() const noexcept { return transportState_.load(); }
@@ -58,6 +68,11 @@ private:
     std::array<float, 2> previousHeadphoneSample_ {};
     bool hasPreviousHeadphoneSample_ = false;
     Metronome metronome_;
+    LinkClock link_;
+    std::atomic<double> quantum_ { 4.0 };
+    std::atomic<double> configuredBpm_ { 120.0 };
+    std::atomic<double> outputLatency_ { 0.0 };
+    bool wasLinkPlaying_ = false;
     std::atomic<uint64_t> routingState_ { 5 }; // Two route masks in low four bits, generation above.
     uint64_t observedRoutingState_ = 5;
     std::atomic<float> inputVolume_ { 1.0f };
@@ -66,6 +81,7 @@ private:
     MidiClockMaster clockMaster_;
     std::atomic<bool> midiClockOutputEnabled_ { true };
     std::atomic<bool> midiSlave_ { false };
+    std::atomic<bool> startStopSync_ { true };
     std::atomic<bool> midiPlaying_ { false };
     juce::AbstractFifo fifo_ { queueBlocks };
     std::array<Block, queueBlocks> queue_;

@@ -28,6 +28,8 @@ public:
     static inline const juce::Identifier id_clockSettings { "clockSettings" };
     static inline const juce::Identifier id_clockSource { "clockSource" };
     static inline const juce::Identifier id_clockBpm { "clockBpm" };
+    static inline const juce::Identifier id_linkStartStopSync { "linkStartStopSync" };
+    static inline const juce::Identifier id_syncStartStop { "syncStartStop" };
     static inline const juce::Identifier id_timeSignature { "timeSignature" };
     static juce::ValueTree getClockSettings(juce::ValueTree& rootState);
 

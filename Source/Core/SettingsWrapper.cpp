@@ -324,6 +324,8 @@ juce::ValueTree SettingsWrapper::getClockSettings(juce::ValueTree& rootState) {
     auto clock = getSettingsTree(rootState).getOrCreateChildWithName(id_clockSettings, nullptr);
     if (!clock.hasProperty(id_clockSource)) clock.setProperty(id_clockSource, "midiMaster", nullptr);
     if (!clock.hasProperty(id_clockBpm)) clock.setProperty(id_clockBpm, 120.0, nullptr);
+    if (!clock.hasProperty(id_syncStartStop))
+        clock.setProperty(id_syncStartStop, clock.getProperty(id_linkStartStopSync, true), nullptr);
     if (!clock.hasProperty(id_timeSignature)) clock.setProperty(id_timeSignature, "4/4", nullptr);
     return clock;
 }

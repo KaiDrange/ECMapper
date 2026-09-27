@@ -79,7 +79,7 @@ void HardwareService::startService(juce::ValueTree* state, bool resolveRoleFromD
 }
 
 void HardwareService::stopService() {
-    audioBridge_.stop();
+    audioBridge_.stop(false);
     audioBridge_.setAudioOutputEnabled(false);
     audioBridge_.setHostActive(false);
     if (!isThreadRunning()) return;
@@ -125,6 +125,8 @@ void HardwareService::updateMetronomeSettings(juce::ValueTree& state) {
     audioBridge_.setTiming(static_cast<double>(clock.getProperty(SettingsWrapper::id_clockBpm)),
                           signature.upToFirstOccurrenceOf("/", false, false).getIntValue(),
                           signature.fromFirstOccurrenceOf("/", false, false).getIntValue());
+    audioBridge_.setStartStopSync(static_cast<bool>(clock.getProperty(SettingsWrapper::id_syncStartStop)));
+    audioBridge_.setLinkEnabled(clock.getProperty(SettingsWrapper::id_clockSource).toString() == "abletonLink");
 }
 
 juce::String HardwareService::startMetronome() {
@@ -134,8 +136,8 @@ juce::String HardwareService::startMetronome() {
     if (state_ != nullptr) {
         auto clock = SettingsWrapper::getClockSettings(*state_);
         const auto source = clock.getProperty(SettingsWrapper::id_clockSource).toString();
-        if (source != "midiMaster" && source != "metronomeOnly")
-            return "Manual Start requires Metronome only or MIDI Clock Master. In slave mode, send MIDI Start/Continue from the selected input.";
+        if (source == "midiIn" && static_cast<bool>(clock.getProperty(SettingsWrapper::id_syncStartStop)))
+            return "In MIDI Clock In mode, send MIDI Start/Continue from the selected input.";
         updateMetronomeSettings(*state_);
     }
     const juce::ScopedLock lock(deviceListLock_);

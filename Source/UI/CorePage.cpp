@@ -161,8 +161,9 @@ CorePage::CorePage(HardwareService& hardwareService, juce::ValueTree& state)
     const auto configureClockSource = [this](juce::ToggleButton& button, const char* source) {
         button.setRadioGroupId(1001);
         button.onClick = [this, source] {
+            hardwareService_.stopMetronome(false);
             clockSettings.setProperty(SettingsWrapper::id_clockSource, source, nullptr);
-            hardwareService_.stopMetronome();
+            hardwareService_.updateMetronomeSettings(state_);
             updateClockControls();
         };
         addAndMakeVisible(button);
@@ -175,15 +176,28 @@ CorePage::CorePage(HardwareService& hardwareService, juce::ValueTree& state)
     midiClockIn.setTooltip("Follow Clock, Start, Stop and Continue from the MIDI input selected in Audio/MIDI settings (standalone only)");
     midiClockIn.setEnabled(juce::JUCEApplicationBase::isStandaloneApp());
     midiClockMaster.setTooltip("Set the tempo locally; standalone sends MIDI Clock and Start/Stop to each distinct zone output");
-    abletonLink.setTooltip("Use Ableton Link for tempo synchronization");
+    abletonLink.setTooltip("Share tempo and beat phase with Link apps on the local network. Start joins the next bar; no MIDI clock is sent.");
+    syncStartStop.onClick = [this] {
+        clockSettings.setProperty(SettingsWrapper::id_syncStartStop, syncStartStop.getToggleState(), nullptr);
+        hardwareService_.updateMetronomeSettings(state_);
+        updateClockControls();
+    };
+    addAndMakeVisible(syncStartStop);
+    linkStatus.setColour(juce::Label::textColourId, Style::mutedText());
+    addAndMakeVisible(linkStatus);
 
     bpmInput.setName("BPM");
     bpmInput.setSliderStyle(juce::Slider::IncDecButtons);
     bpmInput.setTextBoxStyle(juce::Slider::TextBoxLeft, false, 62, 26);
     bpmInput.setRange(20.0, 300.0, 0.1);
     bpmInput.setScrollWheelEnabled(false);
-    bpmInput.getValueObject().referTo(clockSettings.getPropertyAsValue(SettingsWrapper::id_clockBpm, nullptr));
-    bpmInput.onValueChange = [this] { hardwareService_.updateMetronomeSettings(state_); };
+    bpmInput.onValueChange = [this] {
+        if (updatingClockControls_) return;
+        clockSettings.setProperty(SettingsWrapper::id_clockBpm, bpmInput.getValue(), nullptr);
+        hardwareService_.updateMetronomeSettings(state_);
+        if (clockSettings.getProperty(SettingsWrapper::id_clockSource).toString() == "abletonLink")
+            hardwareService_.requestLinkTempo(bpmInput.getValue());
+    };
     addAndMakeVisible(bpmLabel);
     addAndMakeVisible(bpmInput);
     addAndMakeVisible(timeSignatureLabel);
@@ -232,6 +246,7 @@ void CorePage::deviceListChanged() {
 }
 
 void CorePage::updateClockControls() {
+    const juce::ScopedValueSetter<bool> updating(updatingClockControls_, true);
     const auto source = clockSettings.getProperty(SettingsWrapper::id_clockSource).toString();
     const bool slave = source == "midiIn";
     const bool link = source == "abletonLink";
@@ -239,13 +254,29 @@ void CorePage::updateClockControls() {
     metronomeOnly.setToggleState(source == "metronomeOnly", juce::dontSendNotification);
     midiClockMaster.setToggleState(source == "midiMaster", juce::dontSendNotification);
     abletonLink.setToggleState(link, juce::dontSendNotification);
+    const bool transportRelevant = source != "metronomeOnly";
+    const bool sync = static_cast<bool>(clockSettings.getProperty(SettingsWrapper::id_syncStartStop));
+    syncStartStop.setVisible(transportRelevant);
+    syncStartStop.setEnabled(transportRelevant);
+    syncStartStop.setTooltip(link ? "Share Start and Stop with Link peers that also enable transport sync"
+                                 : slave ? "Follow MIDI Start, Continue and Stop; turn off to control playback locally while following MIDI Clock"
+                                         : "Send MIDI Start and Stop with the local transport; MIDI Clock is independent of this switch");
+    syncStartStop.setToggleState(static_cast<bool>(clockSettings.getProperty(SettingsWrapper::id_syncStartStop)), juce::dontSendNotification);
+    const int peers = hardwareService_.linkPeers();
+    linkStatus.setText(link ? (peers == 0 ? "Link: no peers" : "Link: " + juce::String(peers) + (peers == 1 ? " peer" : " peers")) : "", juce::dontSendNotification);
+    bpmInput.setRange(20.0, link ? 999.0 : 300.0, 0.1);
+    if (!bpmInput.isMouseButtonDown(true) && !bpmInput.hasKeyboardFocus(true))
+        bpmInput.setValue(link ? hardwareService_.linkTempo() : static_cast<double>(clockSettings.getProperty(SettingsWrapper::id_clockBpm)), juce::dontSendNotification);
     bpmInput.setEnabled(!slave);
     bpmLabel.setEnabled(!slave);
-    bpmInput.setTooltip(slave ? "Local tempo is unused in slave mode; tempo follows the selected MIDI input" : "Tempo in beats per minute (20-300)");
+    bpmInput.setTooltip(slave ? "Local tempo is unused in slave mode; tempo follows the selected MIDI input"
+                             : link ? "Link session tempo; edits are shared with connected peers" : "Tempo in beats per minute (20-300)");
     timeSignature.setText(clockSettings.getProperty(SettingsWrapper::id_timeSignature).toString(), juce::dontSendNotification);
     const bool transportRunning = hardwareService_.isMetronomePlaying();
-    startButton.setEnabled(!slave);
-    startButton.setTooltip(slave ? "Send MIDI Start or Continue from the selected input" : "Start the metronome on the first beat of a bar");
+    startButton.setEnabled(!slave || !sync);
+    startButton.setTooltip(slave && sync ? "Send MIDI Start or Continue from the selected input"
+                               : slave ? "Start locally on the next incoming MIDI clock pulse"
+                               : link ? "Join the next Link bar (immediate when no peers are connected)" : "Start the metronome on the first beat of a bar");
     startButton.setToggleState(transportRunning, juce::dontSendNotification);
     stopButton.setToggleState(!transportRunning, juce::dontSendNotification);
 }
@@ -531,7 +562,7 @@ void CorePage::resized() {
         clientPortInput.setBounds(clientArea.removeFromLeft(80).reduced(2));
     }
     area.removeFromTop(8);
-    auto controlsArea = area.removeFromTop(168);
+    auto controlsArea = area.removeFromTop(196);
     auto audioArea = controlsArea.removeFromLeft(340);
     controlsArea.removeFromLeft(12);
     clockGroup.setBounds(controlsArea);
@@ -544,6 +575,9 @@ void CorePage::resized() {
     sources = clockArea.removeFromTop(28);
     midiClockMaster.setBounds(sources.removeFromLeft(sourceWidth));
     abletonLink.setBounds(sources);
+    auto linkRow = clockArea.removeFromTop(28);
+    linkRow.removeFromLeft(sourceWidth);
+    linkStatus.setBounds(linkRow);
     clockArea.removeFromTop(6);
     auto tempo = clockArea.removeFromTop(28);
     bpmLabel.setBounds(tempo.removeFromLeft(36));
@@ -556,6 +590,8 @@ void CorePage::resized() {
     startButton.setBounds(transport.removeFromLeft(90));
     transport.removeFromLeft(8);
     stopButton.setBounds(transport.removeFromLeft(90));
+    transport.removeFromLeft(8);
+    syncStartStop.setBounds(transport);
     audioGroup.setBounds(audioArea);
     audioArea = audioArea.reduced(16, 10);
     audioArea.removeFromTop(10);

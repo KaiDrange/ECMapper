@@ -43,6 +43,9 @@ private:
     juce::ToggleButton midiClockIn { "MIDI Clock In" };
     juce::ToggleButton midiClockMaster { "MIDI Clock Master" };
     juce::ToggleButton abletonLink { "Ableton Link" };
+    juce::ToggleButton syncStartStop { "Sync start/stop" };
+    juce::Label linkStatus;
+    bool updatingClockControls_ = false;
     juce::Label bpmLabel { "", "BPM" };
     juce::Slider bpmInput;
     juce::Label timeSignatureLabel { "", "Time signature" };
