@@ -1,5 +1,6 @@
 #pragma once
 #include <JuceHeader.h>
+#include <array>
 #include "NumberInputComponent.h"
 
 namespace ecm {
@@ -21,19 +22,29 @@ public:
     void removeListener(Listener* listenerToRemove) { listeners.remove(listenerToRemove); }
 
 private:
+    class ZoneToggleButton : public juce::ToggleButton {
+        void paintButton(juce::Graphics&, bool highlighted, bool down) override;
+    };
+
     void sendChangeMessage();
+    void updateVisibility();
     void numberInputChanged(NumberInputComponent*) override;
     void visibilityChanged() override;
     
     juce::GroupComponent typeRadioGroup;
     juce::ToggleButton typePreset;
     juce::ToggleButton typeTranspose;
+    juce::ToggleButton typeTransport;
+    juce::ComboBox transportAction;
 
     juce::GroupComponent modeRadioGroup;
     juce::ToggleButton modeLatch;
     juce::ToggleButton modeMomentary;
     juce::ToggleButton modeTrigger;
 
+    juce::GroupComponent presetProgramGroup;
+    std::array<ZoneToggleButton, 3> presetProgramEnabled;
+    std::array<std::unique_ptr<NumberInputComponent>, 3> presetPrograms;
     NumberInputComponent presetNumber;
     NumberInputComponent transposeSemitones;
 

@@ -1273,10 +1273,16 @@ void ECMapperAudioProcessor::handleHardwareMessage(const ecm::osc::Message& msg,
     ecm::osc::Message outgoingMsg;
     outgoingMsg.type = ecm::osc::MessageType::Undefined;
     int presetSlotRequest = -1;
+    int transportRequest = -1;
     if (sink != nullptr)
-        midiService.processMessage(msg, outgoingMsg, midiMessages, *sink, sampleOffset, &presetSlotRequest);
+        midiService.processMessage(msg, outgoingMsg, midiMessages, *sink, sampleOffset, &presetSlotRequest, &transportRequest);
     else
-        midiService.processMessage(msg, outgoingMsg, midiMessages, sampleOffset, &presetSlotRequest);
+        midiService.processMessage(msg, outgoingMsg, midiMessages, sampleOffset, &presetSlotRequest, &transportRequest);
+
+    if (transportRequest != -1) {
+        transportRequestAsync_.store(transportRequest);
+        triggerAsyncUpdate();
+    }
 
     if (outgoingMsg.type == ecm::osc::MessageType::LED) {
         if (hardwareService.getDeviceMode(msg.devId) == ecm::DeviceMode::Local)
@@ -1786,6 +1792,15 @@ juce::ValueTree ECMapperAudioProcessor::makeComparableState(juce::ValueTree stat
 
 void ECMapperAudioProcessor::handleAsyncUpdate()
 {
+    const int transport = transportRequestAsync_.exchange(-1);
+    if (transport == 1) {
+        const auto error = hardwareService.startMetronome();
+        if (error.isNotEmpty())
+            ECM_LOGGER(logger, "Transport Start: " + error);
+    } else if (transport == 0) {
+        hardwareService.stopMetronome();
+    }
+
     const int slot = slotToLoadAsync_.exchange(-1);
     if (slot != -1)
         loadPresetSlot(slot);

@@ -122,6 +122,8 @@ void KeyConfigComponent::paint(juce::Graphics& g) {
         if (parts.size() >= 2) {
             if (parts[0] == "Preset") {
                 keyText = "P" + parts[1];
+            } else if (parts[0] == "Transport") {
+                keyText = parts[1] == "Latch" ? "Start/Stop" : parts[2];
             } else if (parts[0] == "Transpose") {
                 juce::String valStr = parts.size() == 3 ? parts[2] : parts[1];
                 int val = valStr.getIntValue();

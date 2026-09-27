@@ -13,6 +13,7 @@
 #undef private
 
 #include "Core/LayoutWrapper.h"
+#include "UI/AppCtrlSectionComponent.h"
 #include "Core/ExpressionCurveWrapper.h"
 #include "Core/SettingsWrapper.h"
 #include "Core/ZoneWrapper.h"
@@ -351,6 +352,118 @@ bool verifyPluginDirectMidiMessageKeyRoutingWithoutZone()
     return expect(false, "plugin direct mode should still forward MIDI message command keys when the key has no explicit zone");
 }
 
+bool verifyPresetKeyProgramChanges()
+{
+    using namespace ecm;
+    struct RecordingSink : PerformanceEventSink {
+        std::vector<PerformanceEvent> events;
+        void pushEvent(const PerformanceEvent& event) override { events.push_back(event); }
+    };
+    bool ok = true;
+    for (const auto* mapping : { "Preset;2", "Preset;2;0;-1;127", "Preset;2;12;45;67" }) {
+        ECMapperAudioProcessor processor;
+        SettingsWrapper::setMidi2Mode(false, processor.state.state);
+        ZoneWrapper::setMidiChannelType(InstrumentType::Alpha, Zone::Zone1, MidiChannelType::Chan5, processor.state.state);
+        ZoneWrapper::setMidiChannelType(InstrumentType::Alpha, Zone::Zone2, MidiChannelType::MPE_Low, processor.state.state);
+        ZoneWrapper::setMidiChannelType(InstrumentType::Alpha, Zone::Zone3, MidiChannelType::MPE_High, processor.state.state);
+        for (auto zone : { Zone::Zone1, Zone::Zone2, Zone::Zone3 })
+            setZoneEnabledValue(processor, InstrumentType::Alpha, zone, true);
+        LayoutWrapper::LayoutKey key;
+        key.keyId = { 0, 0, InstrumentType::Alpha };
+        key.keyType = EigenharpKeyType::Normal;
+        key.zone = Zone::NoZone;
+        key.keyMappingType = KeyMappingType::AppCtrl;
+        key.mappingValue = mapping;
+        LayoutWrapper::setLayoutKey(key, processor.state.state);
+        processor.prepareToPlay(48000.0, 64);
+        osc::Message input, output;
+        input.type = osc::MessageType::Key;
+        input.device = InstrumentType::Alpha;
+        input.course = 0;
+        input.key = 0;
+        input.active = true;
+        RecordingSink sink;
+        juce::MidiBuffer midi;
+        int preset = -1;
+        processor.midiService.processMessage(input, output, midi, sink, 7, &preset);
+        ok &= expect(preset == 2, "program changes should retain the preset load request");
+        const auto tokens = juce::StringArray::fromTokens(mapping, ";", "");
+        size_t expectedCount = 0;
+        const int channels[] = { 5, 1, 16 };
+        for (int zone = 0; zone < 3 && tokens.size() == 5; ++zone) {
+            const int program = tokens[zone + 2].getIntValue();
+            if (program < 0) continue;
+            if (expectedCount < sink.events.size()) {
+                const auto& event = sink.events[expectedCount];
+                ok &= expect(event.kind == PerformanceEventKind::ProgramChange && event.program == program
+                             && event.channel == channels[zone] && event.zoneIndex == zone && event.sampleOffset == 7,
+                             "preset Program Change should preserve program, zone, channel and timing");
+                processor.midiService.getProtocol()->renderEvent(midi, event);
+            }
+            ++expectedCount;
+        }
+        ok &= expect(sink.events.size() == expectedCount, "only opted-in zones should send Program Changes");
+        ok &= expect(midi.getNumEvents() == static_cast<int>(expectedCount), "Program Changes should render to MIDI output");
+        sink.events.clear();
+        preset = -1;
+        processor.midiService.processMessage(input, output, midi, sink, 8, &preset);
+        input.active = false;
+        processor.midiService.processMessage(input, output, midi, sink, 9, &preset);
+        ok &= expect(sink.events.empty() && preset == -1, "held keys and releases should not resend preset Program Changes");
+        processor.releaseResources();
+    }
+    return ok;
+}
+
+bool verifyTransportKeys()
+{
+    using namespace ecm;
+    bool ok = true;
+    AppCtrlSectionComponent panel;
+    for (const auto* mapping : { "Transport;Latch", "Transport;Trigger;Start", "Transport;Trigger;Stop",
+                                "Preset;2", "Preset;2;0;-1;127", "Transpose;Momentary;12", "Transpose;Latch;-12" }) {
+        panel.updatePanelFromMessageString(mapping);
+        ok &= expect(panel.getMessageString() == mapping, "App Ctrl editor should preserve mappings");
+    }
+    panel.updatePanelFromMessageString("Transpose;12");
+    ok &= expect(panel.getMessageString() == "Transpose;Latch;12", "legacy transpose should remain a latch");
+    panel.updatePanelFromMessageString("");
+    ok &= expect(panel.getMessageString() == "Preset;1", "empty mapping should reset the editor");
+    for (const auto* mapping : { "Transport;Latch", "Transport;Trigger;Start", "Transport;Trigger;Stop", "Transport;Momentary;Start" }) {
+        ECMapperAudioProcessor processor;
+        LayoutWrapper::LayoutKey key;
+        key.keyId = { 0, 0, InstrumentType::Alpha };
+        key.keyType = EigenharpKeyType::Normal;
+        key.keyColour = KeyColour::Off;
+        key.zone = Zone::NoZone;
+        key.keyMappingType = KeyMappingType::AppCtrl;
+        key.mappingValue = mapping;
+        LayoutWrapper::setLayoutKey(key, processor.state.state);
+        processor.prepareToPlay(48000.0, 64);
+        osc::Message input, output;
+        input.type = osc::MessageType::Key;
+        input.device = InstrumentType::Alpha;
+        input.course = 0;
+        input.key = 0;
+        juce::MidiBuffer midi;
+        auto press = [&](bool active) {
+            input.active = active;
+            int request = -1;
+            processor.midiService.processMessage(input, output, midi, 0, nullptr, &request);
+            return request;
+        };
+        const bool invalid = key.mappingValue.contains("Momentary");
+        const int first = invalid ? -1 : key.mappingValue.endsWith("Stop") ? 0 : 1;
+        ok &= expect(press(true) == first, "transport key should request its configured action");
+        ok &= expect(press(true) == -1, "held transport key should not repeat");
+        ok &= expect(press(false) == -1, "transport release should do nothing");
+        ok &= expect(press(true) == (key.mappingValue.contains("Latch") ? 0 : first),
+                     "latch should stop on second press; triggers should repeat their action");
+        processor.releaseResources();
+    }
+    return ok;
+}
+
 bool verifyPresetLoadingPreservesTransportModes()
 {
     using namespace ecm;
@@ -542,6 +655,8 @@ int main()
 
     ok &= verifyPluginDirectMidiMessageKeyRouting();
     ok &= verifyPluginDirectMidiMessageKeyRoutingWithoutZone();
+    ok &= verifyPresetKeyProgramChanges();
+    ok &= verifyTransportKeys();
     ok &= verifyPresetLoadingPreservesTransportModes();
     ok &= verifyStateRestoreKeepsZoneEnabledParameters();
     ok &= verifyMappingNotesAcceptChannelsOneToFour();

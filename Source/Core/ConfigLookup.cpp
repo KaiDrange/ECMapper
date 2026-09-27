@@ -92,7 +92,8 @@ void ConfigLookup::updateKeyUnlocked(LayoutWrapper::KeyId keyId) {
     jassert(layoutKey.keyId.course >= 0 && layoutKey.keyId.course < 3);
     jassert(layoutKey.keyId.keyNo >= 0 && layoutKey.keyId.keyNo < 120);
 
-    const auto effectiveZone = layoutKey.zone == Zone::NoZone && layoutKey.keyMappingType == KeyMappingType::MidiMsg
+    const auto effectiveZone = layoutKey.zone == Zone::NoZone
+        && (layoutKey.keyMappingType == KeyMappingType::MidiMsg || layoutKey.keyMappingType == KeyMappingType::AppCtrl)
         ? Zone::Zone1
         : layoutKey.zone;
     
@@ -202,6 +203,23 @@ void ConfigLookup::updateKeyUnlocked(LayoutWrapper::KeyId keyId) {
                     key.appCtrlType = 1;
                     key.appCtrlValue = appCtrlParts[1].getIntValue();
                     key.cmdType = 0;
+                    for (size_t zoneIndex = 0; zoneIndex < key.presetPrograms.size(); ++zoneIndex) {
+                        const int tokenIndex = static_cast<int>(zoneIndex) + 2;
+                        if (appCtrlParts.size() <= tokenIndex) continue;
+                        const int program = appCtrlParts[tokenIndex].getIntValue();
+                        if (program < 0 || program > 127) continue;
+                        key.presetPrograms[zoneIndex] = program;
+                        const auto zone = static_cast<Zone>(zoneIndex + 1);
+                        if (!ZoneWrapper::getEnabled(deviceType, zone, pluginState.state)) continue;
+                        const auto channel = ZoneWrapper::getMidiChannelType(deviceType, zone, pluginState.state);
+                        key.presetProgramChannels[zoneIndex] = channel == MidiChannelType::MPE_Low ? 1
+                            : channel == MidiChannelType::MPE_High ? 16 : static_cast<int>(channel);
+                    }
+                } else if (appCtrlParts[0] == "Transport") {
+                    key.appCtrlType = 3;
+                    key.cmdType = appCtrlParts[1] == "Latch" ? 1
+                        : appCtrlParts[1] == "Trigger" ? 3 : 0;
+                    key.appCtrlValue = appCtrlParts[2] == "Stop" ? 0 : 1;
                 } else if (appCtrlParts[0] == "Transpose") {
                     key.appCtrlType = 2;
                     if (appCtrlParts.size() == 3) {

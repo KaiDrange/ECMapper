@@ -398,16 +398,16 @@ void MidiService::valueTreeRedirected(juce::ValueTree& tree)
         voiceRouter_->configureLayout(mpeZone_);
 }
 
-void MidiService::processMessage(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, juce::MidiBuffer& midiBuffer, int eventTime, int* presetSlotRequest) {
+void MidiService::processMessage(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, juce::MidiBuffer& midiBuffer, int eventTime, int* presetSlotRequest, int* transportRequest) {
     auto* snapshot = activeSnapshot_.load(std::memory_order_acquire);
     if (snapshot == nullptr)
         return;
 
     MidiBufferPerformanceEventSink sink { midiBuffer, snapshot->protocol.get() };
-    processMessage(oscMsg, outgoingOscMsg, midiBuffer, sink, eventTime, presetSlotRequest);
+    processMessage(oscMsg, outgoingOscMsg, midiBuffer, sink, eventTime, presetSlotRequest, transportRequest);
 }
 
-void MidiService::processMessage(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, juce::MidiBuffer& midiBuffer, PerformanceEventSink& sink, int eventTime, int* presetSlotRequest) {
+void MidiService::processMessage(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, juce::MidiBuffer& /*midiBuffer*/, PerformanceEventSink& sink, int eventTime, int* presetSlotRequest, int* transportRequest) {
     if (!initialized_) return;
 
     auto* snapshot = activeSnapshot_.load(std::memory_order_acquire);
@@ -453,7 +453,7 @@ void MidiService::processMessage(const osc::Message& oscMsg, osc::Message& outgo
             else if (keyLookup.mapType == KeyMappingType::MidiMsg)
                 processCmdKey(oscMsg, outgoingOscMsg, keyLookup, keyState, sink, eventTime, voiceRouter);
             else if (keyLookup.mapType == KeyMappingType::AppCtrl)
-                processAppCtrlKey(oscMsg, outgoingOscMsg, keyLookup, keyState, midiBuffer, eventTime, presetSlotRequest);
+                processAppCtrlKey(oscMsg, outgoingOscMsg, keyLookup, keyState, sink, eventTime, presetSlotRequest, transportRequest);
             break;
         }
         case osc::MessageType::Breath: {
@@ -544,7 +544,7 @@ void MidiService::processCmdKey(const osc::Message& oscMsg, osc::Message& outgoi
     state->status = oscMsg.active ? KeyStatus::Active : KeyStatus::Off;
 }
 
-void MidiService::processAppCtrlKey(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, const ConfigLookup::Key& keyLookup, KeyState* state, juce::MidiBuffer& /*buffer*/, int /*eventTime*/, int* presetSlotRequest) {
+void MidiService::processAppCtrlKey(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, int* presetSlotRequest, int* transportRequest) {
     int deviceIndex = static_cast<int>(keyLookup.keyId.deviceType) - 1;
     if (deviceIndex < 0 || deviceIndex > 2) return;
 
@@ -552,6 +552,27 @@ void MidiService::processAppCtrlKey(const osc::Message& oscMsg, osc::Message& ou
         if (oscMsg.active && state->status == KeyStatus::Off) {
             if (presetSlotRequest != nullptr)
                 *presetSlotRequest = keyLookup.appCtrlValue;
+            for (size_t zone = 0; zone < keyLookup.presetPrograms.size(); ++zone) {
+                const int program = keyLookup.presetPrograms[zone];
+                const int channel = keyLookup.presetProgramChannels[zone];
+                if (program >= 0 && channel >= 1 && channel <= 16)
+                    sink.pushEvent(PerformanceEvent::programChange(channel, program, eventTime, static_cast<int>(zone)));
+            }
+        }
+    } else if (keyLookup.appCtrlType == 3) { // Transport
+        if (oscMsg.active && state->status == KeyStatus::Off && transportRequest != nullptr) {
+            if (keyLookup.cmdType == 1) {
+                state->isLatchOn = !state->isLatchOn;
+                *transportRequest = state->isLatchOn ? 1 : 0;
+                outgoingOscMsg.type = osc::MessageType::LED;
+                outgoingOscMsg.device = keyLookup.keyId.deviceType;
+                std::strncpy(outgoingOscMsg.devId, oscMsg.devId, 63);
+                outgoingOscMsg.course = static_cast<unsigned int>(keyLookup.keyId.course);
+                outgoingOscMsg.key = static_cast<unsigned int>(keyLookup.keyId.keyNo);
+                outgoingOscMsg.value = static_cast<float>(state->isLatchOn ? KeyColour::Yellow : keyLookup.keyColour);
+            } else if (keyLookup.cmdType == 3) {
+                *transportRequest = keyLookup.appCtrlValue;
+            }
         }
     } else if (keyLookup.appCtrlType == 2) { // Transpose
         int mode = keyLookup.cmdType; // 1 = Latch, 2 = Momentary, 3 = Trigger
@@ -1312,8 +1333,8 @@ void MidiService::resendLEDs(const char* devId, InstrumentType type, osc::Messag
                 } else {
                     colour = (unsigned int)keyLookup.keyColour;
                 }
-            } else if (keyLookup.mapType == KeyMappingType::AppCtrl && keyLookup.appCtrlType == 2 && keyLookup.cmdType == 1) {
-                // App Ctrl Transpose Latch
+            } else if (keyLookup.mapType == KeyMappingType::AppCtrl && (keyLookup.appCtrlType == 2 || keyLookup.appCtrlType == 3) && keyLookup.cmdType == 1) {
+                // App Ctrl Latch
                 if (keyStates_[deviceIndex][course][keyNo].isLatchOn) {
                     colour = (unsigned int)KeyColour::Yellow;
                 } else {

@@ -128,6 +128,7 @@ private:
     std::atomic<bool> ignorePresetParameterUpdate_ { false };
     std::atomic<int> lastPresetParameterIndex_ { 0 };
     bool presetBatchInProgress_ = false;
+    std::atomic<int> transportRequestAsync_ { -1 };
     std::atomic<int> slotToLoadAsync_ { -1 };
     std::atomic<bool> runtimeConfigRefreshRequested_ { false };
     ecm::Vst3DirectEventQueue vst3DirectEventQueue_;

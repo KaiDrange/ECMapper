@@ -33,7 +33,9 @@ NumberInputComponent::NumberInputComponent(const juce::String& labelText,
 
 void NumberInputComponent::resized() {
     auto area = getLocalBounds();
-    if (labelAboveInput)
+    if (label.getText().isEmpty())
+        label.setBounds(juce::Rectangle<int>());
+    else if (labelAboveInput)
         label.setBounds(area.removeFromTop(juce::jmax(14, (int) std::round(static_cast<float>(area.getHeight()) * 0.42f))));
     else
         label.setBounds(area.removeFromLeft(area.getWidth() / 2));
