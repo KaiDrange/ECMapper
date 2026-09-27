@@ -102,7 +102,11 @@ void ConfigLookup::updateKeyUnlocked(LayoutWrapper::KeyId keyId) {
         setKeyToDefault = true;
     if (effectiveZone == Zone::NoZone)
         setKeyToDefault = true;
-    if (!ZoneWrapper::getEnabled(layoutKey.keyId.deviceType, effectiveZone, pluginState.state))
+    const bool outputEnabled = ZoneWrapper::getEnabled(layoutKey.keyId.deviceType, effectiveZone, pluginState.state);
+    const bool isStrumSource = layoutKey.keyMappingType == KeyMappingType::Note
+                           || layoutKey.keyMappingType == KeyMappingType::Chord;
+    // Disabled source zones still provide held pitches and expression to strum keys.
+    if (!outputEnabled && !isStrumSource)
         setKeyToDefault = true;
     
     Key key;
@@ -112,6 +116,7 @@ void ConfigLookup::updateKeyUnlocked(LayoutWrapper::KeyId keyId) {
         key.keyType = layoutKey.keyType;
         key.mapType = layoutKey.keyMappingType;
         key.zone = effectiveZone;
+        key.outputEnabled = outputEnabled;
         key.stringNumber = (key.mapType == KeyMappingType::Note)
             ? layoutKey.stringNumber : 0;
         key.keyColour = layoutKey.keyColour;

@@ -445,7 +445,9 @@ void MidiService::processMessage(const osc::Message& oscMsg, osc::Message& outgo
                 keyState->ehPressureHistory.pop_front();
 
             const ConfigLookup::Key& keyLookup = deviceLookups.keys[oscMsg.course][oscMsg.key];
-            if (keyLookup.output == MidiChannelType::Undefined) {
+            const bool silentSource = !keyLookup.outputEnabled
+                && (keyLookup.mapType == KeyMappingType::Note || keyLookup.mapType == KeyMappingType::Chord);
+            if (keyLookup.output == MidiChannelType::Undefined && !silentSource) {
                 if (oscMsg.active)
                      ECM_LOG("MidiService: Key press on undefined mapping - Course: " + juce::String(oscMsg.course) + ", Key: " + juce::String(oscMsg.key) + " for device " + juce::String(deviceIndex + 1));
                 break;
@@ -529,7 +531,7 @@ void MidiService::processNoteKey(const osc::Message& oscMsg, const ConfigLookup:
         const bool shouldEmit = expressionPolicy ? expressionPolicy->shouldEmitContinuousUpdate(state->messageCount)
                                                  : state->messageCount >= 64;
         if (shouldEmit) {
-            if (state->soundingMapType != KeyMappingType::Strum || state->strumOwnExpression)
+            if (state->hasNoteAllocation && (state->soundingMapType != KeyMappingType::Strum || state->strumOwnExpression))
                 createNoteHold(keyLookup, state, sink, eventTime, voiceRouter, expressionPolicy);
             else
                 state->messageCount = 0;
@@ -1434,7 +1436,7 @@ const MidiService::KeyState* MidiService::findStrumSource(const ConfigLookup::Ke
     const KeyState* newest = nullptr;
     for (const auto& course : keyStates_[deviceIndex]) {
         for (const auto& source : course) {
-            if (source.status != KeyStatus::Active || !source.hasNoteAllocation
+            if (source.status != KeyStatus::Active
                 || source.stringZone != keyLookup.strumSourceZone
                 || (newest != nullptr && source.pressSequence <= newest->pressSequence))
                 continue;
@@ -1505,6 +1507,19 @@ void MidiService::createNoteOn(const ConfigLookup::Key& configuredKey, KeyState*
     state->allocationOutput = keyLookup.output;
     state->allocationNote = keyLookup.notes[0];
     state->hasNoteAllocation = false;
+    if (!keyLookup.outputEnabled) {
+        // Track the held fingering without allocating a voice or emitting MIDI.
+        // Silent source notes need no legato bend-range restriction.
+        state->midiChannel = 0;
+        for (size_t i = 0; i < keyLookup.notes.size(); ++i)
+            state->activeNotes[i] = keyLookup.notes[i] < 0 ? -1 : std::clamp(keyLookup.notes[i] + totalTranspose, 0, 127);
+        state->stringTargetNote = state->activeNotes[0];
+        state->pressSequence = ++nextPressSequence_;
+        state->noteOnTimestamp = 0;
+        state->messageCount = 0;
+        state->status = KeyStatus::Active;
+        return;
+    }
     if (state->stringNumber > 0 && deviceIndex >= 0 && deviceIndex < 3) {
         for (auto& course : keyStates_[deviceIndex]) {
             for (const auto& other : course) {
@@ -1611,6 +1626,7 @@ void MidiService::releaseNoteAllocation(const LayoutWrapper::KeyId& keyId, KeySt
 
 void MidiService::createNoteOff(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter) {
     if (!state->hasNoteAllocation) {
+        std::fill(std::begin(state->activeNotes), std::end(state->activeNotes), -1);
         state->status = KeyStatus::Off;
         state->messageCount = 0;
         state->noteOnTimestamp = 0;
@@ -1777,7 +1793,7 @@ void MidiService::queueTransposeChangeFlush(InstrumentType deviceType, Zone zone
                 continue;
 
             auto& keyState = keyStates_[deviceIndex][course][keyNo];
-            if (keyState.status == KeyStatus::Active) {
+            if (keyState.hasNoteAllocation) {
                 int channel = keyState.midiChannel;
                 const int zoneIndex = keyState.noteZoneIndex;
                 auto vel = calculateNoteOffVelocity(deviceType, &keyState);
@@ -1809,6 +1825,7 @@ void MidiService::queueTransposeChangeFlush(InstrumentType deviceType, Zone zone
                 }
             }
 
+            std::fill(std::begin(keyState.activeNotes), std::end(keyState.activeNotes), -1);
             keyState.status = KeyStatus::Off;
             keyState.messageCount = 0;
             keyState.isLatchOn = false;

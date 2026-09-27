@@ -31,6 +31,7 @@ public:
         EigenharpKeyType keyType = EigenharpKeyType::Normal;
         int stringNumber = 0;
         Zone zone = Zone::NoZone;
+        bool outputEnabled = true;
         Zone strumSourceZone = Zone::Zone1;
         int strumSourceString = 1;
         bool strumExpression = true;

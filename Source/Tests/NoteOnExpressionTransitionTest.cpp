@@ -768,7 +768,7 @@ bool verifyStringChannelSharing(bool midi2Mode = false, bool keyBendEnabled = tr
     return ok;
 }
 
-bool verifyStrummingAndSixNoteChords()
+bool verifyStrummingAndSixNoteChords(bool silentSource = false)
 {
     using namespace ecm;
     DummyProcessor processor;
@@ -780,6 +780,7 @@ bool verifyStrummingAndSixNoteChords()
         ConfigLookup(InstrumentType::Pico, pluginState, stateLock)
     };
     SettingsWrapper::setMidi2Mode(false, pluginState.state);
+    ZoneWrapper::setEnabled(InstrumentType::Alpha, Zone::Zone1, !silentSource, pluginState.state);
     ZoneWrapper::setMidiChannelType(InstrumentType::Alpha, Zone::Zone1, MidiChannelType::Chan1, pluginState.state);
     ZoneWrapper::setMidiChannelType(InstrumentType::Alpha, Zone::Zone2, MidiChannelType::Chan2, pluginState.state);
     ZoneWrapper::setMidiChannelType(InstrumentType::Alpha, Zone::Zone3, MidiChannelType::Chan3, pluginState.state);
@@ -849,7 +850,8 @@ bool verifyStrummingAndSixNoteChords()
     ok &= expect(sink.events.empty(), "strumming without a held source should be silent");
     release(10);
     press(0, 0.02f);
-    const auto sourceOn = noteEvent(PerformanceEventKind::NoteOn, 1, 60);
+    const auto sourceOn = silentSource ? PerformanceEvent {} : noteEvent(PerformanceEventKind::NoteOn, 1, 60);
+    if (silentSource) ok &= expect(sink.events.empty(), "disabled source notes should remain silent");
     press(10);
     const auto strumOn = noteEvent(PerformanceEventKind::NoteOn, 2, 60);
     ok &= expect(strumOn.zoneIndex == 1, "strum output should carry its own zone routing");
@@ -877,7 +879,7 @@ bool verifyStrummingAndSixNoteChords()
     release(10);
     release(0);
     press(2);
-    ok &= expect(countKind(PerformanceEventKind::NoteOn) == 6, "all six chord notes should sound");
+    ok &= expect(countKind(PerformanceEventKind::NoteOn) == (silentSource ? 0 : 6), "six-note chords should sound only when their own zone is enabled");
     press(11);
     noteEvent(PerformanceEventKind::NoteOn, 2, 67);
     release(11);
@@ -901,15 +903,37 @@ bool verifyStrummingAndSixNoteChords()
     release(13);
     release(4);
     release(2);
-    ok &= expect(countKind(PerformanceEventKind::NoteOff) == 6, "all six chord notes should stop on release");
+    ok &= expect(countKind(PerformanceEventKind::NoteOff) == (silentSource ? 0 : 6), "chord release should stop only notes that were actually emitted");
     press(11);
     ok &= expect(sink.events.empty(), "released chords must no longer supply strum pitches");
     release(11);
+    if (silentSource) {
+        press(2);
+        juce::MidiBuffer pending;
+        service.drainPendingMidiMessages(pending);
+        service.queueTransposeChangeFlush(InstrumentType::Alpha, Zone::Zone1);
+        juce::MidiBuffer flushed;
+        service.drainPendingMidiMessages(flushed);
+        ok &= expect(flushed.isEmpty(), "flushing a silent chord must not emit Note Offs or controller resets");
+        press(11);
+        ok &= expect(sink.events.empty(), "a flushed source should no longer supply a strum pitch");
+        release(11);
+        // The destination zone must still be enabled, even for a valid silent source.
+        ZoneWrapper::setEnabled(InstrumentType::Alpha, Zone::Zone2, false, pluginState.state);
+        for (auto& lookup : lookups) lookup.updateAll();
+        service.setRuntimeConfigSnapshot(std::make_unique<MidiService::RuntimeConfigSnapshot>(
+            lookups, service.getProtocol(), service.getVoiceRouter(), service.getExpressionPolicy()));
+        press(2);
+        press(11);
+        ok &= expect(sink.events.empty(), "a disabled strum output zone must remain silent");
+        release(11);
+        release(2);
+    }
     service.stop();
     return ok;
 }
 
-bool verifyLinkedStrumExpression(bool midi2Mode, bool chordSource)
+bool verifyLinkedStrumExpression(bool midi2Mode, bool chordSource, bool silentSource = false)
 {
     using namespace ecm;
     DummyProcessor processor;
@@ -922,7 +946,9 @@ bool verifyLinkedStrumExpression(bool midi2Mode, bool chordSource)
     };
     SettingsWrapper::setMidi2Mode(midi2Mode, pluginState.state);
     SettingsWrapper::setLowerMPEVoiceCount(8, pluginState.state);
-    ZoneWrapper::setMidiChannelType(InstrumentType::Alpha, Zone::Zone1, MidiChannelType::Chan1, pluginState.state);
+    ZoneWrapper::setEnabled(InstrumentType::Alpha, Zone::Zone1, !silentSource, pluginState.state);
+    ZoneWrapper::setMidiChannelType(InstrumentType::Alpha, Zone::Zone1,
+                                   silentSource ? MidiChannelType::Undefined : MidiChannelType::Chan1, pluginState.state);
     ZoneWrapper::setMidiChannelType(InstrumentType::Alpha, Zone::Zone2, MidiChannelType::MPE_Low, pluginState.state);
     ZoneWrapper::setMidiValue(InstrumentType::Alpha, Zone::Zone2, ZoneWrapper::id_roll, {MidiValueType::CC, 20}, pluginState.state);
     ZoneWrapper::setMidiValue(InstrumentType::Alpha, Zone::Zone2, ZoneWrapper::id_yaw, {MidiValueType::CC, 21}, pluginState.state);
@@ -982,6 +1008,8 @@ bool verifyLinkedStrumExpression(bool midi2Mode, bool chordSource)
         }
     };
     send(0, true, 80, 1, 1, -1);
+    if (silentSource)
+        ok &= expect(sink.events.empty(), "a disabled source must not emit notes or expression on its own output");
     send(1, true, 6, 0.2f, -1, 1);
     const auto first = noteOn();
     checkExpression(first.channel, 1, 0, 1);
@@ -1001,6 +1029,8 @@ bool verifyLinkedStrumExpression(bool midi2Mode, bool chordSource)
     send(3, true, 80, 1, 1, -1);
     checkExpression(own.channel, 1, 0, 1);
     send(0, false, 1, 0, 0, 0);
+    if (silentSource)
+        ok &= expect(sink.events.empty(), "releasing a silent source must not send stray Note Offs");
     for (const auto& event : sink.events)
         ok &= expect(event.zoneIndex != 1, "releasing the source should retain the held strum's last expression and note");
     send(0, true, 80, 1, 1, -1);
@@ -1253,9 +1283,14 @@ int main(int argc, char* argv[]) {
     const bool ok = verifyLinkedStrumExpression(false, true)
                  && verifyLinkedStrumExpression(true, true)
                  && verifyLinkedStrumExpression(false, false)
+                 && verifyLinkedStrumExpression(false, true, true)
+                 && verifyLinkedStrumExpression(true, true, true)
+                 && verifyLinkedStrumExpression(false, false, true)
+                 && verifyLinkedStrumExpression(true, false, true)
                  && verifyRawPacketQueueCopy()
                  && verifyStrumReleaseAcrossZoneOutputs()
                  && verifyStrummingAndSixNoteChords()
+                 && verifyStrummingAndSixNoteChords(true)
                  && verifyStringChannelSharing()
                  && verifyStringChannelSharing(true)
                  && verifyStringChannelSharing(false, false)

@@ -28,7 +28,9 @@ Choose **Type → Strum**, then set the **Output zone**, **Linked zone**, and **
 A strum plays the current pitch from that string in the linked zone on the same device, using
 the strum key's own strike and release velocity. The most recently pressed held note key or
 chord supplies the pitch; chord note slots correspond to strings 1–6. An empty chord slot or
-no held source produces no note. Source keys still sound normally. A strum keeps its captured
+no held source produces no note. The linked source zone may be disabled: its held notes/chords
+still supply pitches and expression while remaining silent. The strum output zone must be enabled.
+Source keys sound normally when their own zone is enabled. A strum keeps its captured
 pitch until released, even if the source changes or is released. **Expression** is on by default:
 the strum key controls roll, yaw and pressure using its output zone's expression mappings. Turn
 it off to use those values from the note/chord key that supplied the pitch instead. One source
