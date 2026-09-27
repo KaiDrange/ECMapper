@@ -367,6 +367,69 @@ int main() {
         expect(sent[1].second >= startMs + 50 && sent[2].second >= startMs + 100,
                "Clock events must wait for their deadlines instead of bursting at callback start");
     }
+    // Each source has an independent destination mask and volume.
+    for (int clickRoute = 1; clickRoute <= 4; ++clickRoute) {
+        for (int inputRoute = 1; inputRoute <= 4; ++inputRoute) {
+            ecm::EigenAudioBridge routed;
+            routed.setRouting(clickRoute, inputRoute);
+            routed.setVolume(0.25f);
+            routed.setInputVolume(0.5f);
+            routed.prepare(48000);
+            routed.setHostActive(true);
+            routed.setAudioOutputEnabled(true);
+            expect(routed.start().isEmpty(), "Routed metronome must start");
+            juce::AudioBuffer<float> audio(2, 128);
+            for (int sample = 0; sample < 128; ++sample) {
+                audio.setSample(0, sample, 0.2f);
+                audio.setSample(1, sample, -0.4f);
+            }
+            routed.process(128, false, nullptr, nullptr, &audio, 2, 2);
+            expect(routed.pop(block), "Headphones must receive their mix, or silence when neither source is routed there");
+            for (int sample = 0; sample < 128; ++sample) {
+                const float click = clicks[0].getSample(0, sample) * 0.25f;
+                for (int channel = 0; channel < 2; ++channel) {
+                    const float input = channel == 0 ? 0.1f : -0.2f;
+                    const float deviceExpected = ((clickRoute & 2) != 0 ? click : 0.0f) + ((inputRoute & 2) != 0 ? input : 0.0f);
+                    const float headphonesExpected = ((clickRoute & 1) != 0 ? click : 0.0f) + ((inputRoute & 1) != 0 ? input : 0.0f);
+                    expect(std::abs(audio.getSample(channel, sample) - deviceExpected) < 1e-6f, "Incorrect audio-device routing or gain");
+                    expect(std::abs(block.stereo[static_cast<size_t>(sample * 2 + channel)] - headphonesExpected) < 1e-6f,
+                           "Incorrect headphone routing or gain");
+                }
+            }
+            routed.stop();
+            for (int sample = 0; sample < 128; ++sample) audio.setSample(0, sample, 0.6f);
+            routed.process(128, false, nullptr, nullptr, &audio, 1, 2);
+            expect(routed.pop(block), "Input monitoring must continue with the metronome stopped");
+            expect(std::abs(audio.getSample(1, 64) - ((inputRoute & 2) != 0 ? 0.3f : 0.0f)) < 1e-6f,
+                   "Mono input must reach both device channels while stopped");
+            expect(std::abs(block.stereo[129] - ((inputRoute & 1) != 0 ? 0.3f : 0.0f)) < 1e-6f,
+                   "Mono input must reach both headphone channels while stopped");
+            routed.process(128, false, nullptr, nullptr, &audio, 0, 2);
+            expect(audio.getMagnitude(0, 128) == 0.0f, "Disabled input must not replay stale buffer contents");
+            routed.setRouting(clickRoute == 1 ? 2 : 1, inputRoute);
+            expect(!routed.pop(block), "Changing destinations must invalidate already queued headphone audio");
+        }
+    }
+    for (double rate : {44100.0, 96000.0}) {
+        ecm::EigenAudioBridge deviceOnly;
+        deviceOnly.setRouting(2, 2);
+        deviceOnly.prepare(rate);
+        expect(deviceOnly.start().isEmpty(), "Audio-device metronome must start without Eigenharp hardware at non-48k rates");
+        juce::AudioBuffer<float> audio(2, 128);
+        audio.clear();
+        deviceOnly.process(128, false, nullptr, nullptr, &audio, 0, 2);
+        expect(audio.getMagnitude(0, 128) > 0 && !deviceOnly.pop(block), "Device-only clicks must bypass the headphone queue");
+        for (int sample = 0; sample < 128; ++sample) {
+            const double sourcePosition = sample * 48000.0 / rate;
+            const int index = static_cast<int>(sourcePosition);
+            const float a = clicks[0].getSample(0, index);
+            const float b = clicks[0].getSample(0, index + 1);
+            expect(std::abs(audio.getSample(0, sample) - (a + (b - a) * static_cast<float>(sourcePosition - index))) < 1e-6f,
+                   "Device click must play at the selected device's sample rate");
+        }
+        deviceOnly.process(128, true, nullptr, nullptr, &audio, 2, 2);
+        expect(audio.getMagnitude(0, 128) == 0.0f, "Offline processing must clear the output mix");
+    }
     if (ok) std::cout << "EigenAudioBridge checks passed\n";
     return ok ? 0 : 1;
 }

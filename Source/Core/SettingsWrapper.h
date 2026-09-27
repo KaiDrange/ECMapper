@@ -33,6 +33,8 @@ public:
 
     static inline const juce::Identifier id_audioOutput { "audioOutput" };
     static inline const juce::Identifier id_metronomeVolume { "metronomeVolume" };
+    static inline const juce::Identifier id_metronomeRoute { "metronomeRoute" };
+    static inline const juce::Identifier id_audioInputRoute { "audioInputRoute" };
     static inline const juce::Identifier id_audioInputVolume { "audioInputVolume" };
     static inline const juce::Identifier id_headphoneEnabled { "headphoneEnabled" };
     static inline const juce::Identifier id_headphoneLimited { "headphoneLimited" };

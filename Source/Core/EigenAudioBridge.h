@@ -20,6 +20,7 @@ public:
     static constexpr int queueBlocks = 1 + 3584 / blockFrames;
     struct Block {
         std::array<float, blockFrames * 2> stereo {};
+        uint64_t routingState = 0;
         uint64_t audioOutputState = 0;
         uint64_t generation = 0;
         uint64_t transportState = 0;
@@ -34,11 +35,15 @@ public:
     void stop() noexcept;
     bool isPlaying() const noexcept;
     void setVolume(float volume) noexcept { metronome_.setVolume(volume); }
+    // Destination IDs: 1 = headphones, 2 = audio device/host, 3 = both, 4 = none.
+    void setRouting(int metronomeRoute, int inputRoute) noexcept;
+    bool metronomeUsesDeviceOutput() const noexcept { return (routingState_.load() & 2) != 0; }
+    void setInputVolume(float volume) noexcept { inputVolume_.store(juce::jlimit(0.0f, 1.0f, volume)); }
     void setMidiSlave(bool enabled) noexcept;
     void setMidiClockOutputEnabled(bool enabled) noexcept {
         if (midiClockOutputEnabled_.exchange(enabled) != enabled) stop();
     }
-    void process(int numFrames, bool nonRealtime = false, const juce::MidiBuffer* midi = nullptr, juce::MidiBuffer* clockOutput = nullptr) noexcept;
+    void process(int numFrames, bool nonRealtime = false, const juce::MidiBuffer* midi = nullptr, juce::MidiBuffer* clockOutput = nullptr, juce::AudioBuffer<float>* audio = nullptr, int inputChannels = 0, int outputChannels = 0) noexcept;
     uint64_t transportState() const noexcept { return transportState_.load(); }
     bool isNonRealtime() const noexcept { return (transportState() & 1) != 0; }
     bool pop(Block& block) noexcept;
@@ -48,6 +53,11 @@ public:
 private:
     void requestPlayback(bool play) noexcept;
     Metronome metronome_;
+    std::atomic<uint64_t> routingState_ { 5 }; // Two route masks in low four bits, generation above.
+    uint64_t observedRoutingState_ = 5;
+    std::atomic<float> inputVolume_ { 1.0f };
+    juce::SmoothedValue<float> inputGain_;
+    bool wasRenderingMetronome_ = false;
     MidiClockMaster clockMaster_;
     std::atomic<bool> midiClockOutputEnabled_ { true };
     std::atomic<bool> midiSlave_ { false };

@@ -1119,13 +1119,13 @@ bool ECMapperAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) 
 }
 
 void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& audioBuffer, juce::MidiBuffer& midiMessages) {
-    audioBuffer.clear();
     const bool standalone = juce::JUCEApplicationBase::isStandaloneApp();
     const double clockBlockStartMs = juce::Time::getMillisecondCounterHiRes();
     masterClockBuffer_.clear();
     hardwareService.processMetronome(audioBuffer.getNumSamples(), isNonRealtime(),
                                      standalone ? &midiMessages : nullptr,
-                                     standalone ? &masterClockBuffer_ : nullptr);
+                                     standalone ? &masterClockBuffer_ : nullptr, &audioBuffer,
+                                     getTotalNumInputChannels(), getTotalNumOutputChannels());
     if (standalone)
         midiService.scheduleMasterClock(masterClockBuffer_, clockBlockStartMs, getSampleRate());
 
@@ -2054,6 +2054,9 @@ void ECMapperAudioProcessor::valueTreePropertyChanged(juce::ValueTree&, const ju
         || property == ecm::SettingsWrapper::id_clockBpm
         || property == ecm::SettingsWrapper::id_timeSignature)
         hardwareService.updateMetronomeSettings(state.state);
+    if (property == ecm::SettingsWrapper::id_metronomeRoute || property == ecm::SettingsWrapper::id_audioInputRoute
+        || property == ecm::SettingsWrapper::id_metronomeVolume || property == ecm::SettingsWrapper::id_audioInputVolume)
+        hardwareService.updateAudioSettings(state.state);
     if (isRuntimeConfigStateProperty(property))
         requestRuntimeConfigRefresh();
 }

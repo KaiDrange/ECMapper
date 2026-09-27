@@ -32,11 +32,12 @@ private:
     juce::Label clientPortLabel;
     juce::TextEditor clientPortInput;
     
-    juce::GroupComponent audioGroup { "audioOutput", "Audio output - all devices" };
+    juce::GroupComponent audioGroup { "audioOutput", "Audio output" };
     juce::Slider metronomeVolume;
     juce::Slider audioInputVolume;
-    juce::Label metronomeLabel { "", "Metronome volume" };
-    juce::Label audioInputLabel { "", "Audio input volume" };
+    juce::ComboBox metronomeRoute, audioInputRoute;
+    juce::Label metronomeLabel { "", "Metronome" };
+    juce::Label audioInputLabel { "", "Audio input" };
     juce::GroupComponent clockGroup { "clock", "Clock and transport" };
     juce::ToggleButton metronomeOnly { "Metronome only" };
     juce::ToggleButton midiClockIn { "MIDI Clock In" };

@@ -34,6 +34,7 @@ private:
     std::atomic<int> meter_ { (4 << 8) | 4 };
     std::atomic<float> volume_ { 1.0f };
     juce::SmoothedValue<float> gain_;
+    double sampleRate_ = 48000.0;
     double beatPhase_ = 0.0;
     double phaseIncrement_ = 0.0;
     int beatsPerBar_ = 4;

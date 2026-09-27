@@ -330,6 +330,8 @@ juce::ValueTree SettingsWrapper::getClockSettings(juce::ValueTree& rootState) {
 
 juce::ValueTree SettingsWrapper::getAudioOutputSettings(juce::ValueTree& rootState) {
     auto audio = getSettingsTree(rootState).getOrCreateChildWithName(id_audioOutput, nullptr);
+    if (!audio.hasProperty(id_metronomeRoute)) audio.setProperty(id_metronomeRoute, 1, nullptr);
+    if (!audio.hasProperty(id_audioInputRoute)) audio.setProperty(id_audioInputRoute, 1, nullptr);
     if (!audio.hasProperty(id_metronomeVolume)) audio.setProperty(id_metronomeVolume, 100.0, nullptr);
     if (!audio.hasProperty(id_audioInputVolume)) audio.setProperty(id_audioInputVolume, 100.0, nullptr);
     return audio;

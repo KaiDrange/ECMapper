@@ -106,7 +106,16 @@ void HardwareService::prepareMetronome(double sampleRate, juce::ValueTree& state
     audioBridge_.prepare(sampleRate);
 }
 
+void HardwareService::updateAudioSettings(juce::ValueTree& state) {
+    auto audio = SettingsWrapper::getAudioOutputSettings(state);
+    setMetronomeVolume(static_cast<float>(audio.getProperty(SettingsWrapper::id_metronomeVolume)) / 100.0f);
+    audioBridge_.setInputVolume(static_cast<float>(audio.getProperty(SettingsWrapper::id_audioInputVolume)) / 100.0f);
+    audioBridge_.setRouting(static_cast<int>(audio.getProperty(SettingsWrapper::id_metronomeRoute)),
+                            static_cast<int>(audio.getProperty(SettingsWrapper::id_audioInputRoute)));
+}
+
 void HardwareService::updateMetronomeSettings(juce::ValueTree& state) {
+    updateAudioSettings(state);
     auto clock = SettingsWrapper::getClockSettings(state);
     audioBridge_.setStandaloneClockEnabled(juce::JUCEApplicationBase::isStandaloneApp());
     audioBridge_.setMidiClockOutputEnabled(clock.getProperty(SettingsWrapper::id_clockSource).toString() == "midiMaster");
@@ -120,7 +129,7 @@ void HardwareService::updateMetronomeSettings(juce::ValueTree& state) {
 
 juce::String HardwareService::startMetronome() {
     const bool standalone = juce::JUCEApplicationBase::isStandaloneApp();
-    if (!standalone && (!supportsLocalHardware() || appRole_ != AppRole::Host))
+    if (!standalone && !audioBridge_.metronomeUsesDeviceOutput() && (!supportsLocalHardware() || appRole_ != AppRole::Host))
         return "The metronome is available in Host mode with local hardware only.";
     if (state_ != nullptr) {
         auto clock = SettingsWrapper::getClockSettings(*state_);
@@ -134,7 +143,7 @@ juce::String HardwareService::startMetronome() {
         return !device.isRemote && device.headphoneEnabled
             && (device.type == InstrumentType::Alpha || device.type == InstrumentType::Tau);
     });
-    if (!standalone && !hasOutput) return "Enable headphones on a connected Alpha or Tau before starting playback.";
+    if (!standalone && !audioBridge_.metronomeUsesDeviceOutput() && !hasOutput) return "Enable headphones on a connected Alpha or Tau before starting playback.";
     updateAudioOutputAvailability();
     const auto error = audioBridge_.start();
     std::cout << "[Metronome] Start: " << audioBridge_.diagnosticSummary()

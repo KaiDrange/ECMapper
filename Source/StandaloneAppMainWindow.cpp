@@ -54,10 +54,14 @@ int getIndexForComboId(const int comboId)
 class StandaloneSettingsComponent final : public juce::Component
 {
 public:
-    using SaveCallback = std::function<void(const juce::String&, const std::array<juce::String, 3>&, int)>;
+    using SaveCallback = std::function<bool(const juce::String&, const juce::String&, const juce::String&, const std::array<juce::String, 3>&, int)>;
 
     StandaloneSettingsComponent(const juce::Array<juce::MidiDeviceInfo>& availableInputs,
                                 const juce::Array<juce::MidiDeviceInfo>& availableOutputs,
+                                const juce::StringArray& audioInputs,
+                                const juce::StringArray& audioOutputs,
+                                const juce::AudioDeviceManager::AudioDeviceSetup& audioSetup,
+                                bool separateAudioDevices,
                                 const juce::String& currentMidiInputId,
                                 const std::array<juce::String, 3>& currentZoneOutputIds,
                                 int currentBufferSize,
@@ -68,9 +72,38 @@ public:
           onSave_(std::move(onSave))
     {
         addAndMakeVisible(descriptionLabel_);
-        descriptionLabel_.setText("Select the MIDI input used to control ECMapper, the three MPE zone outputs, and the audio buffer size used by the standalone engine.", juce::dontSendNotification);
+        descriptionLabel_.setText("Select audio input and output devices, the MIDI control input, zone MIDI outputs, and the audio buffer size.", juce::dontSendNotification);
         descriptionLabel_.setJustificationType(juce::Justification::topLeft);
         descriptionLabel_.setColour(juce::Label::textColourId, ecm::Style::text());
+
+        const auto configureAudioDevice = [this](juce::Label& label, juce::ComboBox& box,
+                                                 const char* title, const juce::StringArray& names,
+                                                 const juce::String& selected, bool allowNone) {
+            configureCombo(label, box, title);
+            addAndMakeVisible(box);
+            if (allowNone) box.addItem("None", 1);
+            for (int i = 0; i < names.size(); ++i) box.addItem(names[i], i + 2);
+            box.setSelectedId(names.indexOf(selected) >= 0 ? names.indexOf(selected) + 2
+                              : (allowNone ? 1 : (names.isEmpty() ? 0 : 2)),
+                              juce::dontSendNotification);
+        };
+        configureAudioDevice(audioInputLabel_, audioInputBox_, "Audio Input", audioInputs, audioSetup.inputDeviceName, true);
+        configureAudioDevice(audioOutputLabel_, audioOutputBox_, "Audio Output", audioOutputs, audioSetup.outputDeviceName, false);
+        audioOutputBox_.setTextWhenNothingSelected("No audio output devices available");
+        if (!separateAudioDevices) {
+            audioInputBox_.setTooltip("This audio driver uses one device for input and output");
+            audioOutputBox_.setTooltip(audioInputBox_.getTooltip());
+            audioInputBox_.onChange = [this, audioOutputs] {
+                const int outputIndex = audioOutputs.indexOf(audioInputBox_.getText());
+                if (audioInputBox_.getSelectedId() > 1 && outputIndex >= 0)
+                    audioOutputBox_.setSelectedId(outputIndex + 2, juce::dontSendNotification);
+            };
+            audioOutputBox_.onChange = [this, audioInputs] {
+                if (audioInputBox_.getSelectedId() > 1)
+                    audioInputBox_.setSelectedId(audioOutputBox_.getSelectedId() > 1
+                        ? audioInputs.indexOf(audioOutputBox_.getText()) + 2 : 1, juce::dontSendNotification);
+            };
+        }
 
         configureCombo(midiInputLabel_, midiInputBox_, "MIDI Input");
         addAndMakeVisible(midiInputBox_);
@@ -101,19 +134,23 @@ public:
 
         addAndMakeVisible(saveButton_);
         saveButton_.setButtonText("Save");
+        saveButton_.setEnabled(!audioOutputs.isEmpty());
         saveButton_.onClick = [this] {
             if (onSave_) {
                 std::array<juce::String, 3> zoneOutputIds;
                 for (int zoneIndex = 0; zoneIndex < 3; ++zoneIndex)
                     zoneOutputIds[static_cast<std::size_t>(zoneIndex)] = selectedDeviceId(zoneBoxes_[static_cast<std::size_t>(zoneIndex)], availableOutputs_);
 
-                onSave_(selectedDeviceId(midiInputBox_, availableInputs_), zoneOutputIds, bufferSizeBox_.getSelectedId());
+                if (!onSave_(audioInputBox_.getSelectedId() > 1 ? audioInputBox_.getText() : juce::String{},
+                             audioOutputBox_.getSelectedId() > 1 ? audioOutputBox_.getText() : juce::String{},
+                             selectedDeviceId(midiInputBox_, availableInputs_), zoneOutputIds, bufferSizeBox_.getSelectedId()))
+                    return;
             }
 
             closeWithResult(1);
         };
 
-        setSize(520, 310);
+        setSize(560, 404);
     }
 
     void resized() override
@@ -122,6 +159,8 @@ public:
         descriptionLabel_.setBounds(area.removeFromTop(56));
         area.removeFromTop(8);
 
+        layoutRow(area, audioInputLabel_, audioInputBox_);
+        layoutRow(area, audioOutputLabel_, audioOutputBox_);
         layoutRow(area, midiInputLabel_, midiInputBox_);
         for (int zoneIndex = 0; zoneIndex < 3; ++zoneIndex)
             layoutRow(area, zoneLabels_[static_cast<std::size_t>(zoneIndex)], zoneBoxes_[static_cast<std::size_t>(zoneIndex)]);
@@ -184,6 +223,8 @@ private:
     juce::Array<juce::MidiDeviceInfo> availableOutputs_;
     SaveCallback onSave_;
     juce::Label descriptionLabel_;
+    juce::Label audioInputLabel_, audioOutputLabel_;
+    juce::ComboBox audioInputBox_, audioOutputBox_;
     juce::Label midiInputLabel_;
     juce::ComboBox midiInputBox_;
     std::array<juce::Label, 3> zoneLabels_;
@@ -523,21 +564,61 @@ void StandaloneAppMainWindow::showAudioSettings()
     auto availableInputs = juce::MidiInput::getAvailableDevices();
     auto availableOutputs = getSelectableMidiOutputs();
 
+    juce::StringArray audioInputs, audioOutputs;
+    bool separateAudioDevices = true;
+    if (auto* type = deviceManager.getCurrentDeviceTypeObject()) {
+        type->scanForDevices();
+        audioInputs = type->getDeviceNames(true);
+        audioOutputs = type->getDeviceNames(false);
+        separateAudioDevices = type->hasSeparateInputsAndOutputs();
+    }
+
     auto content = std::make_unique<StandaloneSettingsComponent>(
         availableInputs,
         availableOutputs,
+        audioInputs,
+        audioOutputs,
+        deviceManager.getAudioDeviceSetup(),
+        separateAudioDevices,
         getConfiguredMidiInputId(),
         standaloneZoneOutputIds_,
         getRequestedBufferSize(),
         isMidi2ModeEnabled(),
-        [this](const juce::String& midiInputId, const std::array<juce::String, 3>& zoneOutputIds, const int bufferSize)
+        [this](const juce::String& audioInput, const juce::String& audioOutput,
+               const juce::String& midiInputId, const std::array<juce::String, 3>& zoneOutputIds, const int bufferSize)
         {
+            if (audioOutput.isEmpty()) {
+                juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon,
+                    "Audio/MIDI Settings", "Select an audio output device to keep the audio and MIDI engine running.");
+                return false;
+            }
+            const auto previousSetup = deviceManager.getAudioDeviceSetup();
+            auto setup = previousSetup;
+            setup.inputDeviceName = audioInput;
+            setup.outputDeviceName = audioOutput;
+            setup.bufferSize = bufferSize;
+            // The standalone engine uses up to two channels in each direction.
+            // Explicit masks also enable input after startup with zero input channels.
+            setup.useDefaultInputChannels = setup.useDefaultOutputChannels = false;
+            setup.inputChannels.clear();
+            setup.outputChannels.clear();
+            if (audioInput.isNotEmpty()) setup.inputChannels.setRange(0, 2, true);
+            if (audioOutput.isNotEmpty()) setup.outputChannels.setRange(0, 2, true);
+            const auto error = deviceManager.setAudioDeviceSetup(setup, true);
+            if (error.isNotEmpty()) {
+                const auto restoreError = deviceManager.setAudioDeviceSetup(previousSetup, true);
+                juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon,
+                    "Audio/MIDI Settings", error + (restoreError.isNotEmpty()
+                        ? "\n\nCould not restore the previous device: " + restoreError : juce::String{}));
+                return false;
+            }
+            requestedBufferSize_ = bufferSize;
             standaloneMidiInputId_ = midiInputId;
             standaloneZoneOutputIds_ = zoneOutputIds;
-            applyBufferSize(bufferSize);
             updateMidiInputs();
             updateMidiOutput();
             saveAudioSettings();
+            return true;
         });
 
     juce::DialogWindow::LaunchOptions options;

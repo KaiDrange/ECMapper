@@ -160,6 +160,8 @@ if(ECMAPPER_BUILD_APP)
             VERSION "${PROJECT_VERSION}"
             COMPANY_NAME "Tic Tech"
             BUNDLE_ID "com.tictech.ecmapper.dev.app"
+            MICROPHONE_PERMISSION_ENABLED TRUE
+            MICROPHONE_PERMISSION_TEXT "ECMapper uses the selected audio input device for audio input."
             ICON_BIG "${CMAKE_CURRENT_SOURCE_DIR}/assets/app_icon.png"
     )
 

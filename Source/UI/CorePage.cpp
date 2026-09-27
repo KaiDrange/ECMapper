@@ -122,8 +122,8 @@ CorePage::CorePage(HardwareService& hardwareService, juce::ValueTree& state)
     addAndMakeVisible(clientPortInput);
     
     addAndMakeVisible(audioGroup);
-    configureAudioKnob(metronomeVolume, "Metronome volume", 100.0);
-    configureAudioKnob(audioInputVolume, "Audio input volume", 100.0);
+    configureAudioKnob(metronomeVolume, "Metronome", 100.0);
+    configureAudioKnob(audioInputVolume, "Audio input", 100.0);
     auto audioSettings = SettingsWrapper::getAudioOutputSettings(state_);
     metronomeVolume.getValueObject().referTo(audioSettings.getPropertyAsValue(SettingsWrapper::id_metronomeVolume, nullptr));
     audioInputVolume.getValueObject().referTo(audioSettings.getPropertyAsValue(SettingsWrapper::id_audioInputVolume, nullptr));
@@ -136,12 +136,27 @@ CorePage::CorePage(HardwareService& hardwareService, juce::ValueTree& state)
         label->setJustificationType(juce::Justification::centred);
         addAndMakeVisible(label);
     }
-    metronomeVolume.setTooltip("Metronome level for all Alpha and Tau outputs");
+    const auto configureRoute = [this, &audioSettings](juce::ComboBox& box, const juce::Identifier& property, const char* name) {
+        box.setName(name);
+        box.addItem("None", 4);
+        box.addItem("Headphones", 1);
+        box.addItem("Audio out device", 2);
+        box.addItem("Both", 3);
+        box.getSelectedIdAsValue().referTo(audioSettings.getPropertyAsValue(property, nullptr));
+        box.setTooltip("Choose where this source is heard. Alpha/Tau headphones require a 48 kHz audio device.");
+        box.onChange = [this] { hardwareService_.updateAudioSettings(state_); };
+        addAndMakeVisible(box);
+    };
+    configureRoute(metronomeRoute, SettingsWrapper::id_metronomeRoute, "Metronome destination");
+    configureRoute(audioInputRoute, SettingsWrapper::id_audioInputRoute, "Audio input destination");
+    metronomeVolume.setTooltip("Metronome level for the selected destinations");
     metronomeVolume.onValueChange = [this] {
         hardwareService_.setMetronomeVolume(static_cast<float>(metronomeVolume.getValue()) / 100.0f);
     };
     metronomeVolume.onValueChange();
-    audioInputVolume.setTooltip("Audio input level for all Alpha and Tau outputs");
+    audioInputVolume.setTooltip("Audio input level for the selected destinations");
+    audioInputVolume.onValueChange = [this] { hardwareService_.updateAudioSettings(state_); };
+    hardwareService_.updateAudioSettings(state_);
     clockSettings = SettingsWrapper::getClockSettings(state_);
     addAndMakeVisible(clockGroup);
     const auto configureClockSource = [this](juce::ToggleButton& button, const char* source) {
@@ -545,12 +560,14 @@ void CorePage::resized() {
     audioGroup.setBounds(audioArea);
     audioArea = audioArea.reduced(16, 10);
     audioArea.removeFromTop(10);
-    auto layoutKnob = [](juce::Rectangle<int> bounds, juce::Label& label, juce::Slider& slider) {
+    auto layoutKnob = [](juce::Rectangle<int> bounds, juce::Label& label, juce::Slider& slider, juce::ComboBox& route) {
         label.setBounds(bounds.removeFromTop(22));
+        route.setBounds(bounds.removeFromBottom(26).reduced(3, 0));
+        bounds.removeFromBottom(4);
         slider.setBounds(bounds.withSizeKeepingCentre(90, bounds.getHeight()));
     };
-    layoutKnob(audioArea.removeFromLeft(154), metronomeLabel, metronomeVolume);
-    layoutKnob(audioArea.removeFromLeft(154), audioInputLabel, audioInputVolume);
+    layoutKnob(audioArea.removeFromLeft(154), metronomeLabel, metronomeVolume, metronomeRoute);
+    layoutKnob(audioArea.removeFromLeft(154), audioInputLabel, audioInputVolume, audioInputRoute);
     area.removeFromTop(10);
     devicesLabel.setBounds(area.removeFromTop(26));
     deviceViewport.setBounds(area);

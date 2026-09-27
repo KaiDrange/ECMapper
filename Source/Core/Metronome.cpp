@@ -9,11 +9,11 @@ namespace ecm {
 juce::String Metronome::prepare(const double hostSampleRate) {
     reset();
     for (auto& click : clicks_) click.setSize(0, 0);
-    gain_.reset(48000.0, 0.01);
+    if (!std::isfinite(hostSampleRate) || hostSampleRate < 8000.0 || hostSampleRate > 384000.0)
+        return "Select an audio device with a supported sample rate.";
+    sampleRate_ = hostSampleRate;
+    gain_.reset(sampleRate_, 0.01);
     gain_.setCurrentAndTargetValue(volume_.load());
-    if (hostSampleRate != 48000.0) {
-        return "The metronome requires a 48 kHz audio device or host session.";
-    }
     const char* data[] = { BinaryData::click1_wav, BinaryData::click2_wav };
     const int sizes[] = { BinaryData::click1_wavSize, BinaryData::click2_wavSize };
     for (int i = 0; i < 2; ++i) {
@@ -28,6 +28,17 @@ juce::String Metronome::prepare(const double hostSampleRate) {
         click.setSize(1, static_cast<int>(reader->lengthInSamples));
         if (!reader->read(&click, 0, click.getNumSamples(), 0, true, false)) {
             return "Could not decode the metronome click.";
+        }
+        if (sampleRate_ != 48000.0) {
+            juce::AudioBuffer<float> converted(1, static_cast<int>(std::ceil(click.getNumSamples() * sampleRate_ / 48000.0)));
+            for (int frame = 0; frame < converted.getNumSamples(); ++frame) {
+                const double position = frame * 48000.0 / sampleRate_;
+                const int index = static_cast<int>(position);
+                const float a = click.getSample(0, juce::jmin(index, click.getNumSamples() - 1));
+                const float b = index + 1 < click.getNumSamples() ? click.getSample(0, index + 1) : 0.0f;
+                converted.setSample(0, frame, a + (b - a) * static_cast<float>(position - index));
+            }
+            click = std::move(converted);
         }
     }
     return {};
@@ -58,7 +69,7 @@ void Metronome::beginBlock() noexcept {
     const int meter = meter_.load();
     beatsPerBar_ = meter >> 8;
     clocksPerBeat_ = 96 / (meter & 255);
-    phaseIncrement_ = bpm_.load() * (meter & 255) / (48000.0 * 240.0);
+    phaseIncrement_ = bpm_.load() * (meter & 255) / (sampleRate_ * 240.0);
 }
 
 void Metronome::seekQuarterNote(const double position) noexcept {
@@ -119,7 +130,7 @@ void Metronome::handleMidiClock(const juce::MidiMessage& message) noexcept {
 float Metronome::nextMidiSample() noexcept {
     const float gain = gain_.getNextValue();
     // A disconnected clock must not leave the transport showing as running.
-    if (midiPlaying_ && ++samplesSinceClock_ >= 96000) {
+    if (midiPlaying_ && ++samplesSinceClock_ >= static_cast<int>(sampleRate_ * 2.0)) {
         midiPlaying_ = false;
         midiClickActive_ = false;
     }
