@@ -12,7 +12,7 @@ void EigenAudioBridge::prepare(const double hostSampleRate) {
     inputGain_.reset(std::isfinite(hostSampleRate) && hostSampleRate > 0 ? hostSampleRate : 48000.0, 0.01);
     inputGain_.setCurrentAndTargetValue(inputVolume_.load());
     fifo_.reset();
-    accumulated_ = 0;
+    resetHeadphoneResampler();
     observedGeneration_ = command_.load();
     dropped_.store(0);
     callbackCount_.store(0);
@@ -20,6 +20,13 @@ void EigenAudioBridge::prepare(const double hostSampleRate) {
     hostSampleRate_.store(hostSampleRate);
     error_ = metronome_.prepare(hostSampleRate);
     ready_.store(error_.isEmpty());
+}
+
+void EigenAudioBridge::resetHeadphoneResampler() noexcept {
+    accumulated_ = 0;
+    headphoneSamplePhase_ = 0.0;
+    previousHeadphoneSample_ = {};
+    hasPreviousHeadphoneSample_ = false;
 }
 
 void EigenAudioBridge::requestPlayback(const bool play) noexcept {
@@ -55,8 +62,6 @@ juce::String EigenAudioBridge::start() {
         if (!std::isfinite(rate) || rate <= 0.0) return "Select an audio device to run the MIDI clock.";
     } else {
         if (!ready_.load()) return error_;
-        if (!metronomeUsesDeviceOutput() && hostSampleRate_.load() != 48000.0)
-            return "Eigenharp headphones require a 48 kHz audio device or host session.";
         if (!hostActive_.load() && !metronomeUsesDeviceOutput()) return "The metronome is available in Host mode only.";
     }
     requestPlayback(true);
@@ -81,7 +86,7 @@ void EigenAudioBridge::process(const int numFrames, const bool nonRealtime, cons
     // Producer only. Never reset the shared FIFO while its consumer is active.
     if (nonRealtime != isNonRealtime()) {
         transportState_.fetch_add(1);
-        accumulated_ = 0;
+        resetHeadphoneResampler();
         if (nonRealtime) stop();
     }
     const auto command = command_.load();
@@ -98,16 +103,17 @@ void EigenAudioBridge::process(const int numFrames, const bool nonRealtime, cons
     const auto routing = routingState_.load();
     const int clickRoute = static_cast<int>(routing & 3);
     const int inputRoute = static_cast<int>((routing >> 2) & 3);
-    const bool headphones = hostActive_.load() && (audioOutputState & 1) != 0 && rate == 48000.0;
+    const bool headphones = hostActive_.load() && (audioOutputState & 1) != 0 && ready_.load();
     inputChannels = audio != nullptr ? juce::jlimit(0, audio->getNumChannels(), inputChannels) : 0;
     outputChannels = audio != nullptr ? juce::jlimit(0, audio->getNumChannels(), outputChannels) : 0;
     const bool renderClick = ready_.load() && (((clickRoute & 1) != 0 && headphones)
                                                || ((clickRoute & 2) != 0 && outputChannels > 0));
-    if (audioOutputState != observedAudioOutputState_ || routing != observedRoutingState_) accumulated_ = 0;
+    if (!headphones || audioOutputState != observedAudioOutputState_ || routing != observedRoutingState_)
+        resetHeadphoneResampler();
     observedAudioOutputState_ = audioOutputState;
     observedRoutingState_ = routing;
     if (command != observedGeneration_) {
-        accumulated_ = 0;
+        resetHeadphoneResampler();
         metronome_.reset();
     }
     observedGeneration_ = command;
@@ -150,20 +156,41 @@ void EigenAudioBridge::process(const int numFrames, const bool nonRealtime, cons
                 audio->setSample(channel, frame, output);
             }
         }
-        if (!headphones) { accumulated_ = 0; continue; }
+        if (!headphones) continue;
         const float headphoneClick = (clickRoute & 1) != 0 ? click : 0.0f;
-        accumulator_.stereo[static_cast<size_t>(accumulated_ * 2)] = headphoneClick + ((inputRoute & 1) != 0 ? left : 0.0f);
-        accumulator_.stereo[static_cast<size_t>(accumulated_ * 2 + 1)] = headphoneClick + ((inputRoute & 1) != 0 ? right : 0.0f);
-        if (++accumulated_ == blockFrames) {
-            accumulator_.routingState = routing;
-            accumulator_.audioOutputState = audioOutputState;
-            accumulator_.generation = command;
-            accumulator_.transportState = transportState();
-            const auto write = fifo_.write(1);
-            if (write.blockSize1 != 0) queue_[static_cast<std::size_t>(write.startIndex1)] = accumulator_;
-            else dropped_.fetch_add(1);
-            accumulated_ = 0;
+        const std::array<float, 2> current {
+            headphoneClick + ((inputRoute & 1) != 0 ? left : 0.0f),
+            headphoneClick + ((inputRoute & 1) != 0 ? right : 0.0f)
+        };
+        if (!hasPreviousHeadphoneSample_) {
+            previousHeadphoneSample_ = current;
+            hasPreviousHeadphoneSample_ = true;
         }
+        // Linear interpolation of the final stereo mix. Fractional phase and the
+        // previous sample survive callback boundaries. No buffers or allocations.
+        // Waiting for the right-hand sample costs at most one host sample.
+        while (headphoneSamplePhase_ <= 1.0e-9) {
+            const float fraction = static_cast<float>(juce::jlimit(0.0, 1.0, headphoneSamplePhase_ + 1.0));
+            for (size_t channel = 0; channel < 2; ++channel) {
+                // Preserve the original samples exactly at 48 kHz (and aligned positions).
+                const float sample = headphoneSamplePhase_ >= -1.0e-9 ? current[channel]
+                    : previousHeadphoneSample_[channel] + fraction * (current[channel] - previousHeadphoneSample_[channel]);
+                accumulator_.stereo[static_cast<size_t>(accumulated_ * 2) + channel] = sample;
+            }
+            if (++accumulated_ == blockFrames) {
+                accumulator_.routingState = routing;
+                accumulator_.audioOutputState = audioOutputState;
+                accumulator_.generation = command;
+                accumulator_.transportState = transportState();
+                const auto write = fifo_.write(1);
+                if (write.blockSize1 != 0) queue_[static_cast<std::size_t>(write.startIndex1)] = accumulator_;
+                else dropped_.fetch_add(1);
+                accumulated_ = 0;
+            }
+            headphoneSamplePhase_ += rate / 48000.0;
+        }
+        headphoneSamplePhase_ -= 1.0;
+        previousHeadphoneSample_ = current;
     }
     midiPlaying_.store(renderClick && slave && metronome_.midiPlaying());
     playbackPosition_.store(metronome_.samplePosition(), std::memory_order_relaxed);

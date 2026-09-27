@@ -143,7 +143,6 @@ CorePage::CorePage(HardwareService& hardwareService, juce::ValueTree& state)
         box.addItem("Audio out device", 2);
         box.addItem("Both", 3);
         box.getSelectedIdAsValue().referTo(audioSettings.getPropertyAsValue(property, nullptr));
-        box.setTooltip("Choose where this source is heard. Alpha/Tau headphones require a 48 kHz audio device.");
         box.onChange = [this] { hardwareService_.updateAudioSettings(state_); };
         addAndMakeVisible(box);
     };

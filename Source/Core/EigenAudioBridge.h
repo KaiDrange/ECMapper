@@ -52,6 +52,11 @@ public:
 
 private:
     void requestPlayback(bool play) noexcept;
+    void resetHeadphoneResampler() noexcept;
+    // Next 48 kHz sample's position relative to the current host sample.
+    double headphoneSamplePhase_ = 0.0;
+    std::array<float, 2> previousHeadphoneSample_ {};
+    bool hasPreviousHeadphoneSample_ = false;
     Metronome metronome_;
     std::atomic<uint64_t> routingState_ { 5 }; // Two route masks in low four bits, generation above.
     uint64_t observedRoutingState_ = 5;
@@ -81,7 +86,7 @@ private:
     std::atomic<bool> hostActive_ { false };
     std::atomic<bool> ready_ { false };
     juce::CriticalSection preparationLock_;
-    juce::String error_ { "Audio is not running. Select a 48 kHz audio device first." };
+    juce::String error_ { "Audio is not running. Select an audio device first." };
 };
 
 } // namespace ecm

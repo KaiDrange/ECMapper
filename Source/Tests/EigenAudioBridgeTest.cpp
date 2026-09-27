@@ -165,7 +165,7 @@ int main() {
     bridge.setHostActive(false);
     bridge.prepare(44100);
     bridge.setHostActive(true);
-    expect(bridge.start().isNotEmpty(), "Unsupported sample rate must be rejected");
+    expect(bridge.start().isEmpty(), "Headphones must accept a 44.1 kHz host with resampling");
     bridge.prepare(48000);
     bridge.setTiming(120, 6, 8);
     bridge.setHostActive(true);
@@ -429,6 +429,68 @@ int main() {
         }
         deviceOnly.process(128, true, nullptr, nullptr, &audio, 2, 2);
         expect(audio.getMagnitude(0, 128) == 0.0f, "Offline processing must clear the output mix");
+    }
+    // Compare resampled headphones against interpolation of the native-rate device mix.
+    // Irregular callbacks (including single samples) exercise preserved fractional phase.
+    for (double rate : {22050.0, 32000.0, 44100.0, 48000.0, 88200.0, 96000.0, 192000.0}) {
+        ecm::EigenAudioBridge resampled;
+        resampled.setRouting(3, 3);
+        resampled.prepare(rate);
+        resampled.setHostActive(true);
+        resampled.setAudioOutputEnabled(true);
+        expect(resampled.start().isEmpty(), "Resampled headphones must start at each supported host rate");
+        std::vector<std::array<float, 2>> nativeMix;
+        const int sourceFrames = static_cast<int>(rate) + 17;
+        nativeMix.reserve(static_cast<size_t>(sourceFrames));
+        int outputFrames = 0;
+        int offset = 0;
+        int callback = 0;
+        const int blockSizes[] = {1, 31, 97, 256, 13, 511};
+        while (offset < sourceFrames) {
+            const int frames = juce::jmin(blockSizes[callback++ % 6], sourceFrames - offset);
+            juce::AudioBuffer<float> audio(2, frames);
+            for (int sample = 0; sample < frames; ++sample) {
+                audio.setSample(0, sample, 0.1f * static_cast<float>(std::sin((offset + sample) * 0.17)));
+                audio.setSample(1, sample, 0.2f * static_cast<float>(std::cos((offset + sample) * 0.11)));
+            }
+            resampled.process(frames, false, nullptr, nullptr, &audio, 2, 2);
+            for (int sample = 0; sample < frames; ++sample)
+                nativeMix.push_back({audio.getSample(0, sample), audio.getSample(1, sample)});
+            while (resampled.pop(block)) {
+                for (int sample = 0; sample < 128; ++sample, ++outputFrames) {
+                    const double sourcePosition = outputFrames * rate / 48000.0;
+                    const auto before = static_cast<size_t>(std::floor(sourcePosition));
+                    const auto after = static_cast<size_t>(std::ceil(sourcePosition));
+                    expect(after < nativeMix.size(), "Resampler must not read beyond available host samples");
+                    if (after >= nativeMix.size()) return 1;
+                    const float fraction = static_cast<float>(sourcePosition - static_cast<double>(before));
+                    for (size_t channel = 0; channel < 2; ++channel) {
+                        const float a = nativeMix[before][channel];
+                        const float b = nativeMix[after][channel];
+                        expect(std::abs(block.stereo[static_cast<size_t>(sample * 2) + channel] - (a + fraction * (b - a))) < 1e-5f,
+                               "Headphone resampling must interpolate both channels continuously across callbacks");
+                    }
+                }
+            }
+            offset += frames;
+        }
+        const int expectedSamples = static_cast<int>(std::floor((sourceFrames - 1) * 48000.0 / rate + 1e-8)) + 1;
+        expect(outputFrames == (expectedSamples / 128) * 128,
+               "Headphone output rate must remain 48 kHz without callback rounding drift");
+        expect(resampled.droppedBlocks() == 0, "Resampled output must remain within FIFO capacity when drained");
+        // No interpolation with old audio may survive a routing/transport transition.
+        resampled.setRouting(4, 3);
+        resampled.stop();
+        juce::AudioBuffer<float> silence(2, 1024);
+        silence.clear();
+        resampled.process(1024, false, nullptr, nullptr, &silence, 2, 2);
+        int silentBlocks = 0;
+        while (resampled.pop(block)) {
+            ++silentBlocks;
+            expect(std::all_of(block.stereo.begin(), block.stereo.end(), [](float sample) { return sample == 0.0f; }),
+                   "Resampler history must be discarded on routing changes and Stop");
+        }
+        expect(silentBlocks > 0, "Stopped metronome must still produce resampled input-monitoring audio");
     }
     if (ok) std::cout << "EigenAudioBridge checks passed\n";
     return ok ? 0 : 1;
