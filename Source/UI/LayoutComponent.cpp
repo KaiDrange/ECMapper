@@ -27,11 +27,44 @@ LayoutComponent::LayoutComponent(InstrumentType deviceType, float widthFactor, f
         juce::PopupMenu menu;
         menu.addItem("None", [this] { LayoutWrapper::setKeyMappingType(activeKeyId, KeyMappingType::None, this->pluginState.state); showHidePanels(); repaint(); });
         menu.addItem("Note", [this] { LayoutWrapper::setKeyMappingType(activeKeyId, KeyMappingType::Note, this->pluginState.state); showHidePanels(); repaint(); });
+        menu.addItem("Strum", [this] { LayoutWrapper::setKeyMappingType(activeKeyId, KeyMappingType::Strum, this->pluginState.state); showHidePanels(); repaint(); });
         menu.addItem("Chord", [this] { LayoutWrapper::setKeyMappingType(activeKeyId, KeyMappingType::Chord, this->pluginState.state); showHidePanels(); repaint(); });
         menu.addItem("Midi msg", [this] { LayoutWrapper::setKeyMappingType(activeKeyId, KeyMappingType::MidiMsg, this->pluginState.state); showHidePanels(); repaint(); });
         menu.addItem("App Ctrl", [this] { LayoutWrapper::setKeyMappingType(activeKeyId, KeyMappingType::AppCtrl, this->pluginState.state); showHidePanels(); repaint(); });
         menu.showMenuAsync(juce::PopupMenu::Options{}.withTargetComponent(mapTypeMenuButton));
     };
+
+    addAndMakeVisible(stringSelector);
+    stringSelector.addItem("String: None", 1);
+    for (int number = 1; number <= 6; ++number)
+        stringSelector.addItem("String: " + juce::String(number), number + 1);
+    stringSelector.setTooltip("Note keys on a string play legato using pitch bend within this device and zone; chords play independently");
+    stringSelector.onChange = [this] {
+        if (activeKeyId.deviceType != InstrumentType::None)
+            LayoutWrapper::setKeyStringNumber(activeKeyId, stringSelector.getSelectedId() - 1, this->pluginState.state);
+    };
+
+    addChildComponent(strumSourceZoneSelector);
+    addChildComponent(strumSourceStringSelector);
+    addChildComponent(strumExpressionToggle);
+    strumExpressionToggle.setTooltip("On: this strum key controls roll, yaw and pressure. Off: the linked source key controls them.");
+    for (int zone = 1; zone <= 3; ++zone)
+        strumSourceZoneSelector.addItem("Linked zone: " + juce::String(zone), zone);
+    for (int string = 1; string <= 6; ++string)
+        strumSourceStringSelector.addItem("Linked string: " + juce::String(string), string);
+    strumSourceZoneSelector.setTooltip("Read the held note or chord from this zone on the same device");
+    strumSourceStringSelector.setTooltip("Use this note string, or the matching chord note slot");
+    auto updateStrumLink = [this] {
+        if (activeKeyId.deviceType == InstrumentType::None) return;
+        LayoutWrapper::setKeyMappingValue(activeKeyId,
+            "Strum;" + juce::String(strumSourceZoneSelector.getSelectedId()) + ";"
+                + juce::String(strumSourceStringSelector.getSelectedId()) + ";"
+                + juce::String(strumExpressionToggle.getToggleState() ? 1 : 0), this->pluginState.state);
+        repaint();
+    };
+    strumSourceZoneSelector.onChange = updateStrumLink;
+    strumSourceStringSelector.onChange = updateStrumLink;
+    strumExpressionToggle.onClick = updateStrumLink;
 
     addAndMakeVisible(colourMenuButton);
     colourMenuButton.onClick = [this] {
@@ -89,6 +122,19 @@ void LayoutComponent::resized() {
     colourMenuButton.setBounds(menuArea.removeFromTop(static_cast<int>(areaHeight * 0.04f)));
     zoneMenuButton.setBounds(menuArea.removeFromTop(static_cast<int>(areaHeight * 0.04f)));
     
+    if (stringSelector.isVisible()) {
+        menuArea.removeFromTop(8);
+        stringSelector.setBounds(menuArea.removeFromTop(static_cast<int>(areaHeight * 0.04f)));
+    }
+
+    if (strumSourceZoneSelector.isVisible()) {
+        menuArea.removeFromTop(8);
+        strumSourceZoneSelector.setBounds(menuArea.removeFromTop(static_cast<int>(areaHeight * 0.04f)));
+        menuArea.removeFromTop(8);
+        strumSourceStringSelector.setBounds(menuArea.removeFromTop(static_cast<int>(areaHeight * 0.04f)));
+        menuArea.removeFromTop(8);
+        strumExpressionToggle.setBounds(menuArea.removeFromTop(static_cast<int>(areaHeight * 0.04f)));
+    }
     menuArea.removeFromTop(15);
     chordSectionComponent.setBounds(menuArea);
     appCtrlSectionComponent.setBounds(menuArea);
@@ -154,10 +200,29 @@ void LayoutComponent::enableDisableMenuButtons(bool enable) {
     colourMenuButton.setEnabled(enable);
     zoneMenuButton.setEnabled(enable);
     mapTypeMenuButton.setEnabled(enable);
+    stringSelector.setEnabled(enable);
+    strumSourceZoneSelector.setEnabled(enable);
+    strumSourceStringSelector.setEnabled(enable);
+    strumExpressionToggle.setEnabled(enable);
 }
 
 void LayoutComponent::showHidePanels() {    
     auto layoutKey = LayoutWrapper::getLayoutKey(activeKeyId, pluginState.state);
+    const bool strum = layoutKey.keyMappingType == KeyMappingType::Strum;
+    strumSourceZoneSelector.setVisible(strum);
+    strumSourceStringSelector.setVisible(strum);
+    strumExpressionToggle.setVisible(strum);
+    zoneMenuButton.setButtonText(strum ? "Output zone" : "Zone");
+    if (strum) {
+        auto parts = juce::StringArray::fromTokens(layoutKey.mappingValue, ";", "");
+        const bool valid = (parts.size() == 3 || parts.size() == 4) && parts[0] == "Strum";
+        strumExpressionToggle.setToggleState(!valid || parts.size() == 3 || parts[3].getIntValue() != 0, juce::dontSendNotification);
+        strumSourceZoneSelector.setSelectedId(valid ? juce::jlimit(1, 3, parts[1].getIntValue()) : 1, juce::dontSendNotification);
+        strumSourceStringSelector.setSelectedId(valid ? juce::jlimit(1, 6, parts[2].getIntValue()) : 1, juce::dontSendNotification);
+    }
+    stringSelector.setSelectedId(layoutKey.stringNumber + 1, juce::dontSendNotification);
+    stringSelector.setVisible(layoutKey.keyMappingType == KeyMappingType::Note);
+    resized();
     if (layoutKey.keyMappingType == KeyMappingType::MidiMsg) {
         midiMessageSectionComponent.updatePanelFromMessageString(layoutKey.mappingValue);
         midiMessageSectionComponent.setVisible(true);
@@ -191,6 +256,10 @@ void LayoutComponent::deselectAllOtherKeys(const KeyConfigComponent* key) {
 }
 
 void LayoutComponent::deselectAllKeys() {
+    stringSelector.setVisible(false);
+    strumSourceZoneSelector.setVisible(false);
+    strumSourceStringSelector.setVisible(false);
+    strumExpressionToggle.setVisible(false);
     for (auto* k : keys) {
         k->setToggleState(false, juce::dontSendNotification);
         k->setState(juce::Button::buttonNormal);

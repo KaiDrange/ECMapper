@@ -108,6 +108,8 @@ void KeyConfigComponent::paint(juce::Graphics& g) {
         } else {
             keyText = "Chrd";
         }
+    } else if (layoutKey.keyMappingType == KeyMappingType::Strum) {
+        keyText = "Strum";
     } else if (layoutKey.keyMappingType == KeyMappingType::MidiMsg) {
         juce::StringArray midiMsgParts;
         Utils::splitString(keyText, ";", midiMsgParts);

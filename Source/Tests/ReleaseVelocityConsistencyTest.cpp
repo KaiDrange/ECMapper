@@ -92,7 +92,7 @@ void configureMappedKey(ecm::ConfigLookup& configLookup, ecm::InstrumentType dev
     auto& key = configLookup.keys[0][0];
     key.keyId = { 0, 0, deviceType };
     key.mapType = ecm::KeyMappingType::Note;
-    key.notes = { 60, -1, -1, -1 };
+    key.notes = { 60, -1, -1, -1, -1, -1 };
     key.output = ecm::MidiChannelType::Chan1;
     key.pressure.valueType = ecm::MidiValueType::Off;
     key.roll.valueType = ecm::MidiValueType::Off;

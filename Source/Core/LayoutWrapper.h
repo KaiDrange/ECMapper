@@ -23,6 +23,7 @@ public:
         Zone zone;
         KeyMappingType keyMappingType;
         juce::String mappingValue;
+        int stringNumber = 0; // 0 = unassigned, 1-6 = string within this device/zone
     };
     
     static inline const juce::Identifier id_layout { "layout" };
@@ -34,12 +35,14 @@ public:
     static inline const juce::Identifier id_keyType { "keyType" };
     static inline const juce::Identifier id_keyColour { "keyColour" };
     static inline const juce::Identifier id_keyMappingType { "keyMappingType" };
+    static inline const juce::Identifier id_stringNumber { "stringNumber" };
     static inline const juce::Identifier id_mappingValue { "mappingValue" };
     static inline const juce::Identifier id_zone { "zone" };
     static inline const juce::Identifier id_ecMapperVersion { "ecmapperVersion" };
 
     static LayoutKey getLayoutKey(KeyId keyId, juce::ValueTree& rootState);
     static void setLayoutKey(LayoutKey& key, juce::ValueTree& rootState);
+    static void setKeyStringNumber(KeyId keyId, int stringNumber, juce::ValueTree& rootState);
     static void setKeyColour(KeyId keyId, KeyColour keyColour, juce::ValueTree& rootState);
     static void setKeyType(KeyId keyId, EigenharpKeyType keyType, juce::ValueTree& rootState);
     static void setKeyZone(KeyId keyId, Zone zone, juce::ValueTree& rootState);

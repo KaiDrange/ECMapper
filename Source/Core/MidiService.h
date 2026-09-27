@@ -123,7 +123,8 @@ private:
     enum class KeyStatus {
         Off = 0,
         Pending = 1,
-        Active = 2
+        Active = 2,
+        Ignored = 3
     };
     
     struct KeyState {
@@ -134,11 +135,33 @@ private:
         uint64_t lastTimestamp = 0;
         uint64_t noteOnTimestamp = 0;
         int midiChannel = 1;
+        int noteZoneIndex = 0;
+        bool hasNoteAllocation = false;
+        int allocationNote = -1;
+        MidiChannelType allocationOutput = MidiChannelType::Undefined;
+        int stringNumber = 0;
+        Zone stringZone = Zone::NoZone;
+        float stringPitchOffset = 0.0f;
+        LayoutWrapper::KeyId soundingKeyId;
+        KeyMappingType soundingMapType = KeyMappingType::None;
+        uint64_t pressSequence = 0;
+        int stringTargetNote = -1;
+        bool strumOwnExpression = true;
+        LayoutWrapper::KeyId strumExpressionSource;
+        uint64_t strumSourcePressSequence = 0;
+        float linkedRoll = 0.0f, linkedYaw = 0.0f, linkedPressure = 0.0f;
         int messageCount = 0;
         bool isLatchOn = false;
-        int activeNotes[4] = { -1, -1, -1, -1 };
+        int activeNotes[6] = { -1, -1, -1, -1, -1, -1 };
     };
     
+    KeyState* findStringOwner(const KeyState& state, InstrumentType deviceType);
+    void releaseNoteAllocation(const LayoutWrapper::KeyId& keyId, KeyState& state, MidiVoiceRouter* voiceRouter);
+
+    const KeyState* findStrumSource(const ConfigLookup::Key& keyLookup) const;
+    void updateLinkedStrumExpression(const KeyState& source, PerformanceEventSink& sink, int eventTime,
+                                     MidiVoiceRouter* voiceRouter, ExpressionEmissionPolicy* expressionPolicy);
+    uint64_t nextPressSequence_ = 0;
     KeyState keyStates_[3][3][120];
     int latchTranspose_[3] = { 0, 0, 0 };
     int momentaryTranspose_[3] = { 0, 0, 0 };
@@ -203,7 +226,7 @@ private:
     void createMidiMsgOff(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, osc::Message& outgoingOscMsg, const char* devId, int eventTime, MidiVoiceRouter* voiceRouter);
     void createAllNotesOff(PerformanceEventSink& sink, int eventTime);
     
-    void addMidiValueMessage(InstrumentType deviceType, int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, float pbTransportRange, int noteNo, PerformanceEventSink& sink, bool isBipolar, ExpressionCurveTarget curveTarget, int eventTime, MidiVoiceRouter* voiceRouter, int zoneIndex = -1);
+    void addMidiValueMessage(InstrumentType deviceType, int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, float pbTransportRange, int noteNo, PerformanceEventSink& sink, bool isBipolar, ExpressionCurveTarget curveTarget, int eventTime, MidiVoiceRouter* voiceRouter, int zoneIndex = -1, float pitchOffset = 0.0f);
     void addStripValueMessage(InstrumentType deviceType, int channel, float ehValue, ZoneWrapper::MidiValue midiValue, float pbRange, PerformanceEventSink& sink, bool isBipolar, int eventTime, MidiVoiceRouter* voiceRouter, int zoneIndex = -1);
     
     void createBreath(int deviceIndex, const ConfigLookup& keyLookup, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter);
@@ -227,6 +250,7 @@ private:
     struct MidiNote {
         int channel;
         int noteNumber;
+        int zoneIndex;
     };
     std::vector<MidiNote> playingNotes_;
     
@@ -264,8 +288,10 @@ private:
     void sendInitiateProtocolNegotiation (int group, juce::midi_ci::MUID destinationMUID, std::byte deviceID = std::byte{0x7f});
     void sendIdentityResponse (int group, std::byte deviceID);
 
-    int countPlayingNoteMatches(int channel, int noteNumber) const;
-    void removeOneNoteMatch(int channel, int noteNumber);
+    bool noteUsesSameOutput(const MidiNote& note, int zoneIndex) const;
+    bool hasPlayingNotesOnChannel(int channel, int zoneIndex) const;
+    int countPlayingNoteMatches(int channel, int noteNumber, int zoneIndex) const;
+    void removeOneNoteMatch(int channel, int noteNumber, int zoneIndex);
     void appendPendingMidiMessage(const juce::MidiMessage& message, int eventTime);
     
     std::list<LayoutWrapper::KeyId> chanNotePri_[16];

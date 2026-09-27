@@ -111,16 +111,28 @@ void ConfigLookup::updateKeyUnlocked(LayoutWrapper::KeyId keyId) {
     if (!setKeyToDefault) {
         key.keyType = layoutKey.keyType;
         key.mapType = layoutKey.keyMappingType;
+        key.zone = effectiveZone;
+        key.stringNumber = (key.mapType == KeyMappingType::Note)
+            ? layoutKey.stringNumber : 0;
         key.keyColour = layoutKey.keyColour;
+        if (key.mapType == KeyMappingType::Strum) {
+            auto parts = juce::StringArray::fromTokens(layoutKey.mappingValue, ";", "");
+            if ((parts.size() == 3 || parts.size() == 4) && parts[0] == "Strum") {
+                key.strumSourceZone = static_cast<Zone>(juce::jlimit(1, 3, parts[1].getIntValue()));
+                key.strumSourceString = juce::jlimit(1, 6, parts[2].getIntValue());
+                key.strumExpression = parts.size() == 3 || parts[3].getIntValue() != 0;
+            }
+        }
         for (std::size_t i = 0; i < std::size(key.notes); ++i)
             key.notes[i] = -1;
             
         if (key.mapType == KeyMappingType::Chord) {
             juce::StringArray chordParts;
             Utils::splitString(layoutKey.mappingValue, ";", chordParts);
-            if (chordParts.size() == 5) {
+            if (chordParts.size() == 5 || chordParts.size() == 7) {
                 for (std::size_t i = 0; i < std::size(key.notes); ++i) {
-                    const int noteNumber = chordParts[static_cast<int>(i) + 1].getIntValue();
+                    const int noteNumber = static_cast<int>(i) + 1 < chordParts.size()
+                        ? chordParts[static_cast<int>(i) + 1].getIntValue() : -1;
                     key.notes[i] = noteNumber < 0
                        ? -1
                        : std::clamp(noteNumber + getTransposeForZone(layoutKey.keyId.deviceType, layoutKey.zone, pluginState), 0, 127);

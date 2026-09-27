@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<layout ecmapperVersion="2.1.0">
+  <!-- Stradella: top-to-bottom fifths, starting on Db. MIDI 60 = C4. -->
+  <!-- Zone 1: bass. Zone 2: chords. Zone 3: strums linked to Zone 2. -->
+  <!-- Column 1: bass, C2-B2 (MIDI 36-47). C is green. -->
+  <key_0_0 keyMappingType="10" mappingValue="37" zone="1" keyColour="0"/>
+  <key_0_1 keyMappingType="10" mappingValue="44" zone="1" keyColour="0"/>
+  <key_0_2 keyMappingType="10" mappingValue="39" zone="1" keyColour="0"/>
+  <key_0_3 keyMappingType="10" mappingValue="46" zone="1" keyColour="0"/>
+  <key_0_4 keyMappingType="10" mappingValue="41" zone="1" keyColour="0"/>
+  <key_0_5 keyMappingType="10" mappingValue="36" zone="1" keyColour="1"/>
+  <key_0_6 keyMappingType="10" mappingValue="43" zone="1" keyColour="0"/>
+  <key_0_7 keyMappingType="10" mappingValue="38" zone="1" keyColour="0"/>
+  <key_0_8 keyMappingType="10" mappingValue="45" zone="1" keyColour="0"/>
+  <key_0_9 keyMappingType="10" mappingValue="40" zone="1" keyColour="0"/>
+  <key_0_10 keyMappingType="10" mappingValue="47" zone="1" keyColour="0"/>
+  <key_0_11 keyMappingType="10" mappingValue="42" zone="1" keyColour="0"/>
+  <key_0_12 keyMappingType="10" mappingValue="37" zone="1" keyColour="0"/>
+  <key_0_13 keyMappingType="10" mappingValue="44" zone="1" keyColour="0"/>
+  <key_0_14 keyMappingType="10" mappingValue="39" zone="1" keyColour="0"/>
+  <key_0_15 keyMappingType="10" mappingValue="46" zone="1" keyColour="0"/>
+
+  <!-- Column 2: major. Six-string E-shape voicings; slots 1-6 run low to high. -->
+  <key_0_16 keyMappingType="40" mappingValue="Db;49;56;61;65;68;73" zone="2" keyColour="0"/>
+  <key_0_17 keyMappingType="40" mappingValue="Ab;44;51;56;60;63;68" zone="2" keyColour="0"/>
+  <key_0_18 keyMappingType="40" mappingValue="Eb;51;58;63;67;70;75" zone="2" keyColour="0"/>
+  <key_0_19 keyMappingType="40" mappingValue="Bb;46;53;58;62;65;70" zone="2" keyColour="0"/>
+  <key_0_20 keyMappingType="40" mappingValue="F;41;48;53;57;60;65" zone="2" keyColour="0"/>
+  <key_0_21 keyMappingType="40" mappingValue="C;48;55;60;64;67;72" zone="2" keyColour="0"/>
+  <key_0_22 keyMappingType="40" mappingValue="G;43;50;55;59;62;67" zone="2" keyColour="0"/>
+  <key_0_23 keyMappingType="40" mappingValue="D;50;57;62;66;69;74" zone="2" keyColour="0"/>
+  <key_0_24 keyMappingType="40" mappingValue="A;45;52;57;61;64;69" zone="2" keyColour="0"/>
+  <key_0_25 keyMappingType="40" mappingValue="E;40;47;52;56;59;64" zone="2" keyColour="0"/>
+  <key_0_26 keyMappingType="40" mappingValue="B;47;54;59;63;66;71" zone="2" keyColour="0"/>
+  <key_0_27 keyMappingType="40" mappingValue="F#;42;49;54;58;61;66" zone="2" keyColour="0"/>
+  <key_0_28 keyMappingType="40" mappingValue="Db;49;56;61;65;68;73" zone="2" keyColour="0"/>
+  <key_0_29 keyMappingType="40" mappingValue="Ab;44;51;56;60;63;68" zone="2" keyColour="0"/>
+  <key_0_30 keyMappingType="40" mappingValue="Eb;51;58;63;67;70;75" zone="2" keyColour="0"/>
+  <key_0_31 keyMappingType="40" mappingValue="Bb;46;53;58;62;65;70" zone="2" keyColour="0"/>
+
+  <!-- Column 3: minor. Six-string E-shape voicings; slots 1-6 run low to high. -->
+  <key_0_32 keyMappingType="40" mappingValue="Dbm;49;56;61;64;68;73" zone="2" keyColour="0"/>
+  <key_0_33 keyMappingType="40" mappingValue="Abm;44;51;56;59;63;68" zone="2" keyColour="0"/>
+  <key_0_34 keyMappingType="40" mappingValue="Ebm;51;58;63;66;70;75" zone="2" keyColour="0"/>
+  <key_0_35 keyMappingType="40" mappingValue="Bbm;46;53;58;61;65;70" zone="2" keyColour="0"/>
+  <key_0_36 keyMappingType="40" mappingValue="Fm;41;48;53;56;60;65" zone="2" keyColour="0"/>
+  <key_0_37 keyMappingType="40" mappingValue="Cm;48;55;60;63;67;72" zone="2" keyColour="0"/>
+  <key_0_38 keyMappingType="40" mappingValue="Gm;43;50;55;58;62;67" zone="2" keyColour="0"/>
+  <key_0_39 keyMappingType="40" mappingValue="Dm;50;57;62;65;69;74" zone="2" keyColour="0"/>
+  <key_0_40 keyMappingType="40" mappingValue="Am;45;52;57;60;64;69" zone="2" keyColour="0"/>
+  <key_0_41 keyMappingType="40" mappingValue="Em;40;47;52;55;59;64" zone="2" keyColour="0"/>
+  <key_0_42 keyMappingType="40" mappingValue="Bm;47;54;59;62;66;71" zone="2" keyColour="0"/>
+  <key_0_43 keyMappingType="40" mappingValue="F#m;42;49;54;57;61;66" zone="2" keyColour="0"/>
+  <key_0_44 keyMappingType="40" mappingValue="Dbm;49;56;61;64;68;73" zone="2" keyColour="0"/>
+  <key_0_45 keyMappingType="40" mappingValue="Abm;44;51;56;59;63;68" zone="2" keyColour="0"/>
+  <key_0_46 keyMappingType="40" mappingValue="Ebm;51;58;63;66;70;75" zone="2" keyColour="0"/>
+  <key_0_47 keyMappingType="40" mappingValue="Bbm;46;53;58;61;65;70" zone="2" keyColour="0"/>
+  <!-- Extra four keys below the 16 Stradella rows are unused. -->
+  <key_0_48 keyMappingType="0" zone="0" keyColour="0"/>
+  <key_0_49 keyMappingType="0" zone="0" keyColour="0"/>
+  <key_0_50 keyMappingType="0" zone="0" keyColour="0"/>
+  <key_0_51 keyMappingType="0" zone="0" keyColour="0"/>
+
+  <!-- Column 4: dominant seventh. Six-string E-shape voicings; slots 1-6 run low to high. -->
+  <key_0_52 keyMappingType="40" mappingValue="Db7;49;56;59;65;68;73" zone="2" keyColour="0"/>
+  <key_0_53 keyMappingType="40" mappingValue="Ab7;44;51;54;60;63;68" zone="2" keyColour="0"/>
+  <key_0_54 keyMappingType="40" mappingValue="Eb7;51;58;61;67;70;75" zone="2" keyColour="0"/>
+  <key_0_55 keyMappingType="40" mappingValue="Bb7;46;53;56;62;65;70" zone="2" keyColour="0"/>
+  <key_0_56 keyMappingType="40" mappingValue="F7;41;48;51;57;60;65" zone="2" keyColour="0"/>
+  <key_0_57 keyMappingType="40" mappingValue="C7;48;55;58;64;67;72" zone="2" keyColour="0"/>
+  <key_0_58 keyMappingType="40" mappingValue="G7;43;50;53;59;62;67" zone="2" keyColour="0"/>
+  <key_0_59 keyMappingType="40" mappingValue="D7;50;57;60;66;69;74" zone="2" keyColour="0"/>
+  <key_0_60 keyMappingType="40" mappingValue="A7;45;52;55;61;64;69" zone="2" keyColour="0"/>
+  <key_0_61 keyMappingType="40" mappingValue="E7;40;47;50;56;59;64" zone="2" keyColour="0"/>
+  <key_0_62 keyMappingType="40" mappingValue="B7;47;54;57;63;66;71" zone="2" keyColour="0"/>
+  <key_0_63 keyMappingType="40" mappingValue="F#7;42;49;52;58;61;66" zone="2" keyColour="0"/>
+  <key_0_64 keyMappingType="40" mappingValue="Db7;49;56;59;65;68;73" zone="2" keyColour="0"/>
+  <key_0_65 keyMappingType="40" mappingValue="Ab7;44;51;54;60;63;68" zone="2" keyColour="0"/>
+  <key_0_66 keyMappingType="40" mappingValue="Eb7;51;58;61;67;70;75" zone="2" keyColour="0"/>
+  <key_0_67 keyMappingType="40" mappingValue="Bb7;46;53;56;62;65;70" zone="2" keyColour="0"/>
+  <!-- Extra four keys below the 16 Stradella rows are unused. -->
+  <key_0_68 keyMappingType="0" zone="0" keyColour="0"/>
+  <key_0_69 keyMappingType="0" zone="0" keyColour="0"/>
+  <key_0_70 keyMappingType="0" zone="0" keyColour="0"/>
+  <key_0_71 keyMappingType="0" zone="0" keyColour="0"/>
+
+  <!-- Top six percussion keys: strings 1-6 from Zone 2, played on Zone 3. -->
+  <key_1_0 keyType="2" keyMappingType="60" mappingValue="Strum;2;1" zone="3" keyColour="0"/>
+  <key_1_1 keyType="2" keyMappingType="60" mappingValue="Strum;2;2" zone="3" keyColour="0"/>
+  <key_1_2 keyType="2" keyMappingType="60" mappingValue="Strum;2;3" zone="3" keyColour="0"/>
+  <key_1_3 keyType="2" keyMappingType="60" mappingValue="Strum;2;4" zone="3" keyColour="0"/>
+  <key_1_4 keyType="2" keyMappingType="60" mappingValue="Strum;2;5" zone="3" keyColour="0"/>
+  <key_1_5 keyType="2" keyMappingType="60" mappingValue="Strum;2;6" zone="3" keyColour="0"/>
+  <key_1_6 keyType="2" keyMappingType="0" zone="0" keyColour="0"/>
+  <key_1_7 keyType="2" keyMappingType="0" zone="0" keyColour="0"/>
+  <key_1_8 keyType="2" keyMappingType="0" zone="0" keyColour="0"/>
+  <key_1_9 keyType="2" keyMappingType="0" zone="0" keyColour="0"/>
+  <key_1_10 keyType="2" keyMappingType="0" zone="0" keyColour="0"/>
+  <key_1_11 keyType="2" keyMappingType="0" zone="0" keyColour="0"/>
+
+  <!-- Unused Tau buttons. -->
+  <key_2_0 keyType="3" keyMappingType="0" zone="0" keyColour="0"/>
+  <key_2_1 keyType="3" keyMappingType="0" zone="0" keyColour="0"/>
+  <key_2_2 keyType="3" keyMappingType="0" zone="0" keyColour="0"/>
+  <key_2_3 keyType="3" keyMappingType="0" zone="0" keyColour="0"/>
+  <key_2_4 keyType="3" keyMappingType="0" zone="0" keyColour="0"/>
+  <key_2_5 keyType="3" keyMappingType="0" zone="0" keyColour="0"/>
+  <key_2_6 keyType="3" keyMappingType="0" zone="0" keyColour="0"/>
+  <key_2_7 keyType="3" keyMappingType="0" zone="0" keyColour="0"/>
+</layout>

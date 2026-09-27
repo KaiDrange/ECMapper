@@ -45,6 +45,9 @@ private:
     juce::OwnedArray<KeyConfigComponent> keys;
     std::unique_ptr<juce::DrawablePath> keyImgNormal, keyImgOver, keyImgDown, keyImgOn;
     
+    juce::ComboBox stringSelector;
+    juce::ComboBox strumSourceZoneSelector, strumSourceStringSelector;
+    juce::ToggleButton strumExpressionToggle { "Expression" };
     juce::TextButton colourMenuButton { "Colour" };
     juce::TextButton zoneMenuButton { "Zone" };
     juce::TextButton mapTypeMenuButton { "Type" };

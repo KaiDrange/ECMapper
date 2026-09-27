@@ -40,7 +40,7 @@ private:
     void resetPanel();
     
     TextInputComponent chordNameInput;
-    ChordNote chordNotes[4];
+    ChordNote chordNotes[6];
 
     juce::ListenerList<Listener> listeners;
     

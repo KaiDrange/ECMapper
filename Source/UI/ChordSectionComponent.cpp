@@ -5,7 +5,7 @@ namespace ecm {
 ChordSectionComponent::ChordSectionComponent() : chordNameInput("Name:", 0, 5, "", false) {
     addAndMakeVisible(chordNameInput);
     chordNameInput.addListener(this);
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 6; i++) {
         setNoteLabelText(i);
         chordNotes[i].setButton.setToggleable(true);
         chordNotes[i].setButton.setToggleState(false, juce::NotificationType::dontSendNotification);
@@ -15,31 +15,17 @@ ChordSectionComponent::ChordSectionComponent() : chordNameInput("Name:", 0, 5, "
         addAndMakeVisible(chordNotes[i].clearButton);
     }
 
-    chordNotes[0].setButton.onClick = [this] {
-        chordNotes[1].setButton.setToggleState(false, juce::NotificationType::dontSendNotification);
-        chordNotes[2].setButton.setToggleState(false, juce::NotificationType::dontSendNotification);
-        chordNotes[3].setButton.setToggleState(false, juce::NotificationType::dontSendNotification);
-    };
-    chordNotes[1].setButton.onClick = [this] {
-        chordNotes[0].setButton.setToggleState(false, juce::NotificationType::dontSendNotification);
-        chordNotes[2].setButton.setToggleState(false, juce::NotificationType::dontSendNotification);
-        chordNotes[3].setButton.setToggleState(false, juce::NotificationType::dontSendNotification);
-    };
-    chordNotes[2].setButton.onClick = [this] {
-        chordNotes[0].setButton.setToggleState(false, juce::NotificationType::dontSendNotification);
-        chordNotes[1].setButton.setToggleState(false, juce::NotificationType::dontSendNotification);
-        chordNotes[3].setButton.setToggleState(false, juce::NotificationType::dontSendNotification);
-    };
-    chordNotes[3].setButton.onClick = [this] {
-        chordNotes[0].setButton.setToggleState(false, juce::NotificationType::dontSendNotification);
-        chordNotes[1].setButton.setToggleState(false, juce::NotificationType::dontSendNotification);
-        chordNotes[2].setButton.setToggleState(false, juce::NotificationType::dontSendNotification);
-    };
-
-    chordNotes[0].clearButton.onClick = [this] { chordNotes[0].midiNoteNumber = -1; setNoteLabelText(0); sendChangeMessage(); };
-    chordNotes[1].clearButton.onClick = [this] { chordNotes[1].midiNoteNumber = -1; setNoteLabelText(1); sendChangeMessage(); };
-    chordNotes[2].clearButton.onClick = [this] { chordNotes[2].midiNoteNumber = -1; setNoteLabelText(2); sendChangeMessage(); };
-    chordNotes[3].clearButton.onClick = [this] { chordNotes[3].midiNoteNumber = -1; setNoteLabelText(3); sendChangeMessage(); };
+    for (int i = 0; i < 6; ++i) {
+        chordNotes[i].setButton.onClick = [this, i] {
+            for (int j = 0; j < 6; ++j)
+                if (j != i) chordNotes[j].setButton.setToggleState(false, juce::dontSendNotification);
+        };
+        chordNotes[i].clearButton.onClick = [this, i] {
+            chordNotes[i].midiNoteNumber = -1;
+            setNoteLabelText(i);
+            sendChangeMessage();
+        };
+    }
 }
 
 ChordSectionComponent::~ChordSectionComponent() = default;
@@ -69,19 +55,18 @@ void ChordSectionComponent::setNoteLabelText(int noteIndex) {
 
 juce::String ChordSectionComponent::getMessageString() const
 {
-    return chordNameInput.getValue() + ";" +
-        juce::String(chordNotes[0].midiNoteNumber) + ";" +
-        juce::String(chordNotes[1].midiNoteNumber) + ";" +
-        juce::String(chordNotes[2].midiNoteNumber) + ";" +
-        juce::String(chordNotes[3].midiNoteNumber);
+    juce::String result = chordNameInput.getValue();
+    for (const auto& note : chordNotes)
+        result += ";" + juce::String(note.midiNoteNumber);
+    return result;
 }
 
 void ChordSectionComponent::updatePanelFromMessageString(const juce::String& msgString) {
     juce::StringArray tokens;
     tokens.addTokens(msgString, ";", "\"");
-    if (tokens.size() != 5) {
+    if (tokens.size() != 5 && tokens.size() != 7) {
         chordNameInput.setValue("");
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 6; i++) {
             chordNotes[i].midiNoteNumber = -1;
             setNoteLabelText(i);
         }
@@ -89,8 +74,8 @@ void ChordSectionComponent::updatePanelFromMessageString(const juce::String& msg
     }
     
     chordNameInput.setValue(tokens[0]);
-    for (int i = 0; i < 4; i++) {
-        chordNotes[i].midiNoteNumber = tokens[i + 1].getIntValue();
+    for (int i = 0; i < 6; i++) {
+        chordNotes[i].midiNoteNumber = i + 1 < tokens.size() ? tokens[i + 1].getIntValue() : -1;
         setNoteLabelText(i);
     }
 }
@@ -108,7 +93,7 @@ void ChordSectionComponent::visibilityChanged() {
 }
 
 void ChordSectionComponent::handleNoteOn(juce::MidiKeyboardState*, int, int midiNoteNumber, float) {
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 6; i++) {
         if (chordNotes[i].setButton.getToggleState()) {
             chordNotes[i].midiNoteNumber = midiNoteNumber;
             setNoteLabelText(i);
@@ -119,14 +104,14 @@ void ChordSectionComponent::handleNoteOn(juce::MidiKeyboardState*, int, int midi
 }
 
 void ChordSectionComponent::handleNoteOff(juce::MidiKeyboardState*, int, int, float) {
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 6; i++) {
         chordNotes[i].setButton.setToggleState(false, juce::NotificationType::dontSendNotification);
     }
 }
 
 void ChordSectionComponent::resetPanel() {
     chordNameInput.setValue("");
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 6; i++) {
         chordNotes[i].midiNoteNumber = -1;
         setNoteLabelText(i);
     }

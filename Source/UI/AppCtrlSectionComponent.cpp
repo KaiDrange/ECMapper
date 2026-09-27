@@ -76,7 +76,7 @@ AppCtrlSectionComponent::AppCtrlSectionComponent() :
     addAndMakeVisible(transposeSemitones);
     transposeSemitones.addListener(this);
 
-    presetProgramGroup.setText("MIDI prg. Chng.");
+    presetProgramGroup.setText("MIDI prg. chng.");
     addAndMakeVisible(presetProgramGroup);
     for (size_t zone = 0; zone < presetPrograms.size(); ++zone) {
         auto& enabled = presetProgramEnabled[zone];

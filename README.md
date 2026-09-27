@@ -9,6 +9,33 @@ and converts it into MIDI. Both MIDI 1.0 and MIDI 2.0 are supported. Currently, 
 Uses the JUCE Framework. EigenLite by the Technobear is used for hardware communication. More information can be found here:
 https://ticticelectro.com/ECMapper
 
+## String assignments
+
+Select a note key in the layout editor and choose **String: 1–6** (or **String: None**).
+For note keys, the first key sounds a note; later keys on that string bend it to their pitch
+without retriggering and take over pressure, pitch bend and CC expression. Releasing a key
+returns control to the most recently pressed accepted key still held. The last release ends
+the original note. Targets beyond the configured pitch-bend range minus the key-expression
+bend range are ignored until released. Strings are local to each device and zone.
+
+Chords support up to six notes. Their slots correspond to strings 1–6; chords have no separate
+string selector and continue to sound normally when pressed. Older four-note layouts remain
+compatible. Unassigned notes keep their normal playback behavior.
+
+## Strumming keys
+
+Choose **Type → Strum**, then set the **Output zone**, **Linked zone**, and **Linked string**.
+A strum plays the current pitch from that string in the linked zone on the same device, using
+the strum key's own strike and release velocity. The most recently pressed held note key or
+chord supplies the pitch; chord note slots correspond to strings 1–6. An empty chord slot or
+no held source produces no note. Source keys still sound normally. A strum keeps its captured
+pitch until released, even if the source changes or is released. **Expression** is on by default:
+the strum key controls roll, yaw and pressure using its output zone's expression mappings. Turn
+it off to use those values from the note/chord key that supplied the pitch instead. One source
+can control several held strums. Releasing the source leaves their last expression values in
+place; re-pressing it does not take over older strums. Strike and release velocity always come
+from the strum key. Settings are saved with layouts.
+
 ## Build Instructions
 
 ```bash

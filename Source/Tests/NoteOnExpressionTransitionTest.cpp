@@ -8,6 +8,7 @@
 #include "Core/ConfigLookup.h"
 #include "Core/LayoutWrapper.h"
 #include "Core/MidiService.h"
+#include "Core/MidiBufferUtils.h"
 #include "Core/OSCMessage.h"
 #include "Core/PerformanceEventSink.h"
 #include "Core/SettingsWrapper.h"
@@ -204,7 +205,7 @@ void configureMappedKey(ecm::ConfigLookup& configLookup) {
     auto& key = configLookup.keys[0][0];
     key.keyId = { 0, 0, ecm::InstrumentType::Alpha };
     key.mapType = ecm::KeyMappingType::Note;
-    key.notes = { 60, -1, -1, -1 };
+    key.notes = { 60, -1, -1, -1, -1, -1 };
     key.output = ecm::MidiChannelType::Chan1;
     key.pressure.valueType = ecm::MidiValueType::Off;
     key.roll.valueType = ecm::MidiValueType::CC;
@@ -483,7 +484,7 @@ bool verifySingleChannelStripPitchBendKeepsFullRange()
     return ok;
 }
 
-bool verifyMpePitchbendEditDoesNotQueueLegacyLayoutReset()
+bool verifyMpePitchbendEditUpdatesTransportWithoutResettingVoices()
 {
     using namespace ecm;
 
@@ -525,19 +526,6 @@ bool verifyMpePitchbendEditDoesNotQueueLegacyLayoutReset()
     juce::MidiBuffer startupMessages;
     midiService.drainPendingMidiMessages(startupMessages, 0);
 
-    SettingsWrapper::setLowerMPEPB(12, pluginState.state);
-
-    juce::MidiBuffer queuedMessages;
-    midiService.drainPendingMidiMessages(queuedMessages, 0);
-
-    const auto presetTreeAfterPitchbendEdit = SettingsWrapper::getPresetTree(pluginState.state);
-    const bool presetHasNestedPreset = presetTreeAfterPitchbendEdit.getChildWithName(SettingsWrapper::id_preset).isValid();
-    const bool alphaLayoutRemainsInPreset = presetTreeAfterPitchbendEdit
-        .getChildWithName(LayoutWrapper::id_device + juce::String((int)InstrumentType::Alpha))
-        .getChildWithName(LayoutWrapper::id_layout)
-        .getChildWithName(LayoutWrapper::id_key + juce::String("_0_0"))
-        .isValid();
-
     const uint64_t startTimestamp = 1'000'000ULL;
     osc::Message outgoingMessage;
     juce::MidiBuffer midiBuffer;
@@ -564,6 +552,21 @@ bool verifyMpePitchbendEditDoesNotQueueLegacyLayoutReset()
     };
 
     const int firstChannel = sendNoteOn(0, 60, startTimestamp);
+
+    // Keep a voice active across the edit to detect an accidental allocator reset.
+    SettingsWrapper::setLowerMPEPB(12, pluginState.state);
+
+    juce::MidiBuffer queuedMessages;
+    midiService.drainPendingMidiMessages(queuedMessages, 0);
+
+    const auto presetTreeAfterPitchbendEdit = SettingsWrapper::getPresetTree(pluginState.state);
+    const bool presetHasNestedPreset = presetTreeAfterPitchbendEdit.getChildWithName(SettingsWrapper::id_preset).isValid();
+    const bool alphaLayoutRemainsInPreset = presetTreeAfterPitchbendEdit
+        .getChildWithName(LayoutWrapper::id_device + juce::String((int)InstrumentType::Alpha))
+        .getChildWithName(LayoutWrapper::id_layout)
+        .getChildWithName(LayoutWrapper::id_key + juce::String("_0_0"))
+        .isValid();
+
     const int secondChannel = sendNoteOn(1, 62, startTimestamp + 100'000ULL);
 
     juce::MidiBuffer refreshedLayout;
@@ -573,8 +576,16 @@ bool verifyMpePitchbendEditDoesNotQueueLegacyLayoutReset()
     const auto queuedMidiMessages = collectMidiMessages(queuedMessages);
 
     bool ok = true;
-    ok &= expect(queuedMessages.isEmpty(),
-                 "changing lower MPE pitch bend should not queue a live legacy MPE layout reset");
+    ok &= expect(!queuedMessages.isEmpty(),
+                 "changing lower MPE pitch bend should immediately queue the updated transport layout");
+    juce::MPEZoneLayout queuedLayout;
+    queuedLayout.processNextMidiBuffer(queuedMessages);
+    ok &= expect(queuedLayout.getLowerZone().perNotePitchbendRange == 12,
+                 "the queued layout should advertise the edited lower-zone pitch-bend range");
+    ok &= expect(queuedLayout.getLowerZone().numMemberChannels == 5
+                 && queuedLayout.getUpperZone().numMemberChannels == 3
+                 && queuedLayout.getUpperZone().perNotePitchbendRange == 48,
+                 "a lower-zone pitch-bend edit should preserve voice counts and the upper-zone range");
     ok &= expect(!presetHasNestedPreset,
                  "changing lower MPE pitch bend through a MidiService listener should not create a nested preset subtree");
     ok &= expect(alphaLayoutRemainsInPreset,
@@ -587,10 +598,550 @@ bool verifyMpePitchbendEditDoesNotQueueLegacyLayoutReset()
                  "changing lower MPE pitch bend should not reset active lower-zone voice allocation before the next note");
     ok &= expect(!refreshedMessages.empty(),
                  "rebuilding the transport layout after an MPE pitch-bend edit should still produce layout messages");
-    ok &= expect(refreshedMessages != queuedMidiMessages,
-                 "the retained transport layout definition should not be emitted immediately when only the MPE pitch-bend range changes");
+    ok &= expect(refreshedMessages == queuedMidiMessages,
+                 "the queued update should match the current transport layout definition");
 
     midiService.stop();
+    return ok;
+}
+
+bool verifyStringChannelSharing(bool midi2Mode = false, bool keyBendEnabled = true, bool nativePerNote = false)
+{
+    using namespace ecm;
+    DummyProcessor processor;
+    juce::AudioProcessorValueTreeState pluginState(processor, nullptr, "TestState", {});
+    juce::CriticalSection stateLock;
+    ConfigLookup lookups[] = {
+        ConfigLookup(InstrumentType::Alpha, pluginState, stateLock),
+        ConfigLookup(InstrumentType::Tau, pluginState, stateLock),
+        ConfigLookup(InstrumentType::Pico, pluginState, stateLock)
+    };
+    SettingsWrapper::setMidi2Mode(midi2Mode, pluginState.state);
+    SettingsWrapper::setLowerMPEVoiceCount(6, pluginState.state);
+    SettingsWrapper::setLowerMPEPB(12, pluginState.state);
+    ZoneWrapper::setMidiChannelType(InstrumentType::Alpha, Zone::Zone1, MidiChannelType::MPE_Low, pluginState.state);
+    ZoneWrapper::setKeyPitchbend(InstrumentType::Alpha, Zone::Zone1, 2, pluginState.state);
+    ZoneWrapper::setMidiValue(InstrumentType::Alpha, Zone::Zone1, ZoneWrapper::id_roll,
+                             {keyBendEnabled ? MidiValueType::Pitchbend : MidiValueType::Off, 0}, pluginState.state);
+    ZoneWrapper::setMidiValue(InstrumentType::Alpha, Zone::Zone1, ZoneWrapper::id_yaw,
+                             {MidiValueType::CC, 74}, pluginState.state);
+    bool ok = expect(LayoutWrapper::getLayoutKey({0, 0, InstrumentType::Alpha}, pluginState.state).stringNumber == 0,
+                     "existing layouts should default to no string");
+    const int pitches[] = {60, 64, 70, 71, 55, 48, 62, 63, 60, 67};
+    for (int k = 0; k < 10; ++k) {
+        auto key = makeLayoutKey(k == 5 ? KeyMappingType::Chord : KeyMappingType::Note,
+                                 k == 5 ? "Chord;48;52;55;-1" : juce::String(pitches[k]));
+        key.keyId.keyNo = k;
+        key.stringNumber = k == 6 ? 2 : k == 7 ? 0 : 1;
+        if (k == 9) key.zone = Zone::Zone2;
+        LayoutWrapper::setLayoutKey(key, pluginState.state);
+    }
+    auto panic = makeLayoutKey(KeyMappingType::MidiMsg, "Trigger;AllNotesOff;0;0;0");
+    panic.keyId.keyNo = 10;
+    LayoutWrapper::setLayoutKey(panic, pluginState.state);
+    ZoneWrapper::setMidiChannelType(InstrumentType::Alpha, Zone::Zone2, MidiChannelType::MPE_Low, pluginState.state);
+    auto saved = LayoutWrapper::createPersistentLayoutTree(InstrumentType::Alpha, pluginState.state);
+    auto restored = juce::ValueTree::fromXml(*saved.createXml());
+    ok &= expect(int(restored.getChildWithName("key_0_1").getProperty(LayoutWrapper::id_stringNumber)) == 1,
+                 "note string assignments should remain persistent");
+    for (auto& lookup : lookups) lookup.updateAll();
+    MidiService service(lookups, stateLock);
+    service.start(pluginState, nullptr);
+    if (nativePerNote) {
+        // Receiving a MIDI 2.0 channel-voice packet enables negotiated per-note expression.
+        const uint32_t packet[] = { 0x40d00000u, 0u };
+        using juce::universal_midi_packets::Iterator;
+        service.consume(Iterator(packet, 2), Iterator(packet + 2, 0), 0);
+    }
+    service.setRuntimeConfigSnapshot(std::make_unique<MidiService::RuntimeConfigSnapshot>(
+        lookups, service.getProtocol(), service.getVoiceRouter(), service.getExpressionPolicy()));
+    CapturingSink sink;
+    osc::Message outgoing;
+    juce::MidiBuffer buffer;
+    uint64_t time = 1'000'000;
+    auto send = [&](unsigned int key, bool active, int count, float yaw = 0.0f, float roll = 0.0f) {
+        sink.events.clear();
+        for (int i = 0; i < count; ++i) {
+            auto msg = makeKeyMessageForKey(key, 0.7f, roll, yaw, time += 10'000);
+            msg.active = active;
+            service.processMessage(msg, outgoing, buffer, sink, 0, nullptr);
+        }
+    };
+    auto press = [&](unsigned int key) {
+        send(key, true, 6);
+        for (const auto& event : sink.events)
+            if (event.kind == PerformanceEventKind::NoteOn) return event.channel;
+        return -1;
+    };
+    auto release = [&](unsigned int key) { send(key, false, 1); };
+    auto countKind = [&](PerformanceEventKind kind) {
+        int count = 0;
+        for (const auto& event : sink.events) if (event.kind == kind) ++count;
+        return count;
+    };
+    auto expectBend = [&](float semitones) {
+        const PerformanceEvent* bend = nullptr;
+        for (const auto& event : sink.events)
+            if (event.kind == PerformanceEventKind::PitchBend) bend = &event;
+        ok &= expect(bend != nullptr, "string ownership changes should immediately emit pitch bend");
+        if (bend && nativePerNote)
+            ok &= expect(bend->perNote && bend->noteNumber == 60,
+                         "native expression must target the original sounding MIDI note");
+        if (bend) ok &= expectNear(bend->value, 0.5f + semitones / 24.0f, 0.0001f,
+                                  "string bend should be relative to the original MIDI note");
+    };
+    const int first = press(0);
+    ok &= expect(nativePerNote ? first == 1 : first > 1, "the first string note should use the configured voice routing");
+    ok &= expect(press(1) == -1, "a legato key must not send another Note On");
+    expectBend(4);
+    send(0, true, 80, 0.4f);
+    ok &= expect(sink.events.empty(), "older held keys must not fight for expression");
+    send(1, true, 80, 0.2f);
+    ok &= expect(findControllerEvent(sink.events, 74) != nullptr, "the newest accepted key should control brightness");
+    expectBend(4);
+    press(4);
+    expectBend(-5);
+    release(4);
+    expectBend(4);
+    release(1);
+    expectBend(0);
+    ok &= expect(findControllerEvent(sink.events, 74) != nullptr, "release should immediately restore the previous key's expression");
+    ok &= expect(countKind(PerformanceEventKind::NoteOff) == 0, "legato release must not end the original note");
+    press(2);
+    expectBend(10);
+    send(2, true, 80, 0, 1);
+    if (keyBendEnabled) {
+        // The existing expression curve approaches its endpoint rather than reaching it exactly.
+        for (const auto& event : sink.events)
+            if (event.kind == PerformanceEventKind::PitchBend)
+                ok &= expect(event.value > 0.99f && event.value <= 1.0f,
+                             "key expression should use the reserved headroom without clipping");
+    } else {
+        expectBend(10);
+    }
+    press(3);
+    ok &= expect(sink.events.empty(), "targets beyond total bend minus key bend must be ignored");
+    send(3, true, 80, 1, 1);
+    ok &= expect(sink.events.empty(), "ignored keys must not control expression");
+    release(3);
+    ok &= expect(sink.events.empty(), "releasing an ignored key must not affect the sounding string");
+    release(0);
+    ok &= expect(countKind(PerformanceEventKind::NoteOff) == 0, "releasing the original key should retain the voice while a legato key is held");
+    const int other = press(6);
+    ok &= expect(nativePerNote ? other == 1 : other > 1 && other != first, "another string must follow the configured voice routing");
+    release(6);
+    release(2);
+    ok &= expect(countKind(PerformanceEventKind::NoteOff) == 1, "the last release should emit one Note Off");
+    for (const auto& event : sink.events)
+        if (event.kind == PerformanceEventKind::NoteOff)
+            ok &= expect(event.noteNumber == 60 && event.channel == first, "Note Off must address the original sounding note");
+    if (nativePerNote) {
+        service.stop();
+        return ok;
+    }
+    ok &= expect(press(0) == first, "the released string channel should be reusable");
+    expectBend(0);
+    press(8);
+    ok &= expect(countKind(PerformanceEventKind::NoteOn) == 0, "identical-pitch keys should also play legato");
+    release(8);
+    expectBend(0);
+    const int chord = press(5);
+    ok &= expect(chord > 1 && chord != first && countKind(PerformanceEventKind::NoteOn) == 3,
+                 "chords assigned to a string should still play independently, like String None");
+    release(5);
+    ok &= expect(countKind(PerformanceEventKind::NoteOff) == 3, "chord release should stop all chord notes");
+    ok &= expect(press(7) != first, "unassigned notes should retain independent allocation");
+    release(7);
+    ok &= expect(press(9) != first, "string numbers should be independent across zones");
+    release(9);
+    press(1);
+    service.queueTransposeChangeFlush(InstrumentType::Alpha, Zone::Zone1);
+    ok &= expect(press(0) == first, "zone flush should release the shared allocation");
+    press(1);
+    press(10);
+    ok &= expect(countKind(PerformanceEventKind::AllNotesOff) == 16, "panic should silence every channel");
+    ok &= expect(press(4) > 1, "a key pressed after panic should trigger a fresh note rather than bend a silent voice");
+    release(0);
+    release(1);
+    release(4);
+    service.stop();
+    return ok;
+}
+
+bool verifyStrummingAndSixNoteChords()
+{
+    using namespace ecm;
+    DummyProcessor processor;
+    juce::AudioProcessorValueTreeState pluginState(processor, nullptr, "TestState", {});
+    juce::CriticalSection stateLock;
+    ConfigLookup lookups[] = {
+        ConfigLookup(InstrumentType::Alpha, pluginState, stateLock),
+        ConfigLookup(InstrumentType::Tau, pluginState, stateLock),
+        ConfigLookup(InstrumentType::Pico, pluginState, stateLock)
+    };
+    SettingsWrapper::setMidi2Mode(false, pluginState.state);
+    ZoneWrapper::setMidiChannelType(InstrumentType::Alpha, Zone::Zone1, MidiChannelType::Chan1, pluginState.state);
+    ZoneWrapper::setMidiChannelType(InstrumentType::Alpha, Zone::Zone2, MidiChannelType::Chan2, pluginState.state);
+    ZoneWrapper::setMidiChannelType(InstrumentType::Alpha, Zone::Zone3, MidiChannelType::Chan3, pluginState.state);
+    ZoneWrapper::setChannelMaxPitchbend(InstrumentType::Alpha, Zone::Zone1, 48, pluginState.state);
+    auto map = [&](int keyNo, KeyMappingType type, const juce::String& value, Zone zone, int string = 0) {
+        auto key = makeLayoutKey(type, value);
+        key.keyId.keyNo = keyNo;
+        key.zone = zone;
+        key.stringNumber = string;
+        LayoutWrapper::setLayoutKey(key, pluginState.state);
+    };
+    map(0, KeyMappingType::Note, "60", Zone::Zone1, 1);
+    map(1, KeyMappingType::Note, "64", Zone::Zone1, 1);
+    map(2, KeyMappingType::Chord, "Six;48;52;55;60;64;67", Zone::Zone1);
+    map(3, KeyMappingType::Chord, "Old;50;53;57;62", Zone::Zone1);
+    map(4, KeyMappingType::Note, "80", Zone::Zone3, 1);
+    map(10, KeyMappingType::Strum, "Strum;1;1", Zone::Zone2);
+    map(11, KeyMappingType::Strum, "Strum;1;6", Zone::Zone2);
+    map(12, KeyMappingType::Note, "75", Zone::Zone2);
+    map(13, KeyMappingType::Strum, "Strum;3;1", Zone::Zone2);
+    for (auto& lookup : lookups) lookup.updateAll();
+    bool ok = expect(lookups[0].keys[0][2].notes[5] == 67, "six-note chords should preserve the sixth slot");
+    ok &= expect(lookups[0].keys[0][3].notes[4] == -1 && lookups[0].keys[0][3].notes[5] == -1,
+                 "legacy four-note chords should leave strings five and six empty");
+    auto layout = LayoutWrapper::createPersistentLayoutTree(InstrumentType::Alpha, pluginState.state);
+    auto restored = juce::ValueTree::fromXml(*layout.createXml());
+    ok &= expect(restored.getChildWithName("key_0_11").getProperty(LayoutWrapper::id_mappingValue).toString() == "Strum;1;6",
+                 "strum links should persist with the layout");
+    MidiService service(lookups, stateLock);
+    service.start(pluginState, nullptr);
+    service.setRuntimeConfigSnapshot(std::make_unique<MidiService::RuntimeConfigSnapshot>(
+        lookups, service.getProtocol(), service.getVoiceRouter(), service.getExpressionPolicy()));
+    CapturingSink sink;
+    osc::Message outgoing;
+    juce::MidiBuffer buffer;
+    uint64_t time = 1'000'000;
+    auto press = [&](unsigned int key, float strength = 0.1f) {
+        sink.events.clear();
+        for (int i = 0; i < 6; ++i) {
+            auto message = makeKeyMessageForKey(key, strength * static_cast<float>(i + 1), 0, 0, time += 10'000);
+            service.processMessage(message, outgoing, buffer, sink, 0, nullptr);
+        }
+    };
+    auto release = [&](unsigned int key) {
+        sink.events.clear();
+        auto message = makeKeyMessageForKey(key, 0, 0, 0, time += 10'000);
+        message.active = false;
+        service.processMessage(message, outgoing, buffer, sink, 0, nullptr);
+    };
+    auto noteEvent = [&](PerformanceEventKind kind, int channel, int note) {
+        PerformanceEvent result;
+        bool found = false;
+        for (const auto& event : sink.events)
+            if (event.kind == kind && event.channel == channel && event.noteNumber == note) {
+                result = event;
+                found = true;
+            }
+        ok &= expect(found, "expected note event should use the strum's output channel and linked source pitch");
+        return result;
+    };
+    auto countKind = [&](PerformanceEventKind kind) {
+        int result = 0;
+        for (const auto& event : sink.events) if (event.kind == kind) ++result;
+        return result;
+    };
+    press(10);
+    ok &= expect(sink.events.empty(), "strumming without a held source should be silent");
+    release(10);
+    press(0, 0.02f);
+    const auto sourceOn = noteEvent(PerformanceEventKind::NoteOn, 1, 60);
+    press(10);
+    const auto strumOn = noteEvent(PerformanceEventKind::NoteOn, 2, 60);
+    ok &= expect(strumOn.zoneIndex == 1, "strum output should carry its own zone routing");
+    press(1);
+    ok &= expect(countKind(PerformanceEventKind::NoteOn) == 0, "source legato changes should not retrigger the held strum");
+    release(0);
+    release(1);
+    release(10);
+    const auto strumOff = noteEvent(PerformanceEventKind::NoteOff, 2, 60);
+    press(12);
+    const auto referenceOn = noteEvent(PerformanceEventKind::NoteOn, 2, 75);
+    release(12);
+    const auto referenceOff = noteEvent(PerformanceEventKind::NoteOff, 2, 75);
+    ok &= expectNear(strumOn.velocity, referenceOn.velocity, 0.0001f, "strum velocity should come from its own strike");
+    ok &= expectNear(strumOff.velocity, referenceOff.velocity, 0.0001f, "strum release velocity should come from its own pressure history");
+    ok &= expect(strumOn.velocity > sourceOn.velocity, "a harder strum should not inherit the softer source velocity");
+    press(0);
+    press(1);
+    press(10);
+    noteEvent(PerformanceEventKind::NoteOn, 2, 64);
+    release(10);
+    release(1);
+    press(10);
+    noteEvent(PerformanceEventKind::NoteOn, 2, 60);
+    release(10);
+    release(0);
+    press(2);
+    ok &= expect(countKind(PerformanceEventKind::NoteOn) == 6, "all six chord notes should sound");
+    press(11);
+    noteEvent(PerformanceEventKind::NoteOn, 2, 67);
+    release(11);
+    press(10);
+    noteEvent(PerformanceEventKind::NoteOn, 2, 48);
+    release(10);
+    press(3);
+    press(11);
+    ok &= expect(sink.events.empty(), "an empty slot in the latest held chord should mute that string");
+    release(11);
+    release(3);
+    press(11);
+    noteEvent(PerformanceEventKind::NoteOn, 2, 67);
+    release(11);
+    press(4);
+    press(10);
+    noteEvent(PerformanceEventKind::NoteOn, 2, 48);
+    release(10);
+    press(13);
+    noteEvent(PerformanceEventKind::NoteOn, 2, 80);
+    release(13);
+    release(4);
+    release(2);
+    ok &= expect(countKind(PerformanceEventKind::NoteOff) == 6, "all six chord notes should stop on release");
+    press(11);
+    ok &= expect(sink.events.empty(), "released chords must no longer supply strum pitches");
+    release(11);
+    service.stop();
+    return ok;
+}
+
+bool verifyLinkedStrumExpression(bool midi2Mode, bool chordSource)
+{
+    using namespace ecm;
+    DummyProcessor processor;
+    juce::AudioProcessorValueTreeState pluginState(processor, nullptr, "TestState", {});
+    juce::CriticalSection lock;
+    ConfigLookup lookups[] = {
+        ConfigLookup(InstrumentType::Alpha, pluginState, lock),
+        ConfigLookup(InstrumentType::Tau, pluginState, lock),
+        ConfigLookup(InstrumentType::Pico, pluginState, lock)
+    };
+    SettingsWrapper::setMidi2Mode(midi2Mode, pluginState.state);
+    SettingsWrapper::setLowerMPEVoiceCount(8, pluginState.state);
+    ZoneWrapper::setMidiChannelType(InstrumentType::Alpha, Zone::Zone1, MidiChannelType::Chan1, pluginState.state);
+    ZoneWrapper::setMidiChannelType(InstrumentType::Alpha, Zone::Zone2, MidiChannelType::MPE_Low, pluginState.state);
+    ZoneWrapper::setMidiValue(InstrumentType::Alpha, Zone::Zone2, ZoneWrapper::id_roll, {MidiValueType::CC, 20}, pluginState.state);
+    ZoneWrapper::setMidiValue(InstrumentType::Alpha, Zone::Zone2, ZoneWrapper::id_yaw, {MidiValueType::CC, 21}, pluginState.state);
+    ZoneWrapper::setMidiValue(InstrumentType::Alpha, Zone::Zone2, ZoneWrapper::id_pressure, {MidiValueType::CC, 22}, pluginState.state);
+    auto source = makeLayoutKey(chordSource ? KeyMappingType::Chord : KeyMappingType::Note,
+                                 chordSource ? "C;48;52;55;60;64;67" : "60");
+    source.stringNumber = 1;
+    LayoutWrapper::setLayoutKey(source, pluginState.state);
+    for (int i = 1; i <= 3; ++i) {
+        auto strum = makeLayoutKey(KeyMappingType::Strum,
+            i == 3 ? "Strum;1;1" : "Strum;1;" + juce::String(chordSource ? i : 1) + ";0");
+        strum.keyId.keyNo = i;
+        strum.zone = Zone::Zone2;
+        LayoutWrapper::setLayoutKey(strum, pluginState.state);
+    }
+    for (auto& lookup : lookups) lookup.updateAll();
+    bool ok = expect(!lookups[0].keys[0][1].strumExpression && lookups[0].keys[0][3].strumExpression,
+                     "saved Expression off should load, while old strum mappings default to on");
+    auto saved = LayoutWrapper::createPersistentLayoutTree(InstrumentType::Alpha, pluginState.state);
+    auto restored = juce::ValueTree::fromXml(*saved.createXml());
+    ok &= expect(restored.getChildWithName("key_0_1").getProperty(LayoutWrapper::id_mappingValue).toString() == "Strum;1;1;0",
+                 "the expression toggle should survive layout serialization");
+    MidiService service(lookups, lock);
+    service.start(pluginState, nullptr);
+    service.setRuntimeConfigSnapshot(std::make_unique<MidiService::RuntimeConfigSnapshot>(
+        lookups, service.getProtocol(), service.getVoiceRouter(), service.getExpressionPolicy()));
+    CapturingSink sink;
+    osc::Message outgoing;
+    juce::MidiBuffer buffer;
+    uint64_t time = 1'000'000;
+    auto send = [&](unsigned int key, bool active, int frames, float pressure, float roll, float yaw) {
+        sink.events.clear();
+        for (int i = 0; i < frames; ++i) {
+            auto msg = makeKeyMessageForKey(key, pressure, roll, yaw, time += 10'000);
+            msg.active = active;
+            service.processMessage(msg, outgoing, buffer, sink, 0, nullptr);
+        }
+    };
+    auto noteOn = [&]() {
+        for (const auto& event : sink.events)
+            if (event.kind == PerformanceEventKind::NoteOn) return event;
+        ok &= expect(false, "strum should start a note");
+        return PerformanceEvent {};
+    };
+    auto checkExpression = [&](int channel, float roll, float yaw, float pressure) {
+        for (int cc = 20; cc <= 22; ++cc) {
+            const PerformanceEvent* found = nullptr;
+            for (const auto& event : sink.events)
+                if (event.kind == PerformanceEventKind::Controller && event.channel == channel && event.controller == cc)
+                    found = &event;
+            ok &= expect(found != nullptr, "linked source should emit all three expression controls on the strum channel");
+            if (found) {
+                ok &= expect(found->zoneIndex == 1, "linked expression should use the strum output zone");
+                ok &= expectNear(found->value, cc == 20 ? roll : cc == 21 ? yaw : pressure, 0.0001f,
+                                 "strum expression should come from the selected controller key");
+            }
+        }
+    };
+    send(0, true, 80, 1, 1, -1);
+    send(1, true, 6, 0.2f, -1, 1);
+    const auto first = noteOn();
+    checkExpression(first.channel, 1, 0, 1);
+    send(2, true, 6, 0.2f, -1, 1);
+    const auto second = noteOn();
+    checkExpression(second.channel, 1, 0, 1);
+    send(3, true, 6, 0.2f, -1, 1);
+    const auto own = noteOn();
+    ok &= expectNear(first.velocity, own.velocity, 0.0001f, "expression ownership must not change strike velocity");
+    send(0, true, 80, 0, -1, 1);
+    checkExpression(first.channel, 0, 1, 0);
+    checkExpression(second.channel, 0, 1, 0);
+    for (const auto& event : sink.events)
+        ok &= expect(event.channel != own.channel, "source movement must not override an Expression-on strum");
+    send(1, true, 80, 1, 1, -1);
+    ok &= expect(sink.events.empty(), "an Expression-off strum must not send its own expression");
+    send(3, true, 80, 1, 1, -1);
+    checkExpression(own.channel, 1, 0, 1);
+    send(0, false, 1, 0, 0, 0);
+    for (const auto& event : sink.events)
+        ok &= expect(event.zoneIndex != 1, "releasing the source should retain the held strum's last expression and note");
+    send(0, true, 80, 1, 1, -1);
+    for (const auto& event : sink.events)
+        ok &= expect(event.zoneIndex != 1, "re-pressing a source must not take over an older strum");
+    send(1, false, 1, 0, 0, 0);
+    float linkedRelease = -1;
+    for (const auto& event : sink.events)
+        if (event.kind == PerformanceEventKind::NoteOff) linkedRelease = event.velocity;
+    send(3, false, 1, 0, 0, 0);
+    float ownRelease = -2;
+    for (const auto& event : sink.events)
+        if (event.kind == PerformanceEventKind::NoteOff) ownRelease = event.velocity;
+    ok &= expectNear(linkedRelease, ownRelease, 0.0001f, "expression ownership must not change release velocity");
+    send(2, false, 1, 0, 0, 0);
+    send(0, false, 1, 0, 0, 0);
+    service.stop();
+    return ok;
+}
+
+bool verifyRawPacketQueueCopy()
+{
+    juce::MidiBuffer source, destination;
+    const uint32_t noteOff[] = { 0x42813e00u, 0x40000000u };
+    ecm::addRawMidiEvent(source, noteOff, sizeof(noteOff), 0);
+    source.addEvent(juce::MidiMessage::controllerEvent(2, 74, 0), 2);
+    destination.addEvent(juce::MidiMessage::noteOn(1, 60, juce::uint8(64)), 3);
+    destination.addEvent(juce::MidiMessage::noteOff(1, 60), 9);
+    ecm::appendRawMidiBuffer(destination, source, 7);
+    const int times[] = {3, 7, 9, 9};
+    int index = 0;
+    bool ok = expect(destination.getNumEvents() == 4, "queue copying should preserve both MIDI bytes and UMP packets");
+    for (const auto metadata : destination) {
+        ok &= expect(index < 4 && metadata.samplePosition == times[index], "packet copying should preserve sample offsets and ordering");
+        if (index == 1)
+            ok &= expect(metadata.numBytes == sizeof(noteOff)
+                         && std::memcmp(metadata.data, noteOff, sizeof(noteOff)) == 0,
+                         "UMP Note Off bytes must survive a queue transfer unchanged");
+        ++index;
+    }
+    return ok;
+}
+
+bool verifyStrumReleaseAcrossZoneOutputs()
+{
+    using namespace ecm;
+    DummyProcessor processor;
+    juce::AudioProcessorValueTreeState pluginState(processor, nullptr, "TestState", {});
+    juce::CriticalSection lock;
+    ConfigLookup lookups[] = {
+        ConfigLookup(InstrumentType::Alpha, pluginState, lock),
+        ConfigLookup(InstrumentType::Tau, pluginState, lock),
+        ConfigLookup(InstrumentType::Pico, pluginState, lock)
+    };
+    SettingsWrapper::setMidi2Mode(true, pluginState.state);
+    for (auto zone : { Zone::Zone2, Zone::Zone3 })
+        ZoneWrapper::setMidiChannelType(InstrumentType::Alpha, zone, MidiChannelType::Chan2, pluginState.state);
+    auto chord = makeLayoutKey(KeyMappingType::Chord, "Dm;50;57;62;65;69;74");
+    chord.zone = Zone::Zone2;
+    LayoutWrapper::setLayoutKey(chord, pluginState.state);
+    for (int string = 1; string <= 7; ++string) {
+        auto strum = makeLayoutKey(KeyMappingType::Strum, "Strum;2;" + juce::String(string == 7 ? 3 : string));
+        strum.keyId.keyNo = string;
+        strum.zone = Zone::Zone3;
+        LayoutWrapper::setLayoutKey(strum, pluginState.state);
+    }
+    MidiService service(lookups, lock);
+    service.start(pluginState, nullptr);
+    service.setRuntimeConfigSnapshot(std::make_unique<MidiService::RuntimeConfigSnapshot>(
+        lookups, service.getProtocol(), service.getVoiceRouter(), service.getExpressionPolicy()));
+    CapturingSink sink;
+    osc::Message outgoing;
+    juce::MidiBuffer buffer;
+    uint64_t time = 1'000'000;
+    auto send = [&](unsigned int key, bool active) {
+        sink.events.clear();
+        for (int i = 0; i < (active ? 6 : 1); ++i) {
+            auto msg = makeKeyMessageForKey(key, active ? 0.7f : 0.0f, 0, 0, time += 10'000);
+            msg.active = active;
+            service.processMessage(msg, outgoing, buffer, sink, 0, nullptr);
+        }
+    };
+    auto count = [&](PerformanceEventKind kind, int zone) {
+        int result = 0;
+        for (const auto& event : sink.events)
+            if (event.kind == kind && event.zoneIndex == zone) ++result;
+        return result;
+    };
+    bool ok = true;
+    send(0, true);
+    ok &= expect(count(PerformanceEventKind::NoteOn, 1) == 6, "source chord should sound on Zone 2");
+    for (int pass = 0; pass < 3; ++pass) {
+        for (unsigned int string = 1; string <= 6; ++string) {
+            send(string, true);
+            ok &= expect(count(PerformanceEventKind::NoteOn, 2) == 1, "each strum should sound on Zone 3");
+            send(string, false);
+            ok &= expect(count(PerformanceEventKind::NoteOff, 2) == 1,
+                         "a held chord on another UMP zone must not suppress the strum's Note Off");
+        }
+    }
+    send(0, false);
+    ok &= expect(count(PerformanceEventKind::NoteOff, 1) == 6, "the source chord must release on its own zone");
+    send(0, true);
+    send(3, true);
+    send(0, false);
+    ok &= expect(count(PerformanceEventKind::NoteOff, 1) == 6, "releasing the source first must not leave its shared-pitch note hanging");
+    send(3, false);
+    ok &= expect(count(PerformanceEventKind::NoteOff, 2) == 1, "strum should still release after its source has released");
+    send(0, true);
+    send(3, true);
+    send(7, true);
+    ok &= expect(count(PerformanceEventKind::NoteOff, 2) == 1 && count(PerformanceEventKind::NoteOn, 2) == 1,
+                 "retriggering the same output pitch should end the old voice before starting a new one");
+    int noteOffIndex = -1, noteOnIndex = -1;
+    for (size_t i = 0; i < sink.events.size(); ++i) {
+        if (sink.events[i].kind == PerformanceEventKind::NoteOff) noteOffIndex = static_cast<int>(i);
+        if (sink.events[i].kind == PerformanceEventKind::NoteOn) noteOnIndex = static_cast<int>(i);
+    }
+    ok &= expect(noteOffIndex >= 0 && noteOnIndex > noteOffIndex, "retrigger Note Off must precede Note On");
+    send(3, false);
+    ok &= expect(count(PerformanceEventKind::NoteOff, 2) == 0, "the remaining held strum should retain the retriggered voice");
+    send(7, false);
+    ok &= expect(count(PerformanceEventKind::NoteOff, 2) == 1, "the last held strum should end the retriggered voice");
+    send(3, true);
+    juce::MidiBuffer startup;
+    service.drainPendingMidiMessages(startup);
+    service.queueTransposeChangeFlush(InstrumentType::Alpha, Zone::Zone3);
+    juce::MidiBuffer flushed;
+    service.drainPendingMidiMessages(flushed);
+    int flushedOffs = 0;
+    for (const auto metadata : flushed) {
+        if (metadata.numBytes < 8) continue;
+        const auto word = juce::readUnaligned<uint32_t>(metadata.data);
+        if ((word >> 28) != 4) continue;
+        ok &= expect(((word >> 24) & 0xf) == 2, "strum flush messages must stay on UMP group 2 (Zone 3)");
+        if (((word >> 20) & 0xf) == 8) ++flushedOffs;
+    }
+    ok &= expect(flushedOffs == 1, "a zone flush should release the strum despite a held source on another zone");
+    send(0, false);
+    ok &= expect(count(PerformanceEventKind::NoteOff, 1) == 6, "flushing strums must preserve source chord tracking");
+    service.stop();
     return ok;
 }
 
@@ -686,19 +1237,35 @@ bool verifyMidiMessageKeysEmitMappedMessages()
 
 } // namespace
 
-int main() {
+int main(int argc, char* argv[]) {
     using namespace ecm;
 
     juce::ScopedJuceInitialiser_GUI juceInitialiser;
     SilentLogger logger;
     juce::Logger::setCurrentLogger(&logger);
 
-    const bool ok = verifyCenteredNoteOnAndStrideLimitedTransition()
+    if (argc > 1 && juce::String(argv[1]) == "--strum-routing-only") {
+        const bool routingOk = verifyStrumReleaseAcrossZoneOutputs();
+        juce::Logger::setCurrentLogger(nullptr);
+        return routingOk ? 0 : 1;
+    }
+    const bool stringsOnly = argc > 1 && juce::String(argv[1]) == "--strings-only";
+    const bool ok = verifyLinkedStrumExpression(false, true)
+                 && verifyLinkedStrumExpression(true, true)
+                 && verifyLinkedStrumExpression(false, false)
+                 && verifyRawPacketQueueCopy()
+                 && verifyStrumReleaseAcrossZoneOutputs()
+                 && verifyStrummingAndSixNoteChords()
+                 && verifyStringChannelSharing()
+                 && verifyStringChannelSharing(true)
+                 && verifyStringChannelSharing(false, false)
+                 && verifyStringChannelSharing(true, true, true)
+                 && (stringsOnly || (verifyCenteredNoteOnAndStrideLimitedTransition()
                  && verifyMidi2KeyPitchBendScalingMatchesLegacy()
                  && verifyMpeMasterPitchBendUsesChannelMaxRange()
                  && verifySingleChannelStripPitchBendKeepsFullRange()
-                 && verifyMpePitchbendEditDoesNotQueueLegacyLayoutReset()
-                 && verifyMidiMessageKeysEmitMappedMessages();
+                 && verifyMpePitchbendEditUpdatesTransportWithoutResettingVoices()
+                 && verifyMidiMessageKeysEmitMappedMessages()));
     juce::Logger::setCurrentLogger(nullptr);
 
     if (!ok)

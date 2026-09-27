@@ -29,8 +29,13 @@ public:
     struct Key {
         LayoutWrapper::KeyId keyId;
         EigenharpKeyType keyType = EigenharpKeyType::Normal;
+        int stringNumber = 0;
+        Zone zone = Zone::NoZone;
+        Zone strumSourceZone = Zone::Zone1;
+        int strumSourceString = 1;
+        bool strumExpression = true;
         KeyMappingType mapType = KeyMappingType::None;
-        std::array<int, 4> notes = { -1, -1, -1, -1 };
+        std::array<int, 6> notes = { -1, -1, -1, -1, -1, -1 };
         MidiChannelType output = MidiChannelType::Undefined;
         ZoneWrapper::MidiValue pressure;
         ZoneWrapper::MidiValue roll;

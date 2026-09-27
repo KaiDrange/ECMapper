@@ -1,4 +1,5 @@
 #include "Midi2Protocol.h"
+#include "MidiBufferUtils.h"
 #include "Logger.h"
 #include <cstring>
 
@@ -59,29 +60,7 @@ uint8_t Midi2Protocol::groupForEvent(const PerformanceEvent& event) const {
 
 // Helper to bypass MidiBuffer::addEvent validation which fails for UMP in JUCE 9.0.1
 static void addToBuffer(juce::MidiBuffer& buffer, const uint32_t* data, int numWords, int sampleNumber) {
-    int numBytes = numWords * 4;
-    int offset = 0;
-    
-    // Manual search for insertion point to keep MidiBuffer sorted
-    const uint8_t* b = buffer.data.begin();
-    const uint8_t* e = buffer.data.end();
-    while (b + (int)sizeof(juce::int32) + (int)sizeof(juce::uint16) <= e) {
-        int eventTime = juce::readUnaligned<juce::int32>(b);
-        if (eventTime > sampleNumber) break;
-        int size = juce::readUnaligned<juce::uint16>(b + sizeof(juce::int32));
-        int total = (int)sizeof(juce::int32) + (int)sizeof(juce::uint16) + size;
-        if (b + total > e) break;
-        offset += total;
-        b += total;
-    }
-    
-    buffer.data.insertMultiple(offset, 0, numBytes + (int)sizeof(juce::int32) + (int)sizeof(juce::uint16));
-    uint8_t* dest = buffer.data.begin() + offset;
-    juce::writeUnaligned<juce::int32>(dest, sampleNumber);
-    dest += sizeof(juce::int32);
-    juce::writeUnaligned<juce::uint16>(dest, (juce::uint16)numBytes);
-    dest += sizeof(juce::uint16);
-    std::memcpy(dest, data, (size_t)numBytes);
+    addRawMidiEvent(buffer, data, numWords * 4, sampleNumber);
 }
 
 static uint32_t scaleTo32Bit(float value) {
