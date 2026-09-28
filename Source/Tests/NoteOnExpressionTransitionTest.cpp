@@ -796,15 +796,24 @@ bool verifyStrummingAndSixNoteChords(bool silentSource = false)
     map(1, KeyMappingType::Note, "64", Zone::Zone1, 1);
     map(2, KeyMappingType::Chord, "Six;48;52;55;60;64;67", Zone::Zone1);
     map(3, KeyMappingType::Chord, "Old;50;53;57;62", Zone::Zone1);
-    map(4, KeyMappingType::Note, "80", Zone::Zone3, 1);
+    map(4, KeyMappingType::Note, "80", Zone::Zone3, 12);
+    map(5, KeyMappingType::Chord, "DA;62;69;-1;-1", Zone::Zone1);
+    map(6, KeyMappingType::Chord, "FED;65;64;62;-1", Zone::Zone1);
+    map(7, KeyMappingType::Chord, "Upper;70;72;74;76;77;79", Zone::Zone1);
+    for (int string = 1; string <= 12; ++string)
+        map(19 + string, KeyMappingType::Strum, "Strum;1;" + juce::String(string), Zone::Zone2);
     map(10, KeyMappingType::Strum, "Strum;1;1", Zone::Zone2);
     map(11, KeyMappingType::Strum, "Strum;1;6", Zone::Zone2);
     map(12, KeyMappingType::Note, "75", Zone::Zone2);
-    map(13, KeyMappingType::Strum, "Strum;3;1", Zone::Zone2);
+    map(13, KeyMappingType::Strum, "Strum;3;12", Zone::Zone2);
     for (auto& lookup : lookups) lookup.updateAll();
     bool ok = expect(lookups[0].keys[0][2].notes[5] == 67, "six-note chords should preserve the sixth slot");
     ok &= expect(lookups[0].keys[0][3].notes[4] == -1 && lookups[0].keys[0][3].notes[5] == -1,
                  "legacy four-note chords should leave strings five and six empty");
+    ok &= expect(LayoutWrapper::getLayoutKey({0, 4, InstrumentType::Alpha}, pluginState.state).stringNumber == 12,
+                 "note string twelve should survive layout storage");
+    ok &= expect(lookups[0].keys[0][31].strumSourceString == 12,
+                 "strum string twelve should survive configuration lookup");
     auto layout = LayoutWrapper::createPersistentLayoutTree(InstrumentType::Alpha, pluginState.state);
     auto restored = juce::ValueTree::fromXml(*layout.createXml());
     ok &= expect(restored.getChildWithName("key_0_11").getProperty(LayoutWrapper::id_mappingValue).toString() == "Strum;1;6",
@@ -888,9 +897,20 @@ bool verifyStrummingAndSixNoteChords(bool silentSource = false)
     release(10);
     press(3);
     press(11);
-    ok &= expect(sink.events.empty(), "an empty slot in the latest held chord should mute that string");
+    noteEvent(PerformanceEventKind::NoteOn, 2, 57); // Sixth pitch in the combined ascending union.
     release(11);
+    press(26);
+    noteEvent(PerformanceEventKind::NoteOn, 2, 60); // Seventh distinct pitch.
+    release(26);
+    noteEvent(PerformanceEventKind::NoteOff, 2, 60);
+    press(27);
+    noteEvent(PerformanceEventKind::NoteOn, 2, 62); // Eighth distinct pitch.
+    release(27);
+    noteEvent(PerformanceEventKind::NoteOff, 2, 62);
     release(3);
+    press(27);
+    ok &= expect(sink.events.empty(), "string eight should be silent when fewer pitches remain");
+    release(27);
     press(11);
     noteEvent(PerformanceEventKind::NoteOn, 2, 67);
     release(11);
@@ -907,6 +927,59 @@ bool verifyStrummingAndSixNoteChords(bool silentSource = false)
     press(11);
     ok &= expect(sink.events.empty(), "released chords must no longer supply strum pitches");
     release(11);
+    press(2);
+    press(7);
+    const int twelvePitches[] = {48, 52, 55, 60, 64, 67, 70, 72, 74, 76, 77, 79};
+    for (unsigned int string = 0; string < 12; ++string) {
+        press(20 + string);
+        noteEvent(PerformanceEventKind::NoteOn, 2, twelvePitches[string]);
+        release(20 + string);
+        noteEvent(PerformanceEventKind::NoteOff, 2, twelvePitches[string]);
+    }
+    release(7);
+    press(31);
+    ok &= expect(sink.events.empty(), "string twelve should be silent when fewer pitches remain");
+    release(31);
+    release(2);
+    // Chord order, duplicates and slot order must not affect the ascending union.
+    for (const bool reverse : {false, true}) {
+        press(reverse ? 6 : 5);
+        press(reverse ? 5 : 6);
+        const int pitches[] = {62, 64, 65, 69};
+        for (int string = 0; string < 12; ++string) {
+            press(static_cast<unsigned int>(20 + string));
+            if (string < 4)
+                noteEvent(PerformanceEventKind::NoteOn, 2, pitches[string]);
+            else
+                ok &= expect(sink.events.empty(), "duplicate chord notes must not occupy extra strings");
+            release(static_cast<unsigned int>(20 + string));
+            if (string < 4)
+                noteEvent(PerformanceEventKind::NoteOff, 2, pitches[string]);
+        }
+        release(6);
+        press(21);
+        noteEvent(PerformanceEventKind::NoteOn, 2, 69);
+        release(5);
+        release(21);
+        noteEvent(PerformanceEventKind::NoteOff, 2, 69);
+    }
+    // Source transposition (including clamping) must not alter strum pitches.
+    for (const int sourceTranspose : {-48, 48}) {
+        ZoneWrapper::setTranspose(InstrumentType::Alpha, Zone::Zone1, sourceTranspose, pluginState.state);
+        ZoneWrapper::setTranspose(InstrumentType::Alpha, Zone::Zone2, 12, pluginState.state);
+        for (auto& lookup : lookups) lookup.updateAll();
+        service.setRuntimeConfigSnapshot(std::make_unique<MidiService::RuntimeConfigSnapshot>(
+            lookups, service.getProtocol(), service.getVoiceRouter(), service.getExpressionPolicy()));
+        for (const unsigned int sourceKey : {0u, 2u}) {
+            press(sourceKey);
+            press(10);
+            const int expected = sourceKey == 0 ? 72 : 60;
+            noteEvent(PerformanceEventKind::NoteOn, 2, expected);
+            release(sourceKey);
+            release(10);
+            noteEvent(PerformanceEventKind::NoteOff, 2, expected);
+        }
+    }
     if (silentSource) {
         press(2);
         juce::MidiBuffer pending;

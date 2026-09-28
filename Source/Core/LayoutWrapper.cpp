@@ -198,7 +198,7 @@ LayoutWrapper::LayoutKey LayoutWrapper::getLayoutKey(KeyId keyId, juce::ValueTre
         .zone = (Zone)int(keyTree.getProperty(id_zone, (int)Zone::Zone1)),
         .keyMappingType = (KeyMappingType)int(keyTree.getProperty(id_keyMappingType, (int)getDefaultMappingTypeFromKeyType(defaultKeyType))),
         .mappingValue = keyTree.getProperty(id_mappingValue, defaultKeyType == EigenharpKeyType::Normal ? "0" : ""),
-        .stringNumber = juce::jlimit(0, 6, int(keyTree.getProperty(id_stringNumber, 0)))
+        .stringNumber = juce::jlimit(0, 12, int(keyTree.getProperty(id_stringNumber, 0)))
     };
 }
 
@@ -213,7 +213,7 @@ void LayoutWrapper::setLayoutKey(LayoutKey& key, juce::ValueTree& rootState) {
 
 void LayoutWrapper::setKeyStringNumber(KeyId keyId, int stringNumber, juce::ValueTree& rootState) {
     auto keyTree = getKeyTree(keyId, rootState);
-    keyTree.setProperty(id_stringNumber, juce::jlimit(0, 6, stringNumber), nullptr);
+    keyTree.setProperty(id_stringNumber, juce::jlimit(0, 12, stringNumber), nullptr);
 }
 
 void LayoutWrapper::setKeyColour(KeyId keyId, KeyColour keyColour, juce::ValueTree& rootState) {

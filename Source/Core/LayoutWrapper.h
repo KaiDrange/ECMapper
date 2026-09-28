@@ -23,7 +23,7 @@ public:
         Zone zone;
         KeyMappingType keyMappingType;
         juce::String mappingValue;
-        int stringNumber = 0; // 0 = unassigned, 1-6 = string within this device/zone
+        int stringNumber = 0; // 0 = unassigned, 1-12 = string within this device/zone
     };
     
     static inline const juce::Identifier id_layout { "layout" };

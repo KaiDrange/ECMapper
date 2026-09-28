@@ -36,7 +36,7 @@ LayoutComponent::LayoutComponent(InstrumentType deviceType, float widthFactor, f
 
     addAndMakeVisible(stringSelector);
     stringSelector.addItem("String: None", 1);
-    for (int number = 1; number <= 6; ++number)
+    for (int number = 1; number <= 12; ++number)
         stringSelector.addItem("String: " + juce::String(number), number + 1);
     stringSelector.setTooltip("Note keys on a string play legato using pitch bend within this device and zone; chords play independently");
     stringSelector.onChange = [this] {
@@ -50,10 +50,10 @@ LayoutComponent::LayoutComponent(InstrumentType deviceType, float widthFactor, f
     strumExpressionToggle.setTooltip("On: this strum key controls roll, yaw and pressure. Off: the linked source key controls them.");
     for (int zone = 1; zone <= 3; ++zone)
         strumSourceZoneSelector.addItem("Linked zone: " + juce::String(zone), zone);
-    for (int string = 1; string <= 6; ++string)
+    for (int string = 1; string <= 12; ++string)
         strumSourceStringSelector.addItem("Linked string: " + juce::String(string), string);
     strumSourceZoneSelector.setTooltip("Read the held note or chord from this zone on the same device");
-    strumSourceStringSelector.setTooltip("Use this note string, or the matching chord note slot");
+    strumSourceStringSelector.setTooltip("Use this note string, or the matching ascending pitch from held chords");
     auto updateStrumLink = [this] {
         if (activeKeyId.deviceType == InstrumentType::None) return;
         LayoutWrapper::setKeyMappingValue(activeKeyId,
@@ -218,7 +218,7 @@ void LayoutComponent::showHidePanels() {
         const bool valid = (parts.size() == 3 || parts.size() == 4) && parts[0] == "Strum";
         strumExpressionToggle.setToggleState(!valid || parts.size() == 3 || parts[3].getIntValue() != 0, juce::dontSendNotification);
         strumSourceZoneSelector.setSelectedId(valid ? juce::jlimit(1, 3, parts[1].getIntValue()) : 1, juce::dontSendNotification);
-        strumSourceStringSelector.setSelectedId(valid ? juce::jlimit(1, 6, parts[2].getIntValue()) : 1, juce::dontSendNotification);
+        strumSourceStringSelector.setSelectedId(valid ? juce::jlimit(1, 12, parts[2].getIntValue()) : 1, juce::dontSendNotification);
     }
     stringSelector.setSelectedId(layoutKey.stringNumber + 1, juce::dontSendNotification);
     stringSelector.setVisible(layoutKey.keyMappingType == KeyMappingType::Note);

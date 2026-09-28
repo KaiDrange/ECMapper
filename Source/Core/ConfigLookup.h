@@ -37,6 +37,8 @@ public:
         bool strumExpression = true;
         KeyMappingType mapType = KeyMappingType::None;
         std::array<int, 6> notes = { -1, -1, -1, -1, -1, -1 };
+        std::array<int, 6> untransposedNotes = { -1, -1, -1, -1, -1, -1 };
+        int zoneTranspose = 0;
         MidiChannelType output = MidiChannelType::Undefined;
         ZoneWrapper::MidiValue pressure;
         ZoneWrapper::MidiValue roll;

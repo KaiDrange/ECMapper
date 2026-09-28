@@ -117,6 +117,7 @@ void ConfigLookup::updateKeyUnlocked(LayoutWrapper::KeyId keyId) {
         key.mapType = layoutKey.keyMappingType;
         key.zone = effectiveZone;
         key.outputEnabled = outputEnabled;
+        key.zoneTranspose = getTransposeForZone(layoutKey.keyId.deviceType, layoutKey.zone, pluginState);
         key.stringNumber = (key.mapType == KeyMappingType::Note)
             ? layoutKey.stringNumber : 0;
         key.keyColour = layoutKey.keyColour;
@@ -124,7 +125,7 @@ void ConfigLookup::updateKeyUnlocked(LayoutWrapper::KeyId keyId) {
             auto parts = juce::StringArray::fromTokens(layoutKey.mappingValue, ";", "");
             if ((parts.size() == 3 || parts.size() == 4) && parts[0] == "Strum") {
                 key.strumSourceZone = static_cast<Zone>(juce::jlimit(1, 3, parts[1].getIntValue()));
-                key.strumSourceString = juce::jlimit(1, 6, parts[2].getIntValue());
+                key.strumSourceString = juce::jlimit(1, 12, parts[2].getIntValue());
                 key.strumExpression = parts.size() == 3 || parts[3].getIntValue() != 0;
             }
         }
@@ -138,6 +139,7 @@ void ConfigLookup::updateKeyUnlocked(LayoutWrapper::KeyId keyId) {
                 for (std::size_t i = 0; i < std::size(key.notes); ++i) {
                     const int noteNumber = static_cast<int>(i) + 1 < chordParts.size()
                         ? chordParts[static_cast<int>(i) + 1].getIntValue() : -1;
+                    key.untransposedNotes[i] = noteNumber < 0 ? -1 : std::clamp(noteNumber, 0, 127);
                     key.notes[i] = noteNumber < 0
                        ? -1
                        : std::clamp(noteNumber + getTransposeForZone(layoutKey.keyId.deviceType, layoutKey.zone, pluginState), 0, 127);
@@ -145,6 +147,8 @@ void ConfigLookup::updateKeyUnlocked(LayoutWrapper::KeyId keyId) {
             }
         }
         else {
+            key.untransposedNotes[0] = key.mapType == KeyMappingType::Note
+                ? std::clamp(layoutKey.mappingValue.getIntValue(), 0, 127) : -1;
             key.notes[0] = key.mapType == KeyMappingType::Note
                 ? std::clamp(layoutKey.mappingValue.getIntValue() + getTransposeForZone(layoutKey.keyId.deviceType, layoutKey.zone, pluginState), 0, 127)
                 : -1;

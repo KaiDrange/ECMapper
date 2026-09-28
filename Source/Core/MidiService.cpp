@@ -1430,22 +1430,46 @@ void MidiService::createStripRelative(int deviceIndex, int stripIndex, int zoneI
     addStripValueMessage(static_cast<InstrumentType>(deviceIndex + 1), strip.channel, relValue, strip.relMidiValue, strip.pbRange, sink, true, eventTime, voiceRouter, zoneIndex);
 }
 
-const MidiService::KeyState* MidiService::findStrumSource(const ConfigLookup::Key& keyLookup) const {
+const MidiService::KeyState* MidiService::findStrumSource(const ConfigLookup::Key& keyLookup, int& note) const {
+    note = -1;
     const int deviceIndex = static_cast<int>(keyLookup.keyId.deviceType) - 1;
     if (deviceIndex < 0 || deviceIndex >= 3) return nullptr;
     const KeyState* newest = nullptr;
+    // MIDI pitches give us a bounded, allocation-free sorted union. For shared
+    // pitches, expression belongs to the most recently pressed supplying chord.
+    const KeyState* chordSources[128] {};
     for (const auto& course : keyStates_[deviceIndex]) {
         for (const auto& source : course) {
-            if (source.status != KeyStatus::Active
-                || source.stringZone != keyLookup.strumSourceZone
-                || (newest != nullptr && source.pressSequence <= newest->pressSequence))
+            if (source.status != KeyStatus::Active || source.stringZone != keyLookup.strumSourceZone)
                 continue;
-            if ((source.soundingMapType == KeyMappingType::Note && source.stringNumber == keyLookup.strumSourceString)
-                || source.soundingMapType == KeyMappingType::Chord)
+            const bool chord = source.soundingMapType == KeyMappingType::Chord;
+            if (!chord && !(source.soundingMapType == KeyMappingType::Note
+                            && source.stringNumber == keyLookup.strumSourceString))
+                continue;
+            if (newest == nullptr || source.pressSequence > newest->pressSequence)
                 newest = &source;
+            if (chord) {
+                for (const int pitch : source.strumSourceNotes) {
+                    if (pitch >= 0 && pitch < 128
+                        && (chordSources[pitch] == nullptr
+                            || source.pressSequence > chordSources[pitch]->pressSequence))
+                        chordSources[pitch] = &source;
+                }
+            }
         }
     }
-    return newest;
+    if (newest != nullptr && newest->soundingMapType == KeyMappingType::Note) {
+        note = newest->strumSourceNotes[0];
+        return newest;
+    }
+    int string = 0;
+    for (int pitch = 0; pitch < 128; ++pitch) {
+        if (chordSources[pitch] != nullptr && ++string == keyLookup.strumSourceString) {
+            note = pitch;
+            return chordSources[pitch];
+        }
+    }
+    return nullptr;
 }
 
 void MidiService::updateLinkedStrumExpression(const KeyState& source, PerformanceEventSink& sink, int eventTime,
@@ -1475,9 +1499,8 @@ void MidiService::updateLinkedStrumExpression(const KeyState& source, Performanc
 void MidiService::createNoteOn(const ConfigLookup::Key& configuredKey, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter, ExpressionEmissionPolicy* expressionPolicy) {
     auto keyLookup = configuredKey;
     if (keyLookup.mapType == KeyMappingType::Strum) {
-        const auto* source = findStrumSource(keyLookup);
-        const int note = source == nullptr ? -1 : source->soundingMapType == KeyMappingType::Chord
-            ? source->activeNotes[keyLookup.strumSourceString - 1] : source->stringTargetNote;
+        int note = -1;
+        const auto* source = findStrumSource(keyLookup, note);
         if (note < 0) {
             state->status = KeyStatus::Ignored;
             return;
@@ -1493,12 +1516,12 @@ void MidiService::createNoteOn(const ConfigLookup::Key& configuredKey, KeyState*
     }
     int deviceIndex = static_cast<int>(keyLookup.keyId.deviceType) - 1;
     int totalTranspose = (deviceIndex >= 0 && deviceIndex < 3) ? (latchTranspose_[deviceIndex] + momentaryTranspose_[deviceIndex]) : 0;
-    // The linked pitch already includes the source zone and device transposition.
-    if (keyLookup.mapType == KeyMappingType::Strum) totalTranspose = 0;
+    if (keyLookup.mapType == KeyMappingType::Strum) totalTranspose += keyLookup.zoneTranspose;
     const int zoneIndex = zoneIndexFromKeyId(keyLookup.keyId);
 
     state->noteZoneIndex = zoneIndex;
     state->soundingMapType = keyLookup.mapType;
+    state->strumSourceNotes = keyLookup.untransposedNotes;
     state->stringNumber = keyLookup.mapType == KeyMappingType::Note ? keyLookup.stringNumber : 0;
     state->stringPitchOffset = 0.0f;
     state->soundingKeyId = keyLookup.keyId;

@@ -152,13 +152,14 @@ private:
         float linkedRoll = 0.0f, linkedYaw = 0.0f, linkedPressure = 0.0f;
         int messageCount = 0;
         bool isLatchOn = false;
+        std::array<int, 6> strumSourceNotes { -1, -1, -1, -1, -1, -1 };
         int activeNotes[6] = { -1, -1, -1, -1, -1, -1 };
     };
     
     KeyState* findStringOwner(const KeyState& state, InstrumentType deviceType);
     void releaseNoteAllocation(const LayoutWrapper::KeyId& keyId, KeyState& state, MidiVoiceRouter* voiceRouter);
 
-    const KeyState* findStrumSource(const ConfigLookup::Key& keyLookup) const;
+    const KeyState* findStrumSource(const ConfigLookup::Key& keyLookup, int& note) const;
     void updateLinkedStrumExpression(const KeyState& source, PerformanceEventSink& sink, int eventTime,
                                      MidiVoiceRouter* voiceRouter, ExpressionEmissionPolicy* expressionPolicy);
     uint64_t nextPressSequence_ = 0;
