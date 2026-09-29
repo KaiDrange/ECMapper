@@ -48,6 +48,9 @@ public:
     static StrumSettings getStrumSettings(KeyId keyId, juce::ValueTree& rootState);
     static void setStrumSettings(KeyId keyId, StrumSettings settings, juce::ValueTree& rootState);
 
+    static int getPalmMutePressureCC(KeyId keyId, juce::ValueTree& rootState);
+    static void setPalmMutePressureCC(KeyId keyId, int cc, juce::ValueTree& rootState);
+
     static LayoutKey getLayoutKey(KeyId keyId, juce::ValueTree& rootState);
     static void setLayoutKey(LayoutKey& key, juce::ValueTree& rootState);
     static void setKeyStringNumber(KeyId keyId, int stringNumber, juce::ValueTree& rootState);

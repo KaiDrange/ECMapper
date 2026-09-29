@@ -153,7 +153,11 @@ private:
         bool strumFretLegato = false;
         int strumTranspose = 0;
         int strumOpenNote = -1;
+        float palmMutePressure = 0.0f;
+        int palmMuteLastCC = -1;
+        float palmMuteLastCCValue = -1.0f;
         bool palmMuteReleasePending = false;
+        float palmMuteReleaseVelocity = 0.0f;
         uint64_t palmMuteReleaseSample = 0;
         uint64_t palmMuteStartBlock = 0;
         bool strumControlsNoteOff = true; // Captured at note-on.
@@ -238,12 +242,13 @@ private:
     void processNoteKey(const osc::Message& oscMsg, const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter, ExpressionEmissionPolicy* expressionPolicy);
     void processCmdKey(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter);
     bool isPalmMuted(int deviceIndex, Zone zone) const;
+    float getPalmMutePressure(int deviceIndex, Zone zone) const;
     void processPalmMuteKey(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, const ConfigLookup::Key& keyLookup,
                             KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter);
     void processAppCtrlKey(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, int* presetSlotRequest, int* transportRequest);
     
     void createNoteOn(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter, ExpressionEmissionPolicy* expressionPolicy);
-    void createNoteOff(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter, bool forceNoteOff = false);
+    void createNoteOff(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter, bool forceNoteOff = false, float releaseVelocity = -1.0f);
     void createNoteHold(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter, ExpressionEmissionPolicy* expressionPolicy);
     
     void createMidiMsgOn(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, osc::Message& outgoingOscMsg, const char* devId, int eventTime, MidiVoiceRouter* voiceRouter);

@@ -130,6 +130,11 @@ int main() {
     ok &= expect(configLookups[0].keys[0][0].openStringNote == -1,
                  "disabling open note must immediately refresh runtime settings");
 
+    LayoutWrapper::setKeyMappingType({0, 0, InstrumentType::Alpha}, KeyMappingType::PalmMute, pluginState.state);
+    LayoutWrapper::setPalmMutePressureCC({0, 0, InstrumentType::Alpha}, 74, pluginState.state);
+    ok &= expect(configLookups[0].keys[0][0].palmMutePressureCC == 74,
+                 "palm pressure CC edits must refresh runtime configuration immediately");
+
     juce::ValueTree replacementRoot { "ReplacementRoot" };
     auto replacementKey = makeNoteKey(1, 71);
     LayoutWrapper::setLayoutKey(replacementKey, replacementRoot);

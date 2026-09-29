@@ -73,6 +73,9 @@ void MidiService::start(juce::AudioProcessorValueTreeState& pluginState, Hardwar
                 keyStates_[i][c][k].status = KeyStatus::Off;
                 keyStates_[i][c][k].hasNoteAllocation = false;
                 keyStates_[i][c][k].palmMuteReleasePending = false;
+                keyStates_[i][c][k].palmMutePressure = 0.0f;
+                keyStates_[i][c][k].palmMuteLastCC = -1;
+                keyStates_[i][c][k].palmMuteLastCCValue = -1.0f;
                 keyStates_[i][c][k].messageCount = 0;
                 keyStates_[i][c][k].ehPressureHistory.clear();
                 keyStates_[i][c][k].ehRoll = 0.0f;
@@ -341,7 +344,7 @@ void MidiService::emitScheduledPalmMuteReleases(PerformanceEventSink& sink, int 
         const auto timestamp = next->lastTimestamp;
         const int offset = next->palmMuteReleaseSample > performanceBlockStartSample_
             ? static_cast<int>(next->palmMuteReleaseSample - performanceBlockStartSample_) : 0;
-        createNoteOff(lookup, next, sink, offset, snapshot->voiceRouter.get(), true);
+        createNoteOff(lookup, next, sink, offset, snapshot->voiceRouter.get(), true, next->palmMuteReleaseVelocity);
         next->status = physicalStatus == KeyStatus::Active ? KeyStatus::Ignored : physicalStatus;
         next->messageCount = messageCount;
         next->lastTimestamp = timestamp;
@@ -612,18 +615,23 @@ void MidiService::processCmdKey(const osc::Message& oscMsg, osc::Message& outgoi
 }
 
 bool MidiService::isPalmMuted(int deviceIndex, Zone zone) const {
+    return getPalmMutePressure(deviceIndex, zone) >= 0.0f;
+}
+
+float MidiService::getPalmMutePressure(int deviceIndex, Zone zone) const {
     const auto* snapshot = activeSnapshot_.load(std::memory_order_acquire);
-    if (snapshot == nullptr || deviceIndex < 0 || deviceIndex >= 3) return false;
+    if (snapshot == nullptr || deviceIndex < 0 || deviceIndex >= 3) return -1.0f;
+    float pressure = -1.0f;
     for (int course = 0; course < 3; ++course) {
         for (int key = 0; key < 120; ++key) {
             const auto& state = keyStates_[deviceIndex][course][key];
             const auto& lookup = snapshot->configLookups[static_cast<size_t>(deviceIndex)].keys[course][key];
             if (lookup.mapType == KeyMappingType::PalmMute && lookup.zone == zone
                 && state.soundingMapType == KeyMappingType::PalmMute && state.stringZone == zone && state.isLatchOn)
-                return true;
+                pressure = std::max(pressure, lookup.palmMuteMomentary ? state.palmMutePressure : 1.0f);
         }
     }
-    return false;
+    return pressure;
 }
 
 void MidiService::processPalmMuteKey(const osc::Message& oscMsg, osc::Message& outgoingOscMsg,
@@ -631,6 +639,8 @@ void MidiService::processPalmMuteKey(const osc::Message& oscMsg, osc::Message& o
                                    int eventTime, MidiVoiceRouter* voiceRouter) {
     const int deviceIndex = static_cast<int>(keyLookup.keyId.deviceType) - 1;
     if (deviceIndex < 0 || deviceIndex >= 3) return;
+    const float pressure = oscMsg.active ? applyExpressionCurve(keyLookup.keyId.deviceType, ExpressionCurveTarget::Pressure,
+        std::clamp(oscMsg.pressure * pressureSensitivity_[deviceIndex], 0.0f, 1.0f), false) : 0.0f;
     const bool wasMuted = isPalmMuted(deviceIndex, keyLookup.zone);
     const bool wasKeyOn = state->isLatchOn;
     if (state->soundingMapType != KeyMappingType::PalmMute || state->stringZone != keyLookup.zone)
@@ -642,6 +652,7 @@ void MidiService::processPalmMuteKey(const osc::Message& oscMsg, osc::Message& o
     else if (oscMsg.active && state->status == KeyStatus::Off)
         state->isLatchOn = !state->isLatchOn;
     state->status = oscMsg.active ? KeyStatus::Active : KeyStatus::Off;
+    state->palmMutePressure = state->isLatchOn ? pressure : 0.0f;
 
     if (!wasMuted && isPalmMuted(deviceIndex, keyLookup.zone)) {
         if (const auto* snapshot = activeSnapshot_.load(std::memory_order_acquire)) {
@@ -651,13 +662,27 @@ void MidiService::processPalmMuteKey(const osc::Message& oscMsg, osc::Message& o
                     const auto& id = note.soundingKeyId;
                     const auto physicalStatus = note.status;
                     createNoteOff(snapshot->configLookups[static_cast<size_t>(deviceIndex)].keys[id.course][id.keyNo],
-                                  &note, sink, eventTime, voiceRouter);
+                                  &note, sink, eventTime, voiceRouter, false, getPalmMutePressure(deviceIndex, keyLookup.zone));
                     // Keep held fingerings available to strum keys, without restarting their MIDI voices.
                     note.status = note.soundingMapType == KeyMappingType::Strum && physicalStatus == KeyStatus::Active
                         ? KeyStatus::Ignored : physicalStatus;
                 }
             }
         }
+    }
+    if (keyLookup.palmMuteMomentary && keyLookup.palmMutePressureCC >= 0
+        && (state->palmMuteLastCC != keyLookup.palmMutePressureCC || std::abs(state->palmMuteLastCCValue - pressure) > 0.000001f)) {
+        const int channel = keyLookup.output == MidiChannelType::MPE_Low ? 1
+            : keyLookup.output == MidiChannelType::MPE_High ? 16 : static_cast<int>(keyLookup.output);
+        if (channel >= 1 && channel <= 16) {
+            sink.pushEvent(PerformanceEvent::controllerChange(channel, -1, keyLookup.palmMutePressureCC, pressure,
+                                                              false, eventTime, zoneIndexFromKeyId(keyLookup.keyId)));
+            state->palmMuteLastCC = keyLookup.palmMutePressureCC;
+            state->palmMuteLastCCValue = pressure;
+        }
+    } else if (!keyLookup.palmMuteMomentary || keyLookup.palmMutePressureCC < 0) {
+        state->palmMuteLastCC = -1;
+        state->palmMuteLastCCValue = -1.0f;
     }
     if (wasKeyOn == state->isLatchOn) return;
     outgoingOscMsg.type = osc::MessageType::LED;
@@ -1823,12 +1848,15 @@ void MidiService::createNoteOn(const ConfigLookup::Key& configuredKey, KeyState*
         }
     }
     state->status = KeyStatus::Active;
-    if (keyLookup.mapType == KeyMappingType::Strum && isPalmMuted(deviceIndex, keyLookup.zone)) {
+    const float mutePressure = keyLookup.mapType == KeyMappingType::Strum ? getPalmMutePressure(deviceIndex, keyLookup.zone) : -1.0f;
+    if (mutePressure >= 0.0f) {
         // Keep the voice reserved until its release. A later block is required because
         // standalone transports send each block immediately, ignoring sample offsets.
+        const double muteSeconds = 0.080 - 0.070 * static_cast<double>(mutePressure);
+        state->palmMuteReleaseVelocity = mutePressure;
         state->palmMuteReleasePending = true;
         state->palmMuteReleaseSample = performanceBlockStartSample_ + static_cast<uint64_t>(std::max(0, eventTime))
-            + static_cast<uint64_t>(std::max(1.0, std::round(performanceSampleRate_ * 0.010)));
+            + static_cast<uint64_t>(std::max(1.0, std::round(performanceSampleRate_ * muteSeconds)));
         state->palmMuteStartBlock = performanceBlockNumber_;
     }
 }
@@ -1842,7 +1870,7 @@ void MidiService::releaseNoteAllocation(const LayoutWrapper::KeyId&, KeyState& s
         voiceRouter->releaseMidiChannel(state.allocationOutput, state.allocationNote, state.midiChannel);
 }
 
-void MidiService::createNoteOff(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter, bool forceNoteOff) {
+void MidiService::createNoteOff(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter, bool forceNoteOff, float releaseVelocity) {
     if (!state->hasNoteAllocation) {
         std::fill(std::begin(state->activeNotes), std::end(state->activeNotes), -1);
         state->status = KeyStatus::Off;
@@ -1860,7 +1888,8 @@ void MidiService::createNoteOff(const ConfigLookup::Key& keyLookup, KeyState* st
         chanNotePri_[channel - 1].remove_if([&keyLookup](const LayoutWrapper::KeyId& id) { return id == keyLookup.keyId; });
     }
 
-    float vel = calculateNoteOffVelocity(keyLookup.keyId.deviceType, state);
+    const float vel = releaseVelocity >= 0.0f ? std::clamp(releaseVelocity, 0.0f, 1.0f)
+        : calculateNoteOffVelocity(keyLookup.keyId.deviceType, state);
     for (int i = 0; i < 6; i++) {
         int noteToTurnOff = state->activeNotes[i];
         if (noteToTurnOff > -1) {

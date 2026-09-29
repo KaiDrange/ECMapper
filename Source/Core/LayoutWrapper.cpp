@@ -196,6 +196,18 @@ void LayoutWrapper::setStrumSettings(KeyId keyId, StrumSettings settings, juce::
     key.setProperty("controlsNoteOff", settings.controlsNoteOff, nullptr);
 }
 
+int LayoutWrapper::getPalmMutePressureCC(KeyId keyId, juce::ValueTree& rootState) {
+    if (keyId.deviceType == InstrumentType::None) return -1;
+    const auto key = getExistingKeyTree(canonicalizeTauKeyId(keyId), rootState);
+    return juce::jlimit(-1, 127, static_cast<int>(key.getProperty("palmMutePressureCC", -1)));
+}
+
+void LayoutWrapper::setPalmMutePressureCC(KeyId keyId, int cc, juce::ValueTree& rootState) {
+    if (keyId.deviceType == InstrumentType::None) return;
+    auto key = getKeyTree(keyId, rootState);
+    key.setProperty("palmMutePressureCC", juce::jlimit(-1, 127, cc), nullptr);
+}
+
 void LayoutWrapper::clearLayout(InstrumentType deviceType, juce::ValueTree& rootState) {
     auto layoutTree = getLayoutTree(deviceType, rootState);
     layoutTree.removeAllChildren(nullptr);

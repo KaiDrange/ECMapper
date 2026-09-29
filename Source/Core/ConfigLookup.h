@@ -38,6 +38,7 @@ public:
         bool strumExpression = true;
         bool strumControlsNoteOff = true;
         bool palmMuteMomentary = false;
+        int palmMutePressureCC = -1;
         KeyMappingType mapType = KeyMappingType::None;
         std::array<int, 6> notes = { -1, -1, -1, -1, -1, -1 };
         std::array<int, 6> untransposedNotes = { -1, -1, -1, -1, -1, -1 };

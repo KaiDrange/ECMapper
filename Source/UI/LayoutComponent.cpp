@@ -38,11 +38,21 @@ LayoutComponent::LayoutComponent(InstrumentType deviceType, float widthFactor, f
     addChildComponent(palmMuteModeSelector);
     palmMuteModeSelector.addItem("Mode: Latch", 1);
     palmMuteModeSelector.addItem("Mode: Momentary", 2);
-    palmMuteModeSelector.setTooltip("Latch toggles palm mute on each press. Momentary mutes while held. Affects this device's selected zone.");
+    palmMuteModeSelector.setTooltip("Latch toggles palm mute on each press. Momentary mutes while held. Momentary pressure varies the mute from 80 ms (soft) to 10 ms (firm), with higher note-off velocity for firmer pressure. Latch always uses 10 ms and sends no pressure CC. Affects this device's selected zone.");
     palmMuteModeSelector.onChange = [this] {
         if (activeKeyId.deviceType == InstrumentType::None) return;
         LayoutWrapper::setKeyMappingValue(activeKeyId, palmMuteModeSelector.getSelectedId() == 2
             ? "PalmMute;Momentary" : "PalmMute;Latch", this->pluginState.state);
+        showHidePanels();
+    };
+
+    addChildComponent(palmMutePressureCCSelector);
+    palmMutePressureCCSelector.addItem("Pressure CC: Off", 1);
+    for (int cc = 0; cc < 128; ++cc)
+        palmMutePressureCCSelector.addItem("Pressure CC: " + juce::String(cc), cc + 2);
+    palmMutePressureCCSelector.setTooltip("Send key pressure on this zone's channel (MPE master channel). Returns to zero on release.");
+    palmMutePressureCCSelector.onChange = [this] {
+        LayoutWrapper::setPalmMutePressureCC(activeKeyId, palmMutePressureCCSelector.getSelectedId() - 2, this->pluginState.state);
     };
 
     addAndMakeVisible(stringSelector);
@@ -167,6 +177,8 @@ void LayoutComponent::resized() {
     if (palmMuteModeSelector.isVisible()) {
         menuArea.removeFromTop(8);
         palmMuteModeSelector.setBounds(menuArea.removeFromTop(static_cast<int>(areaHeight * 0.04f)));
+        menuArea.removeFromTop(8);
+        palmMutePressureCCSelector.setBounds(menuArea.removeFromTop(static_cast<int>(areaHeight * 0.04f)));
     }
     if (stringSelector.isVisible()) {
         menuArea.removeFromTop(8);
@@ -258,6 +270,7 @@ void LayoutComponent::enableDisableMenuButtons(bool enable) {
     mapTypeMenuButton.setEnabled(enable);
     stringSelector.setEnabled(enable);
     palmMuteModeSelector.setEnabled(enable);
+    palmMutePressureCCSelector.setEnabled(enable);
     openStringNote.label.setEnabled(enable);
     openStringNote.setButton.setEnabled(enable);
     openStringNote.clearButton.setEnabled(enable);
@@ -272,6 +285,9 @@ void LayoutComponent::showHidePanels() {
     auto layoutKey = LayoutWrapper::getLayoutKey(activeKeyId, pluginState.state);
     const bool strum = layoutKey.keyMappingType == KeyMappingType::Strum;
     palmMuteModeSelector.setVisible(layoutKey.keyMappingType == KeyMappingType::PalmMute);
+    palmMutePressureCCSelector.setVisible(layoutKey.keyMappingType == KeyMappingType::PalmMute
+        && layoutKey.mappingValue == "PalmMute;Momentary");
+    palmMutePressureCCSelector.setSelectedId(LayoutWrapper::getPalmMutePressureCC(activeKeyId, pluginState.state) + 2, juce::dontSendNotification);
     palmMuteModeSelector.setSelectedId(layoutKey.mappingValue == "PalmMute;Momentary" ? 2 : 1, juce::dontSendNotification);
     strumSourceZoneSelector.setVisible(strum);
     strumSourceStringSelector.setVisible(strum);
@@ -338,6 +354,7 @@ void LayoutComponent::deselectAllOtherKeys(const KeyConfigComponent* key) {
 void LayoutComponent::deselectAllKeys() {
     stringSelector.setVisible(false);
     palmMuteModeSelector.setVisible(false);
+    palmMutePressureCCSelector.setVisible(false);
     openStringNote.label.setVisible(false);
     openStringNote.setButton.setVisible(false);
     openStringNote.clearButton.setVisible(false);

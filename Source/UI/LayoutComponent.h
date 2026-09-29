@@ -45,7 +45,7 @@ private:
     juce::OwnedArray<KeyConfigComponent> keys;
     std::unique_ptr<juce::DrawablePath> keyImgNormal, keyImgOver, keyImgDown, keyImgOn;
     
-    juce::ComboBox palmMuteModeSelector;
+    juce::ComboBox palmMuteModeSelector, palmMutePressureCCSelector;
     juce::ComboBox stringSelector;
     ChordSectionComponent::ChordNote openStringNote;
     juce::ComboBox stringMidiChannelSelector;

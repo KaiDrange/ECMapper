@@ -116,6 +116,8 @@ void ConfigLookup::updateKeyUnlocked(LayoutWrapper::KeyId keyId) {
         key.keyType = layoutKey.keyType;
         key.mapType = layoutKey.keyMappingType;
         key.palmMuteMomentary = key.mapType == KeyMappingType::PalmMute && layoutKey.mappingValue == "PalmMute;Momentary";
+        if (key.mapType == KeyMappingType::PalmMute)
+            key.palmMutePressureCC = LayoutWrapper::getPalmMutePressureCC(layoutKey.keyId, pluginState.state);
         key.zone = effectiveZone;
         key.outputEnabled = outputEnabled;
         key.zoneTranspose = getTransposeForZone(layoutKey.keyId.deviceType, layoutKey.zone, pluginState);

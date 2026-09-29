@@ -1002,6 +1002,88 @@ bool verifyStrummingAndSixNoteChords(bool silentSource = false, bool strumSettin
         release(0);
         noteEvent(PerformanceEventKind::NoteOff, 9, 60);
         release(43);
+        auto refreshMute = [&] {
+            for (auto& lookup : lookups) lookup.updateAll();
+            service.setRuntimeConfigSnapshot(std::make_unique<MidiService::RuntimeConfigSnapshot>(
+                lookups, service.getProtocol(), service.getVoiceRouter(), service.getExpressionPolicy()));
+        };
+        ok &= expect(LayoutWrapper::getPalmMutePressureCC({0, 41, InstrumentType::Alpha}, pluginState.state) == -1,
+                     "palm pressure CC must be optional and off by default");
+        LayoutWrapper::setPalmMutePressureCC({0, 41, InstrumentType::Alpha}, 74, pluginState.state);
+        refreshMute();
+        const auto savedCC = LayoutWrapper::createPersistentLayoutTree(InstrumentType::Alpha, pluginState.state);
+        const auto restoredCC = juce::ValueTree::fromXml(*savedCC.createXml());
+        ok &= expect(int(restoredCC.getChildWithName("key_0_41").getProperty("palmMutePressureCC", -1)) == 74,
+                     "palm pressure CC must persist with the layout");
+        auto mutePressure = [&](unsigned int key, float pressure) {
+            sink.events.clear();
+            auto msg = makeKeyMessageForKey(key, pressure, 0, 0, time += 10'000);
+            msg.active = true;
+            service.processMessage(msg, outgoing, buffer, sink, 0, nullptr);
+        };
+        float mutedReleaseVelocity = -1.0f;
+        auto measureMutedStrike = [&] {
+            service.beginPerformanceBlock(48000.0);
+            press(10);
+            release(10);
+            service.endPerformanceBlock(buffer, 128, &sink);
+            for (int elapsed = 128; elapsed < 4096; elapsed += 128) {
+                sink.events.clear();
+                service.beginPerformanceBlock(48000.0);
+                service.endPerformanceBlock(buffer, 128, &sink);
+                for (const auto& event : sink.events)
+                    if (event.kind == PerformanceEventKind::NoteOff && event.channel == 9) {
+                        mutedReleaseVelocity = event.velocity;
+                        return elapsed + event.sampleOffset;
+                    }
+            }
+            ok &= expect(false, "pressure-shaped mute must end within its short duration range");
+            return -1;
+        };
+        mutePressure(41, 0.01f);
+        const auto* softCC = findControllerEvent(sink.events, 74);
+        ok &= expect(softCC && softCC->channel == 2 && softCC->zoneIndex == 1 && softCC->value > 0 && softCC->value < 0.1f,
+                     "soft palm pressure must send a low CC on the selected zone channel");
+        const int softLength = measureMutedStrike();
+        const float softReleaseVelocity = mutedReleaseVelocity;
+        mutePressure(41, 1.0f);
+        const auto* hardCC = findControllerEvent(sink.events, 74);
+        ok &= expect(hardCC && std::abs(hardCC->value - 1.0f) < 0.000001f, "firm palm pressure must send full-scale CC");
+        const int hardLength = measureMutedStrike();
+        ok &= expect(hardLength == 480 && softLength > 3000 && softLength <= 3840,
+                     "soft mute must ring longer than hard mute within 10-80 ms");
+        ok &= expect(softReleaseVelocity > 0.0f && softReleaseVelocity < 0.1f
+                     && mutedReleaseVelocity > 0.99f, "firmer palm pressure must produce higher note-off velocity");
+        mutePressure(41, 1.0f);
+        ok &= expect(findControllerEvent(sink.events, 74) == nullptr, "unchanged pressure must not repeat identical CC messages");
+        release(41);
+        const auto* zeroCC = findControllerEvent(sink.events, 74);
+        ok &= expect(zeroCC && zeroCC->value == 0.0f, "pressure CC must return to zero on key release");
+        for (const auto output : {MidiChannelType::MPE_Low, MidiChannelType::MPE_High}) {
+            ZoneWrapper::setMidiChannelType(InstrumentType::Alpha, Zone::Zone2, output, pluginState.state);
+            refreshMute();
+            mutePressure(41, 0.2f);
+            const auto* mpeCC = findControllerEvent(sink.events, 74);
+            ok &= expect(mpeCC && mpeCC->channel == (output == MidiChannelType::MPE_Low ? 1 : 16) && !mpeCC->perNote,
+                         "palm pressure CC must use the MPE master channel");
+            release(41);
+        }
+        LayoutWrapper::setPalmMutePressureCC({0, 41, InstrumentType::Alpha}, -1, pluginState.state);
+        refreshMute();
+        mutePressure(41, 0.2f);
+        ok &= expect(findControllerEvent(sink.events, 74) == nullptr, "disabled pressure CC must not emit controller messages");
+        release(41);
+        // Latch ignores pressure and configured CC, including after release.
+        LayoutWrapper::setPalmMutePressureCC({0, 40, InstrumentType::Alpha}, 74, pluginState.state);
+        refreshMute();
+        mutePressure(40, 0.01f);
+        ok &= expect(findControllerEvent(sink.events, 74) == nullptr, "latch must not send pressure CC on press");
+        ok &= expect(measureMutedStrike() == 480, "soft latch press must use a fixed 10 ms mute");
+        release(40);
+        ok &= expect(findControllerEvent(sink.events, 74) == nullptr, "latch must not send pressure CC on release");
+        ok &= expect(measureMutedStrike() == 480, "latched mute must keep a fixed 10 ms after release");
+        press(40);
+        release(40);
         service.stop();
         return ok;
     }
