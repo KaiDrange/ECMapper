@@ -72,6 +72,7 @@ void MidiService::start(juce::AudioProcessorValueTreeState& pluginState, Hardwar
                 keyStates_[i][c][k].isLatchOn = false;
                 keyStates_[i][c][k].status = KeyStatus::Off;
                 keyStates_[i][c][k].hasNoteAllocation = false;
+                keyStates_[i][c][k].palmMuteReleasePending = false;
                 keyStates_[i][c][k].messageCount = 0;
                 keyStates_[i][c][k].ehPressureHistory.clear();
                 keyStates_[i][c][k].ehRoll = 0.0f;
@@ -303,6 +304,50 @@ void MidiService::setRuntimeConfigSnapshot(std::unique_ptr<RuntimeConfigSnapshot
     }
 }
 
+void MidiService::beginPerformanceBlock(double sampleRate) {
+    performanceSampleRate_ = sampleRate > 0.0 ? sampleRate : 48000.0;
+    ++performanceBlockNumber_;
+}
+
+void MidiService::endPerformanceBlock(juce::MidiBuffer& buffer, int numSamples, PerformanceEventSink* sink) {
+    if (numSamples <= 0) return;
+    const auto* snapshot = activeSnapshot_.load(std::memory_order_acquire);
+    MidiBufferPerformanceEventSink bufferSink(buffer, snapshot ? snapshot->protocol.get() : protocol_.get());
+    emitScheduledPalmMuteReleases(sink ? *sink : bufferSink, numSamples - 1);
+    performanceBlockStartSample_ += static_cast<uint64_t>(numSamples);
+}
+
+void MidiService::emitScheduledPalmMuteReleases(PerformanceEventSink& sink, int eventTime) {
+    if (!initialized_) return;
+    const auto* snapshot = activeSnapshot_.load(std::memory_order_acquire);
+    if (snapshot == nullptr || eventTime < 0) return;
+    const auto throughSample = performanceBlockStartSample_ + static_cast<uint64_t>(eventTime);
+    // Emit deadlines in order, including when a block contains no hardware messages.
+    for (;;) {
+        KeyState* next = nullptr;
+        for (auto& device : keyStates_)
+            for (auto& course : device)
+                for (auto& state : course)
+                    if (state.palmMuteReleasePending && state.hasNoteAllocation
+                        && state.palmMuteStartBlock < performanceBlockNumber_
+                        && state.palmMuteReleaseSample <= throughSample
+                        && (next == nullptr || state.palmMuteReleaseSample < next->palmMuteReleaseSample))
+                        next = &state;
+        if (next == nullptr) break;
+        const auto id = next->soundingKeyId;
+        const auto& lookup = snapshot->configLookups[static_cast<size_t>(id.deviceType) - 1].keys[id.course][id.keyNo];
+        const auto physicalStatus = next->status;
+        const auto messageCount = next->messageCount;
+        const auto timestamp = next->lastTimestamp;
+        const int offset = next->palmMuteReleaseSample > performanceBlockStartSample_
+            ? static_cast<int>(next->palmMuteReleaseSample - performanceBlockStartSample_) : 0;
+        createNoteOff(lookup, next, sink, offset, snapshot->voiceRouter.get(), true);
+        next->status = physicalStatus == KeyStatus::Active ? KeyStatus::Ignored : physicalStatus;
+        next->messageCount = messageCount;
+        next->lastTimestamp = timestamp;
+    }
+}
+
 void MidiService::finishedBlock()
 {
     currentBlockId_.fetch_add(1, std::memory_order_release);
@@ -420,6 +465,7 @@ void MidiService::processMessage(const osc::Message& oscMsg, osc::Message& outgo
     MidiVoiceRouter* voiceRouter = snapshot->voiceRouter.get();
     ExpressionEmissionPolicy* expressionPolicy = snapshot->expressionPolicy.get();
     const auto& runtimeLookups = snapshot->configLookups;
+    emitScheduledPalmMuteReleases(sink, eventTime);
     
     std::strncpy(outgoingOscMsg.devId, oscMsg.devId, 63);
     outgoingOscMsg.device = oscMsg.device;
@@ -457,6 +503,8 @@ void MidiService::processMessage(const osc::Message& oscMsg, osc::Message& outgo
                 processNoteKey(oscMsg, keyLookup, keyState, sink, eventTime, voiceRouter, expressionPolicy);
             else if (keyLookup.mapType == KeyMappingType::MidiMsg)
                 processCmdKey(oscMsg, outgoingOscMsg, keyLookup, keyState, sink, eventTime, voiceRouter);
+            else if (keyLookup.mapType == KeyMappingType::PalmMute)
+                processPalmMuteKey(oscMsg, outgoingOscMsg, keyLookup, keyState, sink, eventTime, voiceRouter);
             else if (keyLookup.mapType == KeyMappingType::AppCtrl)
                 processAppCtrlKey(oscMsg, outgoingOscMsg, keyLookup, keyState, sink, eventTime, presetSlotRequest, transportRequest);
             break;
@@ -522,11 +570,21 @@ void MidiService::processNoteKey(const osc::Message& oscMsg, const ConfigLookup:
     state->lastTimestamp = oscMsg.timestamp;
 
     if (!oscMsg.active) {
-        createNoteOff(keyLookup, state, sink, eventTime, voiceRouter);
+        if (state->hasNoteAllocation && state->soundingMapType == KeyMappingType::Strum
+            && (!state->strumControlsNoteOff || state->palmMuteReleasePending)) {
+            // Key release does not end source-controlled or open sustain, nor a pending palm-mute note.
+            state->status = KeyStatus::Off;
+            state->messageCount = 0;
+        } else {
+            createNoteOff(keyLookup, state, sink, eventTime, voiceRouter);
+        }
+        releaseUnheldStrums(static_cast<int>(keyLookup.keyId.deviceType) - 1, sink, eventTime, voiceRouter);
+        updateStrummedFret(*state, sink, eventTime, voiceRouter, expressionPolicy);
     } else if (state->status == KeyStatus::Off) {
         state->status = KeyStatus::Pending;
     } else if (state->messageCount == PRESSURE_HISTORY_LENGTH && state->status == KeyStatus::Pending) {
         createNoteOn(keyLookup, state, sink, eventTime, voiceRouter, expressionPolicy);
+        updateStrummedFret(*state, sink, eventTime, voiceRouter, expressionPolicy);
     } else if (state->status == KeyStatus::Active) {
         const bool shouldEmit = expressionPolicy ? expressionPolicy->shouldEmitContinuousUpdate(state->messageCount)
                                                  : state->messageCount >= 64;
@@ -551,6 +609,63 @@ void MidiService::processCmdKey(const osc::Message& oscMsg, osc::Message& outgoi
             createMidiMsgOn(keyLookup, state, sink, outgoingOscMsg, oscMsg.devId, eventTime, voiceRouter);
     }
     state->status = oscMsg.active ? KeyStatus::Active : KeyStatus::Off;
+}
+
+bool MidiService::isPalmMuted(int deviceIndex, Zone zone) const {
+    const auto* snapshot = activeSnapshot_.load(std::memory_order_acquire);
+    if (snapshot == nullptr || deviceIndex < 0 || deviceIndex >= 3) return false;
+    for (int course = 0; course < 3; ++course) {
+        for (int key = 0; key < 120; ++key) {
+            const auto& state = keyStates_[deviceIndex][course][key];
+            const auto& lookup = snapshot->configLookups[static_cast<size_t>(deviceIndex)].keys[course][key];
+            if (lookup.mapType == KeyMappingType::PalmMute && lookup.zone == zone
+                && state.soundingMapType == KeyMappingType::PalmMute && state.stringZone == zone && state.isLatchOn)
+                return true;
+        }
+    }
+    return false;
+}
+
+void MidiService::processPalmMuteKey(const osc::Message& oscMsg, osc::Message& outgoingOscMsg,
+                                   const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink,
+                                   int eventTime, MidiVoiceRouter* voiceRouter) {
+    const int deviceIndex = static_cast<int>(keyLookup.keyId.deviceType) - 1;
+    if (deviceIndex < 0 || deviceIndex >= 3) return;
+    const bool wasMuted = isPalmMuted(deviceIndex, keyLookup.zone);
+    const bool wasKeyOn = state->isLatchOn;
+    if (state->soundingMapType != KeyMappingType::PalmMute || state->stringZone != keyLookup.zone)
+        state->isLatchOn = false;
+    state->soundingMapType = KeyMappingType::PalmMute;
+    state->stringZone = keyLookup.zone;
+    if (keyLookup.palmMuteMomentary)
+        state->isLatchOn = oscMsg.active;
+    else if (oscMsg.active && state->status == KeyStatus::Off)
+        state->isLatchOn = !state->isLatchOn;
+    state->status = oscMsg.active ? KeyStatus::Active : KeyStatus::Off;
+
+    if (!wasMuted && isPalmMuted(deviceIndex, keyLookup.zone)) {
+        if (const auto* snapshot = activeSnapshot_.load(std::memory_order_acquire)) {
+            for (auto& course : keyStates_[deviceIndex]) {
+                for (auto& note : course) {
+                    if (!note.hasNoteAllocation || note.stringZone != keyLookup.zone) continue;
+                    const auto& id = note.soundingKeyId;
+                    const auto physicalStatus = note.status;
+                    createNoteOff(snapshot->configLookups[static_cast<size_t>(deviceIndex)].keys[id.course][id.keyNo],
+                                  &note, sink, eventTime, voiceRouter);
+                    // Keep held fingerings available to strum keys, without restarting their MIDI voices.
+                    note.status = note.soundingMapType == KeyMappingType::Strum && physicalStatus == KeyStatus::Active
+                        ? KeyStatus::Ignored : physicalStatus;
+                }
+            }
+        }
+    }
+    if (wasKeyOn == state->isLatchOn) return;
+    outgoingOscMsg.type = osc::MessageType::LED;
+    outgoingOscMsg.device = keyLookup.keyId.deviceType;
+    std::strncpy(outgoingOscMsg.devId, oscMsg.devId, 63);
+    outgoingOscMsg.course = static_cast<unsigned int>(keyLookup.keyId.course);
+    outgoingOscMsg.key = static_cast<unsigned int>(keyLookup.keyId.keyNo);
+    outgoingOscMsg.value = static_cast<float>(state->isLatchOn ? KeyColour::Yellow : keyLookup.keyColour);
 }
 
 void MidiService::processAppCtrlKey(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, int* presetSlotRequest, int* transportRequest) {
@@ -1349,6 +1464,8 @@ void MidiService::resendLEDs(const char* devId, InstrumentType type, osc::Messag
                 } else {
                     colour = (unsigned int)keyLookup.keyColour;
                 }
+            } else if (keyLookup.mapType == KeyMappingType::PalmMute && keyStates_[deviceIndex][course][keyNo].isLatchOn) {
+                colour = static_cast<unsigned int>(KeyColour::Yellow);
             } else if (keyLookup.mapType != KeyMappingType::None) {
                 colour = (unsigned int)keyLookup.keyColour;
             }
@@ -1469,7 +1586,104 @@ const MidiService::KeyState* MidiService::findStrumSource(const ConfigLookup::Ke
             return chordSources[pitch];
         }
     }
+    if (newest == nullptr) note = keyLookup.openStringNote;
     return nullptr;
+}
+
+void MidiService::endStrum(KeyState& state, const ConfigLookup::Key& lookup, PerformanceEventSink& sink,
+                           int eventTime, MidiVoiceRouter* voiceRouter) {
+    const auto physicalStatus = state.status;
+    const auto timestamp = state.lastTimestamp;
+    const auto messageCount = state.messageCount;
+    createNoteOff(lookup, &state, sink, eventTime, voiceRouter);
+    // Do not let pressure updates restart a replaced voice while its key is held.
+    state.status = physicalStatus == KeyStatus::Active ? KeyStatus::Ignored : physicalStatus;
+    state.lastTimestamp = timestamp;
+    state.messageCount = messageCount;
+}
+
+void MidiService::releaseUnheldStrums(int deviceIndex, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter) {
+    auto* snapshot = activeSnapshot_.load(std::memory_order_acquire);
+    if (snapshot == nullptr || deviceIndex < 0 || deviceIndex >= 3) return;
+    for (auto& course : keyStates_[deviceIndex]) {
+        for (auto& strum : course) {
+            if (!strum.hasNoteAllocation || strum.soundingMapType != KeyMappingType::Strum || strum.strumControlsNoteOff
+                || strum.strumStartedOpen || strum.palmMuteReleasePending)
+                continue;
+            bool held = false;
+            for (const auto& sourceCourse : keyStates_[deviceIndex]) {
+                for (const auto& source : sourceCourse) {
+                    if (source.status == KeyStatus::Active && source.stringZone == strum.strumSourceZone
+                        && (source.soundingMapType == KeyMappingType::Chord
+                            || (source.soundingMapType == KeyMappingType::Note && source.stringNumber == strum.strumSourceString))) {
+                        held = true;
+                        break;
+                    }
+                }
+                if (held) break;
+            }
+            if (!held) {
+                const auto& id = strum.soundingKeyId;
+                endStrum(strum, snapshot->configLookups[static_cast<size_t>(deviceIndex)].keys[id.course][id.keyNo],
+                         sink, eventTime, voiceRouter);
+            }
+        }
+    }
+}
+
+void MidiService::updateStrummedFret(const KeyState& changedSource, PerformanceEventSink& sink, int eventTime,
+                                     MidiVoiceRouter* voiceRouter, ExpressionEmissionPolicy* expressionPolicy) {
+    if (changedSource.soundingMapType != KeyMappingType::Note || changedSource.stringNumber == 0) return;
+    const int deviceIndex = static_cast<int>(changedSource.soundingKeyId.deviceType) - 1;
+    const auto* snapshot = activeSnapshot_.load(std::memory_order_acquire);
+    if (snapshot == nullptr || deviceIndex < 0 || deviceIndex >= 3) return;
+    for (auto& course : keyStates_[deviceIndex]) {
+        for (auto& strum : course) {
+            if (!strum.hasNoteAllocation || strum.soundingMapType != KeyMappingType::Strum
+                || !strum.strumFretLegato || strum.palmMuteReleasePending
+                || strum.strumSourceZone != changedSource.stringZone || strum.strumSourceString != changedSource.stringNumber)
+                continue;
+            const auto& id = strum.soundingKeyId;
+            const auto& lookup = snapshot->configLookups[static_cast<size_t>(deviceIndex)].keys[id.course][id.keyNo];
+            const float availableRange = lookup.pbTransportRange * (1.0f - lookup.pbRange);
+            auto canBendTo = [&](int target) {
+                return static_cast<float>(std::abs(target - strum.activeNotes[0])) <= availableRange;
+            };
+            const KeyState* newest = nullptr;
+            bool anyHeld = false;
+            for (const auto& sourceCourse : keyStates_[deviceIndex]) {
+                for (const auto& source : sourceCourse) {
+                    if (source.status != KeyStatus::Active || source.soundingMapType != KeyMappingType::Note
+                        || source.stringZone != strum.strumSourceZone || source.stringNumber != strum.strumSourceString)
+                        continue;
+                    anyHeld = true;
+                    const int target = std::clamp(source.strumSourceNotes[0] + strum.strumTranspose, 0, 127);
+                    if (canBendTo(target) && (newest == nullptr || source.pressSequence > newest->pressSequence)) newest = &source;
+                }
+            }
+            if (newest == nullptr && (anyHeld || strum.strumOpenNote < 0)) continue;
+            const int target = std::clamp((newest ? newest->strumSourceNotes[0] : strum.strumOpenNote) + strum.strumTranspose, 0, 127);
+            if (!canBendTo(target)) continue;
+            if (target == strum.stringTargetNote && strum.strumExpressionFromKey) continue;
+            const auto sourceId = newest ? newest->soundingKeyId : LayoutWrapper::KeyId {};
+            const auto sourceSequence = newest ? newest->pressSequence : 0;
+            if (target == strum.stringTargetNote && sourceId == strum.strumExpressionSource
+                && sourceSequence == strum.strumSourcePressSequence) continue;
+            // Bend the original MIDI note; the allocator and eventual Note Off keep its identity.
+            strum.stringTargetNote = target;
+            strum.stringPitchOffset = lookup.pbTransportRange > 0.0f
+                ? static_cast<float>(target - strum.activeNotes[0]) / lookup.pbTransportRange : 0.0f;
+            strum.strumExpressionSource = sourceId;
+            strum.strumSourcePressSequence = sourceSequence;
+            strum.strumOwnExpression = strum.strumExpressionFromKey || newest == nullptr;
+            strum.linkedRoll = newest ? newest->ehRoll : 0.0f;
+            strum.linkedYaw = newest ? newest->ehYaw : 0.0f;
+            strum.linkedPressure = newest && !newest->ehPressureHistory.empty() ? newest->ehPressureHistory.back() : 0.0f;
+            strum.noteOnTimestamp = 0;
+            if (newest) strum.lastTimestamp = std::max(strum.lastTimestamp, newest->lastTimestamp);
+            createNoteHold(lookup, &strum, sink, eventTime, voiceRouter, expressionPolicy);
+        }
+    }
 }
 
 void MidiService::updateLinkedStrumExpression(const KeyState& source, PerformanceEventSink& sink, int eventTime,
@@ -1481,11 +1695,13 @@ void MidiService::updateLinkedStrumExpression(const KeyState& source, Performanc
     if (deviceIndex < 0 || deviceIndex >= 3 || snapshot == nullptr) return;
     for (auto& course : keyStates_[deviceIndex]) {
         for (auto& strum : course) {
-            if (strum.status != KeyStatus::Active || !strum.hasNoteAllocation
+            if (!strum.hasNoteAllocation
                 || strum.soundingMapType != KeyMappingType::Strum || strum.strumOwnExpression
                 || strum.strumExpressionSource != source.soundingKeyId
                 || strum.strumSourcePressSequence != source.pressSequence)
                 continue;
+            // A source-owned voice can outlive the physical strum press.
+            strum.lastTimestamp = std::max(strum.lastTimestamp, source.lastTimestamp);
             strum.linkedRoll = source.ehRoll;
             strum.linkedYaw = source.ehYaw;
             strum.linkedPressure = source.ehPressureHistory.empty() ? 0.0f : source.ehPressureHistory.back();
@@ -1505,18 +1721,43 @@ void MidiService::createNoteOn(const ConfigLookup::Key& configuredKey, KeyState*
             state->status = KeyStatus::Ignored;
             return;
         }
-        state->strumOwnExpression = keyLookup.strumExpression;
-        state->strumExpressionSource = source->soundingKeyId;
-        state->strumSourcePressSequence = source->pressSequence;
-        state->linkedRoll = source->ehRoll;
-        state->linkedYaw = source->ehYaw;
-        state->linkedPressure = source->ehPressureHistory.empty() ? 0.0f : source->ehPressureHistory.back();
+        const int deviceIndex = static_cast<int>(keyLookup.keyId.deviceType) - 1;
+        auto* snapshot = activeSnapshot_.load(std::memory_order_acquire);
+        if (snapshot != nullptr && deviceIndex >= 0 && deviceIndex < 3) {
+            for (auto& course : keyStates_[deviceIndex]) {
+                for (auto& previous : course) {
+                    if (previous.hasNoteAllocation && previous.soundingMapType == KeyMappingType::Strum
+                        && previous.strumSourceZone == keyLookup.strumSourceZone
+                        && previous.strumSourceString == keyLookup.strumSourceString) {
+                        const auto& id = previous.soundingKeyId;
+                        endStrum(previous, snapshot->configLookups[static_cast<size_t>(deviceIndex)].keys[id.course][id.keyNo],
+                                 sink, eventTime, voiceRouter);
+                    }
+                }
+            }
+        }
+        state->strumControlsNoteOff = keyLookup.strumControlsNoteOff;
+        state->strumStartedOpen = source == nullptr;
+        state->strumSourceZone = keyLookup.strumSourceZone;
+        state->strumSourceString = keyLookup.strumSourceString;
+        state->strumExpressionFromKey = keyLookup.strumExpression;
+        state->strumFretLegato = source == nullptr || source->soundingMapType == KeyMappingType::Note;
+        state->strumOpenNote = keyLookup.openStringNote;
+        state->strumOwnExpression = source == nullptr || keyLookup.strumExpression;
+        state->strumExpressionSource = source ? source->soundingKeyId : LayoutWrapper::KeyId {};
+        state->strumSourcePressSequence = source ? source->pressSequence : 0;
+        state->linkedRoll = source ? source->ehRoll : 0.0f;
+        state->linkedYaw = source ? source->ehYaw : 0.0f;
+        state->linkedPressure = source && !source->ehPressureHistory.empty() ? source->ehPressureHistory.back() : 0.0f;
         keyLookup.notes.fill(-1);
         keyLookup.notes[0] = note;
     }
     int deviceIndex = static_cast<int>(keyLookup.keyId.deviceType) - 1;
     int totalTranspose = (deviceIndex >= 0 && deviceIndex < 3) ? (latchTranspose_[deviceIndex] + momentaryTranspose_[deviceIndex]) : 0;
-    if (keyLookup.mapType == KeyMappingType::Strum) totalTranspose += keyLookup.zoneTranspose;
+    if (keyLookup.mapType == KeyMappingType::Strum) {
+        totalTranspose += keyLookup.zoneTranspose;
+        state->strumTranspose = totalTranspose;
+    }
     const int zoneIndex = zoneIndexFromKeyId(keyLookup.keyId);
 
     state->noteZoneIndex = zoneIndex;
@@ -1525,7 +1766,6 @@ void MidiService::createNoteOn(const ConfigLookup::Key& configuredKey, KeyState*
     state->stringNumber = keyLookup.mapType == KeyMappingType::Note ? keyLookup.stringNumber : 0;
     state->stringPitchOffset = 0.0f;
     state->soundingKeyId = keyLookup.keyId;
-    int baseNote = -1;
     state->stringZone = keyLookup.zone;
     state->allocationOutput = keyLookup.output;
     state->allocationNote = keyLookup.notes[0];
@@ -1543,34 +1783,7 @@ void MidiService::createNoteOn(const ConfigLookup::Key& configuredKey, KeyState*
         state->status = KeyStatus::Active;
         return;
     }
-    if (state->stringNumber > 0 && deviceIndex >= 0 && deviceIndex < 3) {
-        for (auto& course : keyStates_[deviceIndex]) {
-            for (const auto& other : course) {
-                if (&other != state && other.hasNoteAllocation
-                    && other.stringNumber == state->stringNumber
-                    && other.stringZone == state->stringZone
-                    && other.allocationOutput == state->allocationOutput) {
-                    const int targetNote = std::clamp(keyLookup.notes[0] + totalTranspose, 0, 127);
-                    const int interval = targetNote - other.activeNotes[0];
-                    const float availableRange = keyLookup.pbTransportRange * (1.0f - keyLookup.pbRange);
-                    if (static_cast<float>(std::abs(interval)) > availableRange) {
-                        state->status = KeyStatus::Ignored;
-                        return;
-                    }
-                    baseNote = other.activeNotes[0];
-                    state->stringPitchOffset = keyLookup.pbTransportRange > 0.0f
-                        ? static_cast<float>(interval) / keyLookup.pbTransportRange : 0.0f;
-                    state->midiChannel = other.midiChannel;
-                    state->allocationNote = other.allocationNote;
-                    state->hasNoteAllocation = true;
-                    break;
-                }
-            }
-            if (state->hasNoteAllocation) break;
-        }
-    }
-    if (!state->hasNoteAllocation)
-        state->midiChannel = voiceRouter ? voiceRouter->findMidiChannelForNewNote(keyLookup.output, keyLookup.notes[0]) : static_cast<int>(keyLookup.output);
+    state->midiChannel = voiceRouter ? voiceRouter->findMidiChannelForNewNote(keyLookup.output, keyLookup.notes[0]) : static_cast<int>(keyLookup.output);
     state->hasNoteAllocation = true;
 
     if (state->midiChannel > 0 && state->midiChannel <= 16)
@@ -1588,10 +1801,7 @@ void MidiService::createNoteOn(const ConfigLookup::Key& configuredKey, KeyState*
 
     state->stringTargetNote = state->activeNotes[0];
     state->pressSequence = ++nextPressSequence_;
-    if (baseNote >= 0)
-        state->activeNotes[0] = baseNote;
-    // A legato key takes over with its current expression, without a new-note ramp.
-    state->noteOnTimestamp = baseNote >= 0 ? 0 : state->lastTimestamp;
+    state->noteOnTimestamp = state->lastTimestamp;
     createNoteHold(keyLookup, state, sink, eventTime, voiceRouter, expressionPolicy);
     float vel = calculateNoteOnVelocity(keyLookup.keyId.deviceType, state);
     
@@ -1613,41 +1823,26 @@ void MidiService::createNoteOn(const ConfigLookup::Key& configuredKey, KeyState*
         }
     }
     state->status = KeyStatus::Active;
-}
-
-MidiService::KeyState* MidiService::findStringOwner(const KeyState& state, InstrumentType deviceType) {
-    if (state.stringNumber == 0 || state.midiChannel < 1 || state.midiChannel > 16)
-        return nullptr;
-    for (const auto& id : chanNotePri_[state.midiChannel - 1]) {
-        if (id.deviceType != deviceType) continue;
-        auto& candidate = keyStates_[static_cast<int>(deviceType) - 1][id.course][id.keyNo];
-        if (candidate.hasNoteAllocation && candidate.stringNumber == state.stringNumber
-            && candidate.stringZone == state.stringZone && candidate.allocationOutput == state.allocationOutput)
-            return &candidate;
+    if (keyLookup.mapType == KeyMappingType::Strum && isPalmMuted(deviceIndex, keyLookup.zone)) {
+        // Keep the voice reserved until its release. A later block is required because
+        // standalone transports send each block immediately, ignoring sample offsets.
+        state->palmMuteReleasePending = true;
+        state->palmMuteReleaseSample = performanceBlockStartSample_ + static_cast<uint64_t>(std::max(0, eventTime))
+            + static_cast<uint64_t>(std::max(1.0, std::round(performanceSampleRate_ * 0.010)));
+        state->palmMuteStartBlock = performanceBlockNumber_;
     }
-    return nullptr;
 }
 
-void MidiService::releaseNoteAllocation(const LayoutWrapper::KeyId& keyId, KeyState& state, MidiVoiceRouter* voiceRouter) {
+void MidiService::releaseNoteAllocation(const LayoutWrapper::KeyId&, KeyState& state, MidiVoiceRouter* voiceRouter) {
     if (!state.hasNoteAllocation)
         return;
     state.hasNoteAllocation = false;
-    const int deviceIndex = static_cast<int>(keyId.deviceType) - 1;
-    if (state.stringNumber > 0 && deviceIndex >= 0 && deviceIndex < 3) {
-        for (const auto& course : keyStates_[deviceIndex])
-            for (const auto& other : course)
-                if (other.hasNoteAllocation && other.stringNumber == state.stringNumber
-                    && other.stringZone == state.stringZone
-                    && other.allocationOutput == state.allocationOutput
-                    && other.midiChannel == state.midiChannel
-                    && other.allocationNote == state.allocationNote)
-                    return; // The remaining key retains the original allocator reservation.
-    }
+    state.palmMuteReleasePending = false;
     if (voiceRouter)
         voiceRouter->releaseMidiChannel(state.allocationOutput, state.allocationNote, state.midiChannel);
 }
 
-void MidiService::createNoteOff(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter) {
+void MidiService::createNoteOff(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter, bool forceNoteOff) {
     if (!state->hasNoteAllocation) {
         std::fill(std::begin(state->activeNotes), std::end(state->activeNotes), -1);
         state->status = KeyStatus::Off;
@@ -1656,7 +1851,6 @@ void MidiService::createNoteOff(const ConfigLookup::Key& keyLookup, KeyState* st
         state->lastTimestamp = 0;
         return;
     }
-    const bool restoreStringOwner = findStringOwner(*state, keyLookup.keyId.deviceType) == state;
     const int releasedNote = state->activeNotes[0];
     int channel = state->midiChannel;
     const int zoneIndex = state->noteZoneIndex;
@@ -1670,7 +1864,7 @@ void MidiService::createNoteOff(const ConfigLookup::Key& keyLookup, KeyState* st
     for (int i = 0; i < 6; i++) {
         int noteToTurnOff = state->activeNotes[i];
         if (noteToTurnOff > -1) {
-            if (countPlayingNoteMatches(channel, noteToTurnOff, zoneIndex) < 2) {
+            if (forceNoteOff || countPlayingNoteMatches(channel, noteToTurnOff, zoneIndex) < 2) {
                 sink.pushEvent(PerformanceEvent::noteOff(channel, noteToTurnOff, vel, eventTime, zoneIndex));
                 ECM_LOG("MidiService: Note Off - Chan: " + juce::String(channel) + 
                                          ", Note: " + juce::String(noteToTurnOff) + 
@@ -1681,19 +1875,8 @@ void MidiService::createNoteOff(const ConfigLookup::Key& keyLookup, KeyState* st
         }
     }
     
-    if (restoreStringOwner) {
-        if (auto* owner = findStringOwner(*state, keyLookup.keyId.deviceType)) {
-            if (auto* snapshot = activeSnapshot_.load(std::memory_order_acquire)) {
-                const auto& id = owner->soundingKeyId;
-                const auto& ownerLookup = snapshot->configLookups[static_cast<size_t>(id.deviceType) - 1].keys[id.course][id.keyNo];
-                owner->noteOnTimestamp = 0;
-                createNoteHold(ownerLookup, owner, sink, eventTime, voiceRouter, snapshot->expressionPolicy.get());
-            }
-        }
-    }
-
     if (channel > 0 && channel <= 16 && !hasPlayingNotesOnChannel(channel, zoneIndex)) {
-        if (state->stringNumber > 0)
+        if (state->soundingMapType == KeyMappingType::Strum)
             addMidiValueMessage(keyLookup.keyId.deviceType, channel, 0, { MidiValueType::Pitchbend, 0 }, 0,
                                 keyLookup.pbTransportRange, releasedNote, sink, true, ExpressionCurveTarget::Roll,
                                 eventTime, voiceRouter, zoneIndex);
@@ -1858,6 +2041,7 @@ void MidiService::queueTransposeChangeFlush(InstrumentType deviceType, Zone zone
         }
     }
 
+    releaseUnheldStrums(deviceIndex, sink, 0, voiceRouter);
     {
         const juce::ScopedLock pendingLock(pendingMessageLock_);
         appendRawMidiBuffer(pendingMidiBuffer_, localMessages);
@@ -1867,12 +2051,10 @@ void MidiService::queueTransposeChangeFlush(InstrumentType deviceType, Zone zone
 void MidiService::createNoteHold(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter, ExpressionEmissionPolicy* expressionPolicy) {
     int channel = state->midiChannel;
     const int zoneIndex = state->noteZoneIndex;
-    const bool controlsExpression = state->stringNumber > 0
-        ? findStringOwner(*state, keyLookup.keyId.deviceType) == state
-        : isMidi2Mode_ || (channel > 0 && channel <= 16
+    const bool controlsExpression = isMidi2Mode_ || (channel > 0 && channel <= 16
             && (chanNotePri_[channel - 1].empty() || chanNotePri_[channel - 1].front() == keyLookup.keyId));
     if (channel > 0 && channel <= 16 && controlsExpression) {
-        if (state->stringNumber > 0 && keyLookup.roll.valueType != MidiValueType::Pitchbend
+        if (state->soundingMapType == KeyMappingType::Strum && keyLookup.roll.valueType != MidiValueType::Pitchbend
             && keyLookup.yaw.valueType != MidiValueType::Pitchbend && keyLookup.pressure.valueType != MidiValueType::Pitchbend)
             addMidiValueMessage(keyLookup.keyId.deviceType, channel, 0, { MidiValueType::Pitchbend, 0 }, 0,
                                 keyLookup.pbTransportRange, state->activeNotes[0], sink, true,

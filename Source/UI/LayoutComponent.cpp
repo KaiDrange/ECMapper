@@ -27,6 +27,7 @@ LayoutComponent::LayoutComponent(InstrumentType deviceType, float widthFactor, f
         juce::PopupMenu menu;
         menu.addItem("None", [this] { LayoutWrapper::setKeyMappingType(activeKeyId, KeyMappingType::None, this->pluginState.state); showHidePanels(); repaint(); });
         menu.addItem("Note", [this] { LayoutWrapper::setKeyMappingType(activeKeyId, KeyMappingType::Note, this->pluginState.state); showHidePanels(); repaint(); });
+        menu.addItem("Palm mute", [this] { LayoutWrapper::setKeyMappingType(activeKeyId, KeyMappingType::PalmMute, this->pluginState.state); showHidePanels(); repaint(); });
         menu.addItem("Strum", [this] { LayoutWrapper::setKeyMappingType(activeKeyId, KeyMappingType::Strum, this->pluginState.state); showHidePanels(); repaint(); });
         menu.addItem("Chord", [this] { LayoutWrapper::setKeyMappingType(activeKeyId, KeyMappingType::Chord, this->pluginState.state); showHidePanels(); repaint(); });
         menu.addItem("Midi msg", [this] { LayoutWrapper::setKeyMappingType(activeKeyId, KeyMappingType::MidiMsg, this->pluginState.state); showHidePanels(); repaint(); });
@@ -34,18 +35,59 @@ LayoutComponent::LayoutComponent(InstrumentType deviceType, float widthFactor, f
         menu.showMenuAsync(juce::PopupMenu::Options{}.withTargetComponent(mapTypeMenuButton));
     };
 
+    addChildComponent(palmMuteModeSelector);
+    palmMuteModeSelector.addItem("Mode: Latch", 1);
+    palmMuteModeSelector.addItem("Mode: Momentary", 2);
+    palmMuteModeSelector.setTooltip("Latch toggles palm mute on each press. Momentary mutes while held. Affects this device's selected zone.");
+    palmMuteModeSelector.onChange = [this] {
+        if (activeKeyId.deviceType == InstrumentType::None) return;
+        LayoutWrapper::setKeyMappingValue(activeKeyId, palmMuteModeSelector.getSelectedId() == 2
+            ? "PalmMute;Momentary" : "PalmMute;Latch", this->pluginState.state);
+    };
+
     addAndMakeVisible(stringSelector);
     stringSelector.addItem("String: None", 1);
     for (int number = 1; number <= 12; ++number)
         stringSelector.addItem("String: " + juce::String(number), number + 1);
-    stringSelector.setTooltip("Note keys on a string play legato using pitch bend within this device and zone; chords play independently");
+    stringSelector.setTooltip("Assign this fret to a string. Held strummed notes follow fret changes using pitch bend; these note keys play independently.");
     stringSelector.onChange = [this] {
         if (activeKeyId.deviceType != InstrumentType::None)
             LayoutWrapper::setKeyStringNumber(activeKeyId, stringSelector.getSelectedId() - 1, this->pluginState.state);
+        showHidePanels();
+    };
+
+    addChildComponent(openStringNote.label);
+    addChildComponent(openStringNote.setButton);
+    addChildComponent(openStringNote.clearButton);
+    openStringNote.setButton.setClickingTogglesState(true);
+    openStringNote.setButton.setTooltip("Click Set, then choose a note on the keyboard for this strum key.");
+    openStringNote.clearButton.onClick = [this] {
+        openStringNote.setButton.setToggleState(false, juce::dontSendNotification);
+        setOpenStringNote(-1);
+    };
+    openStringNote.label.setTooltip("Played by this strum key when no linked source note is held.");
+    addChildComponent(stringMidiChannelSelector);
+    stringMidiChannelSelector.addItem("Force MIDI Channel: Off", 1);
+    for (int channel = 1; channel <= 16; ++channel)
+        stringMidiChannelSelector.addItem("Force MIDI Channel: " + juce::String(channel), channel + 1);
+    stringMidiChannelSelector.setTooltip("Overrides the output zone channel/MPE routing for this strum key.");
+    stringMidiChannelSelector.onChange = [this] {
+        if (activeKeyId.deviceType == InstrumentType::None) return;
+        auto settings = LayoutWrapper::getStrumSettings(activeKeyId, this->pluginState.state);
+        settings.midiChannel = stringMidiChannelSelector.getSelectedId() - 1;
+        LayoutWrapper::setStrumSettings(activeKeyId, settings, this->pluginState.state);
     };
 
     addChildComponent(strumSourceZoneSelector);
     addChildComponent(strumSourceStringSelector);
+    addChildComponent(strumNoteOffToggle);
+    strumNoteOffToggle.setTooltip("On: release notes with this strum key. Off: fretted strums release with the last linked note key; open strums sustain until palm-muted or replaced by another strum.");
+    strumNoteOffToggle.onClick = [this] {
+        if (activeKeyId.deviceType == InstrumentType::None) return;
+        auto settings = LayoutWrapper::getStrumSettings(activeKeyId, this->pluginState.state);
+        settings.controlsNoteOff = strumNoteOffToggle.getToggleState();
+        LayoutWrapper::setStrumSettings(activeKeyId, settings, this->pluginState.state);
+    };
     addChildComponent(strumExpressionToggle);
     strumExpressionToggle.setTooltip("On: this strum key controls roll, yaw and pressure. Off: the linked source key controls them.");
     for (int zone = 1; zone <= 3; ++zone)
@@ -82,10 +124,10 @@ LayoutComponent::LayoutComponent(InstrumentType deviceType, float widthFactor, f
         auto addItem = [&](const juce::String& name, Zone zone, juce::Colour col) {
             juce::PopupMenu::Item item(name);
             item.setColour(col);
-            item.setAction([this, zone] { LayoutWrapper::setKeyZone(activeKeyId, zone, this->pluginState.state); repaint(); });
+            item.setAction([this, zone] { LayoutWrapper::setKeyZone(activeKeyId, zone, this->pluginState.state); showHidePanels(); repaint(); });
             menu.addItem(item);
         };
-        menu.addItem("None", [this] { LayoutWrapper::setKeyZone(activeKeyId, Zone::NoZone, this->pluginState.state); repaint(); });
+        menu.addItem("None", [this] { LayoutWrapper::setKeyZone(activeKeyId, Zone::NoZone, this->pluginState.state); showHidePanels(); repaint(); });
         addItem("Zone1", Zone::Zone1, Style::zoneColour(Zone::Zone1));
         addItem("Zone2", Zone::Zone2, Style::zoneColour(Zone::Zone2));
         addItem("Zone3", Zone::Zone3, Style::zoneColour(Zone::Zone3));
@@ -122,6 +164,10 @@ void LayoutComponent::resized() {
     colourMenuButton.setBounds(menuArea.removeFromTop(static_cast<int>(areaHeight * 0.04f)));
     zoneMenuButton.setBounds(menuArea.removeFromTop(static_cast<int>(areaHeight * 0.04f)));
     
+    if (palmMuteModeSelector.isVisible()) {
+        menuArea.removeFromTop(8);
+        palmMuteModeSelector.setBounds(menuArea.removeFromTop(static_cast<int>(areaHeight * 0.04f)));
+    }
     if (stringSelector.isVisible()) {
         menuArea.removeFromTop(8);
         stringSelector.setBounds(menuArea.removeFromTop(static_cast<int>(areaHeight * 0.04f)));
@@ -134,6 +180,16 @@ void LayoutComponent::resized() {
         strumSourceStringSelector.setBounds(menuArea.removeFromTop(static_cast<int>(areaHeight * 0.04f)));
         menuArea.removeFromTop(8);
         strumExpressionToggle.setBounds(menuArea.removeFromTop(static_cast<int>(areaHeight * 0.04f)));
+        strumNoteOffToggle.setBounds(menuArea.removeFromTop(static_cast<int>(areaHeight * 0.04f)));
+    }
+    if (openStringNote.label.isVisible()) {
+        menuArea.removeFromTop(8);
+        openStringNote.label.setBounds(menuArea.removeFromTop(static_cast<int>(areaHeight * 0.04f)));
+        auto noteButtons = menuArea.removeFromTop(static_cast<int>(areaHeight * 0.04f));
+        openStringNote.setButton.setBounds(noteButtons.removeFromLeft(noteButtons.getWidth() / 2));
+        openStringNote.clearButton.setBounds(noteButtons);
+        menuArea.removeFromTop(8);
+        stringMidiChannelSelector.setBounds(menuArea.removeFromTop(static_cast<int>(areaHeight * 0.04f)));
     }
     menuArea.removeFromTop(15);
     chordSectionComponent.setBounds(menuArea);
@@ -201,17 +257,26 @@ void LayoutComponent::enableDisableMenuButtons(bool enable) {
     zoneMenuButton.setEnabled(enable);
     mapTypeMenuButton.setEnabled(enable);
     stringSelector.setEnabled(enable);
+    palmMuteModeSelector.setEnabled(enable);
+    openStringNote.label.setEnabled(enable);
+    openStringNote.setButton.setEnabled(enable);
+    openStringNote.clearButton.setEnabled(enable);
+    stringMidiChannelSelector.setEnabled(enable);
     strumSourceZoneSelector.setEnabled(enable);
     strumSourceStringSelector.setEnabled(enable);
     strumExpressionToggle.setEnabled(enable);
+    strumNoteOffToggle.setEnabled(enable);
 }
 
 void LayoutComponent::showHidePanels() {    
     auto layoutKey = LayoutWrapper::getLayoutKey(activeKeyId, pluginState.state);
     const bool strum = layoutKey.keyMappingType == KeyMappingType::Strum;
+    palmMuteModeSelector.setVisible(layoutKey.keyMappingType == KeyMappingType::PalmMute);
+    palmMuteModeSelector.setSelectedId(layoutKey.mappingValue == "PalmMute;Momentary" ? 2 : 1, juce::dontSendNotification);
     strumSourceZoneSelector.setVisible(strum);
     strumSourceStringSelector.setVisible(strum);
     strumExpressionToggle.setVisible(strum);
+    strumNoteOffToggle.setVisible(strum);
     zoneMenuButton.setButtonText(strum ? "Output zone" : "Zone");
     if (strum) {
         auto parts = juce::StringArray::fromTokens(layoutKey.mappingValue, ";", "");
@@ -222,6 +287,21 @@ void LayoutComponent::showHidePanels() {
     }
     stringSelector.setSelectedId(layoutKey.stringNumber + 1, juce::dontSendNotification);
     stringSelector.setVisible(layoutKey.keyMappingType == KeyMappingType::Note);
+    openStringNote.label.setVisible(strum);
+    openStringNote.setButton.setVisible(strum);
+    openStringNote.clearButton.setVisible(strum);
+    openStringNote.setButton.setToggleState(false, juce::dontSendNotification);
+    stringMidiChannelSelector.setVisible(strum);
+    const bool canEditStrum = strumSourceZoneSelector.isEnabled();
+    openStringNote.label.setEnabled(canEditStrum);
+    openStringNote.setButton.setEnabled(canEditStrum);
+    openStringNote.clearButton.setEnabled(canEditStrum);
+    stringMidiChannelSelector.setEnabled(canEditStrum);
+    const auto settings = LayoutWrapper::getStrumSettings(activeKeyId, pluginState.state);
+    strumNoteOffToggle.setToggleState(settings.controlsNoteOff, juce::dontSendNotification);
+    openStringNote.midiNoteNumber = settings.openNote;
+    updateOpenStringNoteLabel();
+    stringMidiChannelSelector.setSelectedId(settings.midiChannel + 1, juce::dontSendNotification);
     resized();
     if (layoutKey.keyMappingType == KeyMappingType::MidiMsg) {
         midiMessageSectionComponent.updatePanelFromMessageString(layoutKey.mappingValue);
@@ -257,9 +337,16 @@ void LayoutComponent::deselectAllOtherKeys(const KeyConfigComponent* key) {
 
 void LayoutComponent::deselectAllKeys() {
     stringSelector.setVisible(false);
+    palmMuteModeSelector.setVisible(false);
+    openStringNote.label.setVisible(false);
+    openStringNote.setButton.setVisible(false);
+    openStringNote.clearButton.setVisible(false);
+    openStringNote.setButton.setToggleState(false, juce::dontSendNotification);
+    stringMidiChannelSelector.setVisible(false);
     strumSourceZoneSelector.setVisible(false);
     strumSourceStringSelector.setVisible(false);
     strumExpressionToggle.setVisible(false);
+    strumNoteOffToggle.setVisible(false);
     for (auto* k : keys) {
         k->setToggleState(false, juce::dontSendNotification);
         k->setState(juce::Button::buttonNormal);
@@ -309,14 +396,38 @@ void LayoutComponent::createKeys() {
     }
 }
 
+void LayoutComponent::updateOpenStringNoteLabel() {
+    openStringNote.label.setText("Open string note: " + (openStringNote.midiNoteNumber >= 0
+        ? juce::MidiMessage::getMidiNoteName(openStringNote.midiNoteNumber, true, true, 3)
+        : juce::String("None")), juce::dontSendNotification);
+}
+
+void LayoutComponent::setOpenStringNote(int midiNoteNumber) {
+    if (activeKeyId.deviceType == InstrumentType::None) return;
+    const auto key = LayoutWrapper::getLayoutKey(activeKeyId, pluginState.state);
+    if (key.keyMappingType != KeyMappingType::Strum) return;
+    auto settings = LayoutWrapper::getStrumSettings(activeKeyId, pluginState.state);
+    settings.openNote = midiNoteNumber;
+    LayoutWrapper::setStrumSettings(activeKeyId, settings, pluginState.state);
+    openStringNote.midiNoteNumber = midiNoteNumber;
+    updateOpenStringNoteLabel();
+}
+
 void LayoutComponent::handleNoteOn(juce::MidiKeyboardState*, int, int midiNoteNumber, float) {
+    if (openStringNote.setButton.isVisible() && openStringNote.setButton.isEnabled()
+        && openStringNote.setButton.getToggleState()) {
+        setOpenStringNote(midiNoteNumber);
+        return;
+    }
     if (activeKeyId.deviceType != InstrumentType::None && LayoutWrapper::getLayoutKey(activeKeyId, pluginState.state).keyMappingType == KeyMappingType::Note) {
         LayoutWrapper::setKeyMappingValue(activeKeyId, juce::String(midiNoteNumber), pluginState.state);
         repaint();
     }
 }
 
-void LayoutComponent::handleNoteOff(juce::MidiKeyboardState*, int, int, float) {}
+void LayoutComponent::handleNoteOff(juce::MidiKeyboardState*, int, int, float) {
+    openStringNote.setButton.setToggleState(false, juce::dontSendNotification);
+}
 
 bool LayoutComponent::keyPressed(const juce::KeyPress& key, juce::Component*) {
     if (activeKeyId.deviceType == InstrumentType::None) return true;

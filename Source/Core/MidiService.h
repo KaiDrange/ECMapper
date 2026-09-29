@@ -70,6 +70,8 @@ public:
     void sendIdentification();
     void setRuntimeConfigSnapshot(std::unique_ptr<RuntimeConfigSnapshot> snapshot);
     void finishedBlock();
+    void beginPerformanceBlock(double sampleRate);
+    void endPerformanceBlock(juce::MidiBuffer& buffer, int numSamples, PerformanceEventSink* sink = nullptr);
     std::shared_ptr<MidiProtocol> getProtocol() const { return protocol_; }
 
     void valueTreePropertyChanged(juce::ValueTree& treeWhosePropertyHasChanged, const juce::Identifier& property) override;
@@ -147,6 +149,17 @@ private:
         uint64_t pressSequence = 0;
         int stringTargetNote = -1;
         bool strumOwnExpression = true;
+        bool strumExpressionFromKey = true;
+        bool strumFretLegato = false;
+        int strumTranspose = 0;
+        int strumOpenNote = -1;
+        bool palmMuteReleasePending = false;
+        uint64_t palmMuteReleaseSample = 0;
+        uint64_t palmMuteStartBlock = 0;
+        bool strumControlsNoteOff = true; // Captured at note-on.
+        bool strumStartedOpen = false; // With key release disabled, sustain until muted or replaced.
+        Zone strumSourceZone = Zone::NoZone;
+        int strumSourceString = 0;
         LayoutWrapper::KeyId strumExpressionSource;
         uint64_t strumSourcePressSequence = 0;
         float linkedRoll = 0.0f, linkedYaw = 0.0f, linkedPressure = 0.0f;
@@ -156,12 +169,19 @@ private:
         int activeNotes[6] = { -1, -1, -1, -1, -1, -1 };
     };
     
-    KeyState* findStringOwner(const KeyState& state, InstrumentType deviceType);
     void releaseNoteAllocation(const LayoutWrapper::KeyId& keyId, KeyState& state, MidiVoiceRouter* voiceRouter);
 
     const KeyState* findStrumSource(const ConfigLookup::Key& keyLookup, int& note) const;
+    void releaseUnheldStrums(int deviceIndex, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter);
+    void endStrum(KeyState& state, const ConfigLookup::Key& lookup, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter);
+    void updateStrummedFret(const KeyState& source, PerformanceEventSink& sink, int eventTime,
+                           MidiVoiceRouter* voiceRouter, ExpressionEmissionPolicy* expressionPolicy);
     void updateLinkedStrumExpression(const KeyState& source, PerformanceEventSink& sink, int eventTime,
                                      MidiVoiceRouter* voiceRouter, ExpressionEmissionPolicy* expressionPolicy);
+    void emitScheduledPalmMuteReleases(PerformanceEventSink& sink, int eventTime);
+    double performanceSampleRate_ = 48000.0;
+    uint64_t performanceBlockStartSample_ = 0;
+    uint64_t performanceBlockNumber_ = 0;
     uint64_t nextPressSequence_ = 0;
     KeyState keyStates_[3][3][120];
     int latchTranspose_[3] = { 0, 0, 0 };
@@ -217,10 +237,13 @@ private:
     juce::universal_midi_packets::EndpointId getEndpointIdSafe(juce::MidiOutput* output);
     void processNoteKey(const osc::Message& oscMsg, const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter, ExpressionEmissionPolicy* expressionPolicy);
     void processCmdKey(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter);
+    bool isPalmMuted(int deviceIndex, Zone zone) const;
+    void processPalmMuteKey(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, const ConfigLookup::Key& keyLookup,
+                            KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter);
     void processAppCtrlKey(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, int* presetSlotRequest, int* transportRequest);
     
     void createNoteOn(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter, ExpressionEmissionPolicy* expressionPolicy);
-    void createNoteOff(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter);
+    void createNoteOff(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter, bool forceNoteOff = false);
     void createNoteHold(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter, ExpressionEmissionPolicy* expressionPolicy);
     
     void createMidiMsgOn(const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, osc::Message& outgoingOscMsg, const char* devId, int eventTime, MidiVoiceRouter* voiceRouter);

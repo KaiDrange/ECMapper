@@ -122,6 +122,14 @@ int main() {
     ok &= expect(configLookups[0].keys[0][0].notes[0] == 67,
                  "layout import should immediately refresh the imported note value");
 
+    LayoutWrapper::setKeyMappingType({0, 0, InstrumentType::Alpha}, KeyMappingType::Strum, pluginState.state);
+    LayoutWrapper::setStrumSettings({0, 0, InstrumentType::Alpha}, {40, 9}, pluginState.state);
+    ok &= expect(configLookups[0].keys[0][0].output == MidiChannelType::Chan9,
+                 "editing strum settings must immediately refresh runtime routing");
+    LayoutWrapper::setStrumSettings({0, 0, InstrumentType::Alpha}, {}, pluginState.state);
+    ok &= expect(configLookups[0].keys[0][0].openStringNote == -1,
+                 "disabling open note must immediately refresh runtime settings");
+
     juce::ValueTree replacementRoot { "ReplacementRoot" };
     auto replacementKey = makeNoteKey(1, 71);
     LayoutWrapper::setLayoutKey(replacementKey, replacementRoot);

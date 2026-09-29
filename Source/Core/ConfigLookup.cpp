@@ -115,6 +115,7 @@ void ConfigLookup::updateKeyUnlocked(LayoutWrapper::KeyId keyId) {
     if (!setKeyToDefault) {
         key.keyType = layoutKey.keyType;
         key.mapType = layoutKey.keyMappingType;
+        key.palmMuteMomentary = key.mapType == KeyMappingType::PalmMute && layoutKey.mappingValue == "PalmMute;Momentary";
         key.zone = effectiveZone;
         key.outputEnabled = outputEnabled;
         key.zoneTranspose = getTransposeForZone(layoutKey.keyId.deviceType, layoutKey.zone, pluginState);
@@ -159,6 +160,14 @@ void ConfigLookup::updateKeyUnlocked(LayoutWrapper::KeyId keyId) {
         key.yaw = ZoneWrapper::getMidiValue(layoutKey.keyId.deviceType, effectiveZone, ZoneWrapper::id_yaw, ZoneWrapper::default_yaw, pluginState.state);
         key.output = ZoneWrapper::getMidiChannelType(layoutKey.keyId.deviceType, effectiveZone, pluginState.state);
         
+        if (key.mapType == KeyMappingType::Strum) {
+            const auto settings = LayoutWrapper::getStrumSettings(layoutKey.keyId, pluginState.state);
+            key.openStringNote = settings.openNote;
+            key.strumControlsNoteOff = settings.controlsNoteOff;
+            if (settings.midiChannel > 0)
+                key.output = static_cast<MidiChannelType>(settings.midiChannel);
+        }
+
         auto keyPB = ZoneWrapper::getKeyPitchbend(layoutKey.keyId.deviceType, layoutKey.zone, pluginState.state);
         auto getSafePbRange = [](float pb, float maxPb) {
             return maxPb > 0.0f ? std::min(pb / maxPb, 1.0f) : 0.0f;

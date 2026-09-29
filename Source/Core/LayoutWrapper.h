@@ -40,6 +40,14 @@ public:
     static inline const juce::Identifier id_zone { "zone" };
     static inline const juce::Identifier id_ecMapperVersion { "ecmapperVersion" };
 
+    struct StrumSettings {
+        int openNote = -1; // -1 = disabled; otherwise MIDI note 0-127
+        int midiChannel = 0; // 0 = zone routing; otherwise channel 1-16
+        bool controlsNoteOff = true;
+    };
+    static StrumSettings getStrumSettings(KeyId keyId, juce::ValueTree& rootState);
+    static void setStrumSettings(KeyId keyId, StrumSettings settings, juce::ValueTree& rootState);
+
     static LayoutKey getLayoutKey(KeyId keyId, juce::ValueTree& rootState);
     static void setLayoutKey(LayoutKey& key, juce::ValueTree& rootState);
     static void setKeyStringNumber(KeyId keyId, int stringNumber, juce::ValueTree& rootState);

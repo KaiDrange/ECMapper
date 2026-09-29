@@ -30,11 +30,14 @@ public:
         LayoutWrapper::KeyId keyId;
         EigenharpKeyType keyType = EigenharpKeyType::Normal;
         int stringNumber = 0;
+        int openStringNote = -1;
         Zone zone = Zone::NoZone;
         bool outputEnabled = true;
         Zone strumSourceZone = Zone::Zone1;
         int strumSourceString = 1;
         bool strumExpression = true;
+        bool strumControlsNoteOff = true;
+        bool palmMuteMomentary = false;
         KeyMappingType mapType = KeyMappingType::None;
         std::array<int, 6> notes = { -1, -1, -1, -1, -1, -1 };
         std::array<int, 6> untransposedNotes = { -1, -1, -1, -1, -1, -1 };

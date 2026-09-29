@@ -45,8 +45,14 @@ private:
     juce::OwnedArray<KeyConfigComponent> keys;
     std::unique_ptr<juce::DrawablePath> keyImgNormal, keyImgOver, keyImgDown, keyImgOn;
     
+    juce::ComboBox palmMuteModeSelector;
     juce::ComboBox stringSelector;
+    ChordSectionComponent::ChordNote openStringNote;
+    juce::ComboBox stringMidiChannelSelector;
+    void setOpenStringNote(int midiNoteNumber);
+    void updateOpenStringNoteLabel();
     juce::ComboBox strumSourceZoneSelector, strumSourceStringSelector;
+    juce::ToggleButton strumNoteOffToggle { "Controls note off" };
     juce::ToggleButton strumExpressionToggle { "Expression" };
     juce::TextButton colourMenuButton { "Colour" };
     juce::TextButton zoneMenuButton { "Zone" };

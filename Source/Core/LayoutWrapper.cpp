@@ -180,6 +180,22 @@ void LayoutWrapper::addListener(InstrumentType deviceType, juce::ValueTree::List
     vTree.addListener(listener);
 }
 
+LayoutWrapper::StrumSettings LayoutWrapper::getStrumSettings(KeyId keyId, juce::ValueTree& rootState) {
+    if (keyId.deviceType == InstrumentType::None) return {};
+    const auto key = getExistingKeyTree(canonicalizeTauKeyId(keyId), rootState);
+    return { juce::jlimit(-1, 127, static_cast<int>(key.getProperty("openStringNote", -1))),
+             juce::jlimit(0, 16, static_cast<int>(key.getProperty("forceMidiChannel", 0))),
+             static_cast<bool>(key.getProperty("controlsNoteOff", true)) };
+}
+
+void LayoutWrapper::setStrumSettings(KeyId keyId, StrumSettings settings, juce::ValueTree& rootState) {
+    if (keyId.deviceType == InstrumentType::None) return;
+    auto key = getKeyTree(keyId, rootState);
+    key.setProperty("openStringNote", juce::jlimit(-1, 127, settings.openNote), nullptr);
+    key.setProperty("forceMidiChannel", juce::jlimit(0, 16, settings.midiChannel), nullptr);
+    key.setProperty("controlsNoteOff", settings.controlsNoteOff, nullptr);
+}
+
 void LayoutWrapper::clearLayout(InstrumentType deviceType, juce::ValueTree& rootState) {
     auto layoutTree = getLayoutTree(deviceType, rootState);
     layoutTree.removeAllChildren(nullptr);

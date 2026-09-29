@@ -1161,6 +1161,7 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& audioBuffer,
     int slotToLoad = -1;
     collectPresetSlotLoadRequests(midiMessages, slotToLoad);
     const auto timing = calculateBlockTiming(audioBuffer);
+    midiService.beginPerformanceBlock(timing.sampleRate);
     if (applyZoneControlMessages(midiMessages))
         requestRuntimeConfigRefresh();
     prepareMidiMessagesForBlock(*targetBuffer);
@@ -1171,6 +1172,7 @@ void ECMapperAudioProcessor::processBlock(juce::AudioBuffer<float>& audioBuffer,
         midiService.reduceBreath(*targetBuffer, standaloneZoneSink, timing.numSamples - 1, timing.numSamples);
     else
         midiService.reduceBreath(*targetBuffer, timing.numSamples - 1, timing.numSamples);
+    midiService.endPerformanceBlock(*targetBuffer, timing.numSamples, eventSink);
     dispatchPresetSlotLoad(slotToLoad);
     
     if (useDirect) {
