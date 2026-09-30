@@ -143,7 +143,7 @@ void TabPage::setActive(bool active)
 
 void TabPage::refreshFromState()
 {
-    layoutPanel->repaint();
+    layoutPanel->refreshFromState();
 
     if (rightPanelView == RightPanelView::Curves) {
         expressionCurvesComponent->refreshFromState();

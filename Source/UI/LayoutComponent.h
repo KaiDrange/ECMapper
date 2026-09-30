@@ -26,6 +26,7 @@ public:
     bool keyPressed(const juce::KeyPress& key, juce::Component* originatingComponent) override;
 
     void resized() override;
+    void refreshFromState();
     
     int getNormalkeyCount() const;
     int getPercKeyCount() const;

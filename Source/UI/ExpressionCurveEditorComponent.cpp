@@ -117,6 +117,7 @@ ExpressionCurveEditorComponent::ExpressionCurveEditorComponent(InstrumentType de
       midiService(midiServiceToUse),
       labelText(labelTextToUse.isEmpty() ? getDefaultCurveLabel(targetToUse) : labelTextToUse),
       curve(ExpressionCurveWrapper::getCurve(deviceTypeToUse, targetToUse, pluginStateToUse.state)) {
+    setOpaque(true);
     auto deviceTabIndex = static_cast<int>(deviceType) - 1;
     auto curveColour = Style::tabColour(deviceTabIndex);
 
@@ -131,6 +132,25 @@ ExpressionCurveEditorComponent::ExpressionCurveEditorComponent(InstrumentType de
 }
 
 void ExpressionCurveEditorComponent::paint(juce::Graphics& g) {
+    const auto scale = g.getInternalContext().getPhysicalPixelScaleFactor();
+    const auto width = juce::roundToInt(std::ceil(static_cast<float>(getWidth()) * scale));
+    const auto height = juce::roundToInt(std::ceil(static_cast<float>(getHeight()) * scale));
+    if (width <= 0 || height <= 0)
+        return;
+
+    if (!staticGraphics.isValid() || staticGraphics.getWidth() != width
+        || staticGraphics.getHeight() != height || !juce::approximatelyEqual(staticScale, scale)) {
+        staticGraphics = juce::Image(juce::Image::ARGB, width, height, true);
+        staticScale = scale;
+        juce::Graphics cached(staticGraphics);
+        cached.addTransform(juce::AffineTransform::scale(scale));
+        paintStaticGraphics(cached);
+    }
+    g.drawImage(staticGraphics, getLocalBounds().toFloat());
+}
+
+void ExpressionCurveEditorComponent::paintStaticGraphics(juce::Graphics& g) {
+    g.fillAll(Style::background());
     auto bounds = getLocalBounds().toFloat().reduced(0.5f);
     juce::ColourGradient panelGradient(Style::surfaceRaised().interpolatedWith(Style::background(), 0.12f),
                                        bounds.getCentreX(), bounds.getY(),
@@ -243,35 +263,84 @@ void ExpressionCurveEditorComponent::paint(juce::Graphics& g) {
         }
     }
 
-    // Draw performance markers
-    auto markers = midiService.getVisualMarkers(deviceType, target);
-    juce::uint32 now = juce::Time::getMillisecondCounter();
+}
 
-    for (const auto& marker : markers) {
-        float x = marker.value;
-        if (target == ExpressionCurveTarget::Yaw || target == ExpressionCurveTarget::Roll) {
-            x = (x + 1.0f) * 0.5f;
-        }
-        
-        float y = curve.getValue(x);
-        auto screen = toScreen({x, y});
-        
-        float alpha = 1.0f;
-        if (target == ExpressionCurveTarget::Velocity || target == ExpressionCurveTarget::ReleaseVelocity) {
-            float age = static_cast<float>(now - marker.timestamp) / 1000.0f;
-            alpha = std::clamp(1.0f - age / 1.5f, 0.0f, 1.0f);
-        }
+void ExpressionCurveEditorComponent::paintOverChildren(juce::Graphics& g) {
+    if (performanceDots.empty())
+        return;
 
-        if (alpha > 0.0f) {
-            g.setColour(juce::Colours::white.withAlpha(alpha * 0.9f));
-            g.fillEllipse(screen.x - 3.5f, screen.y - 3.5f, 7.0f, 7.0f);
-            g.setColour(curveColour.withAlpha(alpha * 0.8f));
-            g.drawEllipse(screen.x - 3.5f, screen.y - 3.5f, 7.0f, 7.0f, 1.5f);
+    const auto scale = g.getInternalContext().getPhysicalPixelScaleFactor();
+    if (!dotGraphics.isValid() || !juce::approximatelyEqual(dotScale, scale)) {
+        dotScale = scale;
+        const auto size = juce::roundToInt(std::ceil(10.0f * scale));
+        dotGraphics = juce::Image(juce::Image::ARGB, size, size, true);
+        juce::Graphics sprite(dotGraphics);
+        sprite.addTransform(juce::AffineTransform::scale(scale));
+        sprite.setColour(juce::Colours::white.withAlpha(0.9f));
+        sprite.fillEllipse(1.5f, 1.5f, 7.0f, 7.0f);
+        sprite.setColour(Style::tabColour(static_cast<int>(deviceType) - 1).withAlpha(0.8f));
+        sprite.drawEllipse(1.5f, 1.5f, 7.0f, 7.0f, 1.5f);
+    }
+
+    for (const auto& dot : performanceDots) {
+        const juce::Rectangle<float> bounds(dot.position.x - 5.0f, dot.position.y - 5.0f, 10.0f, 10.0f);
+        if (g.clipRegionIntersects(bounds.getSmallestIntegerContainer())) {
+            g.setOpacity(dot.alpha);
+            g.drawImage(dotGraphics, bounds);
         }
     }
 }
 
+void ExpressionCurveEditorComponent::setPerformanceDotsEnabled(bool enabled) {
+    performanceDotsEnabled = enabled;
+    if (enabled) {
+        refreshPerformanceDots();
+    } else {
+        for (const auto& dot : performanceDots)
+            repaint(juce::Rectangle<float>(dot.position.x - 6.0f, dot.position.y - 6.0f, 12.0f, 12.0f).getSmallestIntegerContainer());
+        performanceDots.clear();
+    }
+}
+
+void ExpressionCurveEditorComponent::refreshPerformanceDots() {
+    if (!performanceDotsEnabled)
+        return;
+    std::vector<PerformanceDot> updated;
+    const auto now = juce::Time::getMillisecondCounter();
+    for (const auto& marker : midiService.getVisualMarkers(deviceType, target)) {
+        auto x = marker.value;
+        if (target == ExpressionCurveTarget::Yaw || target == ExpressionCurveTarget::Roll)
+            x = (x + 1.0f) * 0.5f;
+
+        auto alpha = 1.0f;
+        if (target == ExpressionCurveTarget::Velocity || target == ExpressionCurveTarget::ReleaseVelocity) {
+            const auto age = static_cast<float>(now - marker.timestamp) / 1000.0f;
+            alpha = std::clamp(1.0f - age / 1.5f, 0.0f, 1.0f);
+        }
+        if (alpha > 0.0f)
+            updated.push_back({toScreen({x, curve.getValue(x)}), alpha});
+    }
+
+    const auto sameDot = [](const PerformanceDot& a, const PerformanceDot& b) {
+        return juce::approximatelyEqual(a.position.x, b.position.x)
+            && juce::approximatelyEqual(a.position.y, b.position.y)
+            && juce::approximatelyEqual(a.alpha, b.alpha);
+    };
+    if (updated.size() == performanceDots.size()
+        && std::equal(updated.begin(), updated.end(), performanceDots.begin(), sameDot))
+        return;
+
+    // Restore the background under old dots and paint the new positions.
+    // Keep invalidation local instead of repainting the entire plot.
+    for (const auto& dots : { &performanceDots, &updated })
+        for (const auto& dot : *dots)
+            repaint(juce::Rectangle<float>(dot.position.x - 6.0f, dot.position.y - 6.0f, 12.0f, 12.0f).getSmallestIntegerContainer());
+    performanceDots = std::move(updated);
+}
+
 void ExpressionCurveEditorComponent::resized() {
+    staticGraphics = {};
+    refreshPerformanceDots();
     auto header = getLocalBounds().removeFromTop(headerHeight).reduced(6, 2);
     auto presetArea = header.removeFromRight((presetButtonSize + presetButtonGap) * 5 - presetButtonGap);
     for (auto i = 0; i < 5; ++i) {
@@ -354,12 +423,31 @@ ExpressionCurveEditorComponent::Handle ExpressionCurveEditorComponent::pickHandl
 
 void ExpressionCurveEditorComponent::commitCurve() {
     ExpressionCurveWrapper::setCurve(deviceType, target, curve, pluginState.state);
+    staticGraphics = {};
+    refreshPerformanceDots();
     repaint();
 }
 
 void ExpressionCurveEditorComponent::refreshFromState()
 {
-    curve = ExpressionCurveWrapper::getCurve(deviceType, target, pluginState.state);
+    const auto updated = ExpressionCurveWrapper::getCurve(deviceType, target, pluginState.state);
+    const auto& current = curve.getData();
+    const auto& next = updated.getData();
+    if (juce::approximatelyEqual(current.startY, next.startY)
+        && juce::approximatelyEqual(current.leftControl.x, next.leftControl.x)
+        && juce::approximatelyEqual(current.leftControl.y, next.leftControl.y)
+        && juce::approximatelyEqual(current.centerY, next.centerY)
+        && juce::approximatelyEqual(current.rightControl.x, next.rightControl.x)
+        && juce::approximatelyEqual(current.rightControl.y, next.rightControl.y)
+        && juce::approximatelyEqual(current.endY, next.endY))
+    {
+        refreshPerformanceDots();
+        return;
+    }
+
+    curve = updated;
+    staticGraphics = {};
+    refreshPerformanceDots();
     repaint();
 }
 
@@ -401,6 +489,8 @@ void ExpressionCurveEditorComponent::mouseDrag(const juce::MouseEvent& e) {
 
 void ExpressionCurveEditorComponent::mouseUp(const juce::MouseEvent&) {
     activeHandle = Handle::None;
+    staticGraphics = {};
+    repaint();
 }
 
 } // namespace ecm

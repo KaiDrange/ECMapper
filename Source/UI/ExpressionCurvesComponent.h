@@ -13,6 +13,9 @@ public:
     void refreshFromState();
 
 private:
+    InstrumentType deviceType_;
+    juce::AudioProcessorValueTreeState& pluginState_;
+    juce::ToggleButton showLiveDots { "Show live dots" };
     std::unique_ptr<ExpressionCurveEditorComponent> editors[6];
 };
 

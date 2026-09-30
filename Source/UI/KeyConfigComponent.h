@@ -11,6 +11,7 @@ public:
     ~KeyConfigComponent() override = default;
 
     LayoutWrapper::KeyId getKeyId() const { return keyId; }
+    void refreshFromState();
 
 protected:
     void paint (juce::Graphics& g) override;
@@ -19,6 +20,7 @@ private:
     EigenharpKeyType keyType;
     LayoutWrapper::KeyId keyId;
     juce::AudioProcessorValueTreeState& pluginState;
+    LayoutWrapper::LayoutKey displayedKey {};
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (KeyConfigComponent)
 };

@@ -20,6 +20,9 @@ public:
     static inline const juce::Identifier id_pluginOutputMode {"pluginOutputMode"};
     static inline const juce::Identifier id_activeTab {"activetab"};
     static inline const juce::Identifier id_activeCalibrationTab {"activecalibrationtab"};
+    static inline const juce::Identifier id_showLiveDots { "showLiveDots" };
+    static bool getShowLiveDots(InstrumentType deviceType, juce::ValueTree& rootState);
+    static void setShowLiveDots(InstrumentType deviceType, bool enabled, juce::ValueTree& rootState);
     
     static inline const juce::Identifier id_appRole { "appRole" };
     static inline const juce::Identifier id_clientListenIP { "clientListenIP" };

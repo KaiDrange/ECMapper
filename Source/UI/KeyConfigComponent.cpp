@@ -10,10 +10,23 @@ KeyConfigComponent::KeyConfigComponent(LayoutWrapper::KeyId id, EigenharpKeyType
       keyId(id), 
       pluginState(pluginStateToUse) {
     setClickingTogglesState(true);
+    displayedKey = LayoutWrapper::getLayoutKey(keyId, pluginState.state);
+}
+
+void KeyConfigComponent::refreshFromState() {
+    const auto current = LayoutWrapper::getLayoutKey(keyId, pluginState.state);
+    if (current.keyColour != displayedKey.keyColour
+        || current.zone != displayedKey.zone
+        || current.keyMappingType != displayedKey.keyMappingType
+        || current.mappingValue != displayedKey.mappingValue) {
+        displayedKey = current;
+        repaint();
+    }
 }
 
 void KeyConfigComponent::paint(juce::Graphics& g) {
     auto layoutKey = LayoutWrapper::getLayoutKey(keyId, pluginState.state);
+    displayedKey = layoutKey;
     auto area = getLocalBounds();
 
     auto keyBounds = area.toFloat().reduced(1.0f);

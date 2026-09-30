@@ -214,6 +214,18 @@ OutputTransportMode SettingsWrapper::getPluginOutputMode(juce::ValueTree& rootSt
     return OutputTransportMode::LegacyMidi;
 }
 
+bool SettingsWrapper::getShowLiveDots(InstrumentType deviceType, juce::ValueTree& rootState) {
+    const auto preferences = getSettingsTree(rootState).getChildWithName(id_showLiveDots);
+    const juce::Identifier deviceProperty("device" + juce::String(static_cast<int>(deviceType)));
+    return preferences.getProperty(deviceProperty, true);
+}
+
+void SettingsWrapper::setShowLiveDots(InstrumentType deviceType, bool enabled, juce::ValueTree& rootState) {
+    auto preferences = getSettingsTree(rootState).getOrCreateChildWithName(id_showLiveDots, nullptr);
+    const juce::Identifier deviceProperty("device" + juce::String(static_cast<int>(deviceType)));
+    preferences.setProperty(deviceProperty, enabled, nullptr);
+}
+
 void SettingsWrapper::setCurrentTabIndex(int index, juce::ValueTree& rootState) {
     auto vTree = getSettingsTree(rootState);
     vTree.setProperty(id_activeTab, index, nullptr);

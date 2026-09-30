@@ -673,6 +673,11 @@ int LayoutComponent::getRowNumber(int keyIndex) {
     return row;
 }
 
+void LayoutComponent::refreshFromState() {
+    for (auto* key : keys)
+        key->refreshFromState();
+}
+
 void LayoutComponent::valuesChanged(MidiMessageSectionComponent*) {
     LayoutWrapper::setKeyMappingValue(activeKeyId, midiMessageSectionComponent.getMessageString(), pluginState.state);
     midiMessageSectionComponent.updatePanelFromMessageString(LayoutWrapper::getLayoutKey(activeKeyId, pluginState.state).mappingValue);

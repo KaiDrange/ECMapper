@@ -1,4 +1,5 @@
 #include "ExpressionCurvesComponent.h"
+#include "../Core/SettingsWrapper.h"
 
 #include <array>
 
@@ -22,7 +23,16 @@ juce::String labelForTarget(ExpressionCurveTarget target)
 } // namespace
 
 ExpressionCurvesComponent::ExpressionCurvesComponent(InstrumentType deviceType, juce::AudioProcessorValueTreeState& pluginState, MidiService& midiService)
+    : deviceType_(deviceType), pluginState_(pluginState)
 {
+    showLiveDots.setToggleState(SettingsWrapper::getShowLiveDots(deviceType_, pluginState_.state), juce::dontSendNotification);
+    showLiveDots.setTooltip("Show live expression values on the curves while playing.");
+    showLiveDots.onClick = [this] {
+        SettingsWrapper::setShowLiveDots(deviceType_, showLiveDots.getToggleState(), pluginState_.state);
+        for (auto& editor : editors)
+            editor->setPerformanceDotsEnabled(showLiveDots.getToggleState());
+    };
+    addAndMakeVisible(showLiveDots);
     const std::array<ExpressionCurveTarget, 6> targets {
         ExpressionCurveTarget::Breath,
         ExpressionCurveTarget::Velocity,
@@ -34,12 +44,15 @@ ExpressionCurvesComponent::ExpressionCurvesComponent(InstrumentType deviceType, 
 
     for (int i = 0; i < 6; ++i) {
         editors[i] = std::make_unique<ExpressionCurveEditorComponent>(deviceType, targets[(size_t)i], pluginState, midiService, labelForTarget(targets[(size_t)i]));
+        editors[i]->setPerformanceDotsEnabled(showLiveDots.getToggleState());
         addAndMakeVisible(editors[i].get());
     }
 }
 
 void ExpressionCurvesComponent::resized() {
     auto area = getLocalBounds();
+    showLiveDots.setBounds(area.removeFromTop(26).removeFromLeft(150));
+    area.removeFromTop(4);
     auto gap = 6;
     auto cols = 3;
     auto rows = 2;
@@ -58,6 +71,12 @@ void ExpressionCurvesComponent::resized() {
 
 void ExpressionCurvesComponent::refreshFromState()
 {
+    const auto enabled = SettingsWrapper::getShowLiveDots(deviceType_, pluginState_.state);
+    if (enabled != showLiveDots.getToggleState()) {
+        showLiveDots.setToggleState(enabled, juce::dontSendNotification);
+        for (auto& editor : editors)
+            editor->setPerformanceDotsEnabled(enabled);
+    }
     for (auto& editor : editors) {
         if (editor != nullptr)
             editor->refreshFromState();

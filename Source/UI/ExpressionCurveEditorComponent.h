@@ -13,11 +13,13 @@ public:
     ExpressionCurveEditorComponent(InstrumentType deviceType, ExpressionCurveTarget target, juce::AudioProcessorValueTreeState& pluginState, MidiService& midiService, juce::String labelText);
 
     void paint(juce::Graphics& g) override;
+    void paintOverChildren(juce::Graphics& g) override;
     void resized() override;
     void mouseDown(const juce::MouseEvent& e) override;
     void mouseDrag(const juce::MouseEvent& e) override;
     void mouseUp(const juce::MouseEvent& e) override;
     void refreshFromState();
+    void setPerformanceDotsEnabled(bool enabled);
 
 private:
     class PresetSwatchButton : public juce::Button {
@@ -49,6 +51,18 @@ private:
     ExpressionCurve curve;
     Handle activeHandle = Handle::None;
     std::array<std::unique_ptr<PresetSwatchButton>, 5> presetButtons;
+    juce::Image staticGraphics;
+    float staticScale = 1.0f;
+    juce::Image dotGraphics;
+    float dotScale = 1.0f;
+    bool performanceDotsEnabled = true;
+    struct PerformanceDot {
+        juce::Point<float> position;
+        float alpha;
+    };
+    std::vector<PerformanceDot> performanceDots;
+    void paintStaticGraphics(juce::Graphics& g);
+    void refreshPerformanceDots();
 
     juce::Rectangle<float> getPlotArea() const;
     juce::Point<float> toScreen(const ExpressionCurvePoint& point) const;
