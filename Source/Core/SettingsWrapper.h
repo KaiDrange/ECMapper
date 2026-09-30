@@ -101,6 +101,8 @@ public:
     
     static juce::ValueTree getSettingsTree(juce::ValueTree& rootState);
     static juce::ValueTree getPresetTree(juce::ValueTree& rootState);
+    // Normalize imported/restored state before reading it. Getters initialize a
+    // fresh tree once, but do not rerun migration on every settings lookup.
     static void normalizeStateTree(juce::ValueTree& rootState);
     static juce::ValueTree createPersistentStateTree(juce::ValueTree& rootState);
 

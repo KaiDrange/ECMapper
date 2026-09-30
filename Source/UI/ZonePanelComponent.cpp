@@ -192,9 +192,9 @@ void ZonePanelComponent::refreshFromState()
     {
         auto midiValue = ZoneWrapper::getMidiValue(deviceType, zone, treeId, defaultValue, pluginState.state);
         if (midiValue.valueType == MidiValueType::CC)
-            dropdown.box.setSelectedItemIndex(midiValue.ccNo);
+            dropdown.box.setSelectedItemIndex(midiValue.ccNo, juce::dontSendNotification);
         else
-            dropdown.box.setSelectedItemIndex(126 + static_cast<int>(midiValue.valueType));
+            dropdown.box.setSelectedItemIndex(126 + static_cast<int>(midiValue.valueType), juce::dontSendNotification);
     };
 
     setMidiDropdown(pressureDropdown, ZoneWrapper::id_pressure, ZoneWrapper::default_pressure);
@@ -216,9 +216,9 @@ void ZonePanelComponent::setStandardMidiDropdownParams(DropdownComponent& dropdo
 
     auto midiValue = ZoneWrapper::getMidiValue(deviceType, zone, treeId, defaultValue, pluginState.state);
     if (midiValue.valueType == MidiValueType::CC)
-        dropdown.box.setSelectedItemIndex(midiValue.ccNo);
+        dropdown.box.setSelectedItemIndex(midiValue.ccNo, juce::dontSendNotification);
     else
-        dropdown.box.setSelectedItemIndex(126 + static_cast<int>(midiValue.valueType));
+        dropdown.box.setSelectedItemIndex(126 + static_cast<int>(midiValue.valueType), juce::dontSendNotification);
 
     dropdown.box.onChange = [this, &dropdown, treeId] {
         ZoneWrapper::MidiValue mv;

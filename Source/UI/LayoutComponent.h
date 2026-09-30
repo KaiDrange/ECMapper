@@ -1,5 +1,6 @@
 #pragma once
 #include <JuceHeader.h>
+#include <atomic>
 #include "PanelComponent.h"
 #include "../Core/LayoutWrapper.h"
 #include "KeyConfigComponent.h"
@@ -14,7 +15,8 @@ class LayoutComponent : public PanelComponent,
                         public juce::KeyListener, 
                         public MidiMessageSectionComponent::Listener, 
                         public ChordSectionComponent::Listener,
-                        public AppCtrlSectionComponent::Listener {
+                        public AppCtrlSectionComponent::Listener,
+                        private juce::ValueTree::Listener {
 public:
     using juce::Component::keyPressed;
 
@@ -42,6 +44,12 @@ public:
     ChordSectionComponent chordSectionComponent;
     
 private:
+    std::atomic<bool> layoutDirty_ { true };
+    void valueTreePropertyChanged(juce::ValueTree& tree, const juce::Identifier&) override;
+    void valueTreeChildAdded(juce::ValueTree&, juce::ValueTree&) override { layoutDirty_.store(true); }
+    void valueTreeChildRemoved(juce::ValueTree&, juce::ValueTree&, int) override { layoutDirty_.store(true); }
+    void valueTreeChildOrderChanged(juce::ValueTree&, int, int) override { layoutDirty_.store(true); }
+    void valueTreeRedirected(juce::ValueTree&) override { layoutDirty_.store(true); }
     LayoutWrapper::KeyId activeKeyId;
     juce::OwnedArray<KeyConfigComponent> keys;
     std::unique_ptr<juce::DrawablePath> keyImgNormal, keyImgOver, keyImgDown, keyImgOn;

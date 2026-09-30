@@ -218,12 +218,15 @@ LayoutComponent::LayoutComponent(InstrumentType deviceType, float widthFactor, f
 
     showHidePanels();
     enableDisableMenuButtons(false);
+    pluginState.state.addListener(this);
 }
 #if defined(__clang__)
 #pragma clang diagnostic pop
 #endif
 
-LayoutComponent::~LayoutComponent() = default;
+LayoutComponent::~LayoutComponent() {
+    pluginState.state.removeListener(this);
+}
 
 void LayoutComponent::resized() {
     auto area = getLocalBounds();
@@ -674,8 +677,17 @@ int LayoutComponent::getRowNumber(int keyIndex) {
 }
 
 void LayoutComponent::refreshFromState() {
+    if (!layoutDirty_.exchange(false))
+        return;
     for (auto* key : keys)
         key->refreshFromState();
+}
+
+void LayoutComponent::valueTreePropertyChanged(juce::ValueTree& tree, const juce::Identifier&) {
+    // Notifications can arrive outside the message thread. Only flag the change;
+    // the page timer updates components on the message thread.
+    if (tree.getType().toString().startsWith(LayoutWrapper::id_key.toString() + "_"))
+        layoutDirty_.store(true);
 }
 
 void LayoutComponent::valuesChanged(MidiMessageSectionComponent*) {

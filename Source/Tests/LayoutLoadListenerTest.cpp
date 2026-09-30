@@ -215,6 +215,12 @@ int main() {
     staleLegacyKey.setProperty(LayoutWrapper::id_keyMappingType, (int)KeyMappingType::Note, nullptr);
     staleLegacyKey.setProperty(LayoutWrapper::id_mappingValue, "0", nullptr);
 
+    // Reading initialized state must not rerun migrations or remove nodes.
+    SettingsWrapper::getPresetTree(duplicateState);
+    SettingsWrapper::getSettingsTree(duplicateState);
+    ok &= expect(staleLegacyDevice.getParent() == duplicateState,
+                 "ordinary settings reads must not migrate state or remove nodes");
+    SettingsWrapper::normalizeStateTree(duplicateState);
     SettingsWrapper::setLowerMPEPB(11, duplicateState);
     ok &= expect(LayoutWrapper::getLayoutKey({ 0, 3, InstrumentType::Pico }, duplicateState).mappingValue == "67",
                  "normalizing duplicate legacy device trees should preserve the already-loaded preset layout mapping");

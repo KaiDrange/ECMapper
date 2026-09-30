@@ -69,18 +69,19 @@ void SettingsWrapper::cleanupLegacyDeviceNodes(juce::ValueTree& devicesNode) {
 }
 
 juce::ValueTree SettingsWrapper::getSettingsTree(juce::ValueTree& rootState) {
-    normalizeStateTree(rootState);
+    if (!rootState.getChildWithName(id_preset).isValid())
+        normalizeStateTree(rootState);
     auto vTree = rootState.getOrCreateChildWithName(id_globalSettings, nullptr);
-    auto devices = vTree.getOrCreateChildWithName(id_devices, nullptr);
-    cleanupLegacyDeviceNodes(devices);
+    vTree.getOrCreateChildWithName(id_devices, nullptr);
     return vTree;
 }
 
 juce::ValueTree SettingsWrapper::getPresetTree(juce::ValueTree& rootState) {
-    normalizeStateTree(rootState);
-    auto presetTree = rootState.getOrCreateChildWithName(id_preset, nullptr);
-    if (!presetTree.hasProperty(id_ecMapperVersion))
-        presetTree.setProperty(id_ecMapperVersion, ProjectInfo::versionString, nullptr);
+    auto presetTree = rootState.getChildWithName(id_preset);
+    if (!presetTree.isValid()) {
+        normalizeStateTree(rootState);
+        presetTree = rootState.getChildWithName(id_preset);
+    }
     return presetTree;
 }
 
@@ -124,6 +125,9 @@ void SettingsWrapper::normalizeStateTree(juce::ValueTree& rootState) {
     auto presetTree = rootState.getOrCreateChildWithName(id_preset, nullptr);
     migrateLegacyPresetProperties(rootState, presetTree);
     migrateLegacyDeviceNodes(rootState, presetTree);
+    auto settings = rootState.getOrCreateChildWithName(id_globalSettings, nullptr);
+    auto devices = settings.getOrCreateChildWithName(id_devices, nullptr);
+    cleanupLegacyDeviceNodes(devices);
 
     if (!rootState.hasProperty(id_ecMapperVersion))
         rootState.setProperty(id_ecMapperVersion, ProjectInfo::versionString, nullptr);
