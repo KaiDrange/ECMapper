@@ -108,6 +108,8 @@ void KeyConfigComponent::paint(juce::Graphics& g) {
         } else {
             keyText = "Chrd";
         }
+    } else if (layoutKey.keyMappingType == KeyMappingType::Touche) {
+        keyText = "Touche";
     } else if (layoutKey.keyMappingType == KeyMappingType::Joystick) {
         keyText = "Joystick";
     } else if (layoutKey.keyMappingType == KeyMappingType::PalmMute) {

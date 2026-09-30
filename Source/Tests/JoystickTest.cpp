@@ -79,9 +79,14 @@ int main() {
     if (!LayoutWrapper::supportsJoystick({1, 0, InstrumentType::Tau})) return 3;
     ConfigLookup lookups[] = {ConfigLookup(InstrumentType::Alpha, state, lock),
         ConfigLookup(InstrumentType::Tau, state, lock), ConfigLookup(InstrumentType::Pico, state, lock)};
+    for (auto sensitivity : {SettingsWrapper::id_rollSensitivity, SettingsWrapper::id_yawSensitivity, SettingsWrapper::id_pressureSensitivity})
+        SettingsWrapper::setCalibrationValue(InstrumentType::Alpha, sensitivity, 1.0f, state.state);
     MidiService service(lookups, lock);
     service.start(state, nullptr);
     lookups[0].updateAll();
+    // Inverted curves must not reverse joystick/Touche controls or move their centers.
+    for (auto target : {ExpressionCurveTarget::Roll, ExpressionCurveTarget::Yaw, ExpressionCurveTarget::Pressure})
+        lookups[0].expressionCurves[static_cast<int>(target)].setData({1.0f, {0.25f, 0.75f}, 0.5f, {0.75f, 0.25f}, 0.0f});
     if (lookups[0].keys[0][0].output != MidiChannelType::Chan7) return 4;
     service.setRuntimeConfigSnapshot(std::make_unique<MidiService::RuntimeConfigSnapshot>(lookups,
         service.getProtocol(), service.getVoiceRouter(), createExpressionEmissionPolicy(OutputTransportMode::Vst3Direct)));
@@ -153,6 +158,69 @@ int main() {
         for (const auto& event : sink.events)
             if (std::abs(event.value - 8192.0f / 16383.0f) > 0.00001f) return 16;
     }
+    LayoutWrapper::setKeyMappingType(id, KeyMappingType::Touche, state.state);
+    settings.midiChannel = 7;
+    settings.assignments = {{{MidiValueType::CC, 20, 0, 127}, {MidiValueType::CC, 21, 0, 127},
+        {MidiValueType::CC, 22, 10, 110}, {MidiValueType::CC, 23, 20, 120},
+        {MidiValueType::CC, 24, 0, 127}}}; // Hidden fifth slot must never emit.
+    LayoutWrapper::setJoystickSettings(id, settings, state.state);
+    copy = state.state.createCopy();
+    if (LayoutWrapper::getJoystickSettings(id, copy).assignments[3].number != 23) return 17;
+    LayoutWrapper::setKeyMappingType(id, KeyMappingType::Joystick, state.state);
+    if (LayoutWrapper::getJoystickSettings(id, state.state).assignments[2].type != MidiValueType::Pitchbend) return 18;
+    LayoutWrapper::setKeyMappingType(id, KeyMappingType::Touche, state.state);
+    for (auto button : {LayoutWrapper::KeyId{1, 0, InstrumentType::Pico}, LayoutWrapper::KeyId{2, 0, InstrumentType::Tau}}) {
+        LayoutWrapper::setKeyMappingType(button, KeyMappingType::Touche, state.state);
+        if (LayoutWrapper::getLayoutKey(button, state.state).keyMappingType == KeyMappingType::Touche) return 19;
+    }
+    lookups[0].updateAll();
+    // Inverted curves must not reverse joystick/Touche controls or move their centers.
+    for (auto target : {ExpressionCurveTarget::Roll, ExpressionCurveTarget::Yaw, ExpressionCurveTarget::Pressure})
+        lookups[0].expressionCurves[static_cast<int>(target)].setData({1.0f, {0.25f, 0.75f}, 0.5f, {0.75f, 0.25f}, 0.0f});
+    if (key.mapType != KeyMappingType::Touche || key.output != MidiChannelType::Chan7) return 20;
+    service.setRuntimeConfigSnapshot(std::make_unique<MidiService::RuntimeConfigSnapshot>(lookups,
+        service.getProtocol(), service.getVoiceRouter(), createExpressionEmissionPolicy(OutputTransportMode::Vst3Direct)));
+    auto readPress = [&](float roll, float pressure, bool active) {
+        sink.events.clear();
+        msg.yaw = 1; msg.roll = roll; msg.pressure = pressure; msg.active = active;
+        service.processMessage(msg, outgoing, buffer, sink, 0, nullptr);
+        std::array<float, 2> values {-1, -1};
+        for (const auto& event : sink.events) {
+            if (event.controller == 22) values[0] = (event.value * 127.0f - 10.0f) / 100.0f;
+            if (event.controller == 23) values[1] = (event.value * 127.0f - 20.0f) / 100.0f;
+        }
+        return values;
+    };
+    const auto center = readPress(0, 1, true);
+    if (sink.events.size() != 4 || sink.events[0].controller != 20 || std::abs(sink.events[0].value) > 0.00001f
+        || sink.events[1].controller != 21 || std::abs(sink.events[1].value - 1.0f) > 0.00001f) return 27;
+    if (sink.events.size() != 4 || std::abs(center[0] - 1) > 0.00001f || std::abs(center[1] - 1) > 0.00001f) return 21;
+    const auto negative = readPress(-1, 1, true);
+    if (std::abs(negative[0] - 1) > 0.00001f || std::abs(negative[1]) > 0.00001f) return 22;
+    const auto positive = readPress(1, 1, true);
+    if (std::abs(positive[0]) > 0.00001f || std::abs(positive[1] - 1) > 0.00001f) return 23;
+    const auto between = readPress(0.25f, 1, true);
+    if (std::abs(between[0] - 0.75f) > 0.00001f || std::abs(between[1] - 1) > 0.00001f) return 24;
+    const auto soft = readPress(0, 0.25f, true);
+    if (std::abs(soft[0] - 0.25f) > 0.00001f || std::abs(soft[0] - soft[1]) > 0.00001f) return 25;
+    const auto released = readPress(1, 1, false);
+    if (sink.events.size() != 4 || std::abs(released[0]) > 0.00001f || std::abs(released[1]) > 0.00001f) return 26;
+    // Negative yaw is a distance from center, not an inverted CC range.
+    auto readYaw = [&](float yaw, bool active) {
+        sink.events.clear();
+        msg.yaw = yaw; msg.roll = 0; msg.pressure = 0; msg.active = active;
+        service.processMessage(msg, outgoing, buffer, sink, 0, nullptr);
+        for (const auto& event : sink.events)
+            if (event.controller == 20) return event.value;
+        return -1.0f;
+    };
+    const auto yawCenter = readYaw(0, true);
+    const auto yawHalf = readYaw(-0.25f, true);
+    const auto yawFull = readYaw(-1, true);
+    const auto yawRelease = readYaw(-1, false);
+    if (std::abs(yawCenter) > 0.00001f || std::abs(yawHalf - 0.25f) > 0.00001f
+        || std::abs(yawFull - 1) > 0.00001f || std::abs(yawRelease) > 0.00001f) return 28;
+
     std::cout << "JoystickTest passed\n";
     return 0;
 }

@@ -41,8 +41,10 @@ LayoutComponent::LayoutComponent(InstrumentType deviceType, float widthFactor, f
         menu.addItem("Note", [this] { LayoutWrapper::setKeyMappingType(activeKeyId, KeyMappingType::Note, this->pluginState.state); showHidePanels(); repaint(); });
         menu.addItem("Palm mute", [this] { LayoutWrapper::setKeyMappingType(activeKeyId, KeyMappingType::PalmMute, this->pluginState.state); showHidePanels(); repaint(); });
         menu.addItem("Strum", [this] { LayoutWrapper::setKeyMappingType(activeKeyId, KeyMappingType::Strum, this->pluginState.state); showHidePanels(); repaint(); });
-        if (LayoutWrapper::supportsJoystick(activeKeyId))
+        if (LayoutWrapper::supportsJoystick(activeKeyId)) {
             menu.addItem("Joystick", [this] { LayoutWrapper::setKeyMappingType(activeKeyId, KeyMappingType::Joystick, this->pluginState.state); showHidePanels(); repaint(); });
+            menu.addItem("Touche", [this] { LayoutWrapper::setKeyMappingType(activeKeyId, KeyMappingType::Touche, this->pluginState.state); showHidePanels(); repaint(); });
+        }
         menu.addItem("Chord", [this] { LayoutWrapper::setKeyMappingType(activeKeyId, KeyMappingType::Chord, this->pluginState.state); showHidePanels(); repaint(); });
         menu.addItem("Midi msg", [this] { LayoutWrapper::setKeyMappingType(activeKeyId, KeyMappingType::MidiMsg, this->pluginState.state); showHidePanels(); repaint(); });
         menu.addItem("App Ctrl", [this] { LayoutWrapper::setKeyMappingType(activeKeyId, KeyMappingType::AppCtrl, this->pluginState.state); showHidePanels(); repaint(); });
@@ -242,6 +244,7 @@ void LayoutComponent::resized() {
         menuArea.removeFromTop(10);
         for (size_t i = 0; i < joystickRows.size(); ++i) {
             auto& row = joystickRows[i];
+            if (!row.type.isVisible()) continue;
             // Separate roll, yaw and pressure while keeping each direction pair together.
             if (i == 2 || i == 4)
                 menuArea.removeFromTop(10);
@@ -377,20 +380,27 @@ void LayoutComponent::enableDisableMenuButtons(bool enable) {
 void LayoutComponent::showHidePanels() {    
     auto layoutKey = LayoutWrapper::getLayoutKey(activeKeyId, pluginState.state);
     const juce::ScopedValueSetter<bool> loading(loadingJoystick, true);
-    const bool joystick = layoutKey.keyMappingType == KeyMappingType::Joystick;
+    const bool touche = layoutKey.keyMappingType == KeyMappingType::Touche;
+    const bool joystick = touche || layoutKey.keyMappingType == KeyMappingType::Joystick;
     joystickChannel.setVisible(joystick);
     const auto joystickSettings = LayoutWrapper::getJoystickSettings(activeKeyId, pluginState.state);
     joystickChannel.setSelectedId(joystickSettings.midiChannel + 1, juce::dontSendNotification);
     for (size_t i = 0; i < joystickRows.size(); ++i) {
         auto& row = joystickRows[i];
         const auto& assignment = joystickSettings.assignments[i];
-        row.label.setVisible(joystick);
-        row.type.setVisible(joystick);
-        row.number.setVisible(joystick && assignment.type == MidiValueType::CC);
-        row.ccLabel.setVisible(joystick && assignment.type == MidiValueType::CC);
-        row.rangeDash.setVisible(joystick);
-        row.minimum.setVisible(joystick);
-        row.maximum.setVisible(joystick);
+        const bool visible = joystick && (!touche || i < 4);
+        const std::array<juce::String, 5> labels { touche ? "Yaw -" : "Roll -", touche ? "Yaw +" : "Roll +", touche ? "Press 1" : "Yaw -", touche ? "Press 2" : "Yaw +", "Press" };
+        row.label.setText(labels[i], juce::dontSendNotification);
+        row.label.setTooltip(touche && i >= 2 ? (i == 2
+            ? "Pressure at negative roll; full pressure at center."
+            : "Pressure at positive roll; full pressure at center.") : "");
+        row.label.setVisible(visible);
+        row.type.setVisible(visible);
+        row.number.setVisible(visible && assignment.type == MidiValueType::CC);
+        row.ccLabel.setVisible(visible && assignment.type == MidiValueType::CC);
+        row.rangeDash.setVisible(visible);
+        row.minimum.setVisible(visible);
+        row.maximum.setVisible(visible);
         row.type.setSelectedId(static_cast<int>(assignment.type), juce::dontSendNotification);
         const bool pitchBend = assignment.type == MidiValueType::Pitchbend;
         for (auto* input : { &row.minimum, &row.maximum }) {

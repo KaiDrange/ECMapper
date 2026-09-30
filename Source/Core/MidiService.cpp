@@ -506,7 +506,7 @@ void MidiService::processMessage(const osc::Message& oscMsg, osc::Message& outgo
                 processNoteKey(oscMsg, keyLookup, keyState, sink, eventTime, voiceRouter, expressionPolicy);
             else if (keyLookup.mapType == KeyMappingType::MidiMsg)
                 processCmdKey(oscMsg, outgoingOscMsg, keyLookup, keyState, sink, eventTime, voiceRouter);
-            else if (keyLookup.mapType == KeyMappingType::Joystick)
+            else if (keyLookup.mapType == KeyMappingType::Joystick || keyLookup.mapType == KeyMappingType::Touche)
                 processJoystickKey(oscMsg, keyLookup, keyState, sink, eventTime, expressionPolicy);
             else if (keyLookup.mapType == KeyMappingType::PalmMute)
                 processPalmMuteKey(oscMsg, outgoingOscMsg, keyLookup, keyState, sink, eventTime, voiceRouter);
@@ -653,20 +653,28 @@ void MidiService::processJoystickKey(const osc::Message& msg, const ConfigLookup
         : key.output == MidiChannelType::MPE_High ? 16 : static_cast<int>(key.output);
     if (channel < 1 || channel > 16) return;
     const int device = static_cast<int>(key.keyId.deviceType) - 1;
-    const float roll = msg.active ? applyExpressionCurve(key.keyId.deviceType, ExpressionCurveTarget::Roll,
-        applyRollPreCurve(std::clamp(msg.roll * rollSensitivity_[device], -1.0f, 1.0f)), true) : 0.0f;
-    const float yaw = msg.active ? applyExpressionCurve(key.keyId.deviceType, ExpressionCurveTarget::Yaw,
-        std::clamp(msg.yaw * yawSensitivity_[device], -1.0f, 1.0f), true) : 0.0f;
-    const float pressure = msg.active ? applyExpressionCurve(key.keyId.deviceType, ExpressionCurveTarget::Pressure,
-        std::clamp(msg.pressure * pressureSensitivity_[device], 0.0f, 1.0f), false) : 0.0f;
-    const std::array<float, 5> inputs { std::max(-roll, 0.0f), std::max(roll, 0.0f),
+    // Control keys map calibrated sensor values directly, independent of note-expression curves.
+    const float roll = msg.active ? std::clamp(msg.roll * rollSensitivity_[device], -1.0f, 1.0f) : 0.0f;
+    const float yaw = msg.active ? std::clamp(msg.yaw * yawSensitivity_[device], -1.0f, 1.0f) : 0.0f;
+    const float pressure = msg.active ? std::clamp(msg.pressure * pressureSensitivity_[device], 0.0f, 1.0f) : 0.0f;
+    std::array<float, 5> inputs { std::max(-roll, 0.0f), std::max(roll, 0.0f),
         std::max(-yaw, 0.0f), std::max(yaw, 0.0f), pressure };
-    for (size_t i = 0; i < inputs.size(); ++i) {
+    const bool touche = key.mapType == KeyMappingType::Touche;
+    if (touche) {
+        inputs[0] = std::max(-yaw, 0.0f);
+        inputs[1] = std::max(yaw, 0.0f);
+        // At center both ends receive full pressure; moving toward one end fades only the other.
+        inputs[2] = pressure * (1.0f - std::max(roll, 0.0f));
+        inputs[3] = pressure * (1.0f - std::max(-roll, 0.0f));
+        inputs[4] = 0.0f;
+    }
+    const size_t axisCount = touche ? 4 : 5;
+    for (size_t i = 0; i < axisCount; ++i) {
         const auto& a = key.joystick.assignments[i];
         // An inactive half must not overwrite the active half when both target the same MIDI control.
         bool overridden = false;
         if (msg.active && inputs[i] == 0.0f) {
-            for (size_t j = 0; j < inputs.size(); ++j) {
+            for (size_t j = 0; j < axisCount; ++j) {
                 const auto& other = key.joystick.assignments[j];
                 if (inputs[j] > 0.0f && a.type == other.type
                     && (a.type != MidiValueType::CC || a.number == other.number))

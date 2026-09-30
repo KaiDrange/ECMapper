@@ -190,7 +190,15 @@ LayoutWrapper::JoystickSettings LayoutWrapper::getJoystickSettings(KeyId keyId, 
     JoystickSettings settings;
     if (!supportsJoystick(keyId)) return settings;
     const auto key = getExistingKeyTree(canonicalizeTauKeyId(keyId), rootState);
-    const auto parts = juce::StringArray::fromTokens(key.getProperty("joystickSettings").toString(), ";", "");
+    const bool touche = static_cast<int>(key.getProperty(id_keyMappingType)) == static_cast<int>(KeyMappingType::Touche);
+    if (touche) {
+        settings.assignments[0] = { MidiValueType::CC, 19, 0, 127 };
+        settings.assignments[1] = { MidiValueType::CC, 18, 0, 127 };
+        settings.assignments[2] = { MidiValueType::CC, 17, 0, 127 };
+        settings.assignments[3] = { MidiValueType::CC, 16, 0, 127 };
+    }
+    const auto parts = juce::StringArray::fromTokens(key.getProperty(touche
+        ? "toucheSettings" : "joystickSettings").toString(), ";", "");
     if (parts.size() != 21) return settings;
     settings.midiChannel = juce::jlimit(0, 16, parts[0].getIntValue());
     for (int i = 0; i < 5; ++i) {
@@ -214,7 +222,8 @@ void LayoutWrapper::setJoystickSettings(KeyId keyId, const JoystickSettings& set
             + ";" + juce::String(juce::jlimit(0, limit, a.minimum)) + ";" + juce::String(juce::jlimit(0, limit, a.maximum));
     }
     auto key = getKeyTree(keyId, rootState);
-    key.setProperty("joystickSettings", value, nullptr);
+    key.setProperty(static_cast<int>(key.getProperty(id_keyMappingType)) == static_cast<int>(KeyMappingType::Touche)
+        ? "toucheSettings" : "joystickSettings", value, nullptr);
 }
 
 LayoutWrapper::StrumSettings LayoutWrapper::getStrumSettings(KeyId keyId, juce::ValueTree& rootState) {
@@ -297,7 +306,7 @@ void LayoutWrapper::setKeyZone(KeyId keyId, Zone zone, juce::ValueTree& rootStat
 }
 
 void LayoutWrapper::setKeyMappingType(KeyId keyId, KeyMappingType keyMappingType, juce::ValueTree& rootState) {
-    if (keyMappingType == KeyMappingType::Joystick && !supportsJoystick(keyId)) return;
+    if ((keyMappingType == KeyMappingType::Joystick || keyMappingType == KeyMappingType::Touche) && !supportsJoystick(keyId)) return;
     auto keyTree = getKeyTree(keyId, rootState);
     keyTree.setProperty(id_keyMappingType, (int)keyMappingType, nullptr);
 }

@@ -100,7 +100,7 @@ void ConfigLookup::updateKeyUnlocked(LayoutWrapper::KeyId keyId) {
     bool setKeyToDefault = false;
     if (layoutKey.keyMappingType == KeyMappingType::None)
         setKeyToDefault = true;
-    if (layoutKey.keyMappingType == KeyMappingType::Joystick && !LayoutWrapper::supportsJoystick(keyId))
+    if ((layoutKey.keyMappingType == KeyMappingType::Joystick || layoutKey.keyMappingType == KeyMappingType::Touche) && !LayoutWrapper::supportsJoystick(keyId))
         setKeyToDefault = true;
     if (effectiveZone == Zone::NoZone)
         setKeyToDefault = true;
@@ -172,7 +172,7 @@ void ConfigLookup::updateKeyUnlocked(LayoutWrapper::KeyId keyId) {
                 key.output = static_cast<MidiChannelType>(settings.midiChannel);
         }
 
-        if (key.mapType == KeyMappingType::Joystick) {
+        if (key.mapType == KeyMappingType::Joystick || key.mapType == KeyMappingType::Touche) {
             key.joystick = LayoutWrapper::getJoystickSettings(keyId, pluginState.state);
             if (key.joystick.midiChannel > 0)
                 key.output = static_cast<MidiChannelType>(key.joystick.midiChannel);
