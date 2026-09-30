@@ -4,6 +4,18 @@
 
 namespace ecm {
 
+namespace {
+double pitchBendPercent(int value) {
+    const int offset = value - 8192;
+    return 100.0 * offset / (offset < 0 ? 8192.0 : 8191.0);
+}
+
+int pitchBendValue(double percent) {
+    return juce::jlimit(0, 16383, juce::roundToInt(8192.0 + percent * (percent < 0.0 ? 8192.0 : 8191.0) / 100.0));
+}
+}
+
+
 #if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wshadow-field-in-constructor"
@@ -29,11 +41,60 @@ LayoutComponent::LayoutComponent(InstrumentType deviceType, float widthFactor, f
         menu.addItem("Note", [this] { LayoutWrapper::setKeyMappingType(activeKeyId, KeyMappingType::Note, this->pluginState.state); showHidePanels(); repaint(); });
         menu.addItem("Palm mute", [this] { LayoutWrapper::setKeyMappingType(activeKeyId, KeyMappingType::PalmMute, this->pluginState.state); showHidePanels(); repaint(); });
         menu.addItem("Strum", [this] { LayoutWrapper::setKeyMappingType(activeKeyId, KeyMappingType::Strum, this->pluginState.state); showHidePanels(); repaint(); });
+        if (LayoutWrapper::supportsJoystick(activeKeyId))
+            menu.addItem("Joystick", [this] { LayoutWrapper::setKeyMappingType(activeKeyId, KeyMappingType::Joystick, this->pluginState.state); showHidePanels(); repaint(); });
         menu.addItem("Chord", [this] { LayoutWrapper::setKeyMappingType(activeKeyId, KeyMappingType::Chord, this->pluginState.state); showHidePanels(); repaint(); });
         menu.addItem("Midi msg", [this] { LayoutWrapper::setKeyMappingType(activeKeyId, KeyMappingType::MidiMsg, this->pluginState.state); showHidePanels(); repaint(); });
         menu.addItem("App Ctrl", [this] { LayoutWrapper::setKeyMappingType(activeKeyId, KeyMappingType::AppCtrl, this->pluginState.state); showHidePanels(); repaint(); });
         menu.showMenuAsync(juce::PopupMenu::Options{}.withTargetComponent(mapTypeMenuButton));
     };
+
+    const std::array<juce::String, 5> joystickLabels { "Roll -", "Roll +", "Yaw -", "Yaw +", "Press" };
+    for (size_t i = 0; i < joystickRows.size(); ++i) {
+        auto& row = joystickRows[i];
+        addChildComponent(row.label);
+        row.label.setText(joystickLabels[i], juce::dontSendNotification);
+        addChildComponent(row.type);
+        row.type.addItem("Off", static_cast<int>(MidiValueType::Off));
+        row.type.addItem("CC", static_cast<int>(MidiValueType::CC));
+        row.type.addItem("Pitch bend", static_cast<int>(MidiValueType::Pitchbend));
+        addChildComponent(row.ccLabel);
+        row.ccLabel.setText("CC#", juce::dontSendNotification);
+        for (auto* slider : { &row.number, &row.minimum, &row.maximum }) {
+            addChildComponent(*slider);
+            slider->setSliderStyle(juce::Slider::LinearHorizontal);
+            slider->setScrollWheelEnabled(false);
+            slider->setTextBoxStyle(juce::Slider::TextBoxLeft, false, 75, 22);
+            slider->setRange(0, 127, 1);
+            slider->onValueChange = [this] { updateJoystickSettings(); };
+        }
+        addChildComponent(row.rangeDash);
+        row.rangeDash.setText("-", juce::dontSendNotification);
+        row.rangeDash.setJustificationType(juce::Justification::centred);
+        row.number.setTooltip("CC controller number (0-127)");
+        row.minimum.setTooltip("Minimum: sent at center and on release. Pitch bend: -100% to 100%, with 0% at center.");
+        row.maximum.setTooltip("Maximum: sent at full movement or pressure. Reversed ranges are supported.");
+        row.type.onChange = [this, i] {
+            auto& r = joystickRows[i];
+            const bool pitchBend = r.type.getSelectedId() == static_cast<int>(MidiValueType::Pitchbend);
+            {
+                const juce::ScopedValueSetter<bool> loading(loadingJoystick, true);
+                for (auto* input : { &r.minimum, &r.maximum }) {
+                    input->setRange(pitchBend ? -100 : 0, pitchBend ? 100 : 127, pitchBend ? 0.1 : 1.0);
+                    input->setTextValueSuffix(pitchBend ? "%" : "");
+                }
+                r.minimum.setValue(0, juce::dontSendNotification);
+                r.maximum.setValue(pitchBend ? 100 : 127, juce::dontSendNotification);
+            }
+            updateJoystickSettings();
+            showHidePanels();
+        };
+    }
+    addChildComponent(joystickChannel);
+    joystickChannel.addItem("Channel: Zone / MPE master", 1);
+    for (int channel = 1; channel <= 16; ++channel)
+        joystickChannel.addItem("Channel: " + juce::String(channel), channel + 1);
+    joystickChannel.onChange = [this] { updateJoystickSettings(); };
 
     addChildComponent(palmMuteModeSelector);
     palmMuteModeSelector.addItem("Mode: Latch", 1);
@@ -174,6 +235,31 @@ void LayoutComponent::resized() {
     colourMenuButton.setBounds(menuArea.removeFromTop(static_cast<int>(areaHeight * 0.04f)));
     zoneMenuButton.setBounds(menuArea.removeFromTop(static_cast<int>(areaHeight * 0.04f)));
     
+    if (joystickChannel.isVisible()) {
+        const int height = juce::jmax(22, static_cast<int>(areaHeight * 0.04f));
+        menuArea.removeFromTop(10);
+        joystickChannel.setBounds(menuArea.removeFromTop(height));
+        menuArea.removeFromTop(10);
+        for (size_t i = 0; i < joystickRows.size(); ++i) {
+            auto& row = joystickRows[i];
+            // Separate roll, yaw and pressure while keeping each direction pair together.
+            if (i == 2 || i == 4)
+                menuArea.removeFromTop(10);
+            auto heading = menuArea.removeFromTop(height);
+            row.label.setBounds(heading.removeFromLeft(heading.getWidth() / 3));
+            row.type.setBounds(heading);
+            auto values = menuArea.removeFromTop(height);
+            if (row.number.isVisible()) {
+                row.ccLabel.setBounds(values.removeFromLeft(values.getWidth() / 3));
+                row.number.setBounds(values);
+                values = menuArea.removeFromTop(height);
+            }
+            row.minimum.setBounds(values.removeFromLeft((values.getWidth() - 20) / 2));
+            row.rangeDash.setBounds(values.removeFromLeft(20));
+            row.maximum.setBounds(values);
+            menuArea.removeFromTop(6);
+        }
+    }
     if (palmMuteModeSelector.isVisible()) {
         menuArea.removeFromTop(8);
         palmMuteModeSelector.setBounds(menuArea.removeFromTop(static_cast<int>(areaHeight * 0.04f)));
@@ -265,6 +351,13 @@ std::unique_ptr<juce::DrawablePath> LayoutComponent::createBtnImage(juce::Colour
 }
 
 void LayoutComponent::enableDisableMenuButtons(bool enable) {
+    joystickChannel.setEnabled(enable);
+    for (auto& row : joystickRows) {
+        row.type.setEnabled(enable);
+        row.number.setEnabled(enable);
+        row.minimum.setEnabled(enable);
+        row.maximum.setEnabled(enable);
+    }
     colourMenuButton.setEnabled(enable);
     zoneMenuButton.setEnabled(enable);
     mapTypeMenuButton.setEnabled(enable);
@@ -283,6 +376,32 @@ void LayoutComponent::enableDisableMenuButtons(bool enable) {
 
 void LayoutComponent::showHidePanels() {    
     auto layoutKey = LayoutWrapper::getLayoutKey(activeKeyId, pluginState.state);
+    const juce::ScopedValueSetter<bool> loading(loadingJoystick, true);
+    const bool joystick = layoutKey.keyMappingType == KeyMappingType::Joystick;
+    joystickChannel.setVisible(joystick);
+    const auto joystickSettings = LayoutWrapper::getJoystickSettings(activeKeyId, pluginState.state);
+    joystickChannel.setSelectedId(joystickSettings.midiChannel + 1, juce::dontSendNotification);
+    for (size_t i = 0; i < joystickRows.size(); ++i) {
+        auto& row = joystickRows[i];
+        const auto& assignment = joystickSettings.assignments[i];
+        row.label.setVisible(joystick);
+        row.type.setVisible(joystick);
+        row.number.setVisible(joystick && assignment.type == MidiValueType::CC);
+        row.ccLabel.setVisible(joystick && assignment.type == MidiValueType::CC);
+        row.rangeDash.setVisible(joystick);
+        row.minimum.setVisible(joystick);
+        row.maximum.setVisible(joystick);
+        row.type.setSelectedId(static_cast<int>(assignment.type), juce::dontSendNotification);
+        const bool pitchBend = assignment.type == MidiValueType::Pitchbend;
+        for (auto* input : { &row.minimum, &row.maximum }) {
+            input->setRange(pitchBend ? -100 : 0, pitchBend ? 100 : 127, pitchBend ? 0.1 : 1.0);
+            input->setTextValueSuffix(pitchBend ? "%" : "");
+        }
+        row.number.setValue(assignment.number, juce::dontSendNotification);
+        row.minimum.setValue(pitchBend ? pitchBendPercent(assignment.minimum) : assignment.minimum, juce::dontSendNotification);
+        row.maximum.setValue(pitchBend ? pitchBendPercent(assignment.maximum) : assignment.maximum, juce::dontSendNotification);
+        row.number.setEnabled(mapTypeMenuButton.isEnabled() && assignment.type == MidiValueType::CC);
+    }
     const bool strum = layoutKey.keyMappingType == KeyMappingType::Strum;
     palmMuteModeSelector.setVisible(layoutKey.keyMappingType == KeyMappingType::PalmMute);
     palmMutePressureCCSelector.setVisible(layoutKey.keyMappingType == KeyMappingType::PalmMute
@@ -352,6 +471,16 @@ void LayoutComponent::deselectAllOtherKeys(const KeyConfigComponent* key) {
 }
 
 void LayoutComponent::deselectAllKeys() {
+    joystickChannel.setVisible(false);
+    for (auto& row : joystickRows) {
+        row.label.setVisible(false);
+        row.ccLabel.setVisible(false);
+        row.type.setVisible(false);
+        row.number.setVisible(false);
+        row.rangeDash.setVisible(false);
+        row.minimum.setVisible(false);
+        row.maximum.setVisible(false);
+    }
     stringSelector.setVisible(false);
     palmMuteModeSelector.setVisible(false);
     palmMutePressureCCSelector.setVisible(false);
@@ -411,6 +540,22 @@ void LayoutComponent::createKeys() {
             showHidePanels();
         };
     }
+}
+
+void LayoutComponent::updateJoystickSettings() {
+    if (loadingJoystick) return;
+    if (activeKeyId.deviceType == InstrumentType::None) return;
+    LayoutWrapper::JoystickSettings settings;
+    settings.midiChannel = joystickChannel.getSelectedId() - 1;
+    for (size_t i = 0; i < joystickRows.size(); ++i) {
+        const auto& row = joystickRows[i];
+        const auto type = static_cast<MidiValueType>(row.type.getSelectedId());
+        const bool pitchBend = type == MidiValueType::Pitchbend;
+        settings.assignments[i] = { type, static_cast<int>(row.number.getValue()),
+            pitchBend ? pitchBendValue(row.minimum.getValue()) : static_cast<int>(row.minimum.getValue()),
+            pitchBend ? pitchBendValue(row.maximum.getValue()) : static_cast<int>(row.maximum.getValue()) };
+    }
+    LayoutWrapper::setJoystickSettings(activeKeyId, settings, pluginState.state);
 }
 
 void LayoutComponent::updateOpenStringNoteLabel() {

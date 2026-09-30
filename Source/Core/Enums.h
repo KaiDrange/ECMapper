@@ -19,7 +19,8 @@ enum class KeyMappingType {
     Chord = 40,
     AppCtrl = 50,
     Strum = 60,
-    PalmMute = 70
+    PalmMute = 70,
+    Joystick = 80
 };
 
 enum class EigenharpKeyType {

@@ -243,6 +243,7 @@ private:
     void processCmdKey(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter);
     bool isPalmMuted(int deviceIndex, Zone zone) const;
     float getPalmMutePressure(int deviceIndex, Zone zone) const;
+    void processJoystickKey(const osc::Message&, const ConfigLookup::Key&, KeyState*, PerformanceEventSink&, int, ExpressionEmissionPolicy*);
     void processPalmMuteKey(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, const ConfigLookup::Key& keyLookup,
                             KeyState* state, PerformanceEventSink& sink, int eventTime, MidiVoiceRouter* voiceRouter);
     void processAppCtrlKey(const osc::Message& oscMsg, osc::Message& outgoingOscMsg, const ConfigLookup::Key& keyLookup, KeyState* state, PerformanceEventSink& sink, int eventTime, int* presetSlotRequest, int* transportRequest);

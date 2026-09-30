@@ -1,6 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include <array>
 #include "Enums.h"
 
 namespace ecm {
@@ -39,6 +40,21 @@ public:
     static inline const juce::Identifier id_mappingValue { "mappingValue" };
     static inline const juce::Identifier id_zone { "zone" };
     static inline const juce::Identifier id_ecMapperVersion { "ecmapperVersion" };
+
+    struct JoystickAssignment {
+        MidiValueType type = MidiValueType::Off;
+        int number = 0; // CC number
+        int minimum = 0;
+        int maximum = 127; // pitch bend uses 0-16383 (8192 = center)
+    };
+    struct JoystickSettings {
+        // Roll negative, roll positive, yaw negative, yaw positive, pressure.
+        std::array<JoystickAssignment, 5> assignments;
+        int midiChannel = 0; // 0 = zone channel / MPE master
+    };
+    static bool supportsJoystick(KeyId keyId);
+    static JoystickSettings getJoystickSettings(KeyId keyId, juce::ValueTree& rootState);
+    static void setJoystickSettings(KeyId keyId, const JoystickSettings& settings, juce::ValueTree& rootState);
 
     struct StrumSettings {
         int openNote = -1; // -1 = disabled; otherwise MIDI note 0-127

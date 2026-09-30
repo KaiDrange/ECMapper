@@ -37,6 +37,7 @@ public:
         int strumSourceString = 1;
         bool strumExpression = true;
         bool strumControlsNoteOff = true;
+        LayoutWrapper::JoystickSettings joystick;
         bool palmMuteMomentary = false;
         int palmMutePressureCC = -1;
         KeyMappingType mapType = KeyMappingType::None;

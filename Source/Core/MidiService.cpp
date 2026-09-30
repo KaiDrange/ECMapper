@@ -506,6 +506,8 @@ void MidiService::processMessage(const osc::Message& oscMsg, osc::Message& outgo
                 processNoteKey(oscMsg, keyLookup, keyState, sink, eventTime, voiceRouter, expressionPolicy);
             else if (keyLookup.mapType == KeyMappingType::MidiMsg)
                 processCmdKey(oscMsg, outgoingOscMsg, keyLookup, keyState, sink, eventTime, voiceRouter);
+            else if (keyLookup.mapType == KeyMappingType::Joystick)
+                processJoystickKey(oscMsg, keyLookup, keyState, sink, eventTime, expressionPolicy);
             else if (keyLookup.mapType == KeyMappingType::PalmMute)
                 processPalmMuteKey(oscMsg, outgoingOscMsg, keyLookup, keyState, sink, eventTime, voiceRouter);
             else if (keyLookup.mapType == KeyMappingType::AppCtrl)
@@ -632,6 +634,54 @@ float MidiService::getPalmMutePressure(int deviceIndex, Zone zone) const {
         }
     }
     return pressure;
+}
+
+void MidiService::processJoystickKey(const osc::Message& msg, const ConfigLookup::Key& key,
+                                     KeyState* state, PerformanceEventSink& sink, int eventTime,
+                                     ExpressionEmissionPolicy* expressionPolicy) {
+    if (!msg.active && state->status == KeyStatus::Off) return;
+    if (msg.active && state->status == KeyStatus::Active) {
+        ++state->messageCount;
+        const bool shouldEmit = expressionPolicy ? expressionPolicy->shouldEmitContinuousUpdate(state->messageCount)
+                                                 : state->messageCount >= 64;
+        if (!shouldEmit) return;
+    }
+    // Initial touch and release centering bypass continuous-update throttling.
+    state->messageCount = 0;
+    state->status = msg.active ? KeyStatus::Active : KeyStatus::Off;
+    const int channel = key.output == MidiChannelType::MPE_Low ? 1
+        : key.output == MidiChannelType::MPE_High ? 16 : static_cast<int>(key.output);
+    if (channel < 1 || channel > 16) return;
+    const int device = static_cast<int>(key.keyId.deviceType) - 1;
+    const float roll = msg.active ? applyExpressionCurve(key.keyId.deviceType, ExpressionCurveTarget::Roll,
+        applyRollPreCurve(std::clamp(msg.roll * rollSensitivity_[device], -1.0f, 1.0f)), true) : 0.0f;
+    const float yaw = msg.active ? applyExpressionCurve(key.keyId.deviceType, ExpressionCurveTarget::Yaw,
+        std::clamp(msg.yaw * yawSensitivity_[device], -1.0f, 1.0f), true) : 0.0f;
+    const float pressure = msg.active ? applyExpressionCurve(key.keyId.deviceType, ExpressionCurveTarget::Pressure,
+        std::clamp(msg.pressure * pressureSensitivity_[device], 0.0f, 1.0f), false) : 0.0f;
+    const std::array<float, 5> inputs { std::max(-roll, 0.0f), std::max(roll, 0.0f),
+        std::max(-yaw, 0.0f), std::max(yaw, 0.0f), pressure };
+    for (size_t i = 0; i < inputs.size(); ++i) {
+        const auto& a = key.joystick.assignments[i];
+        // An inactive half must not overwrite the active half when both target the same MIDI control.
+        bool overridden = false;
+        if (msg.active && inputs[i] == 0.0f) {
+            for (size_t j = 0; j < inputs.size(); ++j) {
+                const auto& other = key.joystick.assignments[j];
+                if (inputs[j] > 0.0f && a.type == other.type
+                    && (a.type != MidiValueType::CC || a.number == other.number))
+                    overridden = true;
+            }
+        }
+        if (overridden) continue;
+        const float limit = a.type == MidiValueType::Pitchbend ? 16383.0f : 127.0f;
+        const float value = (static_cast<float>(a.minimum) + inputs[i] * static_cast<float>(a.maximum - a.minimum)) / limit;
+        const int zone = zoneIndexFromKeyId(key.keyId);
+        if (a.type == MidiValueType::CC)
+            sink.pushEvent(PerformanceEvent::controllerChange(channel, -1, a.number, value, false, eventTime, zone));
+        else if (a.type == MidiValueType::Pitchbend)
+            sink.pushEvent(PerformanceEvent::pitchBend(channel, -1, value, false, eventTime, zone));
+    }
 }
 
 void MidiService::processPalmMuteKey(const osc::Message& oscMsg, osc::Message& outgoingOscMsg,

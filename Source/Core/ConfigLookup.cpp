@@ -100,6 +100,8 @@ void ConfigLookup::updateKeyUnlocked(LayoutWrapper::KeyId keyId) {
     bool setKeyToDefault = false;
     if (layoutKey.keyMappingType == KeyMappingType::None)
         setKeyToDefault = true;
+    if (layoutKey.keyMappingType == KeyMappingType::Joystick && !LayoutWrapper::supportsJoystick(keyId))
+        setKeyToDefault = true;
     if (effectiveZone == Zone::NoZone)
         setKeyToDefault = true;
     const bool outputEnabled = ZoneWrapper::getEnabled(layoutKey.keyId.deviceType, effectiveZone, pluginState.state);
@@ -168,6 +170,12 @@ void ConfigLookup::updateKeyUnlocked(LayoutWrapper::KeyId keyId) {
             key.strumControlsNoteOff = settings.controlsNoteOff;
             if (settings.midiChannel > 0)
                 key.output = static_cast<MidiChannelType>(settings.midiChannel);
+        }
+
+        if (key.mapType == KeyMappingType::Joystick) {
+            key.joystick = LayoutWrapper::getJoystickSettings(keyId, pluginState.state);
+            if (key.joystick.midiChannel > 0)
+                key.output = static_cast<MidiChannelType>(key.joystick.midiChannel);
         }
 
         auto keyPB = ZoneWrapper::getKeyPitchbend(layoutKey.keyId.deviceType, layoutKey.zone, pluginState.state);

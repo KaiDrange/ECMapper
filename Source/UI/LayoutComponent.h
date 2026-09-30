@@ -45,6 +45,25 @@ private:
     juce::OwnedArray<KeyConfigComponent> keys;
     std::unique_ptr<juce::DrawablePath> keyImgNormal, keyImgOver, keyImgDown, keyImgOn;
     
+    class JoystickNumberInput : public juce::Slider {
+    public:
+        void paint(juce::Graphics&) override {}
+        void resized() override {
+            juce::Slider::resized();
+            for (auto* child : getChildren())
+                if (auto* label = dynamic_cast<juce::Label*>(child))
+                    label->setBounds(getLocalBounds());
+        }
+    };
+    struct JoystickRow {
+        juce::Label label, ccLabel, rangeDash;
+        juce::ComboBox type;
+        JoystickNumberInput number, minimum, maximum;
+    };
+    std::array<JoystickRow, 5> joystickRows;
+    juce::ComboBox joystickChannel;
+    bool loadingJoystick = false;
+    void updateJoystickSettings();
     juce::ComboBox palmMuteModeSelector, palmMutePressureCCSelector;
     juce::ComboBox stringSelector;
     ChordSectionComponent::ChordNote openStringNote;

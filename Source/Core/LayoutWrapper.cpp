@@ -180,6 +180,43 @@ void LayoutWrapper::addListener(InstrumentType deviceType, juce::ValueTree::List
     vTree.addListener(listener);
 }
 
+bool LayoutWrapper::supportsJoystick(KeyId keyId) {
+    keyId = canonicalizeTauKeyId(keyId);
+    return keyId.deviceType != InstrumentType::None
+        && getCorrectDefaultKeyType(keyId.deviceType, keyId.course, keyId.keyNo) != EigenharpKeyType::Button;
+}
+
+LayoutWrapper::JoystickSettings LayoutWrapper::getJoystickSettings(KeyId keyId, juce::ValueTree& rootState) {
+    JoystickSettings settings;
+    if (!supportsJoystick(keyId)) return settings;
+    const auto key = getExistingKeyTree(canonicalizeTauKeyId(keyId), rootState);
+    const auto parts = juce::StringArray::fromTokens(key.getProperty("joystickSettings").toString(), ";", "");
+    if (parts.size() != 21) return settings;
+    settings.midiChannel = juce::jlimit(0, 16, parts[0].getIntValue());
+    for (int i = 0; i < 5; ++i) {
+        auto& a = settings.assignments[static_cast<size_t>(i)];
+        const int type = parts[1 + i * 4].getIntValue();
+        a.type = type == static_cast<int>(MidiValueType::CC) || type == static_cast<int>(MidiValueType::Pitchbend) ? static_cast<MidiValueType>(type) : MidiValueType::Off;
+        a.number = juce::jlimit(0, 127, parts[2 + i * 4].getIntValue());
+        const int limit = a.type == MidiValueType::Pitchbend ? 16383 : 127;
+        a.minimum = juce::jlimit(0, limit, parts[3 + i * 4].getIntValue());
+        a.maximum = juce::jlimit(0, limit, parts[4 + i * 4].getIntValue());
+    }
+    return settings;
+}
+
+void LayoutWrapper::setJoystickSettings(KeyId keyId, const JoystickSettings& settings, juce::ValueTree& rootState) {
+    if (!supportsJoystick(keyId)) return;
+    juce::String value(juce::jlimit(0, 16, settings.midiChannel));
+    for (const auto& a : settings.assignments) {
+        const int limit = a.type == MidiValueType::Pitchbend ? 16383 : 127;
+        value += ";" + juce::String(static_cast<int>(a.type)) + ";" + juce::String(juce::jlimit(0, 127, a.number))
+            + ";" + juce::String(juce::jlimit(0, limit, a.minimum)) + ";" + juce::String(juce::jlimit(0, limit, a.maximum));
+    }
+    auto key = getKeyTree(keyId, rootState);
+    key.setProperty("joystickSettings", value, nullptr);
+}
+
 LayoutWrapper::StrumSettings LayoutWrapper::getStrumSettings(KeyId keyId, juce::ValueTree& rootState) {
     if (keyId.deviceType == InstrumentType::None) return {};
     const auto key = getExistingKeyTree(canonicalizeTauKeyId(keyId), rootState);
@@ -260,6 +297,7 @@ void LayoutWrapper::setKeyZone(KeyId keyId, Zone zone, juce::ValueTree& rootStat
 }
 
 void LayoutWrapper::setKeyMappingType(KeyId keyId, KeyMappingType keyMappingType, juce::ValueTree& rootState) {
+    if (keyMappingType == KeyMappingType::Joystick && !supportsJoystick(keyId)) return;
     auto keyTree = getKeyTree(keyId, rootState);
     keyTree.setProperty(id_keyMappingType, (int)keyMappingType, nullptr);
 }
