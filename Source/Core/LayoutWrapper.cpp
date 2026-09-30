@@ -192,10 +192,13 @@ LayoutWrapper::JoystickSettings LayoutWrapper::getJoystickSettings(KeyId keyId, 
     const auto key = getExistingKeyTree(canonicalizeTauKeyId(keyId), rootState);
     const bool touche = static_cast<int>(key.getProperty(id_keyMappingType)) == static_cast<int>(KeyMappingType::Touche);
     if (touche) {
-        settings.assignments[0] = { MidiValueType::CC, 19, 0, 127 };
-        settings.assignments[1] = { MidiValueType::CC, 18, 0, 127 };
-        settings.assignments[2] = { MidiValueType::CC, 17, 0, 127 };
-        settings.assignments[3] = { MidiValueType::CC, 16, 0, 127 };
+        const auto canonicalKeyId = canonicalizeTauKeyId(keyId);
+        const auto defaultKeyType = getCorrectDefaultKeyType(canonicalKeyId.deviceType, canonicalKeyId.course, canonicalKeyId.keyNo);
+        const bool percussion = static_cast<EigenharpKeyType>(int(key.getProperty(id_keyType, static_cast<int>(defaultKeyType)))) == EigenharpKeyType::Perc;
+        settings.assignments[0] = { MidiValueType::CC, percussion ? 18 : 19, 0, 127 };
+        settings.assignments[1] = { MidiValueType::CC, percussion ? 19 : 18, 0, 127 };
+        settings.assignments[2] = { MidiValueType::CC, percussion ? 16 : 17, 0, 127 };
+        settings.assignments[3] = { MidiValueType::CC, percussion ? 17 : 16, 0, 127 };
     }
     const auto parts = juce::StringArray::fromTokens(key.getProperty(touche
         ? "toucheSettings" : "joystickSettings").toString(), ";", "");

@@ -221,6 +221,41 @@ int main() {
     if (std::abs(yawCenter) > 0.00001f || std::abs(yawHalf - 0.25f) > 0.00001f
         || std::abs(yawFull - 1) > 0.00001f || std::abs(yawRelease) > 0.00001f) return 28;
 
+    // Physical percussion keys use roll directions and yaw pressure positioning.
+    const LayoutWrapper::KeyId percussionId {1, 0, InstrumentType::Alpha};
+    LayoutWrapper::setKeyMappingType(percussionId, KeyMappingType::Touche, state.state);
+    LayoutWrapper::setJoystickSettings(percussionId, settings, state.state);
+    lookups[0].updateKey(percussionId);
+    if (lookups[0].keys[1][0].keyType != EigenharpKeyType::Perc) return 29;
+    service.setRuntimeConfigSnapshot(std::make_unique<MidiService::RuntimeConfigSnapshot>(lookups,
+        service.getProtocol(), service.getVoiceRouter(), createExpressionEmissionPolicy(OutputTransportMode::Vst3Direct)));
+    msg.course = 1;
+    auto readPercussion = [&](float roll, float yaw, bool active) {
+        sink.events.clear();
+        msg.roll = roll; msg.yaw = yaw; msg.pressure = 1; msg.active = active;
+        service.processMessage(msg, outgoing, buffer, sink, 0, nullptr);
+        std::array<float, 4> values {-1, -1, -1, -1};
+        for (const auto& event : sink.events) {
+            if (event.controller == 20) values[0] = event.value;
+            if (event.controller == 21) values[1] = event.value;
+            if (event.controller == 22) values[2] = (event.value * 127.0f - 10.0f) / 100.0f;
+            if (event.controller == 23) values[3] = (event.value * 127.0f - 20.0f) / 100.0f;
+        }
+        return values;
+    };
+    const auto percCenter = readPercussion(-1, 0, true);
+    if (std::abs(percCenter[0] - 1) > 0.00001f || std::abs(percCenter[1]) > 0.00001f
+        || std::abs(percCenter[2] - 1) > 0.00001f || std::abs(percCenter[3] - 1) > 0.00001f) return 30;
+    const auto percNegative = readPercussion(1, -1, true);
+    if (std::abs(percNegative[0]) > 0.00001f || std::abs(percNegative[1] - 1) > 0.00001f
+        || std::abs(percNegative[2] - 1) > 0.00001f || std::abs(percNegative[3]) > 0.00001f) return 31;
+    const auto percBetween = readPercussion(0, 0.25f, true);
+    if (std::abs(percBetween[2] - 0.75f) > 0.00001f || std::abs(percBetween[3] - 1) > 0.00001f) return 32;
+    const auto percPositive = readPercussion(0, 1, true);
+    if (std::abs(percPositive[2]) > 0.00001f || std::abs(percPositive[3] - 1) > 0.00001f) return 33;
+    const auto percRelease = readPercussion(1, 1, false);
+    for (float value : percRelease)
+        if (std::abs(value) > 0.00001f) return 34;
     std::cout << "JoystickTest passed\n";
     return 0;
 }

@@ -49,7 +49,8 @@ public:
     };
     struct JoystickSettings {
         // Joystick: roll negative/positive, yaw negative/positive, pressure.
-        // Touche: yaw negative/positive, Press 1, Press 2; roll blends pressure; last slot unused.
+        // Touche: direction negative/positive, Press 1, Press 2; last slot unused.
+        // Normal keys: yaw directions, roll pressure blend. Percussion: roll directions, yaw blend.
         std::array<JoystickAssignment, 5> assignments;
         int midiChannel = 0; // 0 = zone channel / MPE master
     };

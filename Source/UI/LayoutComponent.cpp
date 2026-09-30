@@ -384,6 +384,7 @@ void LayoutComponent::showHidePanels() {
     auto layoutKey = LayoutWrapper::getLayoutKey(activeKeyId, pluginState.state);
     const juce::ScopedValueSetter<bool> loading(loadingJoystick, true);
     const bool touche = layoutKey.keyMappingType == KeyMappingType::Touche;
+    const bool percussionTouche = touche && layoutKey.keyType == EigenharpKeyType::Perc;
     const bool joystick = touche || layoutKey.keyMappingType == KeyMappingType::Joystick;
     joystickChannel.setVisible(joystick);
     const auto joystickSettings = LayoutWrapper::getJoystickSettings(activeKeyId, pluginState.state);
@@ -392,11 +393,12 @@ void LayoutComponent::showHidePanels() {
         auto& row = joystickRows[i];
         const auto& assignment = joystickSettings.assignments[i];
         const bool visible = joystick && (!touche || i < 4);
-        const std::array<juce::String, 5> labels { touche ? "Yaw -" : "Roll -", touche ? "Yaw +" : "Roll +", touche ? "Press 1" : "Yaw -", touche ? "Press 2" : "Yaw +", "Press" };
+        const std::array<juce::String, 5> labels { touche && !percussionTouche ? "Yaw -" : "Roll -", touche && !percussionTouche ? "Yaw +" : "Roll +", touche ? "Press 1" : "Yaw -", touche ? "Press 2" : "Yaw +", "Press" };
         row.label.setText(labels[i], juce::dontSendNotification);
-        row.label.setTooltip(touche && i >= 2 ? (i == 2
-            ? "Pressure at negative roll; full pressure at center."
-            : "Pressure at positive roll; full pressure at center.") : "");
+        row.label.setTooltip(touche && i >= 2
+            ? "Pressure at " + juce::String(i == 2 ? "negative " : "positive ")
+                + (percussionTouche ? "yaw" : "roll") + "; full pressure at center."
+            : juce::String());
         row.label.setVisible(visible);
         row.type.setVisible(visible);
         row.number.setVisible(visible && assignment.type == MidiValueType::CC);

@@ -661,11 +661,14 @@ void MidiService::processJoystickKey(const osc::Message& msg, const ConfigLookup
         std::max(-yaw, 0.0f), std::max(yaw, 0.0f), pressure };
     const bool touche = key.mapType == KeyMappingType::Touche;
     if (touche) {
-        inputs[0] = std::max(-yaw, 0.0f);
-        inputs[1] = std::max(yaw, 0.0f);
+        const bool percussion = key.keyType == EigenharpKeyType::Perc;
+        const float direction = percussion ? roll : yaw;
+        const float position = percussion ? yaw : roll;
+        inputs[0] = std::max(-direction, 0.0f);
+        inputs[1] = std::max(direction, 0.0f);
         // At center both ends receive full pressure; moving toward one end fades only the other.
-        inputs[2] = pressure * (1.0f - std::max(roll, 0.0f));
-        inputs[3] = pressure * (1.0f - std::max(-roll, 0.0f));
+        inputs[2] = pressure * (1.0f - std::max(position, 0.0f));
+        inputs[3] = pressure * (1.0f - std::max(-position, 0.0f));
         inputs[4] = 0.0f;
     }
     const size_t axisCount = touche ? 4 : 5;
