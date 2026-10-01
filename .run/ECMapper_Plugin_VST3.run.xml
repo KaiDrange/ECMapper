@@ -1,0 +1,7 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration name="ECMapper_Plugin_VST3" type="CMakeRunConfiguration" factoryName="Application" PROJECT_NAME="ECMapper" TARGET_NAME="ECMapper_Plugin_VST3" CONFIG_NAME="Release">
+    <method v="2">
+      <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+    </method>
+  </configuration>
+</component>
