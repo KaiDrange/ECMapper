@@ -93,5 +93,25 @@ int main()
                      "single-channel per-note pitch bend should stay on the originating zone bus");
     }
 
+    for (int channel = 1; channel <= 16; ++channel)
+        sink.pushEvent(ecm::PerformanceEvent::allNotesOff(channel, 37));
+    const auto panicEvents = queue.drain();
+    int channelCounts[3][16] {};
+    ok &= expect(panicEvents.size() == 48, "global All Notes Off must cover every VST3 zone bus and channel");
+    for (const auto& event : panicEvents) {
+        ok &= expect(event.kind == ecm::Vst3DirectEventKind::LegacyCC && event.controller == 123
+                         && event.sampleOffset == 37 && event.value == 0.0,
+                     "All Notes Off must retain controller, value and sample timing");
+        if (event.busIndex >= 0 && event.busIndex < 3 && event.channel >= 0 && event.channel < 16)
+            ++channelCounts[event.busIndex][event.channel];
+    }
+    for (const auto& bus : channelCounts)
+        for (const auto messages : bus)
+            ok &= expect(messages == 1, "each VST3 zone/channel must receive global All Notes Off once");
+    sink.pushEvent(ecm::PerformanceEvent::allNotesOff(2, 38, 2));
+    const auto zonePanic = queue.drain();
+    ok &= expect(zonePanic.size() == 1 && zonePanic[0].busIndex == 2,
+                 "explicit zone-specific All Notes Off events must stay on their assigned bus");
+
     return ok ? 0 : 1;
 }

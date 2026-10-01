@@ -55,7 +55,7 @@ public:
         int cmdOff = 0;
         int cmdType = 0; // none = 0, latch = 1, momentary = 2, trigger = 3
         int msgType = 0; // none = 0, CC = 1, PC = 2, Realtime = 3, AllNotesOff = 4
-        int appCtrlType = 0; // none = 0, preset = 1, transpose = 2, transport = 3
+        int appCtrlType = 0; // none = 0, preset = 1, transpose = 2, transport = 3, toggle LEDs = 4
         int appCtrlValue = 0;
         std::array<int, 3> presetPrograms { -1, -1, -1 };
         std::array<int, 3> presetProgramChannels { 0, 0, 0 };

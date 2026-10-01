@@ -35,6 +35,7 @@ private:
     juce::ToggleButton typePreset;
     juce::ToggleButton typeTranspose;
     juce::ToggleButton typeTransport;
+    juce::ToggleButton typeToggleLEDs;
     juce::ComboBox transportAction;
 
     juce::GroupComponent modeRadioGroup;

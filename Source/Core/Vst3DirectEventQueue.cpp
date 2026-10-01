@@ -59,6 +59,14 @@ Vst3DirectPerformanceEventSink::Vst3DirectPerformanceEventSink(Vst3DirectEventQu
 
 void Vst3DirectPerformanceEventSink::pushEvent(const PerformanceEvent& event)
 {
+    if (event.kind == PerformanceEventKind::AllNotesOff && event.zoneIndex < 0) {
+        for (int zone = 0; zone < 3; ++zone) {
+            auto zoneEvent = event;
+            zoneEvent.zoneIndex = zone;
+            pushEvent(zoneEvent);
+        }
+        return;
+    }
     Vst3DirectEvent directEvent;
     directEvent.busIndex = juce::jlimit(0, 2, event.zoneIndex < 0 ? 0 : event.zoneIndex);
     directEvent.sampleOffset = event.sampleOffset;

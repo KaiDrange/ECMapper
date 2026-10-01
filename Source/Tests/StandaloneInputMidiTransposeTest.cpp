@@ -415,6 +415,227 @@ bool verifyPresetKeyProgramChanges()
     return ok;
 }
 
+bool verifyLatchKeyLEDs()
+{
+    using namespace ecm;
+    bool ok = true;
+    for (const auto mode : { DeviceMode::Local, DeviceMode::ReceiveOSC }) {
+        ECMapperAudioProcessor processor;
+        LayoutWrapper::LayoutKey key;
+        key.keyId = { 0, 0, InstrumentType::Alpha };
+        key.keyType = EigenharpKeyType::Normal;
+        key.keyColour = KeyColour::Off;
+        key.zone = Zone::NoZone;
+        key.keyMappingType = KeyMappingType::AppCtrl;
+        key.mappingValue = "Transpose;Latch;12";
+        LayoutWrapper::setLayoutKey(key, processor.state.state);
+        processor.prepareToPlay(48000.0, 64);
+        processor.hardwareService.stopService();
+        ConnectedDevice device;
+        device.dev = mode == DeviceMode::ReceiveOSC ? "Remote-latch-led-device@127.0.0.1" : "latch-led-device";
+        if (mode == DeviceMode::ReceiveOSC) device.remoteOriginalDevId = "latch-led-device";
+        device.type = InstrumentType::Alpha;
+        device.mode = mode;
+        device.isRemote = mode == DeviceMode::ReceiveOSC;
+        if (device.isRemote) device.oscTargets.push_back({"127.0.0.1", 12130, true});
+        processor.hardwareService.connectedDevices_.push_back(device);
+        processor.handleAsyncUpdate();
+        // Changing only the LED colour after preparing must update the runtime
+        // colour used when restoring a latch, not just the physical LED.
+        LayoutWrapper::setKeyColour(key.keyId, KeyColour::Red, processor.state.state);
+        ok &= expect(processor.configLookups[0].keys[0][0].keyColour == KeyColour::Red,
+                     "LED colour edits must update the cached key colour");
+        ok &= expect(processor.runtimeConfigRefreshRequested_.load(),
+                     "LED colour edits must request publication of a new audio-thread snapshot");
+        processor.handleAsyncUpdate();
+        osc::Message message;
+        const auto drain = [&] {
+            while (processor.mapperToHardwareQueue.read(message)) {}
+            while (processor.outgoingOSCQueue.read(message)) {}
+        };
+        drain();
+        osc::Message input;
+        input.type = osc::MessageType::Key;
+        input.device = InstrumentType::Alpha;
+        std::strncpy(input.devId, "latch-led-device", 63);
+        juce::MidiBuffer midi;
+        int slot = -1;
+        ECMapperAudioProcessor::BlockTiming timing;
+        timing.numSamples = 64;
+        timing.sampleRate = 48000;
+        auto send = [&](bool active) {
+            input.active = active;
+            processor.handleHardwareMessage(input, timing, midi, slot);
+        };
+        auto verifyColour = [&](KeyColour expected) {
+            auto& queue = mode == DeviceMode::Local ? processor.mapperToHardwareQueue : processor.outgoingOSCQueue;
+            bool found = false;
+            bool correct = true;
+            while (queue.read(message)) {
+                if (message.type == osc::MessageType::LED && message.course == 0 && message.key == 0) {
+                    found = true;
+                    correct &= static_cast<int>(message.value) == static_cast<int>(expected);
+                }
+            }
+            return expect(found && correct, "every latch LED update must reach its destination with the current colour");
+        };
+        send(true);
+        ok &= verifyColour(KeyColour::Yellow);
+        send(false);
+        drain();
+        send(true);
+        ok &= verifyColour(KeyColour::Red);
+        send(false);
+        if (device.isRemote) {
+            processor.hardwareService.connectedDevices_.back().oscTargets[0].receiveLEDs = false;
+            drain();
+            send(true);
+            ok &= expect(processor.outgoingOSCQueue.getMessageCount() == 0,
+                         "remote latch feedback must respect disabled LED authorization");
+            send(false);
+        }
+        processor.releaseResources();
+    }
+    return ok;
+}
+
+bool verifyLateHostDeviceSettingsRestore()
+{
+    ECMapperAudioProcessor processor;
+    auto& service = processor.hardwareService;
+    service.appRole_ = ecm::AppRole::Host;
+    ecm::ConnectedDevice connected;
+    connected.dev = "alpha-project-restore";
+    connected.type = ecm::InstrumentType::Alpha;
+    connected.mode = ecm::DeviceMode::Local;
+    service.connectedDevices_.push_back(connected);
+
+    auto saved = connected;
+    saved.mode = ecm::DeviceMode::TransmitOSC;
+    saved.oscTargets.push_back({"127.0.0.1", 12130, true});
+    ecm::SettingsWrapper::saveDeviceSettings(saved, processor.state.state);
+    service.restoreLocalDeviceSettings(processor.state.state);
+    auto devices = service.getConnectedDevices();
+    bool ok = expect(devices.front().mode == ecm::DeviceMode::TransmitOSC
+                         && devices.front().oscTargets.size() == 1
+                         && devices.front().oscTargets.front().port == 12130,
+                     "project settings restored after hardware discovery must restore Transmit and its target");
+    saved.mode = ecm::DeviceMode::Local;
+    ecm::SettingsWrapper::saveDeviceSettings(saved, processor.state.state);
+    service.restoreLocalDeviceSettings(processor.state.state);
+    ok &= expect(service.getDeviceMode(connected.dev) == ecm::DeviceMode::Local,
+                 "late project restore must also restore saved Local mode");
+    return ok;
+}
+
+bool verifyToggleLEDsKeys()
+{
+    using namespace ecm;
+    bool ok = true;
+    AppCtrlSectionComponent panel;
+    for (const auto* mapping : { "ToggleLEDs", "AllLEDsOff" }) {
+        panel.updatePanelFromMessageString(mapping);
+        ok &= expect(panel.getMessageString() == "ToggleLEDs", "new and legacy LED mappings must select Toggle LEDs");
+    }
+    for (int i = 0; i < panel.getNumChildComponents(); ++i) {
+        if (const auto* button = dynamic_cast<const juce::ToggleButton*>(panel.getChildComponent(i)))
+            if (button->getButtonText() == "Latch" || button->getButtonText() == "Momentary" || button->getButtonText() == "Trigger")
+                ok &= expect(!button->isVisible(), "Toggle LEDs must have no mode controls");
+    }
+    for (const bool client : { false, true }) {
+        ECMapperAudioProcessor processor;
+        LayoutWrapper::LayoutKey key;
+        key.keyId = { 0, 0, InstrumentType::Alpha };
+        key.keyType = EigenharpKeyType::Normal;
+        key.keyColour = KeyColour::Red;
+        key.zone = Zone::Zone3;
+        key.keyMappingType = KeyMappingType::AppCtrl;
+        key.mappingValue = "ToggleLEDs";
+        LayoutWrapper::setLayoutKey(key, processor.state.state);
+        setZoneEnabledValue(processor, InstrumentType::Alpha, Zone::Zone3, false);
+        processor.prepareToPlay(48000, 64);
+        processor.hardwareService.stopService();
+        processor.hardwareService.appRole_ = client ? AppRole::Client : AppRole::Host;
+        ConnectedDevice device;
+        device.dev = client ? "Remote-led-device@127.0.0.1" : "led-device";
+        device.type = InstrumentType::Alpha;
+        device.mode = client ? DeviceMode::ReceiveOSC : DeviceMode::Local;
+        device.isRemote = client;
+        if (client) {
+            device.remoteOriginalDevId = "led-device";
+            device.oscTargets.push_back({"127.0.0.1", 12130, true});
+        }
+        for (auto& course : device.assignedLEDColours)
+            for (auto& colour : course) colour = static_cast<int>(KeyColour::Red);
+        processor.hardwareService.connectedDevices_.push_back(device);
+        osc::Message message;
+        const auto drain = [&] {
+            while (processor.mapperToHardwareQueue.read(message)) {}
+            while (processor.outgoingOSCQueue.read(message)) {}
+        };
+        drain();
+        const auto stateBefore = processor.state.state.createCopy();
+        osc::Message input;
+        input.type = osc::MessageType::Key;
+        input.device = InstrumentType::Alpha;
+        std::strncpy(input.devId, "led-device", 63);
+        juce::MidiBuffer midi;
+        int slot = -1;
+        ECMapperAudioProcessor::BlockTiming timing;
+        timing.numSamples = 64;
+        timing.sampleRate = 48000;
+        auto send = [&](bool active) {
+            input.active = active;
+            processor.handleHardwareMessage(input, timing, midi, slot);
+        };
+        send(true);
+        ok &= expect(processor.mapperToHardwareQueue.getMessageCount() == 1, "Toggle LEDs must produce one command on the press edge");
+        processor.hardwareService.processOutgoingMessages();
+        ok &= expect(!processor.hardwareService.areLEDsEnabled(), "first press must disable LEDs");
+        ok &= expect(processor.outgoingOSCQueue.read(message) && message.type == osc::MessageType::SetLEDsEnabled
+                         && message.value == 0.0f && message.device == InstrumentType::None,
+                     "client/host toggle must share an explicit global off request");
+        ok &= expect(processor.state.state.isEquivalentTo(stateBefore), "LED off state must not change saved processor state");
+        send(true);
+        send(false);
+        ok &= expect(processor.mapperToHardwareQueue.getMessageCount() == 0 && midi.isEmpty(),
+                     "holding or releasing Toggle LEDs must not toggle or emit MIDI");
+        osc::Message led;
+        led.type = osc::MessageType::LED;
+        led.device = InstrumentType::Alpha;
+        std::strncpy(led.devId, device.dev.c_str(), 63);
+        led.value = static_cast<float>(KeyColour::Yellow);
+        processor.mapperToHardwareQueue.add(led);
+        processor.hardwareService.processOutgoingMessages();
+        ok &= expect(!processor.hardwareService.areLEDsEnabled() && processor.outgoingOSCQueue.getMessageCount() == 0,
+                     "LED updates while off must not re-enable LEDs or forward client feedback");
+        send(true);
+        processor.hardwareService.processOutgoingMessages();
+        ok &= expect(processor.hardwareService.areLEDsEnabled(), "second press must enable LEDs and refresh colours");
+        ok &= expect(processor.outgoingOSCQueue.read(message) && message.type == osc::MessageType::SetLEDsEnabled && message.value == 1.0f,
+                     "second client press must send the Host an explicit on request");
+        if (client) {
+            bool refreshed = false;
+            while (processor.outgoingOSCQueue.read(message))
+                if (message.type == osc::MessageType::LED && message.course == 0 && message.key == 0
+                        && static_cast<int>(message.value) == static_cast<int>(KeyColour::Red)) refreshed = true;
+            ok &= expect(refreshed, "enabling client LEDs must refresh the Host with the current key colours");
+        } else {
+            ok &= expect(processor.hardwareService.connectedDevices_[0].assignedLEDColours[0][0] == static_cast<int>(KeyColour::Red),
+                         "enabling Host LEDs must restore current mapping colours instead of cached touch feedback");
+        }
+        send(false);
+        drain();
+        send(true);
+        processor.hardwareService.processOutgoingMessages();
+        ok &= expect(!processor.hardwareService.areLEDsEnabled(), "toggle must be reusable");
+        processor.applyPresetState(processor.getPresetSnapshot(1));
+        ok &= expect(processor.hardwareService.areLEDsEnabled(), "switching preset must restore LEDs");
+        processor.releaseResources();
+    }
+    return ok;
+}
+
 bool verifyTransportKeys()
 {
     using namespace ecm;
@@ -583,9 +804,11 @@ bool verifyMappingNotesAcceptChannelsOneToFour()
 
 } // namespace
 
-int main()
+int main(int argc, char** argv)
 {
     juce::ScopedJuceInitialiser_GUI juceInitialiser;
+    if (argc > 1 && juce::String(argv[1]) == "--latch-led-only")
+        return verifyLatchKeyLEDs() ? 0 : 1;
     ECMapperAudioProcessor processor;
 
     bool ok = true;
@@ -657,6 +880,9 @@ int main()
     ok &= verifyPluginDirectMidiMessageKeyRoutingWithoutZone();
     ok &= verifyPresetKeyProgramChanges();
     ok &= verifyTransportKeys();
+    ok &= verifyLatchKeyLEDs();
+    ok &= verifyToggleLEDsKeys();
+    ok &= verifyLateHostDeviceSettingsRestore();
     ok &= verifyPresetLoadingPreservesTransportModes();
     ok &= verifyStateRestoreKeepsZoneEnabledParameters();
     ok &= verifyMappingNotesAcceptChannelsOneToFour();

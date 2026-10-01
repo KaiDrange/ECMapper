@@ -37,6 +37,7 @@ void LayoutChangeHandler::valueTreePropertyChanged(juce::ValueTree& vTree, const
         if (deviceType != InstrumentType::None) {
             int configIndex = getConfigIndexFromInstrumentType(deviceType);
             if (property == LayoutWrapper::id_keyColour && configLookups_[configIndex].controlLights) {
+                configLookups_[configIndex].updateKey(vTree);
                 sendLEDMsg(layoutKey);
             } else {
                 configLookups_[configIndex].updateKey(vTree);

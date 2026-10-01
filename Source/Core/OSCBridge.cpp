@@ -554,6 +554,9 @@ void OSCBridge::sendOutgoingMessages() {
     const juce::ScopedLock sl(connectionsLock_);
     osc::Message msg;
     while (outgoingOSCQueue_.read(msg)) {
+        if (!hardwareService_.areLEDsEnabled()
+                && (msg.type == osc::MessageType::LED || msg.type == osc::MessageType::Reset))
+            continue;
         if (msg.type == osc::MessageType::Device) {
             int port = 12130;
             auto devices = hardwareService_.getConnectedDevices();
@@ -580,11 +583,13 @@ void OSCBridge::sendOutgoingMessages() {
                                      msg.type == osc::MessageType::Device);
             
             bool shouldSend = false;
-            if (conn->type == msg.device) {
-                if (isPerformanceMsg && conn->mode == ecm::DeviceMode::TransmitOSC) {
+            if (conn->type == msg.device || msg.type == osc::MessageType::AllLEDsOff || msg.type == osc::MessageType::SetLEDsEnabled) {
+                if (msg.type == osc::MessageType::SetLEDsEnabled) {
+                    shouldSend = conn->receiveLEDs;
+                } else if (isPerformanceMsg && conn->mode == ecm::DeviceMode::TransmitOSC) {
                     shouldSend = true;
                 } else if (!isPerformanceMsg && conn->mode == ecm::DeviceMode::ReceiveOSC) {
-                    if (msg.type == osc::MessageType::LED || msg.type == osc::MessageType::Reset) {
+                    if (msg.type == osc::MessageType::LED || msg.type == osc::MessageType::Reset || msg.type == osc::MessageType::AllLEDsOff || msg.type == osc::MessageType::SetLEDsEnabled) {
                         if (conn->receiveLEDs) shouldSend = true;
                     } else {
                         shouldSend = true;
@@ -593,7 +598,7 @@ void OSCBridge::sendOutgoingMessages() {
             }
 
             if (shouldSend) {
-                if (std::strlen(msg.devId) > 0 && conn->dev != msg.devId) continue;
+                if (std::strlen(msg.devId) > 0 && conn->dev != msg.devId && conn->originalDevId != msg.devId) continue;
 
                 switch (msg.type) {
                     case osc::MessageType::Key:
@@ -617,12 +622,20 @@ void OSCBridge::sendOutgoingMessages() {
                     case osc::MessageType::Reset:
                         conn->sender->send("/ECMapper/reset", (int)msg.device, juce::String(conn->originalDevId), instanceId_);
                         break;
+                    case osc::MessageType::AllLEDsOff:
+                        conn->sender->send("/ECMapper/allLEDsOff", instanceId_);
+                        break;
+                    case osc::MessageType::SetLEDsEnabled:
+                        conn->sender->send("/ECMapper/setLEDsEnabled", static_cast<int>(msg.value != 0.0f), instanceId_);
+                        break;
                     case osc::MessageType::RequestLEDs:
                         conn->sender->send("/ECMapper/requestLEDs", juce::String(conn->originalDevId), instanceId_);
                         break;
                     case osc::MessageType::Undefined:
                     case osc::MessageType::Ping:
                     case osc::MessageType::AppCtrl:
+                    // HardwareService resolves toggles and broadcasts SetLEDsEnabled.
+                    case osc::MessageType::ToggleLEDs:
                     default: break;
                 }
             }
@@ -863,6 +876,16 @@ void OSCBridge::oscMessageReceived(const juce::OSCMessage& message) {
         if (senderId != instanceId_) {
             hardwareService_.updateDeviceLastMessageTime(devId.toStdString());
         }
+    } else if (pattern == "/ECMapper/setLEDsEnabled" && message.size() >= 2
+               && message[0].isInt32() && message[1].isString()) {
+        if (message[1].getString() == instanceId_) return;
+        msg.type = osc::MessageType::SetLEDsEnabled;
+        msg.value = message[0].getInt32() != 0 ? 1.0f : 0.0f;
+        mapperToHardwareQueue_.add(msg);
+    } else if (pattern == "/ECMapper/allLEDsOff" && message.size() >= 1 && message[0].isString()) {
+        if (message[0].getString() == instanceId_) return;
+        msg.type = osc::MessageType::AllLEDsOff;
+        mapperToHardwareQueue_.add(msg);
     } else if (pattern == "/ECMapper/reset" && message.size() >= 1) {
         msg.type = osc::MessageType::Reset;
         msg.device = (InstrumentType)getInt(message[0]);

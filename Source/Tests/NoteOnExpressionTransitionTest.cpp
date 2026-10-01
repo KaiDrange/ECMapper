@@ -1755,6 +1755,35 @@ bool verifyMidiMessageKeysEmitMappedMessages()
     ok &= expect(containsControllerChange(noZoneBuffer, 1, 74, 127),
                  "command keys without an explicit zone should still emit their configured MIDI message");
 
+    for (const auto zone : { Zone::NoZone, Zone::Zone1, Zone::Zone2, Zone::Zone3 }) {
+        for (const bool zoneEnabled : { true, false }) {
+            for (const auto configuredZone : { Zone::Zone1, Zone::Zone2, Zone::Zone3 })
+                ZoneWrapper::setEnabled(InstrumentType::Alpha, configuredZone, zoneEnabled, pluginState.state);
+            SettingsWrapper::setMidi2Mode(false, pluginState.state);
+            const auto legacyPanic = exerciseMapping("Trigger;AllNotesOff;0;0;0", zone);
+            ok &= expect(countAllNotesOffMessages(legacyPanic) == 16,
+                         "MIDI 1 All Notes Off must reach every channel regardless of the assigned or disabled zone");
+            SettingsWrapper::setMidi2Mode(true, pluginState.state);
+            const auto umpPanic = exerciseMapping("Trigger;AllNotesOff;0;0;0", zone);
+            int channelCounts[3][16] {};
+            int count = 0;
+            for (const auto metadata : umpPanic) {
+                if (metadata.numBytes != 8) continue;
+                const auto word = juce::readUnaligned<uint32_t>(metadata.data);
+                const int group = static_cast<int>((word >> 24) & 0xf);
+                if ((word >> 28) == 4 && ((word >> 20) & 0xf) == 0xb
+                        && ((word >> 8) & 0x7f) == 123 && group < 3) {
+                    ++channelCounts[group][(word >> 16) & 0xf];
+                    ++count;
+                }
+            }
+            ok &= expect(count == 48, "MIDI 2 All Notes Off must cover all three zone groups");
+            for (const auto& group : channelCounts)
+                for (const auto messages : group)
+                    ok &= expect(messages == 1, "each MIDI 2 zone/channel must receive All Notes Off once");
+        }
+    }
+
     return ok;
 }
 

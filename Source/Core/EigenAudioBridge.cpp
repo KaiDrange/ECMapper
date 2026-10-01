@@ -81,7 +81,8 @@ juce::String EigenAudioBridge::start() {
         if (!std::isfinite(rate) || rate <= 0.0) return "Select an audio device to run the MIDI clock.";
     } else {
         if (!ready_.load()) return error_;
-        if (!hostActive_.load() && !metronomeUsesDeviceOutput()) return "The metronome is available in Host mode only.";
+        if (!hostActive_.load() && !metronomeUsesDeviceOutput() && !link_.isEnabled())
+            return "The metronome is available in Host mode only.";
     }
     requestPlayback(true);
     if (link_.isEnabled()) link_.requestStart();
@@ -102,7 +103,7 @@ void EigenAudioBridge::setMidiSlave(const bool enabled) noexcept {
 
 bool EigenAudioBridge::isPlaying() const noexcept {
     const auto command = command_.load();
-    return !isNonRealtime() && (standaloneClockEnabled_.load() || hostActive_.load() || metronomeUsesDeviceOutput())
+    return !isNonRealtime() && (standaloneClockEnabled_.load() || hostActive_.load() || metronomeUsesDeviceOutput() || link_.isEnabled())
         && (hostSyncEnabled_.load() ? hostPlaying_.load()
             : link_.isEnabled() ? link_.isPlaying() : (midiSlave_.load() ? midiPlaying_.load() : (command & 1) != 0));
 }

@@ -6,12 +6,10 @@
 namespace ecm {
 
 DeviceMode HardwareService::sanitizeLocalDeviceModeForAppRole(const AppRole role, const DeviceMode mode) noexcept {
-    juce::ignoreUnused(mode);
-
     if (role == AppRole::Client)
         return DeviceMode::ReceiveOSC;
 
-    return DeviceMode::Local;
+    return mode == DeviceMode::TransmitOSC ? DeviceMode::TransmitOSC : DeviceMode::Local;
 }
 
 unsigned HardwareService::getButtonCourseForInstrument(const InstrumentType type) noexcept
@@ -136,8 +134,6 @@ void HardwareService::updateMetronomeSettings(juce::ValueTree& state) {
 
 juce::String HardwareService::startMetronome() {
     const bool standalone = juce::JUCEApplicationBase::isStandaloneApp();
-    if (!standalone && !audioBridge_.metronomeUsesDeviceOutput() && (!supportsLocalHardware() || appRole_ != AppRole::Host))
-        return "The metronome is available in Host mode with local hardware only.";
     if (state_ != nullptr) {
         auto clock = SettingsWrapper::getClockSettings(*state_);
         const auto source = clock.getProperty(SettingsWrapper::id_clockSource).toString();
@@ -145,12 +141,16 @@ juce::String HardwareService::startMetronome() {
             return "In MIDI Clock In mode, send MIDI Start/Continue from the selected input.";
         updateMetronomeSettings(*state_);
     }
+    const bool localOutputRequired = !standalone && !audioBridge_.isLinkEnabled()
+                                     && !audioBridge_.metronomeUsesDeviceOutput();
+    if (localOutputRequired && (!supportsLocalHardware() || appRole_ != AppRole::Host))
+        return "The metronome is available in Host mode with local hardware only.";
     const juce::ScopedLock lock(deviceListLock_);
     const bool hasOutput = std::any_of(connectedDevices_.begin(), connectedDevices_.end(), [](const ConnectedDevice& device) {
         return !device.isRemote && device.headphoneEnabled
             && (device.type == InstrumentType::Alpha || device.type == InstrumentType::Tau);
     });
-    if (!standalone && !audioBridge_.metronomeUsesDeviceOutput() && !hasOutput) return "Enable headphones on a connected Alpha or Tau before starting playback.";
+    if (localOutputRequired && !hasOutput) return "Enable headphones on a connected Alpha or Tau before starting playback.";
     updateAudioOutputAvailability();
     const auto error = audioBridge_.start();
     std::cout << "[Metronome] Start: " << audioBridge_.diagnosticSummary()
@@ -291,6 +291,23 @@ std::vector<ConnectedDevice> HardwareService::getConnectedDevices() {
     return connectedDevices_;
 }
 
+void HardwareService::restoreLocalDeviceSettings(juce::ValueTree& state) {
+    std::vector<std::pair<std::string, DeviceMode>> modes;
+    {
+        const juce::ScopedLock sl(deviceListLock_);
+        for (auto& device : connectedDevices_) {
+            if (device.isRemote)
+                continue;
+            auto restored = device;
+            SettingsWrapper::loadDeviceSettings(restored, state);
+            device.oscTargets = restored.oscTargets;
+            modes.emplace_back(device.dev, sanitizeLocalDeviceModeForAppRole(appRole_, restored.mode));
+        }
+    }
+    for (const auto& [dev, mode] : modes)
+        setDeviceMode(dev, mode);
+}
+
 void HardwareService::setDeviceMode(const std::string& dev, ecm::DeviceMode mode) {
     bool needsSync = false;
     std::string syncDev;
@@ -417,6 +434,33 @@ bool HardwareService::isDeviceInReceiveOSCMode(const std::string& dev) {
     return false;
 }
 
+void HardwareService::setLEDsEnabled(const bool enabled, const bool shareWithRemote) {
+    std::vector<std::string> refreshDevices;
+    {
+        const juce::ScopedLock sl(deviceListLock_);
+        ledsEnabled_.store(enabled);
+        for (const auto& device : connectedDevices_) {
+            if (!device.isRemote) {
+#if ECMAPPER_ENABLE_HARDWARE
+                for (unsigned course = 0; course < 3; ++course)
+                    for (unsigned key = 0; key < 120; ++key)
+                        if (eigenApi_) eigenApi_->setLED(device.dev.c_str(), course, key,
+                            enabled ? static_cast<EigenApi::Eigenharp::LedColour>(device.assignedLEDColours[course][key])
+                                    : EigenApi::Eigenharp::LED_OFF);
+#endif
+            }
+            if (enabled) refreshDevices.push_back(device.dev);
+        }
+    }
+    if (shareWithRemote && oscBroadcastQueue_) {
+        osc::Message message;
+        message.type = osc::MessageType::SetLEDsEnabled;
+        message.value = enabled ? 1.0f : 0.0f;
+        oscBroadcastQueue_->add(message);
+    }
+    for (const auto& dev : refreshDevices) syncLEDs(dev);
+}
+
 void HardwareService::turnOffAllLEDs() {
     const juce::ScopedLock sl(deviceListLock_);
     for (auto& d : connectedDevices_) {
@@ -475,7 +519,7 @@ void HardwareService::run() {
 bool HardwareService::isDeviceAuthorizedForLEDs(const std::string& devId) const {
     const juce::ScopedLock sl(deviceListLock_);
     for (const auto& d : connectedDevices_) {
-        if (d.dev == devId) {
+        if (d.dev == devId || (d.isRemote && !d.remoteOriginalDevId.empty() && d.remoteOriginalDevId == devId)) {
             if (d.isRemote) {
                 return !d.oscTargets.empty() && d.oscTargets[0].receiveLEDs;
             } else {
@@ -492,7 +536,13 @@ bool HardwareService::isDeviceAuthorizedForLEDs(const std::string& devId) const 
 void HardwareService::processOutgoingMessages() {
     osc::Message msg;
     while (mapperToHardwareQueue_.read(msg)) {
-        if (msg.type == osc::MessageType::LED) {
+        if (msg.type == osc::MessageType::ToggleLEDs) {
+            setLEDsEnabled(!areLEDsEnabled());
+        } else if (msg.type == osc::MessageType::SetLEDsEnabled) {
+            setLEDsEnabled(msg.value != 0.0f, false);
+        } else if (msg.type == osc::MessageType::AllLEDsOff) {
+            setLEDsEnabled(false, false);
+        } else if (msg.type == osc::MessageType::LED) {
             const juce::ScopedLock sl(deviceListLock_);
             for (auto& d : connectedDevices_) {
                 bool match = false;
@@ -504,7 +554,7 @@ void HardwareService::processOutgoingMessages() {
 
                 if (match) {
                     if (d.isRemote) {
-                        if (oscBroadcastQueue_) {
+                        if (oscBroadcastQueue_ && areLEDsEnabled()) {
                             // If devId was empty, we should fill it for the specific remote device 
                             // so the host knows which one it is (in case of multiple hosts)
                             osc::Message remoteMsg = msg;
@@ -515,7 +565,7 @@ void HardwareService::processOutgoingMessages() {
                         if (d.mode == ecm::DeviceMode::Local || std::strlen(msg.devId) > 0) {
                             d.assignedLEDColours[msg.course][msg.key] = (int)msg.value;
 #if ECMAPPER_ENABLE_HARDWARE
-                            if (eigenApi_) eigenApi_->setLED(d.dev.c_str(), msg.course, msg.key, (EigenApi::Eigenharp::LedColour)msg.value);
+                            if (eigenApi_ && areLEDsEnabled()) eigenApi_->setLED(d.dev.c_str(), msg.course, msg.key, (EigenApi::Eigenharp::LedColour)msg.value);
 #endif
                         }
                     }
@@ -612,7 +662,7 @@ void HardwareService::key(const char* dev, unsigned long long t, unsigned course
         if (d.dev == dev) {
             if (d.mode == ecm::DeviceMode::ReceiveOSC) return;
 
-            if (d.mode == ecm::DeviceMode::Local) {
+            if (d.mode == ecm::DeviceMode::Local && areLEDsEnabled()) {
                 if (a && !d.activeKeys[course][key]) {
                     d.activeKeys[course][key] = true;
                     if (eigenApi_) eigenApi_->setLED(dev, course, key, EigenApi::Eigenharp::LED_ORANGE);

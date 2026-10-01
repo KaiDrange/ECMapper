@@ -16,7 +16,10 @@ enum class MessageType : int {
     Ping = 7,
     Reset = 8,
     RequestLEDs = 9,
-    AppCtrl = 10
+    AppCtrl = 10,
+    AllLEDsOff = 11,
+    ToggleLEDs = 12,
+    SetLEDsEnabled = 13
 };
 
 struct Message {

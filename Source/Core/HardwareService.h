@@ -58,10 +58,13 @@ public:
     void setHeadphoneSettings(const std::string& dev, bool enabled, unsigned gain, bool limited = true);
 
     void turnOffAllLEDs();
+    bool areLEDsEnabled() const noexcept { return ledsEnabled_.load(); }
+    void setLEDsEnabled(bool enabled, bool shareWithRemote = true);
     void turnOffDeviceLEDs(const std::string& devId);
 
     std::vector<ConnectedDevice> getConnectedDevices();
     void setDeviceMode(const std::string& dev, ecm::DeviceMode mode);
+    void restoreLocalDeviceSettings(juce::ValueTree& state);
     ecm::DeviceMode getDeviceMode(const std::string& devId) const;
     void addDeviceOSCTarget(const std::string& dev, const juce::String& ip, int port);
     void removeDeviceOSCTarget(const std::string& dev, int targetIndex);
@@ -135,6 +138,7 @@ private:
     osc::MessageFifo* oscBroadcastQueue_ = nullptr;
     
     std::vector<ConnectedDevice> connectedDevices_;
+    std::atomic<bool> ledsEnabled_ { true }; // Runtime only; never saved with state or presets.
     juce::CriticalSection deviceListLock_;
     juce::ListenerList<Listener> listeners_;
     

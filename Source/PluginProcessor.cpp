@@ -1286,9 +1286,13 @@ void ECMapperAudioProcessor::handleHardwareMessage(const ecm::osc::Message& msg,
         triggerAsyncUpdate();
     }
 
-    if (outgoingMsg.type == ecm::osc::MessageType::LED) {
+    if (outgoingMsg.type == ecm::osc::MessageType::ToggleLEDs) {
+        mapperToHardwareQueue.add(outgoingMsg);
+    } else if (outgoingMsg.type == ecm::osc::MessageType::LED) {
         if (hardwareService.getDeviceMode(msg.devId) == ecm::DeviceMode::Local)
             mapperToHardwareQueue.add(outgoingMsg);
+        else
+            outgoingOSCQueue.add(outgoingMsg);
     } else {
         queuePresetSlotLoad(presetSlotRequest, slotToLoad);
     }
@@ -1544,6 +1548,9 @@ void ECMapperAudioProcessor::setStateInformation(const void* data, const int siz
         }
     }
     updateGlobalSettings();
+    // Hosts may restore project state after prepareToPlay has already discovered hardware.
+    const juce::ScopedLock stateGuard(presetStateLock_);
+    hardwareService.restoreLocalDeviceSettings(state.state);
 }
 
 void ECMapperAudioProcessor::updateGlobalSettings() {
@@ -1779,6 +1786,8 @@ void ECMapperAudioProcessor::refreshDerivedStateAfterPresetChange()
     transposeCacheInitialised_ = true;
     enableCacheInitialised_ = true;
     publishRuntimeConfigSnapshot();
+    if (!hardwareService.areLEDsEnabled())
+        hardwareService.setLEDsEnabled(true);
 }
 
 juce::ValueTree ECMapperAudioProcessor::makeComparableState(juce::ValueTree stateTree)
@@ -2024,7 +2033,8 @@ bool ECMapperAudioProcessor::isRuntimeConfigStateProperty(const juce::Identifier
     using ZoneWrapper = ecm::ZoneWrapper;
     using SettingsWrapper = ecm::SettingsWrapper;
 
-    return property == ZoneWrapper::id_enabled
+    return property == ecm::LayoutWrapper::id_keyColour
+        || property == ZoneWrapper::id_enabled
         || property == ZoneWrapper::id_transpose
         || property == ZoneWrapper::id_keyPitchbend
         || property == ZoneWrapper::id_channelMaxPitchbend

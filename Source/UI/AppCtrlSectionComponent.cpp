@@ -50,6 +50,11 @@ AppCtrlSectionComponent::AppCtrlSectionComponent() :
     addChildComponent(transportAction);
     transportAction.onChange = [this] { updateVisibility(); sendChangeMessage(); };
 
+    typeToggleLEDs.setButtonText("Toggle LEDs");
+    typeToggleLEDs.setRadioGroupId(100);
+    addAndMakeVisible(typeToggleLEDs);
+    typeToggleLEDs.onClick = [this] { updateVisibility(); sendChangeMessage(); };
+
     modeRadioGroup.setText("Mode");
     addAndMakeVisible(modeRadioGroup);
 
@@ -103,7 +108,7 @@ void AppCtrlSectionComponent::resized() {
     auto area = getLocalBounds();
     float lineHeight = static_cast<float>(area.getHeight()) * 0.05f;
 
-    auto groupArea = area.removeFromTop(static_cast<int>(lineHeight * 6));
+    auto groupArea = area.removeFromTop(static_cast<int>(lineHeight * 7));
     typeRadioGroup.setBounds(groupArea);
     groupArea.reduce(static_cast<int>(static_cast<float>(groupArea.getWidth()) * 0.1f), static_cast<int>(lineHeight));
     groupArea.removeFromTop(static_cast<int>(lineHeight));
@@ -111,6 +116,7 @@ void AppCtrlSectionComponent::resized() {
     typeTranspose.setBounds(groupArea.removeFromTop(static_cast<int>(lineHeight)));
 
     typeTransport.setBounds(groupArea.removeFromTop(static_cast<int>(lineHeight)));
+    typeToggleLEDs.setBounds(groupArea.removeFromTop(static_cast<int>(lineHeight)));
 
     area.removeFromTop(static_cast<int>(lineHeight));
     auto inputArea = area.removeFromTop(static_cast<int>(lineHeight));
@@ -147,6 +153,7 @@ void AppCtrlSectionComponent::resized() {
 }
 
 juce::String AppCtrlSectionComponent::getMessageString() {
+    if (typeToggleLEDs.getToggleState()) return "ToggleLEDs";
     if (typePreset.getToggleState()) {
         juce::String result = "Preset;" + juce::String(presetNumber.getValue());
         bool hasPrograms = false;
@@ -174,7 +181,9 @@ void AppCtrlSectionComponent::updatePanelFromMessageString(const juce::String& m
     
     const bool transport = tokens[0] == "Transport";
     const bool transpose = tokens[0] == "Transpose";
-    typePreset.setToggleState(!transport && !transpose, juce::dontSendNotification);
+    const bool allLEDsOff = (tokens[0] == "ToggleLEDs" || tokens[0] == "AllLEDsOff");
+    typeToggleLEDs.setToggleState(allLEDsOff, juce::dontSendNotification);
+    typePreset.setToggleState(!transport && !transpose && !allLEDsOff, juce::dontSendNotification);
     typeTranspose.setToggleState(transpose, juce::dontSendNotification);
     typeTransport.setToggleState(transport, juce::dontSendNotification);
     presetNumber.setValue(!transport && !transpose && tokens.size() >= 2 ? tokens[1].getIntValue() : 1);

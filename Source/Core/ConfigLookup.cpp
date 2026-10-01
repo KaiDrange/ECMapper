@@ -107,8 +107,15 @@ void ConfigLookup::updateKeyUnlocked(LayoutWrapper::KeyId keyId) {
     const bool outputEnabled = ZoneWrapper::getEnabled(layoutKey.keyId.deviceType, effectiveZone, pluginState.state);
     const bool isStrumSource = layoutKey.keyMappingType == KeyMappingType::Note
                            || layoutKey.keyMappingType == KeyMappingType::Chord;
+    bool isAllNotesOff = false;
+    const bool isAllLEDsOff = layoutKey.keyMappingType == KeyMappingType::AppCtrl
+                             && (layoutKey.mappingValue == "ToggleLEDs" || layoutKey.mappingValue == "AllLEDsOff");
+    if (layoutKey.keyMappingType == KeyMappingType::MidiMsg) {
+        const auto commandParts = juce::StringArray::fromTokens(layoutKey.mappingValue, ";", "");
+        isAllNotesOff = commandParts.size() == 5 && commandParts[1] == "AllNotesOff";
+    }
     // Disabled source zones still provide held pitches and expression to strum keys.
-    if (!outputEnabled && !isStrumSource)
+    if (!outputEnabled && !isStrumSource && !isAllNotesOff && !isAllLEDsOff)
         setKeyToDefault = true;
     
     Key key;
@@ -238,7 +245,10 @@ void ConfigLookup::updateKeyUnlocked(LayoutWrapper::KeyId keyId) {
         else {
             juce::StringArray appCtrlParts;
             Utils::splitString(layoutKey.mappingValue, ";", appCtrlParts);
-            if (appCtrlParts.size() >= 2) {
+            if (layoutKey.mappingValue == "ToggleLEDs" || layoutKey.mappingValue == "AllLEDsOff") {
+                key.appCtrlType = 4;
+                key.cmdType = 3;
+            } else if (appCtrlParts.size() >= 2) {
                 if (appCtrlParts[0] == "Preset") {
                     key.appCtrlType = 1;
                     key.appCtrlValue = appCtrlParts[1].getIntValue();

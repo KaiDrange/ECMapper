@@ -37,7 +37,12 @@ void Midi2Protocol::renderEvent(juce::MidiBuffer& buffer, const PerformanceEvent
             addProgramChange(buffer, group, event.channel, event.program, event.sampleOffset);
             break;
         case PerformanceEventKind::AllNotesOff:
-            addAllNotesOff(buffer, group, event.channel, event.sampleOffset);
+            if (event.zoneIndex < 0) {
+                for (uint8_t zone = 0; zone < 3; ++zone)
+                    addAllNotesOff(buffer, zone, event.channel, event.sampleOffset);
+            } else {
+                addAllNotesOff(buffer, group, event.channel, event.sampleOffset);
+            }
             break;
         case PerformanceEventKind::MidiStart:
             addMidiStart(buffer, group, event.sampleOffset);

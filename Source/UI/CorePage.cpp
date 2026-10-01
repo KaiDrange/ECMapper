@@ -288,11 +288,13 @@ void CorePage::updateClockControls() {
     const bool transportRunning = hardwareService_.isMetronomePlaying();
     startButton.setEnabled((!slave && !host) || !sync);
     stopButton.setEnabled(!host || !sync);
-    stopButton.setTooltip(host && sync ? "Use the host application's transport to stop playback" : "Stop local playback");
+    stopButton.setTooltip(host && sync ? "Use the host application's transport to stop playback"
+                                      : link && sync ? "Stop playback on Link peers with Sync start/stop enabled" : "Stop local playback");
     startButton.setTooltip(host && sync ? "Use the host application's transport to start playback"
                                : host ? "Start locally using the host's tempo and beat position"
                                : slave && sync ? "Send MIDI Start or Continue from the selected input"
                                : slave ? "Start locally on the next incoming MIDI clock pulse"
+                               : link && sync ? "Start playback on Link peers with Sync start/stop enabled at the next Link bar"
                                : link ? "Join the next Link bar (immediate when no peers are connected)" : "Start the metronome on the first beat of a bar");
     startButton.setToggleState(transportRunning, juce::dontSendNotification);
     stopButton.setToggleState(!transportRunning, juce::dontSendNotification);

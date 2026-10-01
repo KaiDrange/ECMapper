@@ -558,6 +558,9 @@ void MidiService::processMessage(const osc::Message& oscMsg, osc::Message& outgo
         case osc::MessageType::Reset:
         case osc::MessageType::RequestLEDs:
         case osc::MessageType::AppCtrl:
+        case osc::MessageType::AllLEDsOff:
+        case osc::MessageType::ToggleLEDs:
+        case osc::MessageType::SetLEDsEnabled:
         default: break;
     }
 
@@ -567,6 +570,9 @@ void MidiService::processMessage(const osc::Message& oscMsg, osc::Message& outgo
     }
 
     if (!controlLights && outgoingOscMsg.type == osc::MessageType::LED)
+        outgoingOscMsg.type = osc::MessageType::Undefined;
+    if (outgoingOscMsg.type == osc::MessageType::ToggleLEDs
+            && (!controlLights || (hardwareService_ && !hardwareService_->isDeviceAuthorizedForLEDs(oscMsg.devId))))
         outgoingOscMsg.type = osc::MessageType::Undefined;
 }
 
@@ -758,7 +764,13 @@ void MidiService::processAppCtrlKey(const osc::Message& oscMsg, osc::Message& ou
     int deviceIndex = static_cast<int>(keyLookup.keyId.deviceType) - 1;
     if (deviceIndex < 0 || deviceIndex > 2) return;
 
-    if (keyLookup.appCtrlType == 1) { // Preset
+    if (keyLookup.appCtrlType == 4) { // Toggle LEDs: a single action on the press edge.
+        if (oscMsg.active && state->status == KeyStatus::Off) {
+            outgoingOscMsg.type = osc::MessageType::ToggleLEDs;
+            outgoingOscMsg.device = InstrumentType::None;
+            outgoingOscMsg.devId[0] = '\0';
+        }
+    } else if (keyLookup.appCtrlType == 1) { // Preset
         if (oscMsg.active && state->status == KeyStatus::Off) {
             if (presetSlotRequest != nullptr)
                 *presetSlotRequest = keyLookup.appCtrlValue;

@@ -31,6 +31,7 @@ public:
     void prepare(double hostSampleRate);
     void setTiming(double bpm, int beatsPerBar, int beatUnit) noexcept;
     void setLinkEnabled(bool enabled);
+    bool isLinkEnabled() const noexcept { return link_.isEnabled(); }
     void setHostSyncEnabled(bool enabled) noexcept {
         if (hostSyncEnabled_.exchange(enabled) != enabled) {
             hostTimingAvailable_.store(false);

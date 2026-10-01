@@ -140,7 +140,9 @@ void KeyConfigComponent::paint(juce::Graphics& g) {
     } else if (layoutKey.keyMappingType == KeyMappingType::AppCtrl) {
         juce::StringArray parts;
         Utils::splitString(keyText, ";", parts);
-        if (parts.size() >= 2) {
+        if ((keyText == "ToggleLEDs" || keyText == "AllLEDsOff")) {
+            keyText = "Toggle LEDs";
+        } else if (parts.size() >= 2) {
             if (parts[0] == "Preset") {
                 keyText = "P" + parts[1];
             } else if (parts[0] == "Transport") {

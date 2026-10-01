@@ -18,7 +18,7 @@ bool expect(bool condition, const char* message)
     return true;
 }
 
-bool verifyHostStartupDefaultsLocalModeForSavedTransmitDevice()
+bool verifyHostStartupPreservesSavedTransmitDevice()
 {
     juce::ValueTree rootState("ECMapperState");
 
@@ -38,8 +38,14 @@ bool verifyHostStartupDefaultsLocalModeForSavedTransmitDevice()
     ok &= expect(restoredDevice.mode == ecm::DeviceMode::TransmitOSC,
                  "test setup should restore the persisted transmit mode before host sanitization");
     ok &= expect(ecm::HardwareService::sanitizeLocalDeviceModeForAppRole(ecm::AppRole::Host, restoredDevice.mode)
+                     == ecm::DeviceMode::TransmitOSC,
+                 "host startup must preserve a saved Transmit mode");
+    ok &= expect(ecm::HardwareService::sanitizeLocalDeviceModeForAppRole(ecm::AppRole::Host, ecm::DeviceMode::Local)
                      == ecm::DeviceMode::Local,
-                 "host startup should default a saved local transmit device back to Local mode");
+                 "host startup must preserve Local mode");
+    ok &= expect(ecm::HardwareService::sanitizeLocalDeviceModeForAppRole(ecm::AppRole::Host, ecm::DeviceMode::ReceiveOSC)
+                     == ecm::DeviceMode::Local,
+                 "host local hardware must not use Receive mode");
     ok &= expect(!restoredDevice.oscTargets.empty(),
                  "sanitizing the startup mode should not discard saved OSC targets");
 
@@ -90,6 +96,44 @@ bool verifyStandaloneClockWithoutHardware()
     return ok;
 }
 
+bool verifyPluginClientMetronomeAudioOutput()
+{
+    bool ok = true;
+    ok &= expect(!juce::JUCEApplicationBase::isStandaloneApp(),
+                 "client audio-output regression must use plugin runtime detection");
+    ecm::osc::MessageFifo input, output;
+    ecm::HardwareService service(input, output);
+    juce::ValueTree state("ECMapperState");
+    ecm::SettingsWrapper::setAppRole(ecm::AppRole::Client, state);
+    auto settings = ecm::SettingsWrapper::getAudioOutputSettings(state);
+    settings.setProperty(ecm::SettingsWrapper::id_metronomeRoute, 2, nullptr);
+    service.prepareMetronome(48000, state);
+    ok &= expect(service.getAppRole() == ecm::AppRole::Client && service.startMetronome().isEmpty(),
+                 "plugin client must start its own audio-output metronome without local hardware");
+    juce::AudioBuffer<float> audio(2, 128);
+    audio.clear();
+    service.processMetronome(128, false, nullptr, nullptr, &audio, 0, 2);
+    ok &= expect(service.isMetronomePlaying() && audio.getMagnitude(0, 128) > 0.0f,
+                 "plugin client must render audible clicks through its own audio output");
+    service.stopMetronome();
+    audio.clear();
+    service.processMetronome(128, false, nullptr, nullptr, &audio, 0, 2);
+    ok &= expect(!service.isMetronomePlaying() && audio.getMagnitude(0, 128) == 0.0f,
+                 "stopping the plugin client must silence its local metronome");
+    settings.setProperty(ecm::SettingsWrapper::id_metronomeRoute, 3, nullptr);
+    service.updateAudioSettings(state);
+    ok &= expect(static_cast<int>(settings.getProperty(ecm::SettingsWrapper::id_metronomeRoute)) == 2
+                     && service.startMetronome().isEmpty(),
+                 "client Both route must retain audio output while removing headphones");
+    service.stopMetronome();
+    settings.setProperty(ecm::SettingsWrapper::id_metronomeRoute, 1, nullptr);
+    service.updateAudioSettings(state);
+    ok &= expect(static_cast<int>(settings.getProperty(ecm::SettingsWrapper::id_metronomeRoute)) == 4
+                     && service.startMetronome().isNotEmpty(),
+                 "client Headphones route must become None and not enable local headphones");
+    return ok;
+}
+
 bool verifyTauButtonsUseSeparateCourseFromTauPercussion()
 {
     bool ok = true;
@@ -106,10 +150,11 @@ bool verifyTauButtonsUseSeparateCourseFromTauPercussion()
 int main()
 {
     bool ok = true;
-    ok &= verifyHostStartupDefaultsLocalModeForSavedTransmitDevice();
+    ok &= verifyHostStartupPreservesSavedTransmitDevice();
     ok &= verifyClientRoleStillForcesReceiveMode();
     ok &= verifyTauButtonsUseSeparateCourseFromTauPercussion();
     ok &= verifyStandaloneClockWithoutHardware();
+    ok &= verifyPluginClientMetronomeAudioOutput();
 
     if (!ok)
         return 1;

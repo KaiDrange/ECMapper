@@ -336,6 +336,96 @@ bool runLedHandoverScenario(int port) {
     return true;
 }
 
+bool runRemoteLEDReplyScenario(int port)
+{
+    using namespace ecm;
+    struct LEDReceiver : juce::OSCReceiver::Listener<juce::OSCReceiver::MessageLoopCallback> {
+        int colour = -1;
+        bool allLEDsOff = false;
+        int enabled = -1;
+        juce::String device;
+        void oscMessageReceived(const juce::OSCMessage& message) override {
+            if (message.getAddressPattern().toString() == "/ECMapper/allLEDsOff" && message.size() == 1)
+                allLEDsOff = true;
+            if (message.getAddressPattern().toString() == "/ECMapper/setLEDsEnabled" && message.size() == 2)
+                enabled = message[0].getInt32();
+            if (message.getAddressPattern().toString() == "/ECMapper/led" && message.size() >= 5) {
+                colour = message[2].getInt32();
+                device = message[4].getString();
+            }
+        }
+    } listener;
+    juce::OSCReceiver receiver;
+    if (!expect(receiver.connect(port), "Expected to bind the Host LED reply receiver."))
+        return false;
+    receiver.addListener(&listener);
+    osc::MessageFifo input, hardware, outgoing;
+    HardwareService service(input, hardware);
+    service.setOSCBroadcastQueue(&outgoing);
+    ecm::Logger logger(false, false);
+    OSCBridge bridge(service, input, hardware, outgoing, logger);
+    service.handleRemoteDeviceConnection(InstrumentType::Alpha, "127.0.0.1", "led-device", port - 1);
+    bridge.setSenderEnabled(true);
+    osc::Message reply;
+    reply.type = osc::MessageType::LED;
+    reply.device = InstrumentType::Alpha;
+    std::strncpy(reply.devId, "led-device", 63);
+    bool ok = expect(service.isDeviceAuthorizedForLEDs("led-device"),
+                     "LED authorization must recognize the Host's original device ID.");
+    for (const auto colour : { KeyColour::Yellow, KeyColour::Red }) {
+        listener.colour = -1;
+        reply.value = static_cast<float>(colour);
+        outgoing.add(reply);
+        ok &= expect(waitUntil([&] { return listener.colour == static_cast<int>(colour); }, 500)
+                         && listener.device == "led-device",
+                     "Client LED feedback must reach the Host using the original device ID.");
+    }
+    reply.type = osc::MessageType::AllLEDsOff;
+    reply.device = InstrumentType::None;
+    reply.devId[0] = '\0';
+    outgoing.add(reply);
+    ok &= expect(waitUntil([&] { return listener.allLEDsOff; }, 500),
+                 "Client All LEDs off must be transmitted as a global message to the Host");
+    service.setLEDsEnabled(false);
+    ok &= expect(waitUntil([&] { return listener.enabled == 0; }, 500),
+                 "Client must send an explicit LEDs-disabled state to the Host");
+    listener.colour = -1;
+    reply.type = osc::MessageType::LED;
+    reply.device = InstrumentType::Alpha;
+    std::strncpy(reply.devId, "led-device", 63);
+    reply.value = static_cast<float>(KeyColour::Yellow);
+    outgoing.add(reply);
+    ok &= expect(!waitUntil([&] { return listener.colour >= 0; }, 150),
+                 "LED feedback must be suppressed while LEDs are disabled");
+    service.setLEDsEnabled(true);
+    ok &= expect(waitUntil([&] { return listener.enabled == 1; }, 500),
+                 "Client must send an explicit LEDs-enabled state to the Host");
+    outgoing.add(reply);
+    ok &= expect(waitUntil([&] { return listener.colour == static_cast<int>(KeyColour::Yellow); }, 500),
+                 "LED feedback must resume when LEDs are enabled again");
+    bridge.setSenderEnabled(false);
+    receiver.removeListener(&listener);
+    bridge.setSenderEnabled(true);
+    juce::OSCSender sender;
+    ok &= expect(sender.connect("127.0.0.1", port - 1)
+                     && sender.send("/ECMapper/allLEDsOff", juce::String("host-request-test")),
+                 "Expected to send an All LEDs off request to a bridge receiver");
+    ok &= expect(waitUntil([&] { return hardware.getMessageCount() > 0; }, 500),
+                 "Received All LEDs off must be queued for the hardware service");
+    osc::Message received;
+    ok &= expect(hardware.read(received) && received.type == osc::MessageType::AllLEDsOff,
+                 "OSC All LEDs off must retain its command type at the hardware boundary");
+    for (const int enabled : { 0, 1 }) {
+        sender.send("/ECMapper/setLEDsEnabled", enabled, juce::String("host-request-test"));
+        ok &= expect(waitUntil([&] { return hardware.getMessageCount() > 0; }, 500)
+                         && hardware.read(received) && received.type == osc::MessageType::SetLEDsEnabled
+                         && static_cast<int>(received.value) == enabled,
+                     "OSC LED enable state must reach the hardware service unchanged");
+    }
+    bridge.setSenderEnabled(false);
+    return ok;
+}
+
 bool runStartupRoleDetectionScenario()
 {
     using namespace ecm;
@@ -458,6 +548,9 @@ int main() {
         return 1;
 
     if (!runLedHandoverScenario(port + 2))
+        return 1;
+
+    if (!runRemoteLEDReplyScenario(port))
         return 1;
 
     if (!runStartupRoleDetectionScenario())

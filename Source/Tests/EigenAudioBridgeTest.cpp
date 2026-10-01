@@ -641,6 +641,29 @@ int main() {
     hostBridge.process(128, false, nullptr, nullptr, &hostAudio, 0, 2, &host);
     expect(hostBridge.isPlaying(), "Returning to realtime host sync must rejoin the DAW's running transport");
 
+    // A plugin client can control Link transport without owning headphones or
+    // routing a local click to the DAW. Its callback still pumps the Link session.
+    ecm::EigenAudioBridge linkClient;
+    linkClient.prepare(48000);
+    expect(linkClient.start().isNotEmpty(), "Unlinked client without local output must reject Start");
+    linkClient.setLinkEnabled(true);
+    linkClient.setStartStopSync(true);
+    expect(linkClient.start().isEmpty(), "Link client without hardware must accept Start");
+    juce::AudioBuffer<float> clientAudio(2, 128);
+    clientAudio.clear();
+    linkClient.process(128, false, nullptr, nullptr, &clientAudio, 0, 2);
+    expect(linkClient.isPlaying(), "Link transport must be visible on a client without local output");
+    expect(clientAudio.getMagnitude(0, 128) == 0.0f && !linkClient.pop(block),
+           "Link client must not render a headphone-only click locally");
+    linkClient.stop();
+    linkClient.process(128);
+    expect(!linkClient.isPlaying(), "Link client must accept Stop without hardware");
+    linkClient.setLinkEnabled(false);
+    expect(linkClient.start().isNotEmpty(), "Disabling Link must restore local output requirements");
+    linkClient.setLinkEnabled(true);
+    linkClient.process(128, true);
+    expect(linkClient.start().isNotEmpty() && !linkClient.isPlaying(), "Offline client must not start Link playback");
+
     if (ok) std::cout << "EigenAudioBridge checks passed\n";
     return ok ? 0 : 1;
 }
