@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.22)
 set(CMAKE_OSX_DEPLOYMENT_TARGET "13.0" CACHE STRING
         "Minimum macOS deployment version for ECMapper")
 
-project(ECMapper_Dev VERSION 2.1.0 LANGUAGES C CXX)
+project(ECMapper VERSION 2.1.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -161,7 +161,7 @@ if(ECMAPPER_BUILD_APP)
             PRODUCT_NAME "${PROJECT_NAME}"
             VERSION "${PROJECT_VERSION}"
             COMPANY_NAME "Tic Tech"
-            BUNDLE_ID "com.tictech.ecmapper.dev.app"
+            BUNDLE_ID "com.tictech.ecmapper.app"
             MICROPHONE_PERMISSION_ENABLED TRUE
             MICROPHONE_PERMISSION_TEXT "ECMapper uses the selected audio input device for audio input."
             ICON_BIG "${CMAKE_CURRENT_SOURCE_DIR}/assets/app_icon.png"
@@ -190,7 +190,7 @@ if(ECMAPPER_BUILD_APP)
 
     if(APPLE)
         set_target_properties(ECMapper_App PROPERTIES
-                MACOSX_BUNDLE_GUI_IDENTIFIER "com.tictech.ecmapper.dev.app"
+                MACOSX_BUNDLE_GUI_IDENTIFIER "com.tictech.ecmapper.app"
                 MACOSX_BUNDLE_BUNDLE_NAME "${PROJECT_NAME}"
         )
 
@@ -210,7 +210,7 @@ if(ECMAPPER_BUILD_PLUGIN)
             PRODUCT_NAME "${PROJECT_NAME}"
             VERSION "${PROJECT_VERSION}"
             COMPANY_NAME "Tic Tech"
-            BUNDLE_ID "com.tictech.ecmapper.dev.plugin"
+            BUNDLE_ID "com.tictech.ecmapper.plugin"
             PLUGIN_CODE EcDv
             FORMATS VST3
             IS_SYNTH TRUE
@@ -239,7 +239,7 @@ if(ECMAPPER_BUILD_PLUGIN)
 
     if(APPLE)
         set_target_properties(ECMapper_Plugin PROPERTIES
-                MACOSX_BUNDLE_GUI_IDENTIFIER "com.tictech.ecmapper.dev.plugin"
+                MACOSX_BUNDLE_GUI_IDENTIFIER "com.tictech.ecmapper.plugin"
                 MACOSX_BUNDLE_BUNDLE_NAME "${PROJECT_NAME}"
         )
 
